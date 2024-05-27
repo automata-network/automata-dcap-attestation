@@ -117,6 +117,7 @@ library V3Parser {
         );
 
         // todo: consider supporting multiple cert types in the future
+        // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/45554a754ba8c03342cc394831fa7f04db08805c/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L57-L66
         require(
             v3Quote.v3AuthData.certification.certType == 5,
             "certType must be 5: Concatenated PCK Cert Chain (PEM formatted)"
