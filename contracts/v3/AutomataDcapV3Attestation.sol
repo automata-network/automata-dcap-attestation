@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IAttestation} from "../interfaces/IAttestation.sol";
-import {EnclaveIdBase, EnclaveIdTcbStatus} from "../base/EnclaveIdBase.sol";
+import {EnclaveIdBase, EnclaveIdTcbStatus, EnclaveId} from "../base/EnclaveIdBase.sol";
 import {PEMCertChainBase, X509CertObj, PCKCertTCB, LibString, BytesUtils, CA} from "../base/PEMCertChainBase.sol";
 import {TCBInfoBase, TCBLevelsObj, TCBStatus} from "../base/TCBInfoBase.sol";
 
@@ -153,15 +153,14 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
             qeEnclaveReport = v3quote.v3AuthData.pckSignedQeReport;
             bool verifiedEnclaveIdSuccessfully;
             (verifiedEnclaveIdSuccessfully, qeTcbStatus) = _verifyQEReportWithIdentity(
+                EnclaveId.QE,
+                3,
                 qeEnclaveReport.miscSelect,
                 qeEnclaveReport.attributes,
                 qeEnclaveReport.mrSigner,
                 qeEnclaveReport.isvProdId,
                 qeEnclaveReport.isvSvn
             );
-            if (!verifiedEnclaveIdSuccessfully) {
-                return (false, output);
-            }
             if (!verifiedEnclaveIdSuccessfully || qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
                 return (false, output);
             }
@@ -188,7 +187,7 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         TCBLevelsObj[] memory tcbLevels;
         {
             bool tcbInfoFound;
-            (tcbInfoFound, tcbLevels) = _getTcbInfo(bytes6(pckTcb.fmspcBytes));
+            (tcbInfoFound, tcbLevels) = _getTcbInfo(0, bytes6(pckTcb.fmspcBytes), 2);
             if (!tcbInfoFound) {
                 return (false, output);
             }
@@ -205,14 +204,10 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
             }
         }
 
-        // Step 6: Verify cert chain only for certType == 5
-        // this is because the PCK Certificate Chain is not obtained directly from on-chain PCCS
-        // which is untrusted and requires validation
-        if (certification.certType == 5) {
-            bool pckCertChainVerified = _verifyCertChain(parsedCerts);
-            if (!pckCertChainVerified) {
-                return (false, output);
-            }
+        // Step 6: Verify cert chain for certType == 5
+        bool pckCertChainVerified = _verifyCertChain(parsedCerts);
+        if (!pckCertChainVerified) {
+            return (false, output);
         }
 
         // Step 7: Verify the local attestation sig and qe report sig = 670k gas

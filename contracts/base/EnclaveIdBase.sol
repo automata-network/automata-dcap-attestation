@@ -26,13 +26,15 @@ abstract contract EnclaveIdBase {
 
     /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/Verifiers/EnclaveReportVerifier.cpp#L47-L113
     function _verifyQEReportWithIdentity(
+        EnclaveId enclaveId,
+        uint256 quoteVersion,
         bytes4 enclaveReportMiscselect,
         bytes16 enclaveReportAttributes,
         bytes32 enclaveReportMrsigner,
         uint16 enclaveReportIsvprodid,
         uint16 enclaveReportIsvSvn
     ) internal view returns (bool, EnclaveIdTcbStatus status) {
-        bytes32 key = keccak256(abi.encodePacked(uint256(0), uint256(3)));
+        bytes32 key = keccak256(abi.encodePacked(uint256(enclaveId), uint256(quoteVersion)));
         bytes32 attestationId = enclaveIdDao.enclaveIdentityAttestations(key);
         bytes memory data = enclaveIdDao.getAttestedData(attestationId);
 

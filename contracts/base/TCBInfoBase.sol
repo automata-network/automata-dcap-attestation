@@ -28,8 +28,12 @@ abstract contract TCBInfoBase {
         tcbHelper = FmspcTcbHelper(_tcbHelper);
     }
 
-    function _getTcbInfo(bytes6 fmspc) internal view returns (bool success, TCBLevelsObj[] memory tcbLevels) {
-        bytes32 key = keccak256(abi.encodePacked(uint8(0), fmspc, uint32(2)));
+    function _getTcbInfo(uint8 tcbType, string memory fmspc, uint32 tcbVersion)
+        internal
+        view
+        returns (bool success, TCBLevelsObj[] memory tcbLevels)
+    {
+        bytes32 key = keccak256(abi.encodePacked(tcbType, fmspc, tcbVersion));
         bytes32 attestationId = tcbDao.fmspcTcbInfoAttestations(key);
         success = attestationId != bytes32(0);
         if (success) {
