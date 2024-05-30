@@ -190,17 +190,30 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         // Step 5: Verify TCB Level
         TCBStatus tcbStatus;
         bytes16 teeTcbSvn = parsedQuote.reportBody.teeTcbSvn;
+        bytes memory expectedMrSignerSeam;
+        bytes8 expectedSeamAttributes;
         {
             bool tcbVerified;
 
-            (tcbVerified, tcbStatus) =
-                _checkTcbLevelsForV4Quotes(qeTcbStatus, pckTcb, tcbType, teeTcbSvn, tcbLevels, tdxModuleIdentities);
+            (tcbVerified, tcbStatus, expectedMrSignerSeam, expectedSeamAttributes) = _checkTcbLevelsForV4Quotes(
+                qeTcbStatus, pckTcb, tcbType, teeTcbSvn, tcbLevels, tdxModule, tdxModuleIdentities
+            );
             if (!tcbVerified) {
                 return (false, "Failed to verify TCBLevels!", output);
             }
         }
 
-        // Step 6: Verify cert chain only for certType == 5
+        // Step 6: TDX Module check
+        if (tee == TeeType.TDX) {
+            bool mrsignerSeamIsValid = keccak256(parsedQuote.reportBody.mrsignerSeam) == keccak256(expectedMrSignerSeam);
+            bool seamAttributeIsValid = keccak256(abi.encodePacked(parsedQuote.reportBody.seamAttributes))
+                == keccak256(abi.encodePacked(expectedSeamAttributes));
+            if (!mrsignerSeamIsValid || !seamAttributeIsValid) {
+                return (false, "Invalid TDX Module", output);
+            }
+        }
+
+        // Step 7: Verify cert chain only for certType == 5
         // this is because the PCK Certificate Chain is not obtained directly from on-chain PCCS
         // which is untrusted and requires validation
         bool pckCertChainVerified = _verifyCertChain(parsedCerts);
@@ -208,7 +221,7 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
             return (false, "Failed to verify PCK Chain!", output);
         }
 
-        // Step 7: Verify the local attestation sig and qe report sig = 670k gas
+        // Step 8: Verify the local attestation sig and qe report sig = 670k gas
         {
             bool enclaveReportSigsVerified = _enclaveReportSigVerification(
                 parsedCerts[0].subjectPublicKey, quoteDataBytes, qeReportBytes, parsedQuote.authData

@@ -100,27 +100,36 @@ abstract contract TCBInfoBase {
         TcbId tcbType,
         bytes16 teeTcbSvn,
         TCBLevelsObj[] memory tcbLevels,
+        TDXModule memory tdxModule,
         TDXModuleIdentity[] memory tdxModuleIdentities
-    ) internal pure returns (bool verified, TCBStatus status) {
+    ) internal pure returns (bool verified, TCBStatus status, bytes memory, bytes8) {
         (bool sgxTcbFound, bool tdxTcbFound, TCBLevelsObj memory sgxTcbLevel, TCBLevelsObj memory tdxTcbLevel) =
             _matchTcbLevels(tcbType, tcbLevels, pckTcb, teeTcbSvn);
 
+        bytes memory expectedMrSignerSeam;
+        bytes8 expectedSeamAttributes;
+
         if (!sgxTcbFound) {
-            return (false, TCBStatus.TCB_UNRECOGNIZED);
+            return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
         }
 
         if (tcbType == TcbId.TDX) {
             if (!tdxTcbFound) {
-                return (false, TCBStatus.TCB_UNRECOGNIZED);
+                return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
             }
 
             // Step 1: Compare teeTcbSvn to get status from TDXModuleIdentities
             // skip this step, if tdxModuleVersion == 0
             // https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
             TCBStatus tdxModuleStatus;
-            (verified, tdxModuleStatus) = _checkTdxModuleTcbStatus(teeTcbSvn, tdxModuleIdentities);
+            uint8 tdxModuleVersion;
+            (verified, tdxModuleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes) =
+                _checkTdxModuleTcbStatus(teeTcbSvn, tdxModuleIdentities);
             if (!verified) {
-                return (verified, tdxModuleStatus);
+                return (verified, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes);
+            } else if (tdxModuleVersion == 0) {
+                expectedMrSignerSeam = tdxModule.mrsigner;
+                expectedSeamAttributes = tdxModule.attributes;
             }
 
             // Step 2: Compare teeTcbSvn to get status from TDXComponent from TCBStatus
@@ -133,7 +142,7 @@ abstract contract TCBInfoBase {
         bool tcbIsRevoked =
             status == TCBStatus.TCB_REVOKED || qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED;
         status = _convergeTcbStatusWithQeTcbStatus(qeTcbStatus, status);
-        return (!tcbIsRevoked, status);
+        return (!tcbIsRevoked, status, expectedMrSignerSeam, expectedSeamAttributes);
     }
 
     function _checkSgxCpuSvns(PCKCertTCB memory pckTcb, TCBLevelsObj memory tcbLevel)
@@ -187,13 +196,15 @@ abstract contract TCBInfoBase {
     function _checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
         private
         pure
-        returns (bool, TCBStatus)
+        returns (bool, TCBStatus, uint8, bytes memory, bytes8)
     {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
+        bytes memory expectedMrSignerSeam;
+        bytes8 expectedSeamAttributes;
 
         if (tdxModuleVersion == 0) {
-            return (true, TCBStatus.OK);
+            return (true, TCBStatus.OK, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
         }
 
         string memory tdxModuleIdentityId = string(
@@ -211,6 +222,8 @@ abstract contract TCBInfoBase {
                     if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[j].isvsvn)) {
                         tdxModuleIdentityFound = true;
                         moduleStatus = tdxModuleTcbLevels[j].status;
+                        expectedMrSignerSeam = currId.mrsigner;
+                        expectedSeamAttributes = currId.attributes;
                         break;
                     }
                 }
@@ -219,9 +232,9 @@ abstract contract TCBInfoBase {
         }
 
         if (tdxModuleIdentityFound) {
-            return (true, moduleStatus);
+            return (true, moduleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
         } else {
-            return (false, TCBStatus.TCB_UNRECOGNIZED);
+            return (false, TCBStatus.TCB_UNRECOGNIZED, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
         }
     }
 
