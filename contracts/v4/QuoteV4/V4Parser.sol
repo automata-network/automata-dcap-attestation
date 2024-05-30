@@ -7,6 +7,12 @@ import {V4Struct} from "./V4Struct.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 
+enum TeeType {
+    INVALID,
+    SGX,
+    TDX
+}
+
 library V4Parser {
     using BytesUtils for bytes;
 
@@ -19,6 +25,9 @@ library V4Parser {
     bytes2 constant SUPPORTED_ATTESTATION_KEY_TYPE = 0x0200; // ECDSA_256_WITH_P256_CURVE
     bytes16 constant VALID_QE_VENDOR_ID = 0x939a7233f79c4ca9940a0db3957f0607;
     uint256 constant ECDSA_SIG_PUBKEY_LENGTH = 64;
+
+    bytes4 constant SGX_TEE = 0x00000000;
+    bytes4 constant TDX_TEE = 0x01000000;
 
     function parseInput(bytes memory quote)
         internal
@@ -37,28 +46,35 @@ library V4Parser {
     function validateParsedInput(V4Struct.ParsedV4Quote memory parsedQuote)
         internal
         pure
-        returns (bool success, string memory reason)
+        returns (bool success, string memory reason, TeeType tee)
     {
         V4Struct.Header memory header = parsedQuote.header;
 
         if (header.version != SUPPORTED_QUOTE_VERSION) {
-            return (false, "!v4 quote");
+            return (false, "!v4 quote", TeeType.INVALID);
         }
 
         if (header.attestationKeyType != SUPPORTED_ATTESTATION_KEY_TYPE) {
-            return (false, "unsupported attestation key type");
+            return (false, "unsupported attestation key type", TeeType.INVALID);
         }
 
         if (header.qeVendorId != VALID_QE_VENDOR_ID) {
-            return (false, "Not a valid Intel SGX QE Vendor ID");
+            return (false, "Not a valid Intel SGX QE Vendor ID", TeeType.INVALID);
+        }
+
+        if (header.teeType != SGX_TEE && header.teeType != TDX_TEE) {
+            return (false, "Unknown TEE type", TeeType.INVALID);
+        } else {
+            tee = header.teeType == SGX_TEE ? TeeType.SGX : TeeType.TDX;
         }
 
         if (
             parsedQuote.authData.ecdsa256BitSignature.length != ECDSA_SIG_PUBKEY_LENGTH
                 || parsedQuote.authData.ecdsaAttestationKey.length != ECDSA_SIG_PUBKEY_LENGTH
         ) {
-            return (false, "Invalid attestation signature and/or pubkey length");
+            return (false, "Invalid attestation signature and/or pubkey length", TeeType.INVALID);
         }
+
         success = true;
     }
 

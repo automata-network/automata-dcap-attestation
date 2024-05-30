@@ -5,10 +5,10 @@ import {IAttestation} from "../interfaces/IAttestation.sol";
 
 import {EnclaveIdBase, EnclaveIdTcbStatus, EnclaveId} from "../base/EnclaveIdBase.sol";
 import {PEMCertChainBase, X509CertObj, PCKCertTCB, LibString, BytesUtils, CA} from "../base/PEMCertChainBase.sol";
-import {TCBInfoBase, TCBLevelsObj, TCBStatus} from "../base/TCBInfoBase.sol";
+import {TCBInfoBase, TCBLevelsObj, TCBStatus, TcbId, TDXModule, TDXModuleIdentity} from "../base/TCBInfoBase.sol";
 
 import {V4Struct} from "./QuoteV4/V4Struct.sol";
-import {V4Parser} from "./QuoteV4/V4Parser.sol";
+import {V4Parser, TeeType} from "./QuoteV4/V4Parser.sol";
 
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
@@ -108,11 +108,8 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
 
         bytes memory quoteReportBytes = V4Parser.packQEReport(parsedQuote.authData.qeReportCertData.qeReport);
 
-        (verified, reason, output) = _verifyParseQuote(
-            parsedQuote,
-            abi.encodePacked(headerBytes, reportBodyBytes),
-            quoteReportBytes    
-        );
+        (verified, reason, output) =
+            _verifyParseQuote(parsedQuote, abi.encodePacked(headerBytes, reportBodyBytes), quoteReportBytes);
         require(verified, reason);
     }
 
@@ -130,7 +127,8 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
     ) private view returns (bool verified, string memory reason, bytes memory output) {
         // Step 1: Validate the quote
         V4Struct.QEReportCertificationData memory qeReportCert = parsedQuote.authData.qeReportCertData;
-        (verified, reason) = V4Parser.validateParsedInput(parsedQuote);
+        TeeType tee;
+        (verified, reason, tee) = V4Parser.validateParsedInput(parsedQuote);
         if (!verified) {
             return (verified, reason, output);
         }
@@ -139,10 +137,11 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         V4Struct.EnclaveReport memory qeEnclaveReport;
         EnclaveIdTcbStatus qeTcbStatus;
         {
+            EnclaveId enclaveId = tee == TeeType.SGX ? EnclaveId.QE : EnclaveId.TD_QE;
             qeEnclaveReport = qeReportCert.qeReport;
             bool verifiedEnclaveIdSuccessfully;
             (verifiedEnclaveIdSuccessfully, qeTcbStatus) = _verifyQEReportWithIdentity(
-                EnclaveId.TD_QE, // check if this is always TD_QE
+                enclaveId,
                 4,
                 qeEnclaveReport.miscSelect,
                 qeEnclaveReport.attributes,
@@ -174,9 +173,13 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
 
         // Step 4: basic PCK and TCB check
         TCBLevelsObj[] memory tcbLevels;
+        TcbId tcbType = tee == TeeType.SGX ? TcbId.SGX : TcbId.TDX;
+        TDXModule memory tdxModule;
+        TDXModuleIdentity[] memory tdxModuleIdentities;
         {
             bool tcbInfoFound;
-            (tcbInfoFound, tcbLevels) = _getTcbInfo(0, pckTcb.fmspcBytes.toHexStringNoPrefix(), 3);
+            (tcbInfoFound, tcbLevels, tdxModule, tdxModuleIdentities) =
+                _getTcbInfo(tcbType, pckTcb.fmspcBytes.toHexStringNoPrefix(), 3);
             if (!tcbInfoFound) {
                 return (false, "TCBInfo not found!", output);
             }
@@ -184,10 +187,13 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
 
         // Step 5: Verify TCB Level
         TCBStatus tcbStatus;
+        bytes16 teeTcbSvn = parsedQuote.reportBody.teeTcbSvn;
         {
-            // 4k gas
             bool tcbVerified;
-            (tcbVerified, tcbStatus) = _checkTcbLevels(qeTcbStatus, pckTcb, tcbLevels);
+
+            (tcbVerified, tcbStatus) = _checkTcbLevelsForV4Quotes(
+                qeTcbStatus, pckTcb, tcbType, teeTcbSvn, tcbLevels, tdxModule, tdxModuleIdentities
+            );
             if (!tcbVerified) {
                 return (false, "Failed to verify TCBLevels!", output);
             }

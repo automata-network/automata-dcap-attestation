@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {IAttestation} from "../interfaces/IAttestation.sol";
 import {EnclaveIdBase, EnclaveIdTcbStatus, EnclaveId} from "../base/EnclaveIdBase.sol";
 import {PEMCertChainBase, X509CertObj, PCKCertTCB, LibString, BytesUtils, CA} from "../base/PEMCertChainBase.sol";
-import {TCBInfoBase, TCBLevelsObj, TCBStatus} from "../base/TCBInfoBase.sol";
+import {TCBInfoBase, TCBLevelsObj, TCBStatus, TcbId} from "../base/TCBInfoBase.sol";
 
 import {V3Struct} from "./QuoteV3Auth/V3Struct.sol";
 import {V3Parser} from "./QuoteV3Auth/V3Parser.sol";
@@ -187,7 +187,7 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         TCBLevelsObj[] memory tcbLevels;
         {
             bool tcbInfoFound;
-            (tcbInfoFound, tcbLevels) = _getTcbInfo(0, bytes6(pckTcb.fmspcBytes), 2);
+            (tcbInfoFound, tcbLevels,,) = _getTcbInfo(TcbId.SGX, bytes6(pckTcb.fmspcBytes), 2);
             if (!tcbInfoFound) {
                 return (false, output);
             }
@@ -198,7 +198,7 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         {
             // 4k gas
             bool tcbVerified;
-            (tcbVerified, tcbStatus) = _checkTcbLevels(qeTcbStatus, pckTcb, tcbLevels);
+            (tcbVerified, tcbStatus) = _checkTcbLevelsForV3Quotes(qeTcbStatus, pckTcb, tcbLevels);
             if (!tcbVerified) {
                 return (false, output);
             }
