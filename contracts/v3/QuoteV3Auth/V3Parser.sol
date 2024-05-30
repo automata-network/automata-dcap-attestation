@@ -44,7 +44,7 @@ library V3Parser {
             return (false, v3ParsedQuote, signedQuoteData, rawQeReport);
         }
 
-        uint256 localAuthDataSize = littleEndianDecode(quote.substring(432, 4));
+        uint256 localAuthDataSize = leBytesToBeUint(quote.substring(432, 4));
         if (quote.length - 436 != localAuthDataSize) {
             return (false, v3ParsedQuote, signedQuoteData, rawQeReport);
         }
@@ -87,8 +87,8 @@ library V3Parser {
         enclaveReport.reserved2 = bytes32(rawEnclaveReport.substring(96, 32));
         enclaveReport.mrSigner = bytes32(rawEnclaveReport.substring(128, 32));
         enclaveReport.reserved3 = rawEnclaveReport.substring(160, 96);
-        enclaveReport.isvProdId = uint16(littleEndianDecode(rawEnclaveReport.substring(256, 2)));
-        enclaveReport.isvSvn = uint16(littleEndianDecode(rawEnclaveReport.substring(258, 2)));
+        enclaveReport.isvProdId = uint16(leBytesToBeUint(rawEnclaveReport.substring(256, 2)));
+        enclaveReport.isvSvn = uint16(leBytesToBeUint(rawEnclaveReport.substring(258, 2)));
         enclaveReport.reserved4 = rawEnclaveReport.substring(260, 60);
         enclaveReport.reportData = rawEnclaveReport.substring(320, 64);
     }
@@ -182,7 +182,7 @@ library V3Parser {
 
     /// === METHODS BELOW ARE FOR INTERNAL-USE ONLY ===
 
-    function littleEndianDecode(bytes memory encoded) private pure returns (uint256 decoded) {
+    function leBytesToBeUint(bytes memory encoded) private pure returns (uint256 decoded) {
         for (uint256 i = 0; i < encoded.length; i++) {
             uint256 digits = uint256(uint8(bytes1(encoded[i])));
             uint256 upperDigit = digits / 16;
@@ -251,21 +251,21 @@ library V3Parser {
         returns (bool success, V3Struct.ECDSAQuoteV3AuthData memory authDataV3, bytes memory rawQeReport)
     {
         V3Struct.QEAuthData memory qeAuthData;
-        qeAuthData.parsedDataSize = uint16(littleEndianDecode(rawAuthData.substring(576, 2)));
+        qeAuthData.parsedDataSize = uint16(leBytesToBeUint(rawAuthData.substring(576, 2)));
         qeAuthData.data = rawAuthData.substring(578, qeAuthData.parsedDataSize);
 
         uint256 offset = 578 + qeAuthData.parsedDataSize;
         V3Struct.CertificationData memory cert;
 
-        cert.certType = uint16(littleEndianDecode(rawAuthData.substring(offset, 2)));
-        // TEMP supported type 5 only
-        // TODO: consider supporting multiple cert types in the future
+        cert.certType = uint16(leBytesToBeUint(rawAuthData.substring(offset, 2)));
+
+        // todo: consider supporting multiple cert types in the future
         // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/45554a754ba8c03342cc394831fa7f04db08805c/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L57-L66
         if (cert.certType != 5) {
             return (false, authDataV3, rawQeReport);
         }
         offset += 2;
-        cert.certDataSize = uint32(littleEndianDecode(rawAuthData.substring(offset, 4)));
+        cert.certDataSize = uint32(leBytesToBeUint(rawAuthData.substring(offset, 4)));
         offset += 4;
         bytes memory certData = rawAuthData.substring(offset, cert.certDataSize);
         bool splitChainSuccessfully;

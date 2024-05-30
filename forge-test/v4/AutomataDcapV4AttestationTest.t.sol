@@ -55,7 +55,22 @@ contract AutomataDcapV4AttestationTest is PCCSSetupBase, RiscZeroCheats {
         vm.stopPrank();
     }
 
-    function testOnChainAttestation() public {
+    function testAttestation() public {
         attestation.verifyAndAttestOnChain(sampleQuote);
+    }
+
+    function testParsedQuoteAttestation() public {
+        V4Struct.ParsedV4Quote memory v4quote = _parseV4QuoteBytes(sampleQuote);
+        attestation.verifyParsedQuoteAndAttestOnChain(v4quote);
+    }
+
+    /// === HELPER FUNCTIONS ===
+
+    function _parseV4QuoteBytes(bytes memory v4QuoteBytes)
+        private
+        pure
+        returns (V4Struct.ParsedV4Quote memory v4quote)
+    {
+        (v4quote,,) = V4Parser.parseInput(v4QuoteBytes);
     }
 }

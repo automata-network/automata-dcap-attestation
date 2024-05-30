@@ -89,15 +89,21 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         );
 
         V4Struct.ReportBody memory reportBody = parsedQuote.reportBody;
+
+        // breaking them down to avoid stack too deep *cries in Solidity*
         bytes memory reportBodyBytes = abi.encodePacked(
             reportBody.teeTcbSvn,
             reportBody.mrSeam,
             reportBody.mrsignerSeam,
-            reportBody.seamAttributes,
-            reportBody.tdAttributes,
-            reportBody.xFAM,
+            V4Parser.beBytes8ToLeBytes8(reportBody.seamAttributes),
+            V4Parser.beBytes8ToLeBytes8(reportBody.tdAttributes),
+            V4Parser.beBytes8ToLeBytes8(reportBody.xFAM)
+        );
+        reportBodyBytes = abi.encodePacked(
+            reportBodyBytes,
             reportBody.mrTd,
             reportBody.mrConfigId,
+            reportBody.mrOwner,
             reportBody.mrOwnerConfig,
             reportBody.rtMr0,
             reportBody.rtMr1,

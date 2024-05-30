@@ -38,7 +38,7 @@ library V4Parser {
         parsedQuote.header = parseQuoteHeader(headerBytes);
         bytes memory reportBodyBytes = quote.substring(48, 584);
         parsedQuote.reportBody = parseReportBody(reportBodyBytes);
-        uint256 authDataLength = littleEndianDecode(quote.substring(632, 4));
+        uint256 authDataLength = leBytesToBeUint(quote.substring(632, 4));
         (parsedQuote.authData, qeReportBytes) = parseQuoteAuthData(quote.substring(636, authDataLength));
         quoteDataBytes = abi.encodePacked(headerBytes, reportBodyBytes);
     }
@@ -78,99 +78,6 @@ library V4Parser {
         success = true;
     }
 
-    /// === METHODS BELOW ARE FOR INTERNAL-USE ONLY ===
-
-    function parseQuoteHeader(bytes memory rawHeader) private pure returns (V4Struct.Header memory header) {
-        bytes2 version = bytes2(rawHeader.substring(0, 2));
-        bytes2 attestationKeyType = bytes2(rawHeader.substring(2, 2));
-        bytes4 teeType = bytes4(rawHeader.substring(4, 4));
-        bytes16 qeVendorId = bytes16(rawHeader.substring(12, 16));
-
-        header = V4Struct.Header({
-            version: version,
-            attestationKeyType: attestationKeyType,
-            teeType: teeType,
-            qeVendorId: qeVendorId,
-            userData: bytes20(rawHeader.substring(28, 20)),
-            reserved: bytes4(rawHeader.substring(8, 4))
-        });
-    }
-
-    function parseReportBody(bytes memory reportBytes) private pure returns (V4Struct.ReportBody memory report) {
-        report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
-        report.mrSeam = reportBytes.substring(16, 48);
-        report.mrsignerSeam = reportBytes.substring(64, 48);
-        report.seamAttributes = bytes8(uint64(littleEndianDecode(reportBytes.substring(112, 8))));
-        report.tdAttributes = bytes8(uint64(littleEndianDecode(reportBytes.substring(120, 8))));
-        report.xFAM = bytes8(uint64(littleEndianDecode(reportBytes.substring(128, 8))));
-        report.mrTd = reportBytes.substring(136, 48);
-        report.mrConfigId = reportBytes.substring(184, 48);
-        report.mrOwner = reportBytes.substring(232, 48);
-        report.mrOwnerConfig = reportBytes.substring(280, 48);
-        report.rtMr0 = reportBytes.substring(328, 48);
-        report.rtMr1 = reportBytes.substring(376, 48);
-        report.rtMr2 = reportBytes.substring(424, 48);
-        report.rtMr3 = reportBytes.substring(472, 48);
-        report.reportData = reportBytes.substring(520, 64);
-    }
-
-    function parseQuoteAuthData(bytes memory authDataBytes)
-        private
-        pure
-        returns (V4Struct.ECDSAQuoteV4AuthData memory authData, bytes memory qeReportBytes)
-    {
-        authData.ecdsa256BitSignature = authDataBytes.substring(0, 64);
-        authData.ecdsaAttestationKey = authDataBytes.substring(64, 64);
-        uint256 certType = uint16(littleEndianDecode(authDataBytes.substring(128, 2)));
-        require(certType == 6, "QEReportCertType != 6");
-        uint256 certLength = littleEndianDecode(authDataBytes.substring(130, 4));
-        (authData.qeReportCertData, qeReportBytes) =
-            parseQeReportCertificationData(authDataBytes.substring(134, certLength));
-    }
-
-    function parseQeReportCertificationData(bytes memory qeReportCertData)
-        private
-        pure
-        returns (V4Struct.QEReportCertificationData memory qeReportCert, bytes memory qeReportBytes)
-    {
-        qeReportBytes = qeReportCertData.substring(0, 384);
-        qeReportCert.qeReport = parseEnclaveReport(qeReportBytes);
-        qeReportCert.qeReportSignature = qeReportCertData.substring(384, 64);
-        uint256 authDataSize = littleEndianDecode(qeReportCertData.substring(448, 2));
-        qeReportCert.qeAuthData.parsedDataSize = uint16(authDataSize);
-        qeReportCert.qeAuthData.data = qeReportCertData.substring(450, authDataSize);
-        uint256 offset = 450 + authDataSize;
-        qeReportCert.certData.certType = uint16(littleEndianDecode(qeReportCertData.substring(offset, 2)));
-        /// same as V3, we are only supporting certType == 5 for now
-        require(qeReportCert.certData.certType == 5, "CertType != 5");
-        offset += 2;
-        uint256 certLength = littleEndianDecode(qeReportCertData.substring(offset, 4));
-        qeReportCert.certData.certDataSize = uint32(certLength);
-        offset += 4;
-        bool success;
-        (success, qeReportCert.certData.decodedCertDataArray) =
-            splitCertificateChain(qeReportCertData.substring(offset, certLength), 3);
-    }
-
-    function parseEnclaveReport(bytes memory rawEnclaveReport)
-        internal
-        pure
-        returns (V4Struct.EnclaveReport memory enclaveReport)
-    {
-        enclaveReport.cpuSvn = bytes16(rawEnclaveReport.substring(0, 16));
-        enclaveReport.miscSelect = bytes4(rawEnclaveReport.substring(16, 4));
-        enclaveReport.reserved1 = bytes28(rawEnclaveReport.substring(20, 28));
-        enclaveReport.attributes = bytes16(rawEnclaveReport.substring(48, 16));
-        enclaveReport.mrEnclave = bytes32(rawEnclaveReport.substring(64, 32));
-        enclaveReport.reserved2 = bytes32(rawEnclaveReport.substring(96, 32));
-        enclaveReport.mrSigner = bytes32(rawEnclaveReport.substring(128, 32));
-        enclaveReport.reserved3 = rawEnclaveReport.substring(160, 96);
-        enclaveReport.isvProdId = uint16(littleEndianDecode(rawEnclaveReport.substring(256, 2)));
-        enclaveReport.isvSvn = uint16(littleEndianDecode(rawEnclaveReport.substring(258, 2)));
-        enclaveReport.reserved4 = rawEnclaveReport.substring(260, 60);
-        enclaveReport.reportData = rawEnclaveReport.substring(320, 64);
-    }
-
     /// enclaveReport to bytes for hash calculation.
     /// the only difference between enclaveReport and packedQEReport is the
     /// order of isvProdId and isvSvn. enclaveReport is in little endian, while
@@ -200,7 +107,111 @@ library V4Parser {
         );
     }
 
-    function littleEndianDecode(bytes memory encoded) private pure returns (uint256 decoded) {
+    function beBytes8ToLeBytes8(bytes8 beData) internal pure returns (bytes8) {
+        uint256 length = 8;
+        bytes memory leData = new bytes(length);
+        
+        for (uint256 i = 0; i < length; i++) {
+            leData[i] = beData[length - 1 - i];
+        }
+        
+        return bytes8(leData);
+    }
+
+    /// === METHODS BELOW ARE FOR INTERNAL-USE ONLY ===
+
+    function parseQuoteHeader(bytes memory rawHeader) private pure returns (V4Struct.Header memory header) {
+        bytes2 version = bytes2(rawHeader.substring(0, 2));
+        bytes2 attestationKeyType = bytes2(rawHeader.substring(2, 2));
+        bytes4 teeType = bytes4(rawHeader.substring(4, 4));
+        bytes16 qeVendorId = bytes16(rawHeader.substring(12, 16));
+
+        header = V4Struct.Header({
+            version: version,
+            attestationKeyType: attestationKeyType,
+            teeType: teeType,
+            qeVendorId: qeVendorId,
+            userData: bytes20(rawHeader.substring(28, 20)),
+            reserved: bytes4(rawHeader.substring(8, 4))
+        });
+    }
+
+    function parseReportBody(bytes memory reportBytes) private pure returns (V4Struct.ReportBody memory report) {
+        report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
+        report.mrSeam = reportBytes.substring(16, 48);
+        report.mrsignerSeam = reportBytes.substring(64, 48);
+        report.seamAttributes = bytes8(uint64(leBytesToBeUint(reportBytes.substring(112, 8))));
+        report.tdAttributes = bytes8(uint64(leBytesToBeUint(reportBytes.substring(120, 8))));
+        report.xFAM = bytes8(uint64(leBytesToBeUint(reportBytes.substring(128, 8))));
+        report.mrTd = reportBytes.substring(136, 48);
+        report.mrConfigId = reportBytes.substring(184, 48);
+        report.mrOwner = reportBytes.substring(232, 48);
+        report.mrOwnerConfig = reportBytes.substring(280, 48);
+        report.rtMr0 = reportBytes.substring(328, 48);
+        report.rtMr1 = reportBytes.substring(376, 48);
+        report.rtMr2 = reportBytes.substring(424, 48);
+        report.rtMr3 = reportBytes.substring(472, 48);
+        report.reportData = reportBytes.substring(520, 64);
+    }
+
+    function parseQuoteAuthData(bytes memory authDataBytes)
+        private
+        pure
+        returns (V4Struct.ECDSAQuoteV4AuthData memory authData, bytes memory qeReportBytes)
+    {
+        authData.ecdsa256BitSignature = authDataBytes.substring(0, 64);
+        authData.ecdsaAttestationKey = authDataBytes.substring(64, 64);
+        uint256 certType = uint16(leBytesToBeUint(authDataBytes.substring(128, 2)));
+        require(certType == 6, "QEReportCertType != 6");
+        uint256 certLength = leBytesToBeUint(authDataBytes.substring(130, 4));
+        (authData.qeReportCertData, qeReportBytes) =
+            parseQeReportCertificationData(authDataBytes.substring(134, certLength));
+    }
+
+    function parseQeReportCertificationData(bytes memory qeReportCertData)
+        private
+        pure
+        returns (V4Struct.QEReportCertificationData memory qeReportCert, bytes memory qeReportBytes)
+    {
+        qeReportBytes = qeReportCertData.substring(0, 384);
+        qeReportCert.qeReport = parseEnclaveReport(qeReportBytes);
+        qeReportCert.qeReportSignature = qeReportCertData.substring(384, 64);
+        uint256 authDataSize = leBytesToBeUint(qeReportCertData.substring(448, 2));
+        qeReportCert.qeAuthData.parsedDataSize = uint16(authDataSize);
+        qeReportCert.qeAuthData.data = qeReportCertData.substring(450, authDataSize);
+        uint256 offset = 450 + authDataSize;
+        qeReportCert.certData.certType = uint16(leBytesToBeUint(qeReportCertData.substring(offset, 2)));
+        /// same as V3, we are only supporting certType == 5 for now
+        require(qeReportCert.certData.certType == 5, "CertType != 5");
+        offset += 2;
+        uint256 certLength = leBytesToBeUint(qeReportCertData.substring(offset, 4));
+        qeReportCert.certData.certDataSize = uint32(certLength);
+        offset += 4;
+        bool success;
+        (success, qeReportCert.certData.decodedCertDataArray) =
+            splitCertificateChain(qeReportCertData.substring(offset, certLength), 3);
+    }
+
+    function parseEnclaveReport(bytes memory rawEnclaveReport)
+        internal
+        pure
+        returns (V4Struct.EnclaveReport memory enclaveReport)
+    {
+        enclaveReport.cpuSvn = bytes16(rawEnclaveReport.substring(0, 16));
+        enclaveReport.miscSelect = bytes4(rawEnclaveReport.substring(16, 4));
+        enclaveReport.reserved1 = bytes28(rawEnclaveReport.substring(20, 28));
+        enclaveReport.attributes = bytes16(rawEnclaveReport.substring(48, 16));
+        enclaveReport.mrEnclave = bytes32(rawEnclaveReport.substring(64, 32));
+        enclaveReport.reserved2 = bytes32(rawEnclaveReport.substring(96, 32));
+        enclaveReport.mrSigner = bytes32(rawEnclaveReport.substring(128, 32));
+        enclaveReport.reserved3 = rawEnclaveReport.substring(160, 96);
+        enclaveReport.isvProdId = uint16(leBytesToBeUint(rawEnclaveReport.substring(256, 2)));
+        enclaveReport.isvSvn = uint16(leBytesToBeUint(rawEnclaveReport.substring(258, 2)));
+        enclaveReport.reserved4 = rawEnclaveReport.substring(260, 60);
+        enclaveReport.reportData = rawEnclaveReport.substring(320, 64);
+    }
+
+    function leBytesToBeUint(bytes memory encoded) private pure returns (uint256 decoded) {
         for (uint256 i = 0; i < encoded.length; i++) {
             uint256 digits = uint256(uint8(bytes1(encoded[i])));
             uint256 upperDigit = digits / 16;
