@@ -118,7 +118,9 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         view
         override
         returns (bytes memory output)
-    {}
+    {
+        // TODO
+    }
 
     function _verifyParseQuote(
         V4Struct.ParsedV4Quote memory parsedQuote,
@@ -191,9 +193,8 @@ contract AutomataDcapV4Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         {
             bool tcbVerified;
 
-            (tcbVerified, tcbStatus) = _checkTcbLevelsForV4Quotes(
-                qeTcbStatus, pckTcb, tcbType, teeTcbSvn, tcbLevels, tdxModule, tdxModuleIdentities
-            );
+            (tcbVerified, tcbStatus) =
+                _checkTcbLevelsForV4Quotes(qeTcbStatus, pckTcb, tcbType, teeTcbSvn, tcbLevels, tdxModuleIdentities);
             if (!tcbVerified) {
                 return (false, "Failed to verify TCBLevels!", output);
             }

@@ -27,7 +27,7 @@ library V4Parser {
     uint256 constant ECDSA_SIG_PUBKEY_LENGTH = 64;
 
     bytes4 constant SGX_TEE = 0x00000000;
-    bytes4 constant TDX_TEE = 0x01000000;
+    bytes4 constant TDX_TEE = 0x81000000;
 
     function parseInput(bytes memory quote)
         internal

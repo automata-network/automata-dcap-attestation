@@ -100,7 +100,6 @@ abstract contract TCBInfoBase {
         TcbId tcbType,
         bytes16 teeTcbSvn,
         TCBLevelsObj[] memory tcbLevels,
-        TDXModule memory tdxModule,
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) internal pure returns (bool verified, TCBStatus status) {
         (bool sgxTcbFound, bool tdxTcbFound, TCBLevelsObj memory sgxTcbLevel, TCBLevelsObj memory tdxTcbLevel) =
@@ -119,7 +118,7 @@ abstract contract TCBInfoBase {
             // skip this step, if tdxModuleVersion == 0
             // https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
             TCBStatus tdxModuleStatus;
-            (verified, tdxModuleStatus) = _checkTdxModuleTcbStatus(teeTcbSvn, tdxModule, tdxModuleIdentities);
+            (verified, tdxModuleStatus) = _checkTdxModuleTcbStatus(teeTcbSvn, tdxModuleIdentities);
             if (!verified) {
                 return (verified, tdxModuleStatus);
             }
@@ -185,11 +184,11 @@ abstract contract TCBInfoBase {
     }
 
     /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
-    function _checkTdxModuleTcbStatus(
-        bytes16 teeTcbSvn,
-        TDXModule memory tdxModule,
-        TDXModuleIdentity[] memory tdxModuleIdentities
-    ) private pure returns (bool, TCBStatus) {
+    function _checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
+        private
+        pure
+        returns (bool, TCBStatus)
+    {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
 
@@ -243,10 +242,12 @@ abstract contract TCBInfoBase {
             TCBLevelsObj memory current = tcbLevels[i];
             if (!sgxTcbFound) {
                 (pceSvnIsHigherOrGreater, cpuSvnsAreHigherOrGreater) = _checkSgxCpuSvns(pckTcb, current);
-                sgxTcbLevel = current;
-                sgxTcbFound = true;
             }
             if (pceSvnIsHigherOrGreater && cpuSvnsAreHigherOrGreater) {
+                if (!sgxTcbFound) {
+                    sgxTcbLevel = current;
+                    sgxTcbFound = true;
+                }
                 if (teeTcbSvn != bytes16(0) && tcbType == TcbId.TDX) {
                     if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxSvns)) {
                         tdxTcbLevel = current;
