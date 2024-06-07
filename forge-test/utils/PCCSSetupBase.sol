@@ -22,6 +22,8 @@ import {AutomataEnclaveIdentityDao} from "@automata-network/on-chain-pccs/automa
 import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPcsDao.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
 
+import {PCCSRouter} from "../../contracts/PCCSRouter.sol";
+
 abstract contract PCCSSetupBase is Test {
     using JSONParserLib for JSONParserLib.Item;
     using LibString for string;
@@ -80,6 +82,13 @@ abstract contract PCCSSetupBase is Test {
         pccsStorage.updateDao(address(pcsDao), pckDao, address(enclaveIdDao), address(fmspcTcbDao));
 
         vm.stopPrank();
+    }
+
+    function setupPccsRouter(address qeIdDao, address fmspcTcbDao, address pcsDao, address pckHelper, address crlHelper)
+        internal
+        returns (PCCSRouter pccsRouter)
+    {
+        pccsRouter = new PCCSRouter(qeIdDao, fmspcTcbDao, pcsDao, pckHelper, crlHelper);
     }
 
     function pcsDaoUpserts() internal {

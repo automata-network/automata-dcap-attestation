@@ -16,9 +16,12 @@ interface IAttestation {
      * @notice full on-chain verification for an attestation
      * @dev must further specify the structure of inputs/outputs, to be serialized and passed to this method
      * @param input - serialized raw input as defined by the project
-     * @return output - the output upon completion of verification. The output data may require post-processing by the consumer
+     * @return success - whether the quote has been successfully verified or not
+     * @return output - the output upon completion of verification. The output data may require post-processing by the consumer.
+     * For verification failures, the output is simply a UTF-8 encoded string, describing the reason for failure.
+     * @dev can directly type cast the failed output as a string
      */
-    function verifyAndAttestOnChain(bytes calldata input) external returns (bytes memory output);
+    function verifyAndAttestOnChain(bytes calldata input) external returns (bool success, bytes memory output);
 
     /**
      * @param journal - The output of the Guest program, this includes:
@@ -34,5 +37,5 @@ interface IAttestation {
      */
     function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
         external
-        returns (bytes memory output);
+        returns (bool success, bytes memory output);
 }
