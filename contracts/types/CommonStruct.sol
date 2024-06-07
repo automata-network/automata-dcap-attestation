@@ -45,11 +45,6 @@ struct CertificationData {
 
 /// ========== CUSTOM TYPES ==========
 
-enum TeeType {
-    SGX,
-    TDX
-}
-
 struct PCKCertTCB {
     uint16 pcesvn;
     uint8[] cpusvns;

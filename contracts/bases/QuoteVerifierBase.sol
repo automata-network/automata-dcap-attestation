@@ -1,19 +1,20 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {TCBStatus} from "@automata-network/on-chain-pccs/helper/FmspcTcbHelper.sol";
+
 import {IQuoteVerifier, IPCCSRouter} from "../interfaces/IQuoteVerifier.sol";
 import {BytesUtils} from "../utils/BytesUtils.sol";
 import {BELE} from "../utils/BELE.sol";
 import {P256Verifier} from "../utils/P256Verifier.sol";
 
-import {EnclaveReport, Output} from "../types/CommonStruct.sol";
+import {Header, EnclaveReport, Output} from "../types/CommonStruct.sol";
 import "../types/Constants.sol";
 
 import "./EnclaveIdBase.sol";
-import "./TCBInfoBase.sol";
 import "./X509ChainBase.sol";
 
-abstract contract QuoteBase is IQuoteVerifier, EnclaveIdBase, TCBInfoBase, X509ChainBase {
+abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainBase {
     using BytesUtils for bytes;
 
     IPCCSRouter public immutable override pccsRouter;
@@ -22,6 +23,34 @@ abstract contract QuoteBase is IQuoteVerifier, EnclaveIdBase, TCBInfoBase, X509C
     constructor(address _router, uint16 _version) {
         pccsRouter = IPCCSRouter(_router);
         quoteVersion = _version;
+    }
+
+    function validateHeader(Header calldata header, uint256 quoteLength, bool teeIsValid)
+        internal
+        view
+        returns (bool valid, string memory reason)
+    {
+        if (quoteLength < MINIMUM_QUOTE_LENGTH) {
+            return (false, "Quote length is less than minimum");
+        }
+
+        if (header.version != quoteVersion) {
+            return (false, "Version mismatch");
+        }
+
+        if (header.attestationKeyType != SUPPORTED_ATTESTATION_KEY_TYPE) {
+            return (false, "Unsupported attestation key type");
+        }
+
+        if (!teeIsValid) {
+            return (false, "Unknown TEE type");
+        }
+
+        if (header.qeVendorId != VALID_QE_VENDOR_ID) {
+            return (false, "Not a valid Intel SGX QE Vendor ID");
+        }
+
+        valid = true;
     }
 
     function parseEnclaveReport(bytes memory rawEnclaveReport)

@@ -3,29 +3,14 @@ pragma solidity ^0.8.0;
 
 import {LibString} from "solady/utils/LibString.sol";
 
-import "../bases/QuoteBase.sol";
-import "../types/CommonStruct.sol";
+import "../bases/QuoteVerifierBase.sol";
+import "../types/V3Structs.sol";
+import "../bases/tcb/TCBInfoV2Base.sol";
 
-/// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/QuoteVerification/QuoteStructures.h#L153-L164
-struct ECDSAQuoteV3AuthData {
-    bytes ecdsa256BitSignature; // 64 bytes
-    bytes ecdsaAttestationKey; // 64 bytes
-    EnclaveReport qeReport; // 384 bytes
-    bytes qeReportSignature; // 64 bytes
-    QEAuthData qeAuthData;
-    CertificationData certification;
-}
-
-struct V3Quote {
-    Header header;
-    EnclaveReport localEnclaveReport;
-    ECDSAQuoteV3AuthData authData;
-}
-
-contract V3QuoteVerifier is QuoteBase {
+contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
     using LibString for bytes;
 
-    constructor(address _router) QuoteBase(_router, 3) {}
+    constructor(address _router) QuoteVerifierBase(_router, 3) {}
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
         external
@@ -49,11 +34,12 @@ contract V3QuoteVerifier is QuoteBase {
 
     function _parseV3Quote(Header calldata header, bytes calldata quote)
         private
-        pure
+        view
         returns (bool success, string memory reason, V3Quote memory parsed, bytes memory rawQeReport)
     {
-        if (header.teeType != SGX_TEE) {
-            return (false, "Unsupported TEE", parsed, rawQeReport);
+        (success, reason) = validateHeader(header, quote.length, header.teeType == SGX_TEE);
+        if (!success) {
+            return (success, reason, parsed, rawQeReport);
         }
 
         // now that we are able to confirm that the provided quote is a valid V3 SGX quote
@@ -68,16 +54,17 @@ contract V3QuoteVerifier is QuoteBase {
             return (false, "failed to parse local isv report", parsed, rawQeReport);
         }
 
+        // check authData length
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
-        if (quote.length - offset != localAuthDataSize) {
+        if (quote.length - offset < localAuthDataSize) {
             return (false, "quote length is incorrect", parsed, rawQeReport);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
         ECDSAQuoteV3AuthData memory authData;
-        (success, authData, rawQeReport) = _parseAuthData(quote[offset:quote.length]);
+        (success, authData, rawQeReport) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, "failed to parse authdata", parsed, rawQeReport);
         }
@@ -150,7 +137,6 @@ contract V3QuoteVerifier is QuoteBase {
             return (success, bytes("Failed to verify attestation and/or qe report signatures"));
         }
 
-        success = true;
         Output memory output = Output({
             quoteVersion: quoteVersion,
             tee: bytes4(uint32(BELE.leBytesToBeUint(abi.encodePacked(SGX_TEE)))),
@@ -168,7 +154,8 @@ contract V3QuoteVerifier is QuoteBase {
      * [512:576] bytes: qeReportSignature
      * [576:578] bytes: qeAuthDataSize (Y)
      * [578:578+Y] bytes: qeAuthData
-     * [578+Y:580+Y] bytes: certType
+     * [578+Y:580+Y] bytes: pckCertType
+     * NOTE: the calculations below assume pckCertType == 5
      * [580+Y:584+Y] bytes: certSize (Z)
      * [584+Y:584+Y+Z] bytes: certData
      */

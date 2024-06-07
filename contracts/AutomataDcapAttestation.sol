@@ -55,7 +55,8 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
             return (false, bytes("Unsupported quote version"));
         }
 
-        // We found a supported version, begin verifying the quote body
+        // We found a supported version, begin verifying the quote
+        // Note: The quote header cannot be trusted yet, it will be validated by the Verifier library
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
         if (!success) {
             return (false, output);
@@ -73,26 +74,11 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
     function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (bool, string memory, Header memory) {
         Header memory header;
 
-        if (rawQuote.length < MINIMUM_QUOTE_LENGTH) {
-            return (false, "Quote length is less than minimum", header);
-        }
-
         bytes2 attestationKeyType = bytes2(rawQuote[2:4]);
-        if (attestationKeyType != SUPPORTED_ATTESTATION_KEY_TYPE) {
-            return (false, "Unsupported attestation key type", header);
-        }
-
         bytes4 teeType = bytes4(rawQuote[4:8]);
-        if (teeType != SGX_TEE && teeType != TDX_TEE) {
-            return (false, "Unknown TEE type", header);
-        }
         bytes2 qeSvn = bytes2(rawQuote[8:10]);
         bytes2 pceSvn = bytes2(rawQuote[10:12]);
-
         bytes16 qeVendorId = bytes16(rawQuote[12:28]);
-        if (qeVendorId != VALID_QE_VENDOR_ID) {
-            return (false, "Not a valid Intel SGX QE Vendor ID", header);
-        }
 
         header = Header({
             version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
