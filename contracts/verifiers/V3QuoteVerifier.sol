@@ -139,7 +139,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: bytes4(uint32(BELE.leBytesToBeUint(abi.encodePacked(SGX_TEE)))),
+            tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
             quoteBody: localAttestationData

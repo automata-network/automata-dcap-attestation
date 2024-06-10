@@ -200,7 +200,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: bytes4(uint32(BELE.leBytesToBeUint(abi.encodePacked(SGX_TEE)))),
+            tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
             quoteBody: localAttestationData
@@ -253,7 +253,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: bytes4(uint32(BELE.leBytesToBeUint(abi.encodePacked(SGX_TEE)))),
+            tee: TDX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
             quoteBody: localAttestationData

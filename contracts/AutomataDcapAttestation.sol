@@ -43,12 +43,7 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         returns (bool success, bytes memory output)
     {
         // Parse the header
-        Header memory header;
-        string memory reason;
-        (success, reason, header) = _parseQuoteHeader(rawQuote);
-        if (!success) {
-            return (success, bytes(reason));
-        }
+        Header memory header = _parseQuoteHeader(rawQuote);
 
         IQuoteVerifier quoteVerifier = quoteVerifiers[header.version];
         if (address(quoteVerifier) == address(0)) {
@@ -71,11 +66,8 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         // TODO
     }
 
-    function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (bool, string memory, Header memory) {
-        Header memory header;
-
+    function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (Header memory header) {
         bytes2 attestationKeyType = bytes2(rawQuote[2:4]);
-        bytes4 teeType = bytes4(rawQuote[4:8]);
         bytes2 qeSvn = bytes2(rawQuote[8:10]);
         bytes2 pceSvn = bytes2(rawQuote[10:12]);
         bytes16 qeVendorId = bytes16(rawQuote[12:28]);
@@ -83,13 +75,11 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         header = Header({
             version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
             attestationKeyType: attestationKeyType,
-            teeType: teeType,
+            teeType: bytes4(uint32(BELE.leBytesToBeUint(rawQuote[4:8]))),
             qeSvn: qeSvn,
             pceSvn: pceSvn,
             qeVendorId: qeVendorId,
             userData: bytes20(rawQuote[28:48])
         });
-
-        return (true, "", header);
     }
 }
