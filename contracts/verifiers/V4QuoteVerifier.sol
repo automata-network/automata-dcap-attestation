@@ -40,25 +40,23 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
         // we parsed the quote except for the body
         // parse body then verify quote
-        bytes memory localAttestationData;
+        bytes memory rawHeader = rawQuote[0:HEADER_LENGTH];
+        bytes memory rawBody;
         if (header.teeType == SGX_TEE) {
             EnclaveReport memory localEnclaveReport;
             (success, localEnclaveReport) = parseEnclaveReport(rawQuoteBody);
             if (!success) {
                 return (false, bytes("failed to parse local isv report"));
             }
-            localAttestationData = abi.encodePacked(
-                rawQuote[0:HEADER_LENGTH], rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH]
-            );
+            rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH];
             V4SGXQuote memory quote =
                 V4SGXQuote({header: header, localEnclaveReport: localEnclaveReport, authData: authData});
-            (success, output) = _verifySGXQuote(quote, localAttestationData, rawQeReport);
+            (success, output) = _verifySGXQuote(quote, rawHeader, rawBody, rawQeReport);
         } else {
             TD10ReportBody memory tdReport = parseTD10ReportBody(rawQuoteBody);
-            localAttestationData =
-                abi.encodePacked(rawQuote[0:HEADER_LENGTH], rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH]);
+            rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH];
             V4TDXQuote memory quote = V4TDXQuote({header: header, reportBody: tdReport, authData: authData});
-            (success, output) = _verifyTDXQuote(quote, localAttestationData, rawQeReport);
+            (success, output) = _verifyTDXQuote(quote, rawHeader, rawBody, rawQeReport);
         }
     }
 
@@ -108,7 +106,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
     function _verifyCommon(
         bytes4 tee,
-        bytes memory localAttestationData,
+        bytes memory rawHeader,
+        bytes memory rawBody,
         bytes memory rawQeReport,
         ECDSAQuoteV4AuthData memory authData
     ) private view returns (bool success, string memory reason, FetchedCollateralsAndStatuses memory ret) {
@@ -149,6 +148,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
 
         // Step 5: Signature Verification on local isv report and qereport by PCK
+        bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
         success = attestationVerification(
             rawQeReport,
             authData.qeReportCertData.qeReportSignature,
@@ -169,15 +169,16 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         ret.tdxModuleIdentities = tdxModuleIdentities;
     }
 
-    function _verifySGXQuote(V4SGXQuote memory quote, bytes memory localAttestationData, bytes memory rawQeReport)
-        private
-        view
-        returns (bool success, bytes memory serialized)
-    {
+    function _verifySGXQuote(
+        V4SGXQuote memory quote,
+        bytes memory rawHeader,
+        bytes memory rawBody,
+        bytes memory rawQeReport
+    ) private view returns (bool success, bytes memory serialized) {
         // Step 1: Perform verification steps that are required for both SGX and TDX quotes
         string memory reason;
         FetchedCollateralsAndStatuses memory ret;
-        (success, reason, ret) = _verifyCommon(quote.header.teeType, localAttestationData, rawQeReport, quote.authData);
+        (success, reason, ret) = _verifyCommon(quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -203,20 +204,21 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
-            quoteBody: localAttestationData
+            quoteBody: rawBody
         });
         serialized = serializeOutput(output);
     }
 
-    function _verifyTDXQuote(V4TDXQuote memory quote, bytes memory localAttestationData, bytes memory rawQeReport)
-        private
-        view
-        returns (bool success, bytes memory serialized)
-    {
+    function _verifyTDXQuote(
+        V4TDXQuote memory quote,
+        bytes memory rawHeader,
+        bytes memory rawBody,
+        bytes memory rawQeReport
+    ) private view returns (bool success, bytes memory serialized) {
         // Step 1: Perform verification steps that are required for both SGX and TDX quotes
         string memory reason;
         FetchedCollateralsAndStatuses memory ret;
-        (success, reason, ret) = _verifyCommon(quote.header.teeType, localAttestationData, rawQeReport, quote.authData);
+        (success, reason, ret) = _verifyCommon(quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -256,7 +258,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             tee: TDX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
-            quoteBody: localAttestationData
+            quoteBody: rawBody
         });
         serialized = serializeOutput(output);
     }

@@ -26,10 +26,9 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (false, bytes(reason));
         }
 
-        bytes memory localAttestationData =
-            abi.encodePacked(rawQuote[0:HEADER_LENGTH], rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH]);
-
-        (success, output) = _verifyQuote(quote, localAttestationData, rawQeReport);
+        (success, output) = _verifyQuote(
+            quote, rawQuote[0:HEADER_LENGTH], rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH], rawQeReport
+        );
     }
 
     function _parseV3Quote(Header calldata header, bytes calldata quote)
@@ -73,7 +72,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         parsed = V3Quote({header: header, localEnclaveReport: localReport, authData: authData});
     }
 
-    function _verifyQuote(V3Quote memory quote, bytes memory localAttestationData, bytes memory rawQeReport)
+    function _verifyQuote(V3Quote memory quote, bytes memory rawHeader, bytes memory rawBody, bytes memory rawQeReport)
         private
         view
         returns (bool success, bytes memory serialized)
@@ -125,6 +124,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         }
 
         // Step 6: Signature Verification on local isv report and qereport by PCK
+        bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
         success = attestationVerification(
             rawQeReport,
             quote.authData.qeReportSignature,
@@ -142,7 +142,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
-            quoteBody: localAttestationData
+            quoteBody: rawBody
         });
         serialized = serializeOutput(output);
     }
