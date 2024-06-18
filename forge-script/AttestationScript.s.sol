@@ -7,7 +7,6 @@ import {console2} from "forge-std/console2.sol";
 import "../contracts/AutomataDcapAttestation.sol";
 
 contract AttestationScript is Script {
-
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
     address riscZeroVerifier = vm.envAddress("RISC0_VERIFIER");
     bytes32 riscZeroImageId = vm.envBytes32("DCAP_IMAGE_ID");
@@ -16,10 +15,7 @@ contract AttestationScript is Script {
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
 
-        AutomataDcapAttestation attestation = new AutomataDcapAttestation(
-            riscZeroVerifier,
-            riscZeroImageId
-        );
+        AutomataDcapAttestation attestation = new AutomataDcapAttestation(riscZeroVerifier, riscZeroImageId);
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
 

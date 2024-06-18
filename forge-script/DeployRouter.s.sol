@@ -19,13 +19,7 @@ contract DeployRouter is Script {
     function run() public {
         vm.startBroadcast(deployerKey);
 
-        PCCSRouter router = new PCCSRouter(
-            enclaveIdDaoAddr,
-            tcbDaoAddr,
-            pcsDaoAddr,
-            pckHelperAddr,
-            crlHelperAddr
-        );
+        PCCSRouter router = new PCCSRouter(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckHelperAddr, crlHelperAddr);
         console2.log("Deployed PCCSRouter to", address(router));
 
         vm.stopBroadcast();
