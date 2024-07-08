@@ -5,8 +5,8 @@ import {
     TcbId,
     TDXModule,
     TDXModuleIdentity,
-    TDXTCBLevelsObj
-} from "@automata-network/on-chain-pccs/helper/FmspcTcbHelper.sol";
+    TDXModuleTCBLevelsObj
+} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import "./TCBInfoV2Base.sol";
 
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
@@ -77,7 +77,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         for (uint256 i = 0; i < tdxModuleIdentities.length; i++) {
             TDXModuleIdentity memory currId = tdxModuleIdentities[i];
             if (tdxModuleIdentityId.eq(currId.id)) {
-                TDXTCBLevelsObj[] memory tdxModuleTcbLevels = currId.tcbLevels;
+                TDXModuleTCBLevelsObj[] memory tdxModuleTcbLevels = currId.tcbLevels;
                 for (uint256 j = 0; j < tdxModuleTcbLevels.length; j++) {
                     if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[j].isvsvn)) {
                         tdxModuleIdentityFound = true;
@@ -98,7 +98,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
     }
 
-    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint256[] memory tdxSvns) internal pure returns (bool) {
+    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxSvns) internal pure returns (bool) {
         if (tdxSvns.length != CPUSVN_LENGTH) {
             return false;
         }

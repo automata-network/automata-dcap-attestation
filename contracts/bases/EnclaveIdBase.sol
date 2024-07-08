@@ -6,7 +6,7 @@ import {
     EnclaveId,
     Tcb,
     EnclaveIdTcbStatus
-} from "@automata-network/on-chain-pccs/helper/EnclaveIdentityHelper.sol";
+} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 
 abstract contract EnclaveIdBase {
     /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/Verifiers/EnclaveReportVerifier.cpp#L47-L113

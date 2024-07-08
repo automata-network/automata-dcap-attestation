@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TCBLevelsObj, TCBStatus} from "@automata-network/on-chain-pccs/helper/FmspcTcbHelper.sol";
-import {EnclaveIdTcbStatus} from "@automata-network/on-chain-pccs/helper/EnclaveIdentityHelper.sol";
+import {TCBLevelsObj, TCBStatus} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {EnclaveIdTcbStatus} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {PCKCertTCB} from "../../types/CommonStruct.sol";
 
@@ -35,7 +35,7 @@ abstract contract TCBInfoV2Base {
         return (pceSvnIsHigherOrGreater, cpuSvnsAreHigherOrGreater);
     }
 
-    function _isCpuSvnHigherOrGreater(uint8[] memory pckCpuSvns, uint256[] memory tcbCpuSvns)
+    function _isCpuSvnHigherOrGreater(uint8[] memory pckCpuSvns, uint8[] memory tcbCpuSvns)
         internal
         pure
         returns (bool)

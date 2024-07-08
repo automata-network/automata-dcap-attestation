@@ -84,11 +84,17 @@ abstract contract PCCSSetupBase is Test {
         vm.stopPrank();
     }
 
-    function setupPccsRouter(address qeIdDao, address fmspcTcbDao, address pcsDao, address pckHelper, address crlHelper)
+    function setupPccsRouter()
         internal
         returns (PCCSRouter pccsRouter)
     {
-        pccsRouter = new PCCSRouter(qeIdDao, fmspcTcbDao, pcsDao, pckHelper, crlHelper);
+        pccsRouter = new PCCSRouter(
+            address(enclaveIdDao),
+            address(fmspcTcbDao),
+            address(pcsDao),
+            address(x509),
+            address(x509Crl)
+        );
     }
 
     function pcsDaoUpserts() internal {

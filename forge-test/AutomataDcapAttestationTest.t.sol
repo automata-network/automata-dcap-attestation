@@ -8,12 +8,9 @@ import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
 
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
-import {RiscZeroCheats} from "risc0/RiscZeroCheats.sol";
-
-import {AccessControlledPCCS} from "@automata-network/on-chain-pccs/example/AccessControlledPCCS.sol";
+import {RiscZeroCheats} from "risc0/test/RiscZeroCheats.sol";
 
 contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
-    AccessControlledPCCS allDao;
     AutomataDcapAttestation attestation;
     PCCSRouter pccsRouter;
 
@@ -24,15 +21,8 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
         vm.startPrank(admin);
 
         // PCCS Setup
-        allDao = new AccessControlledPCCS(address(enclaveIdHelper), address(tcbHelper), address(x509), address(x509Crl));
-        pccsRouter = new PCCSRouter(
-            address(allDao), // QEIdDao
-            address(allDao), // FMSPCTcbDao
-            address(allDao), // PcsDao
-            address(x509),
-            address(x509Crl)
-        );
-        pcsDaoUpserts(address(allDao));
+        pccsRouter = setupPccsRouter();
+        pcsDaoUpserts();
 
         // RiscZero Setup
         // @dev you must disable DEV MODE, to get proof directly from Bonsai
@@ -58,8 +48,8 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
         // collateral upserts
         string memory tcbInfoPath = "/assets/0524/tcb.json";
         string memory qeIdPath = "/assets/0524/identity.json";
-        qeIdDaoUpsert(address(allDao), 3, qeIdPath);
-        fmspcTcbDaoUpsert(address(allDao), tcbInfoPath);
+        qeIdDaoUpsert(3, qeIdPath);
+        fmspcTcbDaoUpsert(tcbInfoPath);
 
         // deploy and configure QuoteV3Verifier on the Attestation contract
         quoteVerifier = new V3QuoteVerifier(address(pccsRouter));
@@ -87,8 +77,8 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
         // collateral upserts
         string memory tcbInfoPath = "/assets/0524/tcbinfov3_00806f050000.json";
         string memory qeIdPath = "/assets/0524/qeidentityv2_apiv4.json";
-        qeIdDaoUpsert(address(allDao), 4, qeIdPath);
-        fmspcTcbDaoUpsert(address(allDao), tcbInfoPath);
+        qeIdDaoUpsert(4, qeIdPath);
+        fmspcTcbDaoUpsert(tcbInfoPath);
 
         // deploy and configure QuoteV3Verifier on the Attestation contract
         quoteVerifier = new V4QuoteVerifier(address(pccsRouter));

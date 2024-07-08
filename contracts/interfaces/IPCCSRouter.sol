@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {IdentityObj, EnclaveId} from "@automata-network/on-chain-pccs/helper/EnclaveIdentityHelper.sol";
+import {IdentityObj, EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 import {
     TCBLevelsObj,
     TcbId,
     TDXModule,
     TDXModuleIdentity
-} from "@automata-network/on-chain-pccs/helper/FmspcTcbHelper.sol";
-import {CA} from "@automata-network/on-chain-pccs/dao/PcsDao.sol";
+} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 
 interface IPCCSRouter {
     function qeIdDaoAddr() external view returns (address);

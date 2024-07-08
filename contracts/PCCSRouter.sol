@@ -5,9 +5,9 @@ import "./interfaces/IPCCSRouter.sol";
 
 import {Ownable} from "solady/auth/Ownable.sol";
 
-import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/dao/EnclaveIdentityDao.sol";
-import {FmspcTcbDao} from "@automata-network/on-chain-pccs/dao/FmspcTcbDao.sol";
-import {PcsDao} from "@automata-network/on-chain-pccs/dao/PcsDao.sol";
+import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveIdentityDao.sol";
+import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
+import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 
 contract PCCSRouter is IPCCSRouter, Ownable {
     address public override qeIdDaoAddr;
@@ -21,11 +21,11 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         _setConfig(_qeid, _fmspcTcb, _pcs, _pckHelper, _crlHelper);
     }
 
+    // events to be monitored (may emit due to missing or expired collaterals)
     error QEIdentityNotFound(EnclaveId id, uint256 quoteVersion);
     error FmspcTcbNotFound(TcbId id, uint256 tcbVersion);
     error CertNotFound(CA ca);
     error CrlNotFound(CA ca);
-    error CollateralExpired();
 
     function setConfig(address _qeid, address _fmspcTcb, address _pcs, address _pckHelper, address _crlHelper)
         external

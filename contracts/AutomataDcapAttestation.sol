@@ -58,7 +58,7 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         }
     }
 
-    function verifyAndAttestWithZKProof(bytes calldata journal, bytes32 postStateDigest, bytes calldata seal)
+    function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
         external
         override
         returns (bool success, bytes memory output)

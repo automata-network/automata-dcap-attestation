@@ -6,9 +6,9 @@ import {PCKCertTCB} from "../types/CommonStruct.sol";
 
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
-import {PCKHelper, X509CertObj} from "@automata-network/on-chain-pccs/helper/PCKHelper.sol";
-import {X509CRLHelper} from "@automata-network/on-chain-pccs/helper/X509CRLHelper.sol";
-import {PcsDao, CA} from "@automata-network/on-chain-pccs/dao/PcsDao.sol";
+import {PCKHelper, X509CertObj} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
+import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelper.sol";
+import {PcsDao, CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 
 abstract contract X509ChainBase {
     using BytesUtils for bytes;
