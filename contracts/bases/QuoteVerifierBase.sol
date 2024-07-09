@@ -81,7 +81,11 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion);
+        IdentityObj memory qeIdentity;
+        (success, qeIdentity) = pccsRouter.getQeIdentity(id, quoteVersion);
+        if (!success) {
+            return (success, EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_NOT_SUPPORTED);
+        }
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );

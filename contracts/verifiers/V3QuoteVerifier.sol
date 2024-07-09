@@ -1,15 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {LibString} from "solady/utils/LibString.sol";
-
 import "../bases/QuoteVerifierBase.sol";
 import "../types/V3Structs.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 
 contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
-    using LibString for bytes;
-
     constructor(address _router) QuoteVerifierBase(_router, 3) {}
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
@@ -101,7 +97,10 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         (parsedCerts, pckTcb) = parseX509DerAndGetPck(certs);
 
         // Step 3: Fetch FMSPC TCB then get TCBStatus
-        TCBLevelsObj[] memory tcbLevels = pccsRouter.getFmspcTcbV2(pckTcb.fmspcBytes.toHexStringNoPrefix());
+        (bool tcbValid, TCBLevelsObj[] memory tcbLevels) = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes));
+        if (!tcbValid) {
+            return (false, bytes("TCB not found or expired"));
+        }
         TCBStatus tcbStatus;
         bool statusFound;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
@@ -111,7 +110,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes("Verificaton failed by TCBINfo check"));
+            return (statusFound, bytes("Verificaton failed by TCBInfo check"));
         }
 
         // Step 4: Converge QEIdentity and FMSPC TCB Status

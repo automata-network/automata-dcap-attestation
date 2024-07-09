@@ -138,8 +138,15 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
         // Step 3: Fetch FMSPC TCB
         TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
-        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-            pccsRouter.getFmspcTcbV3(tcbId, pckTcb.fmspcBytes.toHexStringNoPrefix());
+        (
+            bool tcbValid,
+            TCBLevelsObj[] memory tcbLevels,
+            TDXModule memory tdxModule,
+            TDXModuleIdentity[] memory tdxModuleIdentities
+        ) = pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
+        if (!tcbValid) {
+            return (false, "TCB not found or expired", ret);
+        }
 
         // Step 4: verify cert chain
         success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);

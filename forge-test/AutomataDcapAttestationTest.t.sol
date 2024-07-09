@@ -8,9 +8,9 @@ import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
 
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
-import {RiscZeroCheats} from "risc0/test/RiscZeroCheats.sol";
+// import {RiscZeroCheats} from "risc0/test/RiscZeroCheats.sol";
 
-contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
+contract AutomataDcapAttestationTest is PCCSSetupBase {
     AutomataDcapAttestation attestation;
     PCCSRouter pccsRouter;
 
@@ -28,11 +28,13 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroCheats {
         // @dev you must disable DEV MODE, to get proof directly from Bonsai
         // vm.setEnv("RISC0_DEV_MODE", "true");
 
-        IRiscZeroVerifier riscZeroVerifier;
-        riscZeroVerifier = deployRiscZeroVerifier();
+        // IRiscZeroVerifier riscZeroVerifier;
+        // riscZeroVerifier = deployRiscZeroVerifier();
 
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestation(address(riscZeroVerifier), imageId);
+        // attestation = new AutomataDcapAttestation(address(riscZeroVerifier), imageId);
+        attestation = new AutomataDcapAttestation(address(0), imageId);
+
 
         vm.stopPrank();
     }
