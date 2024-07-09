@@ -8,17 +8,19 @@ import {Ownable} from "solady/auth/Ownable.sol";
 import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveIdentityDao.sol";
 import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
 import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
+import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
 
 contract PCCSRouter is IPCCSRouter, Ownable {
     address public override qeIdDaoAddr;
     address public override fmspcTcbDaoAddr;
     address public override pcsDaoAddr;
+    address public override pckDaoAddr;
     address public override pckHelperAddr;
     address public override crlHelperAddr;
 
-    constructor(address _qeid, address _fmspcTcb, address _pcs, address _pckHelper, address _crlHelper) {
+    constructor(address _qeid, address _fmspcTcb, address _pcs, address _pck, address _pckHelper, address _crlHelper) {
         _initializeOwner(msg.sender);
-        _setConfig(_qeid, _fmspcTcb, _pcs, _pckHelper, _crlHelper);
+        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
     }
 
     // events to be monitored (may emit due to missing or expired collaterals)
@@ -29,19 +31,29 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     // event CertNotFound(CA ca);
     // event CrlNotFound(CA ca);
 
-    function setConfig(address _qeid, address _fmspcTcb, address _pcs, address _pckHelper, address _crlHelper)
-        external
-        onlyOwner
-    {
-        _setConfig(_qeid, _fmspcTcb, _pcs, _pckHelper, _crlHelper);
+    function setConfig(
+        address _qeid,
+        address _fmspcTcb,
+        address _pcs,
+        address _pck,
+        address _pckHelper,
+        address _crlHelper
+    ) external onlyOwner {
+        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
     }
 
-    function _setConfig(address _qeid, address _fmspcTcb, address _pcs, address _pckHelper, address _crlHelper)
-        private
-    {
+    function _setConfig(
+        address _qeid,
+        address _fmspcTcb,
+        address _pcs,
+        address _pck,
+        address _pckHelper,
+        address _crlHelper
+    ) private {
         qeIdDaoAddr = _qeid;
         fmspcTcbDaoAddr = _fmspcTcb;
         pcsDaoAddr = _pcs;
+        pckDaoAddr = _pck;
         pckHelperAddr = _pckHelper;
         crlHelperAddr = _crlHelper;
     }
@@ -115,6 +127,17 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         if (!valid) {
             // emit FmspcTcbExpired(tcbInfo.nextUpdate);
         }
+    }
+
+    function getPckCert(
+        string calldata qeid,
+        string calldata platformCpuSvn,
+        string calldata platformPceSvn,
+        string calldata pceid
+    ) external view override returns (bool success, bytes memory pckDer) {
+        PckDao pckDao = PckDao(pckDaoAddr);
+        pckDer = pckDao.getCert(qeid, platformCpuSvn, platformPceSvn, pceid);
+        success = pckDer.length > 0;
     }
 
     function getCert(CA ca) external view override returns (bool success, bytes memory x509Der) {

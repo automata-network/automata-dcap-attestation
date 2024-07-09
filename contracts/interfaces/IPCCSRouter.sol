@@ -16,29 +16,35 @@ interface IPCCSRouter {
 
     function fmspcTcbDaoAddr() external view returns (address);
 
+    function pckDaoAddr() external view returns (address);
+
     function pcsDaoAddr() external view returns (address);
 
     function pckHelperAddr() external view returns (address);
 
     function crlHelperAddr() external view returns (address);
 
-    function getQeIdentity(EnclaveId id, uint256 quoteVersion)
-        external
-        view
-        returns (bool success, IdentityObj memory);
+    function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (bool, IdentityObj memory);
 
-    function getFmspcTcbV2(bytes6 fmspc) external view returns (bool success, TCBLevelsObj[] memory);
+    function getFmspcTcbV2(bytes6 fmspc) external view returns (bool, TCBLevelsObj[] memory);
 
     function getFmspcTcbV3(TcbId id, bytes6 fmspc)
         external
         view
-        returns (bool success, TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
+        returns (bool, TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
 
-    function getCert(CA ca) external view returns (bool success, bytes memory);
+    function getPckCert(
+        string calldata qeid,
+        string calldata platformCpuSvn,
+        string calldata platformPceSvn,
+        string calldata pceid
+    ) external view returns (bool, bytes memory);
 
-    function getCrl(CA ca) external view returns (bool success, bytes memory);
+    function getCert(CA ca) external view returns (bool, bytes memory);
 
-    function getCertHash(CA ca) external view returns (bool success, bytes32);
+    function getCrl(CA ca) external view returns (bool, bytes memory);
 
-    function getCrlHash(CA ca) external view returns (bool success, bytes32);
+    function getCertHash(CA ca) external view returns (bool, bytes32);
+
+    function getCrlHash(CA ca) external view returns (bool, bytes32);
 }

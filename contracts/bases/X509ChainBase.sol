@@ -2,16 +2,19 @@
 pragma solidity ^0.8.0;
 
 import {BytesUtils, P256Verifier} from "../utils/P256Verifier.sol";
-import {PCKCertTCB} from "../types/CommonStruct.sol";
+import {PCKCollateral, PCKCertTCB} from "../types/CommonStruct.sol";
+import {BELE} from "../utils/BELE.sol";
 
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 import {PCKHelper, X509CertObj} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
 import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelper.sol";
 import {PcsDao, CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
+import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
 
 abstract contract X509ChainBase {
     using BytesUtils for bytes;
+    using LibString for bytes;
 
     string constant PLATFORM_ISSUER_NAME = "Intel SGX PCK Platform CA";
     string constant PROCESSOR_ISSUER_NAME = "Intel SGX PCK Processor CA";
@@ -26,36 +29,81 @@ abstract contract X509ChainBase {
     uint256 constant X509_HEADER_LENGTH = 27;
     uint256 constant X509_FOOTER_LENGTH = 25;
 
-    function splitCertificateChain(bytes memory pemChain, uint256 size)
-        internal
-        pure
-        returns (bool success, bytes[] memory certs)
-    {
-        certs = new bytes[](size);
-        string memory pemChainStr = string(pemChain);
+    function getPckCollateral(
+        address pckDaoAddr,
+        address pckHelperAddr,
+        bytes16 qeid,
+        uint16 certType,
+        bytes memory rawCertData
+    ) internal view returns (bool success, PCKCollateral memory pck) {
+        pck.pckChain = new X509CertObj[](3);
 
-        uint256 index = 0;
-        uint256 len = pemChain.length;
-
-        for (uint256 i = 0; i < size; i++) {
-            string memory input;
-            if (i > 0) {
-                input = LibString.slice(pemChainStr, index, index + len);
+        if (certType < 5) {
+            PckDao pckDao = PckDao(pckDaoAddr);
+            bytes memory pckLeaf;
+            if (certType == 4) {
+                pckLeaf = rawCertData;
             } else {
-                input = pemChainStr;
+                uint256 offset;
+                if (certType == 1) {
+                    offset = 16;
+                } else if (certType == 2) {
+                    offset = 256;
+                } else {
+                    offset = 384;
+                }
+                bytes16 platformCpuSvn = bytes16(rawCertData.substring(offset, 16));
+                offset += 16;
+                bytes2 platformPceSvn = bytes2(uint16(BELE.leBytesToBeUint(rawCertData.substring(offset, 2))));
+                offset += 2;
+                bytes2 pceid = bytes2(uint16(BELE.leBytesToBeUint(rawCertData.substring(offset, 2))));
+                pckLeaf = pckDao.getCert(
+                    abi.encodePacked(qeid).toHexStringNoPrefix(),
+                    abi.encodePacked(platformCpuSvn).toHexStringNoPrefix(),
+                    abi.encodePacked(platformPceSvn).toHexStringNoPrefix(),
+                    abi.encodePacked(pceid).toHexStringNoPrefix()
+                );
             }
-            uint256 increment;
-            (success, certs[i], increment) = _removeHeadersAndFooters(input);
-            certs[i] = Base64.decode(string(certs[i]));
 
+            if (pckLeaf.length == 0) {
+                return (false, pck);
+            }
+
+            bytes[] memory issuerChain = new bytes[](2);
+
+            (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, pckLeaf);
+
+            string memory pckIssuerCn = pck.pckChain[0].issuerCommonName;
+            if (LibString.eq(pckIssuerCn, PLATFORM_ISSUER_NAME)) {
+                (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PLATFORM);
+            } else if (LibString.eq(pckIssuerCn, PROCESSOR_ISSUER_NAME)) {
+                (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PROCESSOR);
+            } else {
+                return (false, pck);
+            }
+
+            if (issuerChain[0].length == 0 || issuerChain[1].length == 0) {
+                return (false, pck);
+            }
+
+            X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, 0, issuerChain);
+            for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
+                pck.pckChain[i + 1] = parsedIssuerChain[i];
+            }
+        } else if (certType == 5) {
+            bytes[] memory certArray;
+            (success, certArray) = _splitCertificateChain(rawCertData, 3);
             if (!success) {
-                return (false, certs);
+                return (false, pck);
             }
-
-            index += increment;
+            (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, certArray[0]);
+            X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, 1, certArray);
+            for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
+                pck.pckChain[i + 1] = parsedIssuerChain[i];
+            }
+        } else {
+            return (false, pck);
         }
-
-        success = true;
     }
 
     function verifyCertChain(address pcsDaoAddr, address crlHelperAddr, X509CertObj[] memory certs)
@@ -118,6 +166,60 @@ abstract contract X509ChainBase {
             }
         }
         return !certRevoked && certNotExpired && verified && certChainCanBeTrusted;
+    }
+
+    function _parsePck(address pckHelperAddr, bytes memory pckDer)
+        private
+        pure
+        returns (X509CertObj memory pck, PCKCertTCB memory extension)
+    {
+        PCKHelper pckHelper = PCKHelper(pckHelperAddr);
+        pck = pckHelper.parseX509DER(pckDer);
+        (extension.pcesvn, extension.cpusvns, extension.fmspcBytes, extension.pceidBytes) =
+            pckHelper.parsePckExtension(pckDer, pck.extensionPtr);
+    }
+
+    function _parsePckIssuer(address pckHelperAddr, uint256 i, bytes[] memory issuerChain)
+        private
+        pure
+        returns (X509CertObj[] memory chain)
+    {
+        PCKHelper pckHelper = PCKHelper(pckHelperAddr);
+        for (i; i < issuerChain.length; i++) {
+            chain[i] = pckHelper.parseX509DER(issuerChain[i]);
+        }
+    }
+
+    function _splitCertificateChain(bytes memory pemChain, uint256 size)
+        private
+        pure
+        returns (bool success, bytes[] memory certs)
+    {
+        certs = new bytes[](size);
+        string memory pemChainStr = string(pemChain);
+
+        uint256 index = 0;
+        uint256 len = pemChain.length;
+
+        for (uint256 i = 0; i < size; i++) {
+            string memory input;
+            if (i > 0) {
+                input = LibString.slice(pemChainStr, index, index + len);
+            } else {
+                input = pemChainStr;
+            }
+            uint256 increment;
+            (success, certs[i], increment) = _removeHeadersAndFooters(input);
+            certs[i] = Base64.decode(string(certs[i]));
+
+            if (!success) {
+                return (false, certs);
+            }
+
+            index += increment;
+        }
+
+        success = true;
     }
 
     function _removeHeadersAndFooters(string memory pemData)

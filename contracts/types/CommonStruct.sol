@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {TCBStatus} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {X509CertObj} from "@automata-network/on-chain-pccs/helpers/X509Helper.sol";
 
 /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/QuoteVerification/QuoteStructures.h#L42-L53
 struct Header {
@@ -36,14 +37,19 @@ struct QEAuthData {
     bytes data;
 }
 
-/// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/QuoteVerification/QuoteStructures.h#L135-L141
+/// @dev Modified from https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/QuoteVerification/QuoteStructures.h#L135-L141
 struct CertificationData {
     uint16 certType;
     uint32 certDataSize;
-    bytes[] decodedCertDataArray; // base64 decoded cert bytes array
+    PCKCollateral pck;
 }
 
 /// ========== CUSTOM TYPES ==========
+
+struct PCKCollateral {
+    X509CertObj[] pckChain; // base64 decoded array containing the PCK chain
+    PCKCertTCB pckExtension;
+}
 
 struct PCKCertTCB {
     uint16 pcesvn;

@@ -91,24 +91,6 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         );
     }
 
-    function parseX509DerAndGetPck(bytes[] memory certs)
-        internal
-        view
-        returns (X509CertObj[] memory parsedCerts, PCKCertTCB memory pckTCB)
-    {
-        PCKHelper pckHelper = PCKHelper(pccsRouter.pckHelperAddr());
-        uint256 chainSize = certs.length;
-        parsedCerts = new X509CertObj[](chainSize);
-        for (uint256 i = 0; i < chainSize; i++) {
-            parsedCerts[i] = pckHelper.parseX509DER(certs[i]);
-            // additional parsing for PCKCert
-            if (i == 0) {
-                (pckTCB.pcesvn, pckTCB.cpusvns, pckTCB.fmspcBytes, pckTCB.pceidBytes) =
-                    pckHelper.parsePckExtension(certs[i], parsedCerts[i].extensionPtr);
-            }
-        }
-    }
-
     function verifyQeReportData(bytes memory qeReportData, bytes memory attestationKey, bytes memory qeAuthData)
         internal
         pure

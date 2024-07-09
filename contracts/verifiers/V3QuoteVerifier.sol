@@ -90,13 +90,9 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (success, bytes("Verification failed by QEIdentity check"));
         }
 
-        // Step 2: Parse X509 Chain
-        bytes[] memory certs = quote.authData.certification.decodedCertDataArray;
-        X509CertObj[] memory parsedCerts;
-        PCKCertTCB memory pckTcb;
-        (parsedCerts, pckTcb) = parseX509DerAndGetPck(certs);
-
-        // Step 3: Fetch FMSPC TCB then get TCBStatus
+        // Step 2: Fetch FMSPC TCB then get TCBStatus
+        X509CertObj[] memory parsedCerts = quote.authData.certification.pck.pckChain;
+        PCKCertTCB memory pckTcb = quote.authData.certification.pck.pckExtension;
         (bool tcbValid, TCBLevelsObj[] memory tcbLevels) = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes));
         if (!tcbValid) {
             return (false, bytes("TCB not found or expired"));
@@ -113,16 +109,16 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (statusFound, bytes("Verificaton failed by TCBInfo check"));
         }
 
-        // Step 4: Converge QEIdentity and FMSPC TCB Status
+        // Step 3: Converge QEIdentity and FMSPC TCB Status
         tcbStatus = convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tcbStatus);
 
-        // Step 5: verify cert chain
+        // Step 4: verify cert chain
         success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);
         if (!success) {
             return (success, bytes("Failed to verify X509 Chain"));
         }
 
-        // Step 6: Signature Verification on local isv report and qereport by PCK
+        // Step 5: Signature Verification on local isv report and qereport by PCK
         bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
         success = attestationVerification(
             rawQeReport,
@@ -160,7 +156,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
      */
     function _parseAuthData(bytes calldata rawAuthData)
         private
-        pure
+        view
         returns (bool success, ECDSAQuoteV3AuthData memory authDataV3, bytes memory rawQeReport)
     {
         authDataV3.ecdsa256BitSignature = rawAuthData[0:64];
@@ -174,10 +170,6 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         offset += qeAuthDataSize;
 
         uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
-        // we only support certType == 5 for now...
-        if (certType != 5) {
-            return (false, authDataV3, rawQeReport);
-        }
 
         authDataV3.certification.certType = certType;
         offset += 2;
@@ -187,11 +179,19 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
 
         // parsing complete, now we need to decode some raw data
+
         (success, authDataV3.qeReport) = parseEnclaveReport(rawQeReport);
         if (!success) {
             return (false, authDataV3, rawQeReport);
         }
 
-        (success, authDataV3.certification.decodedCertDataArray) = splitCertificateChain(rawCertData, 3);
+        // TODO
+        bytes16 qeid;
+
+        (success, authDataV3.certification.pck) =
+            getPckCollateral(pccsRouter.pckDaoAddr(), pccsRouter.pckHelperAddr(), qeid, certType, rawCertData);
+        if (!success) {
+            return (false, authDataV3, rawQeReport);
+        }
     }
 }

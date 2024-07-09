@@ -20,6 +20,7 @@ import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelp
 import {AutomataFmspcTcbDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataFmspcTcbDao.sol";
 import {AutomataEnclaveIdentityDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataEnclaveIdentityDao.sol";
 import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPcsDao.sol";
+import {AutomataPckDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPckDao.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
 
 import {PCCSRouter} from "../../contracts/PCCSRouter.sol";
@@ -34,6 +35,7 @@ abstract contract PCCSSetupBase is Test {
     X509CRLHelper public x509Crl;
 
     AutomataPcsDao pcsDao;
+    AutomataPckDao pckDao;
     AutomataFmspcTcbDao fmspcTcbDao;
     AutomataEnclaveIdentityDao enclaveIdDao;
     AutomataDaoStorage pccsStorage;
@@ -72,26 +74,23 @@ abstract contract PCCSSetupBase is Test {
 
         pccsStorage = new AutomataDaoStorage();
         pcsDao = new AutomataPcsDao(address(pccsStorage), address(x509), address(x509Crl));
+        pckDao = new AutomataPckDao(address(pccsStorage), address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
             address(pccsStorage), address(pcsDao), address(enclaveIdHelper), address(x509)
         );
         fmspcTcbDao = new AutomataFmspcTcbDao(address(pccsStorage), address(pcsDao), address(tcbHelper), address(x509));
 
-        address pckDao; // arbitrary this is not needed for quote verification
-
-        pccsStorage.updateDao(address(pcsDao), pckDao, address(enclaveIdDao), address(fmspcTcbDao));
+        pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
 
         vm.stopPrank();
     }
 
-    function setupPccsRouter()
-        internal
-        returns (PCCSRouter pccsRouter)
-    {
+    function setupPccsRouter() internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
             address(enclaveIdDao),
             address(fmspcTcbDao),
             address(pcsDao),
+            address(pckDao),
             address(x509),
             address(x509Crl)
         );

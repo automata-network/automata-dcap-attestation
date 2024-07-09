@@ -8,18 +8,20 @@ import "../contracts/PCCSRouter.sol";
 
 contract DeployRouter is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
-    address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_IDENTITY_DAO_PORTAL");
+    address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_IDENTITY_DAO");
     address enclaveIdHelperAddr = vm.envAddress("ENCLAVE_IDENTITY_HELPER");
     address pckHelperAddr = vm.envAddress("X509_HELPER");
-    address tcbDaoAddr = vm.envAddress("FMSPC_TCB_DAO_PORTAL");
+    address tcbDaoAddr = vm.envAddress("FMSPC_TCB_DAO");
     address tcbHelperAddr = vm.envAddress("FMSPC_TCB_HELPER");
     address crlHelperAddr = vm.envAddress("X509_CRL_HELPER");
-    address pcsDaoAddr = vm.envAddress("PCS_DAO_PORTAL");
+    address pcsDaoAddr = vm.envAddress("PCS_DAO");
+    address pckDaoAddr = vm.envAddress("PCK_DAO");
 
     function run() public {
         vm.startBroadcast(deployerKey);
 
-        PCCSRouter router = new PCCSRouter(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckHelperAddr, crlHelperAddr);
+        PCCSRouter router =
+            new PCCSRouter(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr);
         console2.log("Deployed PCCSRouter to", address(router));
 
         vm.stopBroadcast();

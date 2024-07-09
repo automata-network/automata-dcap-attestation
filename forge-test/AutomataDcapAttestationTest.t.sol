@@ -35,7 +35,6 @@ contract AutomataDcapAttestationTest is PCCSSetupBase {
         // attestation = new AutomataDcapAttestation(address(riscZeroVerifier), imageId);
         attestation = new AutomataDcapAttestation(address(0), imageId);
 
-
         vm.stopPrank();
     }
 

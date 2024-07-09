@@ -130,13 +130,9 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             return (success, "Verification failed by QEIdentity check", ret);
         }
 
-        // Step 2: Parse X509 Chain
-        bytes[] memory certs = authData.qeReportCertData.certification.decodedCertDataArray;
-        X509CertObj[] memory parsedCerts;
-        PCKCertTCB memory pckTcb;
-        (parsedCerts, pckTcb) = parseX509DerAndGetPck(certs);
-
-        // Step 3: Fetch FMSPC TCB
+        // Step 2: Fetch FMSPC TCB
+        X509CertObj[] memory parsedCerts = authData.qeReportCertData.certification.pck.pckChain;
+        PCKCertTCB memory pckTcb = authData.qeReportCertData.certification.pck.pckExtension;
         TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
         (
             bool tcbValid,
@@ -148,13 +144,13 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             return (false, "TCB not found or expired", ret);
         }
 
-        // Step 4: verify cert chain
+        // Step 3: verify cert chain
         success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);
         if (!success) {
             return (success, "Failed to verify X509 Chain", ret);
         }
 
-        // Step 5: Signature Verification on local isv report and qereport by PCK
+        // Step 4: Signature Verification on local isv report and qereport by PCK
         bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
         success = attestationVerification(
             rawQeReport,
@@ -310,7 +306,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
      */
     function parseAuthData(bytes calldata rawAuthData)
         internal
-        pure
+        view
         returns (bool success, ECDSAQuoteV4AuthData memory authDataV4, bytes memory rawQeReport)
     {
         authDataV4.ecdsa256BitSignature = rawAuthData[0:64];
@@ -350,12 +346,19 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
 
         // parsing complete, now we need to decode some raw data
+
         (success, authDataV4.qeReportCertData.qeReport) = parseEnclaveReport(rawQeReport);
         if (!success) {
             return (false, authDataV4, rawQeReport);
         }
 
-        (success, authDataV4.qeReportCertData.certification.decodedCertDataArray) =
-            splitCertificateChain(rawCertData, 3);
+        // TODO
+        bytes16 qeid;
+
+        (success, authDataV4.qeReportCertData.certification.pck) =
+            getPckCollateral(pccsRouter.pckDaoAddr(), pccsRouter.pckHelperAddr(), qeid, certType, rawCertData);
+        if (!success) {
+            return (false, authDataV4, rawQeReport);
+        }
     }
 }
