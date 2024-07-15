@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import {BytesUtils, P256Verifier} from "../utils/P256Verifier.sol";
 import {PCKCollateral, PCKCertTCB} from "../types/CommonStruct.sol";
-import {BELE} from "../utils/BELE.sol";
 
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
@@ -39,57 +38,62 @@ abstract contract X509ChainBase {
         pck.pckChain = new X509CertObj[](3);
 
         if (certType < 5) {
-            PckDao pckDao = PckDao(pckDaoAddr);
-            bytes memory pckLeaf;
-            if (certType == 4) {
-                pckLeaf = rawCertData;
-            } else {
-                uint256 offset;
-                if (certType == 1) {
-                    offset = 16;
-                } else if (certType == 2) {
-                    offset = 256;
-                } else {
-                    offset = 384;
-                }
-                bytes16 platformCpuSvn = bytes16(rawCertData.substring(offset, 16));
-                offset += 16;
-                bytes2 platformPceSvn = bytes2(uint16(BELE.leBytesToBeUint(rawCertData.substring(offset, 2))));
-                offset += 2;
-                bytes2 pceid = bytes2(uint16(BELE.leBytesToBeUint(rawCertData.substring(offset, 2))));
-                pckLeaf = pckDao.getCert(
-                    abi.encodePacked(qeid).toHexStringNoPrefix(),
-                    abi.encodePacked(platformCpuSvn).toHexStringNoPrefix(),
-                    abi.encodePacked(platformPceSvn).toHexStringNoPrefix(),
-                    abi.encodePacked(pceid).toHexStringNoPrefix()
-                );
-            }
+            // TEMP: Not supported at the moment
+            // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/39989a42bbbb0c968153a47254b6de79a27eb603/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L57-L66
+            return (false, pck);
+            // PckDao pckDao = PckDao(pckDaoAddr);
+            // bytes memory pckLeaf;
+            // if (certType == 4) {
+            //     pckLeaf = rawCertData;
+            // } else {
+            //     uint256 offset;
+            //     if (certType == 1) {
+            //         offset = 16;
+            //     } else if (certType == 2) {
+            //         offset = 256;
+            //     } else {
+            //         offset = 384;
+            //     }
+            //     bytes16 platformCpuSvn = bytes16(rawCertData.substring(offset, 16));
+            //     offset += 16;
+            //     bytes2 platformPceSvn = bytes2(rawCertData.substring(offset, 2));
+            //     offset += 2;
+            //     bytes2 pceid = bytes2(rawCertData.substring(offset, 2));
+            //     pckLeaf = pckDao.getCert(
+            //         abi.encodePacked(qeid).toHexStringNoPrefix(),
+            //         abi.encodePacked(platformCpuSvn).toHexStringNoPrefix(),
+            //         abi.encodePacked(platformPceSvn).toHexStringNoPrefix(),
+            //         abi.encodePacked(pceid).toHexStringNoPrefix()
+            //     );
+            // }
 
-            if (pckLeaf.length == 0) {
-                return (false, pck);
-            }
+            // if (pckLeaf.length == 0) {
+            //     return (false, pck);
+            // }
 
-            bytes[] memory issuerChain = new bytes[](2);
+            // bytes[] memory issuerChain = new bytes[](2);
 
-            (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, pckLeaf);
+            // (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, pckLeaf);
 
-            string memory pckIssuerCn = pck.pckChain[0].issuerCommonName;
-            if (LibString.eq(pckIssuerCn, PLATFORM_ISSUER_NAME)) {
-                (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PLATFORM);
-            } else if (LibString.eq(pckIssuerCn, PROCESSOR_ISSUER_NAME)) {
-                (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PROCESSOR);
-            } else {
-                return (false, pck);
-            }
+            // string memory pckIssuerCn = pck.pckChain[0].issuerCommonName;
+            // if (LibString.eq(pckIssuerCn, PLATFORM_ISSUER_NAME)) {
+            //     (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PLATFORM);
+            // } else if (LibString.eq(pckIssuerCn, PROCESSOR_ISSUER_NAME)) {
+            //     (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PROCESSOR);
+            // } else {
+            //     return (false, pck);
+            // }
 
-            if (issuerChain[0].length == 0 || issuerChain[1].length == 0) {
-                return (false, pck);
-            }
+            // if (issuerChain[0].length == 0 || issuerChain[1].length == 0) {
+            //     return (false, pck);
+            // }
 
-            X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, 0, issuerChain);
-            for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
-                pck.pckChain[i + 1] = parsedIssuerChain[i];
-            }
+            // X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, issuerChain);
+            // for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
+            //     pck.pckChain[i + 1] = parsedIssuerChain[i];
+            // }
+
+            // success = true;
         } else if (certType == 5) {
             bytes[] memory certArray;
             (success, certArray) = _splitCertificateChain(rawCertData, 3);
@@ -97,7 +101,13 @@ abstract contract X509ChainBase {
                 return (false, pck);
             }
             (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, certArray[0]);
-            X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, 1, certArray);
+
+            bytes[] memory issuerChain = new bytes[](certArray.length - 1);
+            for (uint256 a = 0; a < issuerChain.length; a++) {
+                issuerChain[a] = certArray[a + 1];
+            }
+
+            X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, issuerChain);
             for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
                 pck.pckChain[i + 1] = parsedIssuerChain[i];
             }
@@ -179,13 +189,15 @@ abstract contract X509ChainBase {
             pckHelper.parsePckExtension(pckDer, pck.extensionPtr);
     }
 
-    function _parsePckIssuer(address pckHelperAddr, uint256 i, bytes[] memory issuerChain)
+    function _parsePckIssuer(address pckHelperAddr, bytes[] memory issuerChain)
         private
         pure
         returns (X509CertObj[] memory chain)
     {
         PCKHelper pckHelper = PCKHelper(pckHelperAddr);
-        for (i; i < issuerChain.length; i++) {
+        uint256 n = issuerChain.length;
+        chain = new X509CertObj[](n);
+        for (uint256 i = 0; i < n; i++) {
             chain[i] = pckHelper.parseX509DER(issuerChain[i]);
         }
     }
