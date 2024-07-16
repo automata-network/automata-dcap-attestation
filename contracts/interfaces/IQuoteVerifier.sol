@@ -12,4 +12,6 @@ interface IQuoteVerifier {
     function quoteVersion() external view returns (uint16);
 
     function verifyQuote(Header calldata, bytes calldata) external view returns (bool, bytes memory);
+
+    function verifyJournal(bytes calldata) external view returns (bool, bytes memory);
 }

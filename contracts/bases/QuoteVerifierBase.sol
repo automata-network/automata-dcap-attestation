@@ -143,4 +143,31 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
         return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody);
     }
+
+    function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool success) {
+        bytes32 rootCaHash = bytes32(journal[offset:offset+32]);
+        bytes32 tcbSigningHash = bytes32(journal[offset+32:offset+64]);
+        bytes32 rootCaCrlHash = bytes32(journal[offset+64:offset+96]);
+        bytes32 pckCrlHash = bytes32(journal[offset+96:offset+128]);
+
+        (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
+        if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
+            return false;
+        }
+        (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
+        if (!rootCaFound || rootCaHash != expectedRootCaHash) {
+            return false;
+        }
+        (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
+        if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
+            return false;
+        }
+        (, bytes32 expectedPckPlatformCrlHash) = pccsRouter.getCrlHash(CA.PLATFORM);
+        (, bytes32 expectedPckProcessorCrlHash) = pccsRouter.getCrlHash(CA.PROCESSOR);
+        if (pckCrlHash != expectedPckPlatformCrlHash && pckCrlHash != expectedPckProcessorCrlHash) {
+            return false;
+        }
+
+        return true;
+    }
 }

@@ -53,17 +53,22 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         // We found a supported version, begin verifying the quote
         // Note: The quote header cannot be trusted yet, it will be validated by the Verifier library
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
-        if (!success) {
-            return (false, output);
-        }
     }
 
     function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
         external
+        view
         override
         returns (bool success, bytes memory output)
     {
-        // TODO
+        riscZeroVerifier.verify(seal, DCAP_RISC0_IMAGE_ID, sha256(journal));
+        uint16 version = uint16(bytes2(journal[0:2]));
+        IQuoteVerifier quoteVerifier = quoteVerifiers[version];
+        if (address(quoteVerifier) == address(0)) {
+            return (false, bytes("Unsupported quote version"));
+        }
+
+        (success, output) = quoteVerifier.verifyJournal(journal);
     }
 
     function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (Header memory header) {

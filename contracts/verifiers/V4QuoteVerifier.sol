@@ -23,6 +23,24 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
     constructor(address _router) QuoteVerifierBase(_router, 4) {}
 
+    function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
+        uint256 offset;
+
+        bytes4 teeType = bytes4(journal[2:6]);
+        if (teeType == SGX_TEE) {
+            offset = MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
+        } else if (teeType == TDX_TEE) {
+            offset = MINIMUM_OUTPUT_LENGTH + TD_REPORT10_LENGTH;
+        } else return (false, bytes("Unknown TEE type"));
+
+        success = checkCollateralHashes(offset, journal);
+        if (success) {
+            output = journal[0:offset];
+        } else {
+            output = bytes("Found one or more external collaterals");
+        }
+    }
+
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
         external
         view

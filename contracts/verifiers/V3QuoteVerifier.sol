@@ -8,6 +8,16 @@ import "../bases/tcb/TCBInfoV2Base.sol";
 contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
     constructor(address _router) QuoteVerifierBase(_router, 3) {}
 
+    function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
+        uint256 offset = MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
+        success = checkCollateralHashes(offset, journal);
+        if (success) {
+            output = journal[0:offset];
+        } else {
+            output = bytes("Found one or more external collaterals");
+        }
+    }
+
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
         external
         view

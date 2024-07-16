@@ -16,3 +16,6 @@ uint16 constant TD_REPORT15_LENGTH = 648;
 // + QE_REPORT_SIGNATURE (64 bytes) + QE_AUTH_DATA_SIZE (2 bytes) + QE_CERT_DATA_TYPE (2 bytes)
 // + QE_CERT_DATA_SIZE (4 bytes)
 uint16 constant MINIMUM_QUOTE_LENGTH = 1020;
+
+// QUOTE_VERSION (2 bytes) + TEE_TYPE (4 bytes) + TCB_STATUS (1 byte) + FMSPC (6 bytes)
+uint16 constant MINIMUM_OUTPUT_LENGTH = 13;
