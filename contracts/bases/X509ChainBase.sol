@@ -41,6 +41,8 @@ abstract contract X509ChainBase {
             // TEMP: Not supported at the moment
             // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/39989a42bbbb0c968153a47254b6de79a27eb603/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L57-L66
             return (false, pck);
+
+            
             // PckDao pckDao = PckDao(pckDaoAddr);
             // bytes memory pckLeaf;
             // if (certType == 4) {

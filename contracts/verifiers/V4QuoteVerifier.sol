@@ -37,7 +37,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         if (success) {
             output = journal[0:offset];
         } else {
-            output = bytes("Found one or more external collaterals");
+            output = bytes("Found one or more collaterals mismatch");
         }
     }
 
