@@ -23,13 +23,16 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
     }
 
-    // events to be monitored (may emit due to missing or expired collaterals)
-    // event QEIdentityNotFound(EnclaveId id, uint256 quoteVersion);
-    // event QEIdentityExpired(uint256 nextUpdateTimestamp);
-    // event FmspcTcbNotFound(TcbId id, uint256 tcbVersion);
-    // event FmspcTcbExpired(uint256 nextUpdateTimestamp);
-    // event CertNotFound(CA ca);
-    // event CrlNotFound(CA ca);
+    // Reverts for missing collaterals
+
+    // a93fad2a
+    error QEIdentityNotFound(EnclaveId id, uint256 quoteVersion);
+    // eb9cf5a3
+    error FmspcTcbNotFound(TcbId id, uint256 tcbVersion);
+    // da236293
+    error CertNotFound(CA ca);
+    // 18c6f762
+    error CrlNotFound(CA ca);
 
     function setConfig(
         address _qeid,
@@ -68,15 +71,12 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
         bytes32 attestationId = enclaveIdDao.enclaveIdentityAttestations(key);
         if (attestationId == bytes32(0)) {
-            // emit QEIdentityNotFound(id, quoteVersion);
-            return (false, identity);
+            revert QEIdentityNotFound(id, quoteVersion);
+        } else {
+            valid = true;
         }
         bytes memory data = enclaveIdDao.getAttestedData(attestationId);
         (identity,,) = abi.decode(data, (IdentityObj, string, bytes));
-        valid = _checkTimestamp(identity.issueDateTimestamp, identity.nextUpdateTimestamp);
-        if (!valid) {
-            // emit QEIdentityExpired(identity.nextUpdateTimestamp);
-        }
     }
 
     function getFmspcTcbV2(bytes6 fmspc)
@@ -89,16 +89,13 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 attestationId = tcbDao.fmspcTcbInfoAttestations(key);
         if (attestationId == bytes32(0)) {
-            // emit FmspcTcbNotFound(TcbId.SGX, 2);
-            return (false, tcbLevelsV2);
+            revert FmspcTcbNotFound(TcbId.SGX, 2);
+        } else {
+            valid = true;
         }
         TcbInfoBasic memory tcbInfo;
         bytes memory data = tcbDao.getAttestedData(attestationId);
         (tcbInfo, tcbLevelsV2,,) = abi.decode(data, (TcbInfoBasic, TCBLevelsObj[], string, bytes));
-        valid = _checkTimestamp(tcbInfo.issueDate, tcbInfo.nextUpdate);
-        if (!valid) {
-            // emit FmspcTcbExpired(tcbInfo.nextUpdate);
-        }
     }
 
     function getFmspcTcbV3(TcbId id, bytes6 fmspc)
@@ -116,17 +113,14 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 attestationId = tcbDao.fmspcTcbInfoAttestations(key);
         if (attestationId == bytes32(0)) {
-            // emit FmspcTcbNotFound(id, 3);
-            return (false, tcbLevelsV3, tdxModule, tdxModuleIdentities);
+            revert FmspcTcbNotFound(id, 3);
+        } else {
+            valid = true;
         }
         TcbInfoBasic memory tcbInfo;
         bytes memory data = tcbDao.getAttestedData(attestationId);
         (tcbInfo, tdxModule, tdxModuleIdentities, tcbLevelsV3,,) =
             abi.decode(data, (TcbInfoBasic, TDXModule, TDXModuleIdentity[], TCBLevelsObj[], string, bytes));
-        valid = _checkTimestamp(tcbInfo.issueDate, tcbInfo.nextUpdate);
-        if (!valid) {
-            // emit FmspcTcbExpired(tcbInfo.nextUpdate);
-        }
     }
 
     function getPckCert(
@@ -156,12 +150,6 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         (success, hash) = _getPcsHash(ca, true);
     }
 
-    /// @dev notBefore is synonymous with issueTimestamp
-    /// @dev notAfter is synonymous with nextUpdateTimestamp
-    function _checkTimestamp(uint256 notBefore, uint256 notAfter) private view returns (bool valid) {
-        valid = block.timestamp >= notBefore || block.timestamp <= notAfter;
-    }
-
     function _checkPcsAttestation(PcsDao pcsDao, CA ca, bool crl)
         private
         view
@@ -169,13 +157,15 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         attestationId = crl ? pcsDao.pcsCrlAttestations(ca) : pcsDao.pcsCertAttestations(ca);
         valid = attestationId != bytes32(0);
-        // if (!valid) {
-        //     if (crl) {
-        //         emit CrlNotFound(ca);
-        //     } else {
-        //         emit CertNotFound(ca);
-        //     }
-        // }
+        if (!valid) {
+            if (crl) {
+                revert CrlNotFound(ca);
+            } else {
+                revert CertNotFound(ca);
+            }
+        } else {
+            valid = true;
+        }
     }
 
     function _getPcsAttestationData(CA ca, bool crl) private view returns (bool valid, bytes memory ret) {
@@ -191,4 +181,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         (valid, attestationId) = _checkPcsAttestation(pcsDao, ca, crl);
         hash = pcsDao.getCollateralHash(attestationId);
     }
+
+    // /// @dev notBefore is synonymous with issueTimestamp
+    // /// @dev notAfter is synonymous with nextUpdateTimestamp
+    // function _checkTimestamp(uint256 notBefore, uint256 notAfter) private view returns (bool valid) {
+    //     valid = block.timestamp >= notBefore || block.timestamp <= notAfter;
+    // }
 }
