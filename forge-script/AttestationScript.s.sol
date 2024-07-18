@@ -10,7 +10,6 @@ contract AttestationScript is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
     address riscZeroVerifier = vm.envAddress("RISC0_VERIFIER");
     bytes32 riscZeroImageId = vm.envBytes32("DCAP_IMAGE_ID");
-    address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
 
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
@@ -23,6 +22,7 @@ contract AttestationScript is Script {
     }
 
     function configVerifier(address verifier) public {
+        address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
         vm.broadcast(deployerKey);
         AutomataDcapAttestation(attestationAddr).setQuoteVerifier(verifier);
     }
