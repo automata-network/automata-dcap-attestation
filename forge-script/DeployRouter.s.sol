@@ -8,7 +8,7 @@ import "../contracts/PCCSRouter.sol";
 
 contract DeployRouter is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
-    address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_IDENTITY_DAO");
+    address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_ID_DAO");
     address enclaveIdHelperAddr = vm.envAddress("ENCLAVE_IDENTITY_HELPER");
     address pckHelperAddr = vm.envAddress("X509_HELPER");
     address tcbDaoAddr = vm.envAddress("FMSPC_TCB_DAO");
