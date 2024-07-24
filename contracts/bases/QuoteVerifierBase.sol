@@ -144,7 +144,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody);
     }
 
-    function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool success) {
+    function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool) {
         bytes32 rootCaHash = bytes32(journal[offset:offset+32]);
         bytes32 tcbSigningHash = bytes32(journal[offset+32:offset+64]);
         bytes32 rootCaCrlHash = bytes32(journal[offset+64:offset+96]);
@@ -162,12 +162,37 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
             return false;
         }
-        (, bytes32 expectedPckPlatformCrlHash) = pccsRouter.getCrlHash(CA.PLATFORM);
-        (, bytes32 expectedPckProcessorCrlHash) = pccsRouter.getCrlHash(CA.PROCESSOR);
-        if (pckCrlHash != expectedPckPlatformCrlHash && pckCrlHash != expectedPckProcessorCrlHash) {
+
+        // use a low level call for PCK CRLs, because we don't know which one of the CAs is used
+        // to verify the quote
+        // we can catch reverts here, and consider it a valid quote as long as:
+        // - one of the PCK CAs has a CRL stored on-chain
+        // - the hash of the on-chain CRL matches with the CRL hash in the journal
+
+        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(
+                IPCCSRouter.getCrlHash.selector,
+                CA.PLATFORM
+            )
+        );
+
+        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(
+                IPCCSRouter.getCrlHash.selector,
+                CA.PROCESSOR
+            )
+        );
+
+        bytes32 expectedPckCrlHash;
+        if (platformSuccess) {
+            (, expectedPckCrlHash) = abi.decode(platformRet, (bool, bytes32));
+        }  else if (processorSuccess) {
+            (, expectedPckCrlHash) = abi.decode(processorRet, (bool, bytes32));
+        } else {
+            // Processor or Platform PCKs not found
             return false;
         }
 
-        return true;
+        return expectedPckCrlHash == pckCrlHash;
     }
 }
