@@ -55,6 +55,16 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
     }
 
+    // the journal output has the following format:
+    // serial_output_len (2 bytes)
+    // serial_output (VerifiedOutput) (SGX: 397 bytes, TDX: 597 bytes)
+    // current_time (8 bytes)
+    // tcbinfov2_hash
+    // qeidentityv2_hash
+    // sgx_intel_root_ca_cert_hash
+    // sgx_tcb_signing_cert_hash
+    // sgx_tcb_intel_root_ca_crl_hash
+    // sgx_pck_platform_crl_hash or sgx_pck_processor_crl_hash
     function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
         external
         view
@@ -62,7 +72,7 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         returns (bool success, bytes memory output)
     {
         riscZeroVerifier.verify(seal, DCAP_RISC0_IMAGE_ID, sha256(journal));
-        uint16 version = uint16(bytes2(journal[0:2]));
+        uint16 version = uint16(bytes2(journal[2:4]));
         IQuoteVerifier quoteVerifier = quoteVerifiers[version];
         if (address(quoteVerifier) == address(0)) {
             return (false, bytes("Unsupported quote version"));

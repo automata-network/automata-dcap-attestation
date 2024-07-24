@@ -9,10 +9,10 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
     constructor(address _router) QuoteVerifierBase(_router, 3) {}
 
     function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
-        uint256 offset = MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
-        success = checkCollateralHashes(offset, journal);
+        uint256 offset = 2 + MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
+        success = checkCollateralHashes(offset + 72, journal);
         if (success) {
-            output = journal[0:offset];
+            output = journal[2: offset];
         } else {
             output = bytes("Found one or more collaterals mismatch");
         }
