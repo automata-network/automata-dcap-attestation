@@ -21,6 +21,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         bool pceSvnIsHigherOrGreater;
         bool cpuSvnsAreHigherOrGreater;
         bool sgxTcbFound;
+        TCBStatus sgxStatus;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
             TCBLevelsObj memory current = tcbLevels[i];
             if (!sgxTcbFound) {
@@ -28,19 +29,17 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
             }
             if (pceSvnIsHigherOrGreater && cpuSvnsAreHigherOrGreater) {
                 sgxTcbFound = true;
+                sgxStatus = current.status;
             }
-            if (sgxTcbFound) {
+            if (sgxTcbFound && sgxStatus != TCBStatus.TCB_REVOKED) {
                 if (teeTcbSvn != bytes16(0)) {
                     if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxSvns)) {
                         tdxTcbFound = true;
                         status = current.status;
                     }
-                } else {
-                    // if teeTcbSvn were not given, we just return
-                    // the status from the current tdxTcbLevvel
-                    tdxTcbFound = true;
-                    status = current.status;
-                }
+                } else break;
+            } else if (sgxStatus == TCBStatus.TCB_REVOKED) {
+                return (false, TCBStatus.TCB_REVOKED);
             }
             if (tdxTcbFound) {
                 break;

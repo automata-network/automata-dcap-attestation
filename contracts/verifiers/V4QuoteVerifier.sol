@@ -214,7 +214,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes("Verificaton failed by TCBINfo check"));
+            return (statusFound, bytes("Failed to locate a valid FMSPC TCB Status"));
         }
 
         // Step 3: Converge QEIdentity and FMSPC TCB Status
@@ -248,6 +248,9 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // then get the TCB Status from the TDXComponenet of the matching TCBLevel
         TCBStatus tcbStatus;
         (success, tcbStatus) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
+        if (!success) {
+            return (false, bytes("Failed to locate a valid FMSPC TCB Status"));
+        }
 
         // Step 3: Fetch TDXModule TCB Status
         TCBStatus tdxModuleStatus;
@@ -256,8 +259,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         bytes8 expectedSeamAttributes;
         (success, tdxModuleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes) =
             checkTdxModuleTcbStatus(quote.reportBody.teeTcbSvn, ret.tdxModuleIdentities);
-        if (!success) {
-            return (false, bytes("Failed to get TDXModule TCB Status"));
+        if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
+            return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
         }
 
         // Step 4: TDX Module check
