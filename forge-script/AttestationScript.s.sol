@@ -26,4 +26,10 @@ contract AttestationScript is Script {
         vm.broadcast(deployerKey);
         AutomataDcapAttestation(attestationAddr).setQuoteVerifier(verifier);
     }
+
+    function risc0Config(address risc0Verifier, bytes32 imageId) public {
+        address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
+        vm.broadcast(deployerKey);
+        AutomataDcapAttestation(attestationAddr).updateRisc0Config(risc0Verifier, imageId);
+    }
 }
