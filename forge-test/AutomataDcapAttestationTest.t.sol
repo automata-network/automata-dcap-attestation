@@ -47,8 +47,8 @@ contract AutomataDcapAttestationTest is PCCSSetupBase {
         vm.startPrank(admin);
 
         // collateral upserts
-        string memory tcbInfoPath = "/assets/0624/tcbinfo.json";
-        string memory qeIdPath = "/assets/0624/identity.json";
+        string memory tcbInfoPath = "/forge-test/assets/0624/tcbinfo.json";
+        string memory qeIdPath = "/forge-test/assets/0624/identity.json";
         qeIdDaoUpsert(3, qeIdPath);
         fmspcTcbDaoUpsert(tcbInfoPath);
 
@@ -81,8 +81,8 @@ contract AutomataDcapAttestationTest is PCCSSetupBase {
         vm.startPrank(admin);
 
         // collateral upserts
-        string memory tcbInfoPath = "/assets/0624/tcbinfov3_00806f050000.json";
-        string memory qeIdPath = "/assets/0624/qeidentityv2_apiv4.json";
+        string memory tcbInfoPath = "/forge-test/assets/0624/tcbinfov3_00806f050000.json";
+        string memory qeIdPath = "/forge-test/assets/0624/qeidentityv2_apiv4.json";
         qeIdDaoUpsert(4, qeIdPath);
         fmspcTcbDaoUpsert(tcbInfoPath);
 
