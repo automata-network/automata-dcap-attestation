@@ -149,3 +149,14 @@ Whitelist QuoteVerifier(s) in the Entrypoint contract:
 ```bash
 forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configVerifier(address)" <verifier-address>
 ```
+
+#### Deployment Information
+
+The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2`.
+
+| Contract | Network | Address |
+| --- | --- | --- |
+| `PCCSRouter.sol` | testnet | 0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543 |
+| `AutomataDcapAttestation.sol` | testnet | 0xefE368b17D137E86298eec8EbC5502fb56d27832 |
+| `V3QuoteVerifier.sol` | testnet | 0x67042d171b8b7da1a4a98df787bdce79190dac3c |
+| `V4QuoteVerifier.sol` | testnet | 0x921b8f6ec83e405b715111ec1ae8b54a3ea063eb |
