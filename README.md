@@ -7,7 +7,7 @@
 </div>
 
 # Automata DCAP Attestation
-[![Automata On Chain PCCS](https://img.shields.io/badge/Power%20By-Automata-orange.svg)](https://github.com/automata-network)
+[![Automata DCAP Attestation](https://img.shields.io/badge/Power%20By-Automata-orange.svg)](https://github.com/automata-network)
 
 ## Summary
 
