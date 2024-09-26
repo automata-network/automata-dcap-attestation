@@ -154,13 +154,24 @@ forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "confi
 
 The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2`.
 
+##### Testnet
+
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | testnet | 0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543 |
-|  | mainnet (preview) | 0xb76834729717868fa203b9D90fc88F859A4E594D |
-| `AutomataDcapAttestation.sol` | testnet | 0xefE368b17D137E86298eec8EbC5502fb56d27832 |
-|  | mainnet (preview) | 0xE26E11B257856B0bEBc4C759aaBDdea72B64351F |
-| `V3QuoteVerifier.sol` | testnet | 0x67042d171b8b7da1a4a98df787bdce79190dac3c |
-|  | mainnet (preview) | 0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96 |
-| `V4QuoteVerifier.sol` | testnet | 0x921b8f6ec83e405b715111ec1ae8b54a3ea063eb |
-|  | mainnet (preview) | 0xfF47ecA64898692a86926CDDa794807be3f6567D |
+| `PCCSRouter.sol` | Automata Testnet | 0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543 |
+|  | Ethereum Holesky | 0xdE5e69A2ca2556fe46883d754d987703bF28Cc51 |
+| `AutomataDcapAttestation.sol` | Automata Testnet | 0xefE368b17D137E86298eec8EbC5502fb56d27832 |
+|  | Ethereum Holesky | 0x133303659F51d75ED216FD98a0B70CbCD75339b2 |
+| `V3QuoteVerifier.sol` | Automata Testnet | 0x67042d171b8b7da1a4a98df787bdce79190dac3c |
+|  | Ethereum Holesky | 0x12d7d59Ae1e4dbF83b08C82958Ac3FcEB84fB164 |
+| `V4QuoteVerifier.sol` | Automata Testnet | 0x921b8f6ec83e405b715111ec1ae8b54a3ea063eb |
+|  | Ethereum Holesky | 0x3Cb24c454a29e796edF47a96dF32DD1855058258 |
+
+##### Mainnet
+
+| Contract | Network | Address |
+| --- | --- | --- |
+| `PCCSRouter.sol` | Automata Mainnet (preview) | 0xb76834729717868fa203b9D90fc88F859A4E594D |
+| `AutomataDcapAttestation.sol` | Automata Mainnet (preview) | 0xE26E11B257856B0bEBc4C759aaBDdea72B64351F |
+| `V3QuoteVerifier.sol` | Automata Mainnet (preview) | 0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96 |
+| `V4QuoteVerifier.sol` | Automata Mainnet (preview) | 0xfF47ecA64898692a86926CDDa794807be3f6567D |
