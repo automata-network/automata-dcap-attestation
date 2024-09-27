@@ -180,7 +180,7 @@ The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db78
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Mainnet (preview) | 0xb76834729717868fa203b9D90fc88F859A4E594D |
-| `AutomataDcapAttestation.sol` | Automata Mainnet (preview) | 0xE26E11B257856B0bEBc4C759aaBDdea72B64351F |
-| `V3QuoteVerifier.sol` | Automata Mainnet (preview) | 0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96 |
-| `V4QuoteVerifier.sol` | Automata Mainnet (preview) | 0xfF47ecA64898692a86926CDDa794807be3f6567D |
+| `PCCSRouter.sol` | Automata Mainnet | 0xb76834729717868fa203b9D90fc88F859A4E594D |
+| `AutomataDcapAttestation.sol` | Automata Mainnet | 0xE26E11B257856B0bEBc4C759aaBDdea72B64351F |
+| `V3QuoteVerifier.sol` | Automata Mainnet | 0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96 |
+| `V4QuoteVerifier.sol` | Automata Mainnet | 0xfF47ecA64898692a86926CDDa794807be3f6567D |
