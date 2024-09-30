@@ -169,12 +169,16 @@ The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db78
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Testnet | [0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543](https://explorer-testnet.ata.network/address/0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543) |
 |  | Ethereum Holesky | [0xdE5e69A2ca2556fe46883d754d987703bF28Cc51](https://holesky.etherscan.io/address/0xdE5e69A2ca2556fe46883d754d987703bF28Cc51) |
+|  | Ethereum Sepolia | [0xdc7dcF60b9580980128539Ed805D03BC60F84fd4](https://sepolia.etherscan.io/address/0xdc7dcF60b9580980128539Ed805D03BC60F84fd4 |
 | `AutomataDcapAttestation.sol` | Automata Testnet | [0xefE368b17D137E86298eec8EbC5502fb56d27832](https://explorer-testnet.ata.network/address/0xefE368b17D137E86298eec8EbC5502fb56d27832) |
 |  | Ethereum Holesky | [0x133303659F51d75ED216FD98a0B70CbCD75339b2](https://holesky.etherscan.io/address/0x133303659F51d75ED216FD98a0B70CbCD75339b2) |
+|  | Ethereum Sepolia | [0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b](https://sepolia.etherscan.io/address/0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x67042D171b8B7Da1A4a98Df787bDce79190DAc3c](https://explorer-testnet.ata.network/address/0x67042D171b8B7Da1A4a98Df787bDce79190DAc3c) |
 |  | Ethereum Holesky | [0x12d7d59Ae1e4dbF83b08C82958Ac3FcEB84fB164](https://holesky.etherscan.io/address/0x12d7d59Ae1e4dbF83b08C82958Ac3FcEB84fB164) |
+|  | Ethereum Sepolia | [0x85E156d702bb3e45690DAa812238C1A841E2c3C5](https://sepolia.etherscan.io/address/0x85E156d702bb3e45690DAa812238C1A841E2c3C5) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0x921B8F6Ec83E405B715111eC1AE8B54A3ea063EB](https://explorer-testnet.ata.network/address/0x921B8F6Ec83E405B715111eC1AE8B54A3ea063EB) |
 |  | Ethereum Holesky | [0x3Cb24c454a29e796edF47a96dF32DD1855058258](https://holesky.etherscan.io/address/0x3Cb24c454a29e796edF47a96dF32DD1855058258) |
+|  | Ethereum Sepolia | [0xdc25e1c7ACAdBdE8C1E2c2b9511B7Dbd98B44700](https://sepolia.etherscan.io/address/0xdc25e1c7ACAdBdE8C1E2c2b9511B7Dbd98B44700) |
 
 ##### Mainnet
 
