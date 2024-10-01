@@ -169,7 +169,7 @@ The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db78
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Testnet | [0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543](https://explorer-testnet.ata.network/address/0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543) |
 |  | Ethereum Holesky | [0xdE5e69A2ca2556fe46883d754d987703bF28Cc51](https://holesky.etherscan.io/address/0xdE5e69A2ca2556fe46883d754d987703bF28Cc51) |
-|  | Ethereum Sepolia | [0xdc7dcF60b9580980128539Ed805D03BC60F84fd4](https://sepolia.etherscan.io/address/0xdc7dcF60b9580980128539Ed805D03BC60F84fd4 |
+|  | Ethereum Sepolia | [0xdc7dcF60b9580980128539Ed805D03BC60F84fd4](https://sepolia.etherscan.io/address/0xdc7dcF60b9580980128539Ed805D03BC60F84fd4) |
 | `AutomataDcapAttestation.sol` | Automata Testnet | [0xefE368b17D137E86298eec8EbC5502fb56d27832](https://explorer-testnet.ata.network/address/0xefE368b17D137E86298eec8EbC5502fb56d27832) |
 |  | Ethereum Holesky | [0x133303659F51d75ED216FD98a0B70CbCD75339b2](https://holesky.etherscan.io/address/0x133303659F51d75ED216FD98a0B70CbCD75339b2) |
 |  | Ethereum Sepolia | [0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b](https://sepolia.etherscan.io/address/0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b) |
