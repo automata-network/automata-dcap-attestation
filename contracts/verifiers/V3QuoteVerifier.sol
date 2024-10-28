@@ -6,7 +6,10 @@ import "../types/V3Structs.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 
 contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
-    constructor(address _router) QuoteVerifierBase(_router, 3) {}
+    constructor(address _ecdsaVerifier, address _router) 
+        QuoteVerifierBase(_router, 3) 
+        P256Verifier(_ecdsaVerifier) 
+    {}
 
     function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
         uint256 offset = 2 + MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;

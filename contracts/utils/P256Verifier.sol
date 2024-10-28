@@ -6,10 +6,15 @@ import "./BytesUtils.sol";
 /**
  * @notice modified from https://github.com/daimo-eth/p256-verifier/
  */
-library P256Verifier {
+abstract contract P256Verifier {
     using BytesUtils for bytes;
 
-    address internal constant P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+    // address internal constant P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+    address immutable public P256_VERIFIER;
+
+    constructor(address _verifier) {
+        P256_VERIFIER = _verifier;
+    }
 
     function ecdsaVerify(bytes32 messageHash, bytes memory signature, bytes memory key)
         internal

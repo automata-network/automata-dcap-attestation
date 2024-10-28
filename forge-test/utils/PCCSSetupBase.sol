@@ -39,6 +39,7 @@ abstract contract PCCSSetupBase is Test {
     AutomataFmspcTcbDao fmspcTcbDao;
     AutomataEnclaveIdentityDao enclaveIdDao;
     AutomataDaoStorage pccsStorage;
+    address P256_VERIFIER;
 
     address internal constant admin = address(1);
 
@@ -177,7 +178,7 @@ abstract contract PCCSSetupBase is Test {
         require(succ, "Failed to deploy P256");
 
         // check code
-        address P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+        P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
         uint256 codesize = P256_VERIFIER.code.length;
         require(codesize > 0, "P256 deployed to the wrong address");
     }

@@ -21,7 +21,10 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
     using BytesUtils for bytes;
 
-    constructor(address _router) QuoteVerifierBase(_router, 4) {}
+    constructor(address _ecdsaVerifier, address _router) 
+        QuoteVerifierBase(_router, 4) 
+        P256Verifier(_ecdsaVerifier) 
+    {}
 
     function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
         uint256 offset = 2;

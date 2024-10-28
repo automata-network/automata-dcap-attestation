@@ -22,3 +22,5 @@ optimizer_runs = 200
 # performing contract verification
 # https://github.com/foundry-rs/foundry/issues/3507
 viaIR = true
+
+ffi = true

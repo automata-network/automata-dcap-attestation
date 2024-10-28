@@ -11,7 +11,7 @@ import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelp
 import {PcsDao, CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
 
-abstract contract X509ChainBase {
+abstract contract X509ChainBase is P256Verifier {
     using BytesUtils for bytes;
     using LibString for bytes;
 
@@ -164,7 +164,7 @@ abstract contract X509ChainBase {
             }
 
             {
-                verified = P256Verifier.ecdsaVerify(sha256(certs[i].tbs), certs[i].signature, issuer.subjectPublicKey);
+                verified = ecdsaVerify(sha256(certs[i].tbs), certs[i].signature, issuer.subjectPublicKey);
                 if (!verified) {
                     break;
                 }

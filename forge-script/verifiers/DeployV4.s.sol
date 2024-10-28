@@ -2,16 +2,23 @@
 
 pragma solidity ^0.8.0;
 
-import "forge-std/Script.sol";
+import "../utils/P256Configuration.sol";
 import "../../contracts/verifiers/V4QuoteVerifier.sol";
 
-contract DeployV4 is Script {
+contract DeployV4 is P256Configuration {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
     address router = vm.envAddress("PCCS_ROUTER");
 
-    function run() public {
+    function run() public override {
         vm.broadcast(deployerKey);
-        V4QuoteVerifier verifier = new V4QuoteVerifier(router);
+        V4QuoteVerifier verifier = new V4QuoteVerifier(simulateVerify(), router);
+        console.log("V4QuoteVerifier deployed at ", address(verifier));
+    }
+
+    function overrideVerifier(address p256Verifier) public {
+        vm.startBroadcast(deployerKey);
+        V4QuoteVerifier verifier = new V4QuoteVerifier(p256Verifier, router);
+        vm.stopBroadcast();
         console.log("V4QuoteVerifier deployed at ", address(verifier));
     }
 }
