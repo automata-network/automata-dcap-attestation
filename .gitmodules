@@ -7,3 +7,6 @@
 [submodule "lib/automata-on-chain-pccs"]
 	path = lib/automata-on-chain-pccs
 	url = https://github.com/automata-network/automata-on-chain-pccs
+[submodule "lib/sp1-contracts"]
+	path = lib/sp1-contracts
+	url = https://github.com/succinctlabs/sp1-contracts
