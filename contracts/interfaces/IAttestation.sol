@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 /**
  * @title Interface standard that implement attestation contracts whose verification logic can be implemented
- * both on-chain and with Risc0 ZK proofs
+ * both on-chain and with ZK proofs
  * @notice The interface simply provides two verification methods for a given attestation input.
  * The user can either pay a possibly hefty gas cost to fully verify an attestation fully on-chain
  * OR
@@ -15,11 +15,27 @@ interface IAttestation {
     /**
      * @notice full on-chain verification for an attestation
      * @dev must further specify the structure of inputs/outputs, to be serialized and passed to this method
-     * @param input - serialized raw input as defined by the project
+     * @param rawQuote - Intel DCAP Quote serialized in raw bytes
      * @return success - whether the quote has been successfully verified or not
      * @return output - the output upon completion of verification. The output data may require post-processing by the consumer.
      * For verification failures, the output is simply a UTF-8 encoded string, describing the reason for failure.
      * @dev can directly type cast the failed output as a string
      */
-    function verifyAndAttestOnChain(bytes calldata input) external returns (bool success, bytes memory output);
+    function verifyAndAttestOnChain(bytes calldata rawQuote) external returns (bool success, bytes memory output);
+
+    /**
+     * @notice verifies an attestation using SNARK proofs
+     * @param output - The output of the Guest program, this includes:
+     * - VerifiedOutput struct
+     * - RootCA hash
+     * - TCB Signing CA hash
+     * - Root CRL hash
+     * - Platform or Processor CRL hash
+     * @param proofBytes - abi-encoded tuple of:
+     * - The ZK Co-Processor Type (uint8 value)
+     * - The encoded cryptographic proof (i.e. SNARK)).
+     */
+    function verifyAndAttestWithZKProof(bytes calldata output, bytes calldata proofBytes)
+        external
+        returns (bool success, bytes memory verifiedOutput);
 }
