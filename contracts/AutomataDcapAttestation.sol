@@ -2,28 +2,36 @@
 pragma solidity ^0.8.0;
 
 import {IAttestation} from "./interfaces/IAttestation.sol";
-import {BELE} from "./utils/BELE.sol";
 import {IQuoteVerifier} from "./interfaces/IQuoteVerifier.sol";
+import {IZKVerifier} from "./interfaces/IZKVerifier.sol";
 
-import {Header} from "./types/CommonStruct.sol";
+import {BELE} from "./utils/BELE.sol";
 import "./types/Constants.sol";
-
-import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
+import {Header} from "./types/CommonStruct.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 
-contract AutomataDcapAttestation is IAttestation, Ownable {
-    /// @notice RISC Zero verifier contract address.
-    IRiscZeroVerifier public riscZeroVerifier;
+// ZK-Coprocessor imports:
+import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
+import {ISP1Verifier} from "@sp1-contracts/ISP1Verifier.sol";
 
-    /// @notice The ImageID of the Risc0 DCAP Guest ELF
-    bytes32 public DCAP_RISC0_IMAGE_ID;
+enum ZkCoProcessorType {
+    Unknown,
+    RiscZero,
+    Succinct
+}
+
+struct ZkCoProcessorConfig {
+    bytes32 dcapProgramIdentifier;
+    address zkVerifier;
+}
+
+contract AutomataDcapAttestation is IAttestation, IZKVerifier, Ownable {
+    mapping(ZkCoProcessorType => ZkCoProcessorConfig) _zkConfig;
 
     mapping(uint16 quoteVersion => IQuoteVerifier verifier) public quoteVerifiers;
 
-    constructor(address risc0Verifier, bytes32 imageId) {
+    constructor() {
         _initializeOwner(msg.sender);
-        riscZeroVerifier = IRiscZeroVerifier(risc0Verifier);
-        DCAP_RISC0_IMAGE_ID = imageId;
     }
 
     function setQuoteVerifier(address verifier) external onlyOwner {
@@ -31,9 +39,19 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         quoteVerifiers[quoteVerifier.quoteVersion()] = quoteVerifier;
     }
 
-    function updateRisc0Config(address risc0Verifier, bytes32 imageId) external onlyOwner {
-        riscZeroVerifier = IRiscZeroVerifier(risc0Verifier);
-        DCAP_RISC0_IMAGE_ID = imageId;
+    function setZkConfiguration(ZkCoProcessorType zkCoProcessor, ZkCoProcessorConfig memory config)
+        external
+        onlyOwner
+    {
+        _zkConfig[zkCoProcessor] = config;
+    }
+
+    function programIdentifier(uint8 zkCoProcessorType) external view override returns (bytes32) {
+        return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].dcapProgramIdentifier;
+    }
+
+    function zkVerifier(uint8 zkCoProcessorType) external view returns (address) {
+        return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].zkVerifier;
     }
 
     function verifyAndAttestOnChain(bytes calldata rawQuote)
@@ -55,30 +73,32 @@ contract AutomataDcapAttestation is IAttestation, Ownable {
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
     }
 
-    // the journal output has the following format:
-    // serial_output_len (2 bytes)
-    // serial_output (VerifiedOutput) (SGX: 397 bytes, TDX: 597 bytes)
-    // current_time (8 bytes)
-    // tcbinfov2_hash
-    // qeidentityv2_hash
-    // sgx_intel_root_ca_cert_hash
-    // sgx_tcb_signing_cert_hash
-    // sgx_tcb_intel_root_ca_crl_hash
-    // sgx_pck_platform_crl_hash or sgx_pck_processor_crl_hash
-    function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
+    function verifyAndAttestWithZKProof(bytes calldata output, bytes calldata proofBytes)
         external
         view
         override
-        returns (bool success, bytes memory output)
+        returns (bool success, bytes memory verifiedOutput)
     {
-        riscZeroVerifier.verify(seal, DCAP_RISC0_IMAGE_ID, sha256(journal));
-        uint16 version = uint16(bytes2(journal[2:4]));
+        ZkCoProcessorType zkCoprocessor = ZkCoProcessorType(uint8(bytes1(proofBytes[0:1])));
+        ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
+
+        if (zkCoprocessor == ZkCoProcessorType.RiscZero) {
+            IRiscZeroVerifier(zkConfig.zkVerifier).verify(
+                proofBytes[1:], zkConfig.dcapProgramIdentifier, sha256(output)
+            );
+        } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
+            ISP1Verifier(zkConfig.zkVerifier).verifyProof(zkConfig.dcapProgramIdentifier, output, proofBytes[1:]);
+        } else {
+            revert Unknown_Zk_Coprocessor();
+        }
+
+        // verifies the output
+        uint16 version = uint16(bytes2(output[2:4]));
         IQuoteVerifier quoteVerifier = quoteVerifiers[version];
         if (address(quoteVerifier) == address(0)) {
             return (false, bytes("Unsupported quote version"));
         }
-
-        (success, output) = quoteVerifier.verifyJournal(journal);
+        (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
     }
 
     function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (Header memory header) {

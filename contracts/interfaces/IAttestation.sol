@@ -22,20 +22,4 @@ interface IAttestation {
      * @dev can directly type cast the failed output as a string
      */
     function verifyAndAttestOnChain(bytes calldata input) external returns (bool success, bytes memory output);
-
-    /**
-     * @param journal - The output of the Guest program, this includes:
-     * - VerifiedOutput struct
-     * - TcbInfo hash
-     * - QEID hash
-     * - RootCA hash
-     * - TCB Signing CA hash
-     * - Root CRL hash
-     * - Platform CRL hash
-     * - Processor CRL hash
-     * @param seal - The encoded cryptographic proof (i.e. SNARK).
-     */
-    function verifyAndAttestWithZKProof(bytes calldata journal, bytes calldata seal)
-        external
-        returns (bool success, bytes memory output);
 }

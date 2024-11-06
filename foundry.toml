@@ -12,7 +12,8 @@ remappings = [
     "@automata-network/on-chain-pccs/=lib/automata-on-chain-pccs/src/",
     "risc0/=lib/risc0-ethereum/contracts/src/",
     # foundry is not able to detect this particular remapping for some reason...
-    "openzeppelin/=lib/risc0-ethereum/lib/openzeppelin-contracts/"
+    "openzeppelin/=lib/risc0-ethereum/lib/openzeppelin-contracts/",
+    "@sp1-contracts/=lib/sp1-contracts/contracts/src/"
 ]
 solc = "0.8.27"
 optimizer = true

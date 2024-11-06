@@ -13,5 +13,5 @@ interface IQuoteVerifier {
 
     function verifyQuote(Header calldata, bytes calldata) external view returns (bool, bytes memory);
 
-    function verifyJournal(bytes calldata) external view returns (bool, bytes memory);
+    function verifyZkOutput(bytes calldata) external view returns (bool, bytes memory);
 }

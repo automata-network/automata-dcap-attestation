@@ -14,7 +14,7 @@ contract AttestationScript is Script {
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
 
-        AutomataDcapAttestation attestation = new AutomataDcapAttestation(riscZeroVerifier, riscZeroImageId);
+        AutomataDcapAttestation attestation = new AutomataDcapAttestation();
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
 
@@ -27,9 +27,15 @@ contract AttestationScript is Script {
         AutomataDcapAttestation(attestationAddr).setQuoteVerifier(verifier);
     }
 
-    function risc0Config(address risc0Verifier, bytes32 imageId) public {
+    function configureZk(uint8 zk, address verifierGateway, bytes32 programId) public {
         address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
+
+        ZkCoProcessorConfig memory config = ZkCoProcessorConfig({
+            dcapProgramIdentifier: programId,
+            zkVerifier: verifierGateway
+        });
+
         vm.broadcast(deployerKey);
-        AutomataDcapAttestation(attestationAddr).updateRisc0Config(risc0Verifier, imageId);
+        AutomataDcapAttestation(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
     }
 }
