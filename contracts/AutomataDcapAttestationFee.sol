@@ -7,6 +7,10 @@ import "./bases/FeeManagerBase.sol";
 contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase {
     constructor(uint16 refundOffset) FeeManagerBase(refundOffset) {}
     
+    function pause() public override onlyOwner {
+        super.pause();
+    }
+
     function setBp(uint16 _newBp) public override onlyOwner {
         super.setBp(_newBp);
     }

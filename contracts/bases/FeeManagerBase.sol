@@ -23,11 +23,21 @@ abstract contract FeeManagerBase is Pausable {
         REFUND_GAS_OFFSET = offset;
     }
 
+    /// @dev access-controlled
     function setBp(uint16 _newBp) public virtual whenNotPaused {
         if (_newBp > MAX_BP) {
             revert BP_Not_Valid();
         }
         _feeBP = _newBp;
+    }
+
+    /// @dev access-controlled
+    function pause() public virtual {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
     }
 
     function getBp() public view returns (uint16) {
