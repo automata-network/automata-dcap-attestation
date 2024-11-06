@@ -23,19 +23,19 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
     constructor(address _router) QuoteVerifierBase(_router, 4) {}
 
-    function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
+    function verifyZkOutput(bytes calldata outputBytes) external view override returns (bool success, bytes memory output) {
         uint256 offset = 2;
 
-        bytes4 teeType = bytes4(journal[4:8]);
+        bytes4 teeType = bytes4(outputBytes[4:8]);
         if (teeType == SGX_TEE) {
             offset += MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
         } else if (teeType == TDX_TEE) {
             offset += MINIMUM_OUTPUT_LENGTH + TD_REPORT10_LENGTH;
         } else return (false, bytes("Unknown TEE type"));
 
-        success = checkCollateralHashes(offset + 72, journal);
+        success = checkCollateralHashes(offset + 72, outputBytes);
         if (success) {
-            output = journal[2:offset];
+            output = outputBytes[2:offset];
         } else {
             output = bytes("Found one or more collaterals mismatch");
         }
