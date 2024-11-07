@@ -74,12 +74,12 @@ abstract contract PCCSSetupBase is Test {
         x509Crl = new X509CRLHelper();
 
         pccsStorage = new AutomataDaoStorage();
-        pcsDao = new AutomataPcsDao(address(pccsStorage), address(x509), address(x509Crl));
-        pckDao = new AutomataPckDao(address(pccsStorage), address(pcsDao), address(x509), address(x509Crl));
+        pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
+        pckDao = new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
-            address(pccsStorage), address(pcsDao), address(enclaveIdHelper), address(x509)
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(enclaveIdHelper), address(x509)
         );
-        fmspcTcbDao = new AutomataFmspcTcbDao(address(pccsStorage), address(pcsDao), address(tcbHelper), address(x509));
+        fmspcTcbDao = new AutomataFmspcTcbDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509));
 
         pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
 
@@ -95,6 +95,9 @@ abstract contract PCCSSetupBase is Test {
             address(x509),
             address(x509Crl)
         );
+
+        // allow PCCS Router to read collaterals from the storage
+        pccsStorage.setCallerAuthorization(address(pccsRouter), true);
     }
 
     function pcsDaoUpserts() internal {

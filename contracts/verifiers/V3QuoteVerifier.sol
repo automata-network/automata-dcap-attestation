@@ -126,7 +126,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         tcbStatus = convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tcbStatus);
 
         // Step 4: verify cert chain
-        success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);
+        success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
         if (!success) {
             return (success, bytes("Failed to verify X509 Chain"));
         }
@@ -198,11 +198,8 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (false, authDataV3, rawQeReport);
         }
 
-        // TODO
-        bytes16 qeid;
-
         (success, authDataV3.certification.pck) =
-            getPckCollateral(pccsRouter.pckDaoAddr(), pccsRouter.pckHelperAddr(), qeid, certType, rawCertData);
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
         if (!success) {
             return (false, authDataV3, rawQeReport);
         }
