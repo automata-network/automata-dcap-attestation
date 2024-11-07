@@ -26,4 +26,9 @@ contract DeployRouter is Script {
 
         vm.stopBroadcast();
     }
+
+    function setAuthorizedCaller(address caller, bool authorized) public {
+        PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
+        router.setAuthorized(caller, authorized);
+    }
 }

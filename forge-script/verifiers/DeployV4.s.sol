@@ -10,8 +10,9 @@ contract DeployV4 is P256Configuration {
     address router = vm.envAddress("PCCS_ROUTER");
 
     function run() public override {
-        vm.broadcast(deployerKey);
+        vm.startBroadcast(deployerKey);
         V4QuoteVerifier verifier = new V4QuoteVerifier(simulateVerify(), router);
+        vm.stopBroadcast();
         console.log("V4QuoteVerifier deployed at ", address(verifier));
     }
 

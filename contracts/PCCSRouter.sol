@@ -4,13 +4,17 @@ pragma solidity ^0.8.0;
 import "./interfaces/IPCCSRouter.sol";
 
 import {Ownable} from "solady/auth/Ownable.sol";
-
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveIdentityDao.sol";
 import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
 import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
 
-contract PCCSRouter is IPCCSRouter, Ownable {
+contract PCCSRouter is IPCCSRouter, Pausable, Ownable {
+    /// @dev PCCS Router is currently access-controlled
+    /// @dev can be disabled using Pausable later when desired
+    mapping (address => bool) _authorized;
+
     address public override qeIdDaoAddr;
     address public override fmspcTcbDaoAddr;
     address public override pcsDaoAddr;
@@ -21,6 +25,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     constructor(address _qeid, address _fmspcTcb, address _pcs, address _pck, address _pckHelper, address _crlHelper) {
         _initializeOwner(msg.sender);
         _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
+        
+        // allowing eth_call
+        _authorized[address(0)] = true;
     }
 
     // Reverts for missing collaterals
@@ -33,6 +40,19 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     error CertNotFound(CA ca);
     // 18c6f762
     error CrlNotFound(CA ca);
+    // ee90c468
+    error Forbidden();
+
+    function setAuthorized(address caller, bool authorized) external onlyOwner {
+        _authorized[caller] = authorized;
+    }
+
+    modifier onlyAuthorized() {
+        if (!paused() && !_authorized[msg.sender]) {
+            revert Forbidden();
+        }
+        _;
+    }
 
     function setConfig(
         address _qeid,
@@ -65,6 +85,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         external
         view
         override
+        onlyAuthorized
         returns (bool valid, IdentityObj memory identity)
     {
         EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
@@ -82,6 +103,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         external
         view
         override
+        onlyAuthorized
         returns (bool valid, TCBLevelsObj[] memory tcbLevelsV2)
     {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
@@ -100,6 +122,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         external
         view
         override
+        onlyAuthorized
         returns (
             bool valid,
             TCBLevelsObj[] memory tcbLevelsV3,
@@ -125,25 +148,25 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         string calldata platformCpuSvn,
         string calldata platformPceSvn,
         string calldata pceid
-    ) external view override returns (bool success, bytes memory pckDer) {
+    ) external view override onlyAuthorized returns (bool success, bytes memory pckDer) {
         PckDao pckDao = PckDao(pckDaoAddr);
         pckDer = pckDao.getCert(qeid, platformCpuSvn, platformPceSvn, pceid);
         success = pckDer.length > 0;
     }
 
-    function getCert(CA ca) external view override returns (bool success, bytes memory x509Der) {
+    function getCert(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509Der) {
         (success, x509Der) = _getPcsAttestationData(ca, false);
     }
 
-    function getCrl(CA ca) external view override returns (bool success, bytes memory x509CrlDer) {
+    function getCrl(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509CrlDer) {
         (success, x509CrlDer) = _getPcsAttestationData(ca, true);
     }
 
-    function getCertHash(CA ca) external view override returns (bool success, bytes32 hash) {
+    function getCertHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
         (success, hash) = _getPcsHash(ca, false);
     }
 
-    function getCrlHash(CA ca) external view override returns (bool success, bytes32 hash) {
+    function getCrlHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
         (success, hash) = _getPcsHash(ca, true);
     }
 

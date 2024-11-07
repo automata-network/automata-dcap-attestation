@@ -76,6 +76,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         // deploy and configure QuoteV3Verifier on the Attestation contract
         quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
+        pccsRouter.setAuthorized(address(quoteVerifier), true);
         assertEq(address(attestation.quoteVerifiers(4)), address(quoteVerifier));
 
         vm.stopPrank();

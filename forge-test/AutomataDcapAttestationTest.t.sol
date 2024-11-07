@@ -46,6 +46,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup, SuccinctSe
         // deploy and configure QuoteV3Verifier on the Attestation contract
         quoteVerifier = new V3QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
+        pccsRouter.setAuthorized(address(quoteVerifier), true);
         assertEq(address(attestation.quoteVerifiers(3)), address(quoteVerifier));
 
         vm.stopPrank();
@@ -79,6 +80,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup, SuccinctSe
         // deploy and configure QuoteV3Verifier on the Attestation contract
         quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
+        pccsRouter.setAuthorized(address(quoteVerifier), true);
         assertEq(address(attestation.quoteVerifiers(4)), address(quoteVerifier));
 
         vm.stopPrank();
@@ -108,6 +110,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup, SuccinctSe
         pcsDao.upsertPckCrl(CA.PLATFORM, pckCrlUpdate);
         V4QuoteVerifier quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
+        pccsRouter.setAuthorized(address(quoteVerifier), true);
         assertEq(address(attestation.quoteVerifiers(4)), address(quoteVerifier));
         vm.stopPrank();
 
@@ -141,6 +144,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup, SuccinctSe
         pcsDao.upsertPckCrl(CA.PLATFORM, pckCrlUpdate);
         V4QuoteVerifier quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
+        pccsRouter.setAuthorized(address(quoteVerifier), true);
         assertEq(address(attestation.quoteVerifiers(4)), address(quoteVerifier));
         vm.stopPrank();
 
@@ -178,6 +182,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup, SuccinctSe
     //     pcsDao.upsertPckCrl(CA.PLATFORM, pckCrlUpdate);
     //     V4QuoteVerifier quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
     //     attestation.setQuoteVerifier(address(quoteVerifier));
+    //     pccsRouter.setAuthorized(address(quoteVerifier), true);
     //     assertEq(address(attestation.quoteVerifiers(4)), address(quoteVerifier));
     //     vm.stopPrank();
 
