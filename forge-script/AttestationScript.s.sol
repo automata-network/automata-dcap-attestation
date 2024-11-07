@@ -30,10 +30,8 @@ contract AttestationScript is Script {
     function configureZk(uint8 zk, address verifierGateway, bytes32 programId) public {
         address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
 
-        ZkCoProcessorConfig memory config = ZkCoProcessorConfig({
-            dcapProgramIdentifier: programId,
-            zkVerifier: verifierGateway
-        });
+        ZkCoProcessorConfig memory config =
+            ZkCoProcessorConfig({dcapProgramIdentifier: programId, zkVerifier: verifierGateway});
 
         vm.broadcast(deployerKey);
         AutomataDcapAttestation(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);

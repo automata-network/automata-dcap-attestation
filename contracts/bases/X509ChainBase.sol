@@ -28,15 +28,15 @@ abstract contract X509ChainBase is P256Verifier {
     uint256 constant X509_HEADER_LENGTH = 27;
     uint256 constant X509_FOOTER_LENGTH = 25;
 
-    function getPckCollateral(
-        address pckHelperAddr,
-        uint16 certType,
-        bytes memory rawCertData
-    ) internal pure returns (bool success, PCKCollateral memory pck) {
+    function getPckCollateral(address pckHelperAddr, uint16 certType, bytes memory rawCertData)
+        internal
+        pure
+        returns (bool success, PCKCollateral memory pck)
+    {
         pck.pckChain = new X509CertObj[](3);
 
         if (certType == 5) {
-             bytes[] memory certArray;
+            bytes[] memory certArray;
             (success, certArray) = _splitCertificateChain(rawCertData, 3);
             if (!success) {
                 return (false, pck);

@@ -16,7 +16,7 @@ abstract contract SuccinctSetup {
             SP1Verifier groth16Verifier = new SP1Verifier();
             verifier = ISP1Verifier(address(groth16Verifier));
         }
-        // } else 
+        // } else
         // if (opt == ProveOpt.Plonk) {
         //     SP1Verifier plonkVerifier = new SP1Verifier();
         //     verifier = ISP1Verifier(address(plonkVerifier));

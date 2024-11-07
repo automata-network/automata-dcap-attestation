@@ -78,7 +78,7 @@ abstract contract FeeManagerBase is Pausable {
     function _refund(address recipient, uint256 amount) private {
         (bool success,) = recipient.call{value: amount}("");
         if (!success) {
-           revert Withdrawal_Failed();
+            revert Withdrawal_Failed();
         }
     }
 }

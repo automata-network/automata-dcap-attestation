@@ -23,14 +23,14 @@ contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase
 
     function simulateVerifyAndAttestOnChain(bytes calldata rawQuote) external view {
         uint256 a = gasleft();
-        (bool success, ) = _verifyAndAttestOnChain(rawQuote);
+        (bool success,) = _verifyAndAttestOnChain(rawQuote);
         uint256 b = gasleft();
         revert SimulationComplete(success, a - b);
     }
 
     function simulateVerifyAndAttestWithZkProof(bytes calldata output, bytes calldata proofBytes) external view {
         uint256 a = gasleft();
-        (bool success, ) = _verifyAndAttestWithZKProof(output, proofBytes);
+        (bool success,) = _verifyAndAttestWithZKProof(output, proofBytes);
         uint256 b = gasleft();
         revert SimulationComplete(success, a - b);
     }

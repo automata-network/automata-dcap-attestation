@@ -10,7 +10,7 @@ abstract contract P256Verifier {
     using BytesUtils for bytes;
 
     // address internal constant P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
-    address immutable public P256_VERIFIER;
+    address public immutable P256_VERIFIER;
 
     constructor(address _verifier) {
         P256_VERIFIER = _verifier;

@@ -18,7 +18,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     // Preston: standard ETH transfer gas cost, but I think it's probably much lower
     uint16 constant REFUND_OFFSET = 21_000;
     uint16 constant MAX_BP = 10_000;
-    
+
     AutomataDcapAttestationFee attestation;
     PCCSRouter pccsRouter;
 
@@ -56,7 +56,6 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     }
 
     function testTDXQuoteV4OnChainAttestationWithFee() public {
-
         // pinned June 15th,2024 Midnight UTC
         // bypassing expiry errors
         vm.warp(1718409600);
@@ -83,10 +82,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
 
         // estimate gas cost with simulation
         (bool simulationSuccess, bytes memory retData) = address(attestation).call(
-            abi.encodeWithSelector(
-                AutomataDcapAttestationFee.simulateVerifyAndAttestOnChain.selector,
-                sampleQuote
-            )
+            abi.encodeWithSelector(AutomataDcapAttestationFee.simulateVerifyAndAttestOnChain.selector, sampleQuote)
         );
         assertTrue(!simulationSuccess);
 
@@ -98,10 +94,10 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
 
         // verify the quote
         uint256 balanceBefore = user.balance;
-        
+
         vm.prank(user);
         (bool success, bytes memory output) = attestation.verifyAndAttestOnChain{value: expectedFee}(sampleQuote);
-        
+
         if (!success) {
             console.log(string(output));
         } else {
@@ -109,7 +105,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
             uint256 paidFee = balanceBefore - balanceAfter;
             console.log("paid fee: ", paidFee);
         }
-        
+
         assertTrue(success);
     }
 }

@@ -37,7 +37,9 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
                         tdxTcbFound = true;
                         status = current.status;
                     }
-                } else break;
+                } else {
+                    break;
+                }
             } else if (sgxStatus == TCBStatus.TCB_REVOKED) {
                 return (false, TCBStatus.TCB_REVOKED);
             }

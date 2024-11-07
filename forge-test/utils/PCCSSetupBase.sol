@@ -75,11 +75,14 @@ abstract contract PCCSSetupBase is Test {
 
         pccsStorage = new AutomataDaoStorage();
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
-        pckDao = new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
+        pckDao =
+            new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
             address(pccsStorage), P256_VERIFIER, address(pcsDao), address(enclaveIdHelper), address(x509)
         );
-        fmspcTcbDao = new AutomataFmspcTcbDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509));
+        fmspcTcbDao = new AutomataFmspcTcbDao(
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509)
+        );
 
         pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
 

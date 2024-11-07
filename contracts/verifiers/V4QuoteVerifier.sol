@@ -21,12 +21,14 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
     using BytesUtils for bytes;
 
-    constructor(address _ecdsaVerifier, address _router) 
-        QuoteVerifierBase(_router, 4) 
-        P256Verifier(_ecdsaVerifier) 
-    {}
+    constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
-    function verifyZkOutput(bytes calldata outputBytes) external view override returns (bool success, bytes memory output) {
+    function verifyZkOutput(bytes calldata outputBytes)
+        external
+        view
+        override
+        returns (bool success, bytes memory output)
+    {
         uint256 offset = 2;
 
         bytes4 teeType = bytes4(outputBytes[4:8]);
@@ -34,7 +36,9 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             offset += MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
         } else if (teeType == TDX_TEE) {
             offset += MINIMUM_OUTPUT_LENGTH + TD_REPORT10_LENGTH;
-        } else return (false, bytes("Unknown TEE type"));
+        } else {
+            return (false, bytes("Unknown TEE type"));
+        }
 
         success = checkCollateralHashes(offset + 72, outputBytes);
         if (success) {
