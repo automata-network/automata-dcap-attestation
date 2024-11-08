@@ -1,6 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/**
+ * @notice Converts a little-endian encoded bytes to a big-endian uint256 integer
+ */
+
 library BELE {
     function leBytesToBeUint(bytes memory encoded) internal pure returns (uint256 decoded) {
         for (uint256 i = 0; i < encoded.length; i++) {

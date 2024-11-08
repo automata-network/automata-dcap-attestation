@@ -18,11 +18,22 @@ enum ZkCoProcessorType {
     Succinct
 }
 
+/**
+ * @title ZK Co-Processor Configuration Object
+ * @param dcapProgramIdentifier - This is the identifier of the ZK Program, required for
+ * verification
+ * @param zkVerifier - Points to the address of the ZK Verifier contract. Ideally
+ * this should be pointing to a universal verifier, that may support multiple proof types and/or versions.
+ */
 struct ZkCoProcessorConfig {
     bytes32 dcapProgramIdentifier;
     address zkVerifier;
 }
 
+/**
+ * @title DCAP Attestation Entrypoint Base contract
+ * @notice Provides full implementation of both on-chain and ZK DCAP Verification
+ */
 abstract contract AttestationEntrypointBase is Ownable {
     // 51abd95c
     error Unknown_Zk_Coprocessor();
@@ -35,11 +46,18 @@ abstract contract AttestationEntrypointBase is Ownable {
         _initializeOwner(msg.sender);
     }
 
+    /**
+     * @notice Sets the QuoteVerifier contract for specific DCAP quote version
+     * @param verifier - the address of a version-specific QuoteVerifier contract
+     */
     function setQuoteVerifier(address verifier) external onlyOwner {
         IQuoteVerifier quoteVerifier = IQuoteVerifier(verifier);
         quoteVerifiers[quoteVerifier.quoteVersion()] = quoteVerifier;
     }
 
+    /**
+     * @notice Sets the ZK Configuration for the given ZK Co-Processor
+     */
     function setZkConfiguration(ZkCoProcessorType zkCoProcessor, ZkCoProcessorConfig memory config)
         external
         onlyOwner
@@ -63,6 +81,9 @@ abstract contract AttestationEntrypointBase is Ownable {
         return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].zkVerifier;
     }
 
+    /**
+     * @param rawQuote - Intel DCAP Quote serialized in raw bytes
+     */
     function _verifyAndAttestOnChain(bytes calldata rawQuote)
         internal
         view
@@ -81,6 +102,17 @@ abstract contract AttestationEntrypointBase is Ownable {
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
     }
 
+    /**
+     * @param output - The output of the Guest program, this includes:
+     * - VerifiedOutput struct
+     * - RootCA hash
+     * - TCB Signing CA hash
+     * - Root CRL hash
+     * - Platform or Processor CRL hash
+     * @param proofBytes - abi-encoded tuple of:
+     * - The ZK Co-Processor Type (uint8 value)
+     * - The encoded cryptographic proof (i.e. SNARK)).
+     */
     function _verifyAndAttestWithZKProof(bytes calldata output, bytes calldata proofBytes)
         internal
         view
@@ -108,6 +140,9 @@ abstract contract AttestationEntrypointBase is Ownable {
         (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
     }
 
+    /**
+     * @notice Parses the header to get basic information about the quote, such as the version, TEE types etc.
+     */
     function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (Header memory header) {
         bytes2 attestationKeyType = bytes2(rawQuote[2:4]);
         bytes2 qeSvn = bytes2(rawQuote[8:10]);

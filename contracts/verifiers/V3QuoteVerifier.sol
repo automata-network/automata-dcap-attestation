@@ -5,6 +5,10 @@ import "../bases/QuoteVerifierBase.sol";
 import "../types/V3Structs.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 
+/**
+ * @title Automata DCAP QuoteV3 Verifier
+ */
+
 contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 3) P256Verifier(_ecdsaVerifier) {}
 

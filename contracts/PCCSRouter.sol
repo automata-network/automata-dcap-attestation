@@ -10,10 +10,19 @@ import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol
 import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
 
+/**
+ * @title Automata PCCS Router
+ * @dev contracts wanting to read collaterals from On-Chain PCCS
+ * is recommended to use this contract, rather than fetching directly from
+ * their respective DAOs.
+ * @dev this contract ensures that it is pointing to the most up-to-date PCCS DAOs
+ * and all collaterals are to be returned in Solidity "friendlier" types.
+ */
+
 contract PCCSRouter is IPCCSRouter, Pausable, Ownable {
     /// @dev PCCS Router is currently access-controlled
     /// @dev can be disabled using Pausable later when desired
-    mapping (address => bool) _authorized;
+    mapping(address => bool) _authorized;
 
     address public override qeIdDaoAddr;
     address public override fmspcTcbDaoAddr;
@@ -25,7 +34,7 @@ contract PCCSRouter is IPCCSRouter, Pausable, Ownable {
     constructor(address _qeid, address _fmspcTcb, address _pcs, address _pck, address _pckHelper, address _crlHelper) {
         _initializeOwner(msg.sender);
         _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
-        
+
         // allowing eth_call
         _authorized[address(0)] = true;
     }

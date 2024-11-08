@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 import "./AttestationEntrypointBase.sol";
 
+/**
+ * @title Automata DCAP Attestation
+ */
 contract AutomataDcapAttestation is AttestationEntrypointBase {
     function verifyAndAttestOnChain(bytes calldata rawQuote)
         external

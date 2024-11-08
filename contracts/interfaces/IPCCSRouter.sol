@@ -11,6 +11,12 @@ import {
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 
+/**
+ * @title PCCS Router Interface
+ * @notice The PCCS Router is a central contract that serves all other contracts in the network
+ * to fetch collaterals from the On Chain PCCS
+ */
+
 interface IPCCSRouter {
     function qeIdDaoAddr() external view returns (address);
 

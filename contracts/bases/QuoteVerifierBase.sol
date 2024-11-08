@@ -163,7 +163,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             return false;
         }
 
-        // use a low level call for PCK CRLs, because we don't know which one of the CAs is used
+        // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
         // to verify the quote
         // we can catch reverts here, and consider it a valid quote as long as:
         // - one of the PCK CAs has a CRL stored on-chain
@@ -181,7 +181,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         } else if (processorSuccess) {
             (, expectedPckCrlHash) = abi.decode(processorRet, (bool, bytes32));
         } else {
-            // Processor or Platform PCKs not found
+            // Both Processor and Platform PCKs not found
             return false;
         }
 
