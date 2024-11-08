@@ -17,6 +17,10 @@ struct FetchedCollateralsAndStatuses {
     EnclaveIdTcbStatus qeTcbStatus;
 }
 
+/**
+ * @title Automata DCAP QuoteV4 Verifier
+ */
+
 contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
     using BytesUtils for bytes;
@@ -77,11 +81,13 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             V4SGXQuote memory quote =
                 V4SGXQuote({header: header, localEnclaveReport: localEnclaveReport, authData: authData});
             (success, output) = _verifySGXQuote(quote, rawHeader, rawBody, rawQeReport);
-        } else {
+        } else if (header.teeType == TDX_TEE) {
             TD10ReportBody memory tdReport = parseTD10ReportBody(rawQuoteBody);
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH];
             V4TDXQuote memory quote = V4TDXQuote({header: header, reportBody: tdReport, authData: authData});
             (success, output) = _verifyTDXQuote(quote, rawHeader, rawBody, rawQeReport);
+        } else {
+            return (false, bytes("Unknown TEE type"));
         }
     }
 
