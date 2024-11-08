@@ -35,42 +35,9 @@ contract P256Configuration is Script {
                 console.log("P256Verifier address: ", DAIMO_P256);
                 verifier = DAIMO_P256;
             } else {
-                console.log("Failed to locate a verifier.");
+                revert("Failed to locate a verifier.");
             }
         }
-
-        // vm.startBroadcast();
-        // uint256 a = gasleft();
-        // (, bytes memory ret) = address(RIP7212_P256_PRECOMPILE).staticcall(data);
-        // uint256 b = gasleft();
-
-        // console.logBytes(data);
-        // console.log("Precompile gas: ", a - b);
-        // console.logBytes(ret);
-
-        // bool returned = abi.decode(ret, (bool));
-
-        // if (returned) {
-        //     console.log("Precompiled verified!");
-        //     verifier = RIP7212_P256_PRECOMPILE;
-        // } else {
-        //     a = gasleft();
-        //     (, ret) = address(RIP7212_P256_PRECOMPILE).staticcall(data);
-        //     b = gasleft();
-
-        //     console.log("solidity gas: ", a - b);
-
-        //     returned = abi.decode(ret, (bool));
-        // }
-
-        // if (!returned) {
-        //     revert("ECDSA failed");
-        // } else {
-        //     console.log("Success!");
-        //     verifier = DAIMO_P256;
-        // }
-
-        // vm.stopBroadcast();
     }
 
     function verifyWithFfi(address verifier, bytes memory data) private returns (bool) {
