@@ -19,15 +19,15 @@ Automata DCAP Attestation consists of three parts:
 
 - Quote Verifier(s): This contract provides the full implementation on verifying a given quote specific to its version. This contract is intended to be called only from the Automata DCAP Attestation contract.
 
-## On-Chain vs RiscZero Attestations
+## On-Chain vs SNARK Attestations
 
 Automata DCAP Attestation contract implements two attestation methods available to users. Here is a quick comparison:
 
-|  | On-Chain | SNARK Proof with RiscZero |
-| --- | --- | --- |
-| Quote Verification Time | Instant | Proving takes 2 - 5 minutes, instant verification |
-| Gas Cost | ~4M gas | 300k gas |
-| Execution | Runs fully on-chain | The execution runs in a Guest program on Bonsai, which is then issued with a [Receipt](https://dev.risczero.com/api/zkvm/receipts). Verifiers should make sure the Receipt contains the expected Image ID, which can be generated directly from the Guest source code. After a successful execution of the Guest program, the proof is sent on-chain to be verified. |
+|  | On-Chain | Groth16 Proof Verification with RiscZero | Groth16 Proof Verification with SP1 V3 | Plonk Proof Verification with SP1 V3| 
+| --- | --- | --- | --- | --- |
+| Quote Verification Time | Instant | Proving takes 2 - 5 minutes, instant verification | Proving takes <2 minutes, instant verification  | Proving takes <2 minutes, instant verification |
+| Gas Cost | ~4M gas | 267k gas | 234k gas | 310k gas |
+| Execution | Runs fully on-chain | Execution runs and is proven by remote prover Bonsai | Execution runs and is proven by the SP1 Network | Execution runs and is proven by the SP1 Network |
 
 ## Integration
 
@@ -161,7 +161,14 @@ forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "confi
 
 #### Deployment Information
 
-The ImageID currently used for the DCAP RiscZero Guest Program is `4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2`.
+The [ImageID](https://dev.risczero.com/terminology#image-id) currently used for the DCAP RiscZero Guest Program is `4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2`.
+
+The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#finding-your-program-vkey) currently used for the DCAP SP1 Program is
+`0016d421d8599b43498eee7c30e6eca5e7aa05c02e38e5bf392937c98736fda6`.
+
+> ℹ️ **Note**: 
+>
+> The current deployment are based on the un-audited [v0](https://github.com/automata-network/automata-dcap-attestation/tree/v0) branch. We are currently getting our contracts audited, and will be re-deploying production-ready contracts then.
 
 ##### Testnet
 
