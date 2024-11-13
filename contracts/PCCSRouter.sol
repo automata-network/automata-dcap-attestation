@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./interfaces/IPCCSRouter.sol";
 
 import {Ownable} from "solady/auth/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveIdentityDao.sol";
 import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
 import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
@@ -19,10 +18,12 @@ import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
  * and all collaterals are to be returned in Solidity "friendlier" types.
  */
 
-contract PCCSRouter is IPCCSRouter, Pausable, Ownable {
+contract PCCSRouter is IPCCSRouter, Ownable {
     /// @dev PCCS Router is currently access-controlled
     /// @dev can be disabled using Pausable later when desired
     mapping(address => bool) _authorized;
+
+    bool _isCallerRestricted;
 
     address public override qeIdDaoAddr;
     address public override fmspcTcbDaoAddr;
@@ -56,8 +57,16 @@ contract PCCSRouter is IPCCSRouter, Pausable, Ownable {
         _authorized[caller] = authorized;
     }
 
+    function enableCallerRestriction() external onlyOwner {
+        _isCallerRestricted = true;
+    }
+
+    function disableCallerRestriction() external onlyOwner {
+        _isCallerRestricted = false;
+    }
+
     modifier onlyAuthorized() {
-        if (!paused() && !_authorized[msg.sender]) {
+        if (_isCallerRestricted && !_authorized[msg.sender]) {
             revert Forbidden();
         }
         _;

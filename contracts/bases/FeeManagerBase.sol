@@ -1,16 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-
-abstract contract FeeManagerBase is Pausable {
+abstract contract FeeManagerBase {
     uint16 constant MAX_BP = 10_000;
 
-    /// @dev this is the amount of gas configured once upon deployment
-    /// @dev allocated for ETH payments and refunds
-    uint16 immutable REFUND_GAS_OFFSET;
-
     uint16 _feeBP; // the percentage of gas fee in basis point;
+    bool _isFeeEnabled;
 
     // 1356a63b
     error BP_Not_Valid();
@@ -19,25 +14,20 @@ abstract contract FeeManagerBase is Pausable {
     // c40a532b
     error Withdrawal_Failed();
 
-    constructor(uint16 offset) {
-        REFUND_GAS_OFFSET = offset;
-    }
-
     /// @dev access-controlled
-    function setBp(uint16 _newBp) public virtual whenNotPaused {
+    function setBp(uint16 _newBp) public virtual {
         if (_newBp > MAX_BP) {
             revert BP_Not_Valid();
         }
         _feeBP = _newBp;
     }
 
-    /// @dev access-controlled
-    function pause() public virtual {
-        if (paused()) {
-            _unpause();
-        } else {
-            _pause();
-        }
+    function enableFee() public virtual {
+        _isFeeEnabled = true;
+    }
+
+    function disableFee() public virtual {
+        _isFeeEnabled = false;
     }
 
     function getBp() public view returns (uint16) {
@@ -54,11 +44,11 @@ abstract contract FeeManagerBase is Pausable {
 
     modifier collectFee() {
         uint256 txFee;
-        if (!paused() && _feeBP > 0) {
+        if (_isFeeEnabled && _feeBP > 0) {
             uint256 gasBefore = gasleft();
             _;
             uint256 gasAfter = gasleft();
-            txFee = ((gasBefore - gasAfter + REFUND_GAS_OFFSET) * tx.gasprice * _feeBP) / MAX_BP;
+            txFee = ((gasBefore - gasAfter) * tx.gasprice * _feeBP) / MAX_BP;
             if (msg.value < txFee) {
                 revert Insuccifient_Funds();
             }
@@ -70,7 +60,10 @@ abstract contract FeeManagerBase is Pausable {
         if (msg.value > 0) {
             uint256 excess = msg.value - txFee;
             if (excess > 0) {
-                _refund(msg.sender, excess);
+                // refund the sender, rather than the caller
+                // @dev may fail subsequent call(s), if the caller were a contract
+                // that might need to make subsequent calls requiring ETh transfers
+                _refund(tx.origin, excess);
             }
         }
     }

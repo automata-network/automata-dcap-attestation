@@ -13,10 +13,9 @@ import {BytesUtils} from "../contracts/utils/BytesUtils.sol";
 contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     using BytesUtils for bytes;
 
+    uint256 constant EXPECTED_GAS = 5_000_000;
     uint256 constant GAS_PRICE_WEI = 1_000_000_000; // 1 Gwei
     uint16 constant CONFIGURED_BP = 1_000; // 10 %
-    // Preston: standard ETH transfer gas cost, but I think it's probably much lower
-    uint16 constant REFUND_OFFSET = 21_000;
     uint16 constant MAX_BP = 10_000;
 
     AutomataDcapAttestationFee attestation;
@@ -40,7 +39,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         setUpRiscZero();
 
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestationFee(REFUND_OFFSET);
+        attestation = new AutomataDcapAttestationFee();
 
         // Setup Fee Management
 
@@ -81,27 +80,22 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
 
         vm.stopPrank();
 
-        // estimate gas cost with simulation
-        (bool simulationSuccess, bytes memory retData) = address(attestation).call(
-            abi.encodeWithSelector(AutomataDcapAttestationFee.simulateVerifyAndAttestOnChain.selector, sampleQuote)
-        );
-        assertTrue(!simulationSuccess);
-
-        retData = retData.substring(4, retData.length - 4);
-        (, uint256 gas) = abi.decode(retData, (bool, uint256));
-        uint256 expectedFee = gas * GAS_PRICE_WEI;
-        console.log("gas: ", gas);
-        console.log("expected fee: ", expectedFee);
-
         // verify the quote
         uint256 balanceBefore = user.balance;
+        uint256 expectedFee = GAS_PRICE_WEI * EXPECTED_GAS;
+        console.log("expected fee: ", expectedFee);
 
         vm.prank(user);
+        uint256 a = gasleft();
         (bool success, bytes memory output) = attestation.verifyAndAttestOnChain{value: expectedFee}(sampleQuote);
+        uint256 b = gasleft();
 
         if (!success) {
             console.log(string(output));
         } else {
+            uint256 gas = a - b;
+            console.log("gas: ", gas);
+
             uint256 balanceAfter = user.balance;
             uint256 paidFee = balanceBefore - balanceAfter;
             console.log("paid fee: ", paidFee);

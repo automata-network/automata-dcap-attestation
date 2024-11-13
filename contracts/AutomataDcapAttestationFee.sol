@@ -10,12 +10,12 @@ import "./bases/FeeManagerBase.sol";
  * needed to perform DCAP attestation.
  */
 contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase {
-    error SimulationComplete(bool success, uint256 gas);
+    function enableFee() public override onlyOwner {
+        super.enableFee();
+    }
 
-    constructor(uint16 refundOffset) FeeManagerBase(refundOffset) {}
-
-    function pause() public override onlyOwner {
-        super.pause();
+    function disableFee() public override onlyOwner {
+        super.disableFee();
     }
 
     function setBp(uint16 _newBp) public override onlyOwner {
@@ -24,32 +24,6 @@ contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase
 
     function withdraw(address beneficiary, uint256 amount) public override onlyOwner {
         super.withdraw(beneficiary, amount);
-    }
-
-    /**
-     * @dev may perform staticcall to this method to get an estimated gas consumption
-     * for calling verifyAndAttestOnChain()
-     * @dev get the verification status and gas cost by performing abi.decode of the
-     * revert data (not including the 4-byte error selector) of tuple type (bool, uint256).
-     */
-    function simulateVerifyAndAttestOnChain(bytes calldata rawQuote) external view {
-        uint256 a = gasleft();
-        (bool success,) = _verifyAndAttestOnChain(rawQuote);
-        uint256 b = gasleft();
-        revert SimulationComplete(success, a - b);
-    }
-
-    /**
-     * @dev may perform staticcall to this method to get an estimated gas consumption
-     * for calling verifyAndAttestWithZKProof()
-     * @dev get the verification status and gas cost by performing abi.decode of the
-     * revert data (not including the 4-byte error selector) of tuple type (bool, uint256).
-     */
-    function simulateVerifyAndAttestWithZkProof(bytes calldata output, bytes calldata proofBytes) external view {
-        uint256 a = gasleft();
-        (bool success,) = _verifyAndAttestWithZKProof(output, proofBytes);
-        uint256 b = gasleft();
-        revert SimulationComplete(success, a - b);
     }
 
     function verifyAndAttestOnChain(bytes calldata rawQuote)
