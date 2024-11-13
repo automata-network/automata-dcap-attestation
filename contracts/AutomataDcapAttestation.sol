@@ -15,11 +15,15 @@ contract AutomataDcapAttestation is AttestationEntrypointBase {
         (success, output) = _verifyAndAttestOnChain(rawQuote);
     }
 
-    function verifyAndAttestWithZKProof(bytes calldata output, bytes calldata proofBytes)
+    function verifyAndAttestWithZKProof(
+        bytes calldata output,
+        ZkCoProcessorType zkCoprocessor,
+        bytes calldata proofBytes
+    )
         external
         view
         returns (bool success, bytes memory verifiedOutput)
     {
-        (success, verifiedOutput) = _verifyAndAttestWithZKProof(output, proofBytes);
+        (success, verifiedOutput) = _verifyAndAttestWithZKProof(output, zkCoprocessor, proofBytes);
     }
 }

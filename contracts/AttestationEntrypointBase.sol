@@ -82,7 +82,12 @@ abstract contract AttestationEntrypointBase is Ownable {
     }
 
     /**
+     * @notice full on-chain verification for an attestation
      * @param rawQuote - Intel DCAP Quote serialized in raw bytes
+     * @return success - whether the quote has been successfully verified or not
+     * @return output - the output upon completion of verification. The output data may require post-processing by the consumer.
+     * For verification failures, the output is simply a UTF-8 encoded string, describing the reason for failure.
+     * @dev can directly type-cast the failed output as a string
      */
     function _verifyAndAttestOnChain(bytes calldata rawQuote)
         internal
@@ -103,30 +108,34 @@ abstract contract AttestationEntrypointBase is Ownable {
     }
 
     /**
+     * @notice verifies an attestation using SNARK proofs
+     * 
      * @param output - The output of the Guest program, this includes:
      * - VerifiedOutput struct
      * - RootCA hash
      * - TCB Signing CA hash
      * - Root CRL hash
      * - Platform or Processor CRL hash
-     * @param proofBytes - abi-encoded tuple of:
-     * - The ZK Co-Processor Type (uint8 value)
-     * - The encoded cryptographic proof (i.e. SNARK)).
+     * @param zkCoprocessor - Specify ZK Co-Processor
+     * @param proofBytes - The encoded cryptographic proof (i.e. SNARK)).
      */
-    function _verifyAndAttestWithZKProof(bytes calldata output, bytes calldata proofBytes)
+    function _verifyAndAttestWithZKProof(
+        bytes calldata output, 
+        ZkCoProcessorType zkCoprocessor, 
+        bytes calldata proofBytes
+    )
         internal
         view
         returns (bool success, bytes memory verifiedOutput)
     {
-        ZkCoProcessorType zkCoprocessor = ZkCoProcessorType(uint8(bytes1(proofBytes[0:1])));
         ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
 
         if (zkCoprocessor == ZkCoProcessorType.RiscZero) {
             IRiscZeroVerifier(zkConfig.zkVerifier).verify(
-                proofBytes[1:], zkConfig.dcapProgramIdentifier, sha256(output)
+                proofBytes, zkConfig.dcapProgramIdentifier, sha256(output)
             );
         } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
-            ISP1Verifier(zkConfig.zkVerifier).verifyProof(zkConfig.dcapProgramIdentifier, output, proofBytes[1:]);
+            ISP1Verifier(zkConfig.zkVerifier).verifyProof(zkConfig.dcapProgramIdentifier, output, proofBytes);
         } else {
             revert Unknown_Zk_Coprocessor();
         }
