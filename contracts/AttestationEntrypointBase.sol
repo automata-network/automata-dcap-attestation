@@ -66,7 +66,7 @@ abstract contract AttestationEntrypointBase is Ownable {
     }
 
     /**
-     * @param zkCoProcessorType 0 - RiscZero, 1 - Succinct... etc.
+     * @param zkCoProcessorType 1 - RiscZero, 2 - Succinct... etc.
      * @return this is either the IMAGE_ID for RiscZero Guest Program or
      * Succiinct Program Verifying Key
      */
