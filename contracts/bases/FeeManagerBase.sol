@@ -5,7 +5,6 @@ abstract contract FeeManagerBase {
     uint16 constant MAX_BP = 10_000;
 
     uint16 _feeBP; // the percentage of gas fee in basis point;
-    bool _isFeeEnabled;
 
     // 1356a63b
     error BP_Not_Valid();
@@ -22,14 +21,6 @@ abstract contract FeeManagerBase {
         _feeBP = _newBp;
     }
 
-    function enableFee() public virtual {
-        _isFeeEnabled = true;
-    }
-
-    function disableFee() public virtual {
-        _isFeeEnabled = false;
-    }
-
     function getBp() public view returns (uint16) {
         return _feeBP;
     }
@@ -44,7 +35,7 @@ abstract contract FeeManagerBase {
 
     modifier collectFee() {
         uint256 txFee;
-        if (_isFeeEnabled && _feeBP > 0) {
+        if (_feeBP > 0) {
             uint256 gasBefore = gasleft();
             _;
             uint256 gasAfter = gasleft();

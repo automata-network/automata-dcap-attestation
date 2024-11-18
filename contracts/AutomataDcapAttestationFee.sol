@@ -10,14 +10,6 @@ import "./bases/FeeManagerBase.sol";
  * needed to perform DCAP attestation.
  */
 contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase {
-    function enableFee() public override onlyOwner {
-        super.enableFee();
-    }
-
-    function disableFee() public override onlyOwner {
-        super.disableFee();
-    }
-
     function setBp(uint16 _newBp) public override onlyOwner {
         super.setBp(_newBp);
     }

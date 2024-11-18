@@ -7,15 +7,15 @@ import {PlonkSetup} from "./utils/succinct/PlonkSetup.sol";
 import {Groth16Setup} from "./utils/succinct/Groth16Setup.sol";
 
 import {
-    AutomataDcapAttestation, ZkCoProcessorConfig, ZkCoProcessorType
-} from "../contracts/AutomataDcapAttestation.sol";
+    AutomataDcapAttestationFee, ZkCoProcessorConfig, ZkCoProcessorType
+} from "../contracts/AutomataDcapAttestationFee.sol";
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
 
 import {ISP1Verifier} from "@sp1-contracts/ISP1Verifier.sol";
 
-contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup {
-    AutomataDcapAttestation attestation;
+contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
+    AutomataDcapAttestationFee attestation;
     PCCSRouter pccsRouter;
     
     // Contracts used for testing only
@@ -31,7 +31,7 @@ contract AutomataDcapAttestationTest is PCCSSetupBase, RiscZeroSetup {
         pcsDaoUpserts();
 
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestation();
+        attestation = new AutomataDcapAttestationFee();
 
         vm.stopPrank();
     }

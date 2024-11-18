@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
-import "../contracts/AutomataDcapAttestation.sol";
+import "../contracts/AutomataDcapAttestationFee.sol";
 
 contract AttestationScript is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
@@ -12,7 +12,7 @@ contract AttestationScript is Script {
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
 
-        AutomataDcapAttestation attestation = new AutomataDcapAttestation();
+        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee();
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
 
@@ -22,7 +22,7 @@ contract AttestationScript is Script {
     function configVerifier(address verifier) public {
         address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
         vm.broadcast(deployerKey);
-        AutomataDcapAttestation(attestationAddr).setQuoteVerifier(verifier);
+        AutomataDcapAttestationFee(attestationAddr).setQuoteVerifier(verifier);
     }
 
     function configureZk(uint8 zk, address verifierGateway, bytes32 programId) public {
@@ -32,6 +32,6 @@ contract AttestationScript is Script {
             ZkCoProcessorConfig({dcapProgramIdentifier: programId, zkVerifier: verifierGateway});
 
         vm.broadcast(deployerKey);
-        AutomataDcapAttestation(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
+        AutomataDcapAttestationFee(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
     }
 }
