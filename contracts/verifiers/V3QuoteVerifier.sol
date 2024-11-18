@@ -18,7 +18,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         override
         returns (bool success, bytes memory output)
     {
-        uint256 offset = 2 + MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
+        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
         success = checkCollateralHashes(offset + 72, outputBytes);
         if (success) {
             output = outputBytes[2:offset];
@@ -156,7 +156,8 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
-            quoteBody: rawBody
+            quoteBody: rawBody,
+            advisoryIDs: new string[](0)
         });
         serialized = serializeOutput(output);
     }

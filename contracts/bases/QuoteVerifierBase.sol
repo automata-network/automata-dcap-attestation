@@ -141,7 +141,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     }
 
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
-        return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody);
+        return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody, abi.encode(output.advisoryIDs));
     }
 
     function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool) {
