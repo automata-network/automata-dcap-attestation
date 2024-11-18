@@ -21,7 +21,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     AutomataDcapAttestationFee attestation;
     PCCSRouter pccsRouter;
 
-    bytes32 imageId = vm.envBytes32("DCAP_IMAGE_ID");
+    bytes32 imageId = vm.envBytes32("DCAP_RISCZERO_IMAGE_ID");
     address user = address(69);
 
     function setUp() public override {

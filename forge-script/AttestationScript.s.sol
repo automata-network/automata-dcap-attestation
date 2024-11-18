@@ -8,8 +8,6 @@ import "../contracts/AutomataDcapAttestation.sol";
 
 contract AttestationScript is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
-    address riscZeroVerifier = vm.envAddress("RISC0_VERIFIER");
-    bytes32 riscZeroImageId = vm.envBytes32("DCAP_IMAGE_ID");
 
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
