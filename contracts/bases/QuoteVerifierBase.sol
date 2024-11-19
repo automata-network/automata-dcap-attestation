@@ -175,16 +175,17 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         (bool processorSuccess, bytes memory processorRet) =
             address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PROCESSOR));
 
-        bytes32 expectedPckCrlHash;
+        bytes32 expectedPlatformCrlHash;
+        bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
-            (, expectedPckCrlHash) = abi.decode(platformRet, (bool, bytes32));
+            (, expectedPlatformCrlHash) = abi.decode(platformRet, (bool, bytes32));
         } else if (processorSuccess) {
-            (, expectedPckCrlHash) = abi.decode(processorRet, (bool, bytes32));
+            (, expectedProcessorCrlHash) = abi.decode(processorRet, (bool, bytes32));
         } else {
             // Both Processor and Platform PCKs not found
             return false;
         }
 
-        return expectedPckCrlHash == pckCrlHash;
+        return pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
     }
 }
