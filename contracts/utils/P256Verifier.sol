@@ -4,12 +4,20 @@ pragma solidity ^0.8.0;
 import "./BytesUtils.sol";
 
 /**
- * @notice modified from https://github.com/daimo-eth/p256-verifier/
+ * @title P256Verifier Wrapper
  */
-library P256Verifier {
+abstract contract P256Verifier {
     using BytesUtils for bytes;
 
-    address internal constant P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+    /// @dev this address can either be:
+    /// - 0x100 (as defined in RIP-7212)
+    /// - 0xc2b78104907F722DABAc4C69f826a522B2754De4 (daimo-eth P256 implementation, ref: https://github.com/daimo-eth/p256-verifier/)
+    /// @dev may contain other P256 Verifier address depending on the target network
+    address public immutable P256_VERIFIER;
+
+    constructor(address _verifier) {
+        P256_VERIFIER = _verifier;
+    }
 
     function ecdsaVerify(bytes32 messageHash, bytes memory signature, bytes memory key)
         internal

@@ -5,14 +5,23 @@ import "../bases/QuoteVerifierBase.sol";
 import "../types/V3Structs.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 
-contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
-    constructor(address _router) QuoteVerifierBase(_router, 3) {}
+/**
+ * @title Automata DCAP QuoteV3 Verifier
+ */
 
-    function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
-        uint256 offset = 2 + MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
-        success = checkCollateralHashes(offset + 72, journal);
+contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
+    constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 3) P256Verifier(_ecdsaVerifier) {}
+
+    function verifyZkOutput(bytes calldata outputBytes)
+        external
+        view
+        override
+        returns (bool success, bytes memory output)
+    {
+        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
+        success = checkCollateralHashes(offset + 72, outputBytes);
         if (success) {
-            output = journal[2: offset];
+            output = outputBytes[2:offset];
         } else {
             output = bytes("Found one or more collaterals mismatch");
         }
@@ -123,7 +132,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         tcbStatus = convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tcbStatus);
 
         // Step 4: verify cert chain
-        success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);
+        success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
         if (!success) {
             return (success, bytes("Failed to verify X509 Chain"));
         }
@@ -147,7 +156,8 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
-            quoteBody: rawBody
+            quoteBody: rawBody,
+            advisoryIDs: new string[](0)
         });
         serialized = serializeOutput(output);
     }
@@ -195,11 +205,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (false, authDataV3, rawQeReport);
         }
 
-        // TODO
-        bytes16 qeid;
-
-        (success, authDataV3.certification.pck) =
-            getPckCollateral(pccsRouter.pckDaoAddr(), pccsRouter.pckHelperAddr(), qeid, certType, rawCertData);
+        (success, authDataV3.certification.pck) = getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
         if (!success) {
             return (false, authDataV3, rawQeReport);
         }

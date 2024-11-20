@@ -9,7 +9,7 @@ on:
     workflow_dispatch:
 
 env:
-  DCAP_IMAGE_ID: "0x4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2"
+  DCAP_RISCZERO_IMAGE_ID: "0x83613a8beec226d1f29714530f1df791fa16c2c4dfcf22c50ab7edac59ca637f"
 
 jobs:
   check:

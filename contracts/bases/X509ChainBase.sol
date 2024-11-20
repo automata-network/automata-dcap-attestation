@@ -3,15 +3,15 @@ pragma solidity ^0.8.0;
 
 import {BytesUtils, P256Verifier} from "../utils/P256Verifier.sol";
 import {PCKCollateral, PCKCertTCB} from "../types/CommonStruct.sol";
+import {IPCCSRouter} from "../interfaces/IPCCSRouter.sol";
 
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 import {PCKHelper, X509CertObj} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
 import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelper.sol";
-import {PcsDao, CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
-import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
+import {CA} from "@automata-network/on-chain-pccs/Common.sol";
 
-abstract contract X509ChainBase {
+abstract contract X509ChainBase is P256Verifier {
     using BytesUtils for bytes;
     using LibString for bytes;
 
@@ -28,75 +28,14 @@ abstract contract X509ChainBase {
     uint256 constant X509_HEADER_LENGTH = 27;
     uint256 constant X509_FOOTER_LENGTH = 25;
 
-    function getPckCollateral(
-        address pckDaoAddr,
-        address pckHelperAddr,
-        bytes16 qeid,
-        uint16 certType,
-        bytes memory rawCertData
-    ) internal view returns (bool success, PCKCollateral memory pck) {
+    function getPckCollateral(address pckHelperAddr, uint16 certType, bytes memory rawCertData)
+        internal
+        pure
+        returns (bool success, PCKCollateral memory pck)
+    {
         pck.pckChain = new X509CertObj[](3);
 
-        if (certType < 5) {
-            // TEMP: Not supported at the moment
-            // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/39989a42bbbb0c968153a47254b6de79a27eb603/QuoteGeneration/quote_wrapper/common/inc/sgx_quote_3.h#L57-L66
-            return (false, pck);
-
-            
-            // PckDao pckDao = PckDao(pckDaoAddr);
-            // bytes memory pckLeaf;
-            // if (certType == 4) {
-            //     pckLeaf = rawCertData;
-            // } else {
-            //     uint256 offset;
-            //     if (certType == 1) {
-            //         offset = 16;
-            //     } else if (certType == 2) {
-            //         offset = 256;
-            //     } else {
-            //         offset = 384;
-            //     }
-            //     bytes16 platformCpuSvn = bytes16(rawCertData.substring(offset, 16));
-            //     offset += 16;
-            //     bytes2 platformPceSvn = bytes2(rawCertData.substring(offset, 2));
-            //     offset += 2;
-            //     bytes2 pceid = bytes2(rawCertData.substring(offset, 2));
-            //     pckLeaf = pckDao.getCert(
-            //         abi.encodePacked(qeid).toHexStringNoPrefix(),
-            //         abi.encodePacked(platformCpuSvn).toHexStringNoPrefix(),
-            //         abi.encodePacked(platformPceSvn).toHexStringNoPrefix(),
-            //         abi.encodePacked(pceid).toHexStringNoPrefix()
-            //     );
-            // }
-
-            // if (pckLeaf.length == 0) {
-            //     return (false, pck);
-            // }
-
-            // bytes[] memory issuerChain = new bytes[](2);
-
-            // (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, pckLeaf);
-
-            // string memory pckIssuerCn = pck.pckChain[0].issuerCommonName;
-            // if (LibString.eq(pckIssuerCn, PLATFORM_ISSUER_NAME)) {
-            //     (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PLATFORM);
-            // } else if (LibString.eq(pckIssuerCn, PROCESSOR_ISSUER_NAME)) {
-            //     (issuerChain[0], issuerChain[1]) = pckDao.getPckCertChain(CA.PROCESSOR);
-            // } else {
-            //     return (false, pck);
-            // }
-
-            // if (issuerChain[0].length == 0 || issuerChain[1].length == 0) {
-            //     return (false, pck);
-            // }
-
-            // X509CertObj[] memory parsedIssuerChain = _parsePckIssuer(pckHelperAddr, issuerChain);
-            // for (uint256 i = 0; i < parsedIssuerChain.length; i++) {
-            //     pck.pckChain[i + 1] = parsedIssuerChain[i];
-            // }
-
-            // success = true;
-        } else if (certType == 5) {
+        if (certType == 5) {
             bytes[] memory certArray;
             (success, certArray) = _splitCertificateChain(rawCertData, 3);
             if (!success) {
@@ -118,12 +57,11 @@ abstract contract X509ChainBase {
         }
     }
 
-    function verifyCertChain(address pcsDaoAddr, address crlHelperAddr, X509CertObj[] memory certs)
+    function verifyCertChain(IPCCSRouter pccsRouter, address crlHelperAddr, X509CertObj[] memory certs)
         internal
         view
         returns (bool)
     {
-        PcsDao pcsDao = PcsDao(pcsDaoAddr);
         X509CRLHelper crlHelper = X509CRLHelper(crlHelperAddr);
         uint256 n = certs.length;
         bool certRevoked;
@@ -139,13 +77,13 @@ abstract contract X509ChainBase {
                 issuer = certs[i + 1];
                 bytes memory crl;
                 if (i == n - 2) {
-                    (, crl) = pcsDao.getCertificateById(CA.ROOT);
+                    (, crl) = pccsRouter.getCrl(CA.ROOT);
                 } else if (i == 0) {
                     string memory issuerName = certs[i].issuerCommonName;
                     if (LibString.eq(issuerName, PLATFORM_ISSUER_NAME)) {
-                        (, crl) = pcsDao.getCertificateById(CA.PLATFORM);
+                        (, crl) = pccsRouter.getCrl(CA.PLATFORM);
                     } else if (LibString.eq(issuerName, PROCESSOR_ISSUER_NAME)) {
-                        (, crl) = pcsDao.getCertificateById(CA.PROCESSOR);
+                        (, crl) = pccsRouter.getCrl(CA.PROCESSOR);
                     } else {
                         return false;
                     }
@@ -164,7 +102,7 @@ abstract contract X509ChainBase {
             }
 
             {
-                verified = P256Verifier.ecdsaVerify(sha256(certs[i].tbs), certs[i].signature, issuer.subjectPublicKey);
+                verified = ecdsaVerify(sha256(certs[i].tbs), certs[i].signature, issuer.subjectPublicKey);
                 if (!verified) {
                     break;
                 }

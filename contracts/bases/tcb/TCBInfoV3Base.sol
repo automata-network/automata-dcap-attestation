@@ -12,11 +12,13 @@ import "./TCBInfoV2Base.sol";
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
     using LibString for string;
 
+    uint256 constant TCB_LEVEL_ERROR = type(uint256).max;
+
     /// @dev Modified from https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L129-L181
     function getTDXTcbStatus(TCBLevelsObj[] memory tcbLevels, PCKCertTCB memory pckTcb, bytes16 teeTcbSvn)
         internal
         pure
-        returns (bool tdxTcbFound, TCBStatus status)
+        returns (bool tdxTcbFound, TCBStatus status, uint256 tcbLevelSelected)
     {
         bool pceSvnIsHigherOrGreater;
         bool cpuSvnsAreHigherOrGreater;
@@ -36,10 +38,13 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
                     if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxSvns)) {
                         tdxTcbFound = true;
                         status = current.status;
+                        tcbLevelSelected = i;
                     }
-                } else break;
+                } else {
+                    break;
+                }
             } else if (sgxStatus == TCBStatus.TCB_REVOKED) {
-                return (false, TCBStatus.TCB_REVOKED);
+                return (false, TCBStatus.TCB_REVOKED, TCB_LEVEL_ERROR);
             }
             if (tdxTcbFound) {
                 break;
@@ -47,7 +52,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
 
         if (!tdxTcbFound) {
-            status = TCBStatus.TCB_UNRECOGNIZED;
+            return (false, TCBStatus.TCB_UNRECOGNIZED, TCB_LEVEL_ERROR);
         }
     }
 

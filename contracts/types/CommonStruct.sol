@@ -64,4 +64,5 @@ struct Output {
     TCBStatus tcbStatus;
     bytes6 fmspcBytes;
     bytes quoteBody;
+    string[] advisoryIDs;
 }

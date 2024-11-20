@@ -141,14 +141,14 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     }
 
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
-        return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody);
+        return abi.encodePacked(output.quoteVersion, output.tee, output.tcbStatus, output.fmspcBytes, output.quoteBody, abi.encode(output.advisoryIDs));
     }
 
     function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool) {
-        bytes32 rootCaHash = bytes32(journal[offset:offset+32]);
-        bytes32 tcbSigningHash = bytes32(journal[offset+32:offset+64]);
-        bytes32 rootCaCrlHash = bytes32(journal[offset+64:offset+96]);
-        bytes32 pckCrlHash = bytes32(journal[offset+96:offset+128]);
+        bytes32 rootCaHash = bytes32(journal[offset:offset + 32]);
+        bytes32 tcbSigningHash = bytes32(journal[offset + 32:offset + 64]);
+        bytes32 rootCaCrlHash = bytes32(journal[offset + 64:offset + 96]);
+        bytes32 pckCrlHash = bytes32(journal[offset + 96:offset + 128]);
 
         (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
         if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
@@ -163,36 +163,29 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             return false;
         }
 
-        // use a low level call for PCK CRLs, because we don't know which one of the CAs is used
+        // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
         // to verify the quote
         // we can catch reverts here, and consider it a valid quote as long as:
         // - one of the PCK CAs has a CRL stored on-chain
         // - the hash of the on-chain CRL matches with the CRL hash in the journal
 
-        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(
-                IPCCSRouter.getCrlHash.selector,
-                CA.PLATFORM
-            )
-        );
+        (bool platformSuccess, bytes memory platformRet) =
+            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PLATFORM));
 
-        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(
-                IPCCSRouter.getCrlHash.selector,
-                CA.PROCESSOR
-            )
-        );
+        (bool processorSuccess, bytes memory processorRet) =
+            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PROCESSOR));
 
-        bytes32 expectedPckCrlHash;
+        bytes32 expectedPlatformCrlHash;
+        bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
-            (, expectedPckCrlHash) = abi.decode(platformRet, (bool, bytes32));
-        }  else if (processorSuccess) {
-            (, expectedPckCrlHash) = abi.decode(processorRet, (bool, bytes32));
+            (, expectedPlatformCrlHash) = abi.decode(platformRet, (bool, bytes32));
+        } else if (processorSuccess) {
+            (, expectedProcessorCrlHash) = abi.decode(processorRet, (bool, bytes32));
         } else {
-            // Processor or Platform PCKs not found
+            // Both Processor and Platform PCKs not found
             return false;
         }
 
-        return expectedPckCrlHash == pckCrlHash;
+        return pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
     }
 }

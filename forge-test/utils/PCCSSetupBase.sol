@@ -39,6 +39,7 @@ abstract contract PCCSSetupBase is Test {
     AutomataFmspcTcbDao fmspcTcbDao;
     AutomataEnclaveIdentityDao enclaveIdDao;
     AutomataDaoStorage pccsStorage;
+    address P256_VERIFIER;
 
     address internal constant admin = address(1);
 
@@ -73,12 +74,15 @@ abstract contract PCCSSetupBase is Test {
         x509Crl = new X509CRLHelper();
 
         pccsStorage = new AutomataDaoStorage();
-        pcsDao = new AutomataPcsDao(address(pccsStorage), address(x509), address(x509Crl));
-        pckDao = new AutomataPckDao(address(pccsStorage), address(pcsDao), address(x509), address(x509Crl));
+        pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
+        pckDao =
+            new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
-            address(pccsStorage), address(pcsDao), address(enclaveIdHelper), address(x509)
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(enclaveIdHelper), address(x509)
         );
-        fmspcTcbDao = new AutomataFmspcTcbDao(address(pccsStorage), address(pcsDao), address(tcbHelper), address(x509));
+        fmspcTcbDao = new AutomataFmspcTcbDao(
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509)
+        );
 
         pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
 
@@ -94,6 +98,9 @@ abstract contract PCCSSetupBase is Test {
             address(x509),
             address(x509Crl)
         );
+
+        // allow PCCS Router to read collaterals from the storage
+        pccsStorage.setCallerAuthorization(address(pccsRouter), true);
     }
 
     function pcsDaoUpserts() internal {
@@ -177,7 +184,7 @@ abstract contract PCCSSetupBase is Test {
         require(succ, "Failed to deploy P256");
 
         // check code
-        address P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+        P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
         uint256 codesize = P256_VERIFIER.code.length;
         require(codesize > 0, "P256 deployed to the wrong address");
     }

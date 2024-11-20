@@ -17,25 +17,32 @@ struct FetchedCollateralsAndStatuses {
     EnclaveIdTcbStatus qeTcbStatus;
 }
 
+/**
+ * @title Automata DCAP QuoteV4 Verifier
+ */
+
 contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
     using BytesUtils for bytes;
 
-    constructor(address _router) QuoteVerifierBase(_router, 4) {}
+    constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
-    function verifyJournal(bytes calldata journal) external view override returns (bool success, bytes memory output) {
-        uint256 offset = 2;
+    function verifyZkOutput(bytes calldata outputBytes)
+        external
+        view
+        override
+        returns (bool success, bytes memory output)
+    {
+        bytes4 teeType = bytes4(outputBytes[4:8]);
+        if (teeType != SGX_TEE && teeType != TDX_TEE) {
+            return (false, bytes("Unknown TEE type"));
+        }
 
-        bytes4 teeType = bytes4(journal[4:8]);
-        if (teeType == SGX_TEE) {
-            offset += MINIMUM_OUTPUT_LENGTH + ENCLAVE_REPORT_LENGTH;
-        } else if (teeType == TDX_TEE) {
-            offset += MINIMUM_OUTPUT_LENGTH + TD_REPORT10_LENGTH;
-        } else return (false, bytes("Unknown TEE type"));
+        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
 
-        success = checkCollateralHashes(offset + 72, journal);
+        success = checkCollateralHashes(offset + 72, outputBytes);
         if (success) {
-            output = journal[2:offset];
+            output = outputBytes[2:offset];
         } else {
             output = bytes("Found one or more collaterals mismatch");
         }
@@ -70,11 +77,13 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             V4SGXQuote memory quote =
                 V4SGXQuote({header: header, localEnclaveReport: localEnclaveReport, authData: authData});
             (success, output) = _verifySGXQuote(quote, rawHeader, rawBody, rawQeReport);
-        } else {
+        } else if (header.teeType == TDX_TEE) {
             TD10ReportBody memory tdReport = parseTD10ReportBody(rawQuoteBody);
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH];
             V4TDXQuote memory quote = V4TDXQuote({header: header, reportBody: tdReport, authData: authData});
             (success, output) = _verifyTDXQuote(quote, rawHeader, rawBody, rawQeReport);
+        } else {
+            return (false, bytes("Unknown TEE type"));
         }
     }
 
@@ -163,7 +172,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
 
         // Step 3: verify cert chain
-        success = verifyCertChain(pccsRouter.pcsDaoAddr(), pccsRouter.crlHelperAddr(), parsedCerts);
+        success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
         if (!success) {
             return (success, "Failed to verify X509 Chain", ret);
         }
@@ -207,9 +216,11 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 2: Check TCBStatus against isvs in the SGXComponent of the matching tcblevel
         TCBStatus tcbStatus;
         bool statusFound;
+        uint256 tcbLevelSelected;
         for (uint256 i = 0; i < ret.tcbLevels.length; i++) {
             (statusFound, tcbStatus) = getSGXTcbStatus(ret.pckTcb, ret.tcbLevels[i]);
             if (statusFound) {
+                tcbLevelSelected = i;
                 break;
             }
         }
@@ -225,7 +236,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             tee: SGX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
-            quoteBody: rawBody
+            quoteBody: rawBody,
+            advisoryIDs: ret.tcbLevels[tcbLevelSelected].advisoryIDs
         });
         serialized = serializeOutput(output);
     }
@@ -247,7 +259,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 2: Fetch FMSPC TCB
         // then get the TCB Status from the TDXComponenet of the matching TCBLevel
         TCBStatus tcbStatus;
-        (success, tcbStatus) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
+        uint256 tcbLevelSelected;
+        (success, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
         if (!success) {
             return (false, bytes("Failed to locate a valid FMSPC TCB Status"));
         }
@@ -282,7 +295,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             tee: TDX_TEE,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
-            quoteBody: rawBody
+            quoteBody: rawBody,
+            advisoryIDs: ret.tcbLevels[tcbLevelSelected].advisoryIDs
         });
         serialized = serializeOutput(output);
     }
@@ -373,11 +387,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             return (false, authDataV4, rawQeReport);
         }
 
-        // TODO
-        bytes16 qeid;
-
         (success, authDataV4.qeReportCertData.certification.pck) =
-            getPckCollateral(pccsRouter.pckDaoAddr(), pccsRouter.pckHelperAddr(), qeid, certType, rawCertData);
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
         if (!success) {
             return (false, authDataV4, rawQeReport);
         }

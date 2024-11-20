@@ -26,4 +26,22 @@ contract DeployRouter is Script {
 
         vm.stopBroadcast();
     }
+
+    function updateConfig() public {
+        vm.startBroadcast(deployerKey);
+
+        PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
+        router.setConfig(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr);
+
+        vm.stopBroadcast();
+    }
+
+    function setAuthorizedCaller(address caller, bool authorized) public {
+        vm.startBroadcast(deployerKey);
+        
+        PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
+        router.setAuthorized(caller, authorized);
+
+        vm.stopBroadcast();
+    }
 }
