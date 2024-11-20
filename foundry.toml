@@ -25,3 +25,6 @@ optimizer_runs = 200
 viaIR = true
 
 ffi = true
+
+[etherscan]
+base_sepolia = { key = "${ETHERSCAN_API_KEY_BASE_SEPOLIA}", url = "https://api-sepolia.basescan.org/api" }

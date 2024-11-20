@@ -183,6 +183,10 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 | Contract | Network | Address |
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Testnet | [0x3095741175094128ae9F451fa3693B2d23719940](https://explorer-testnet.ata.network/address/0x3095741175094128ae9F451fa3693B2d23719940) |
+| | Base Sepolia | [0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5](https://sepolia.basescan.org/address/0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5) |
 | `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145](https://explorer-testnet.ata.network/address/0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145) |
+| | Base Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia.basescan.org/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x6cc70fDaB6248b374A7fD4930460F7b017190872](https://explorer-testnet.ata.network/address/0x6cc70fDaB6248b374A7fD4930460F7b017190872) |
+| | Base Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia.basescan.org/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3](https://explorer-testnet.ata.network/address/0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3) |
+| | Base Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia.basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
