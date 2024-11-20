@@ -27,7 +27,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 | --- | --- | --- | --- | --- |
 | Quote Verification Time | Instant | Proving takes 2 - 5 minutes, instant verification | Proving takes <2 minutes, instant verification  | Proving takes <2 minutes, instant verification |
 | Gas Cost | ~4M gas | 267k gas | 234k gas | 310k gas |
-| Execution | Runs fully on-chain | Execution runs and is proven by remote prover Bonsai | Execution runs and is proven by the SP1 Network | Execution runs and is proven by the SP1 Network |
+| Execution | Runs fully on-chain | Execution proven by remote prover Bonsai | Execution proven by the SP1 Network | Execution proven by the SP1 Network |
 
 ## Integration
 
@@ -48,14 +48,14 @@ Then, add the following to your `remappings.txt`
 ### Example
 
 ```solidity
-import "@automata-network/dcap-attestation/AutomataDcapAttestation.sol";
+import "@automata-network/dcap-attestation/AutomataDcapAttestationFee.sol";
 
 contract ExampleDcapContract {
 
-    AutomataDcapAttestation attest;
+    AutomataDcapAttestationFee attest;
 
     constructor(address _attest) {
-        attest = AutomataDcapAttestation(_attest);
+        attest = AutomataDcapAttestationFee(_attest);
     }
 
     // On-Chain Attestation example
@@ -70,12 +70,18 @@ contract ExampleDcapContract {
         }
     }
 
-    // RiscZero Attestation example
-    function attestWithRiscZero(bytes calldata journal, bytes calldata seal) public 
+    // SNARK Attestation example
+    // ZkCoProcessorType can either be RiscZero or Succinct
+    function attestWithSnark(
+        bytes calldata output,
+        ZkCoProcessorType zkvm,
+        bytes calldata proofBytes
+    ) public 
     {
         (bool success, bytes memory output) = attest.verifyAndAttestWithZKProof(
-            journal,
-            seal
+            output,
+            zkvm,
+            proofBytes
         );
 
         if (success) {
@@ -161,37 +167,22 @@ forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "confi
 
 #### Deployment Information
 
-The [ImageID](https://dev.risczero.com/terminology#image-id) currently used for the DCAP RiscZero Guest Program is `4052beb38db7869b15596d53c2d5c02c9307faffca9215e69b0f0d0e1812a6c2`.
+The [ImageID](https://dev.risczero.com/terminology#image-id) currently used for the DCAP RiscZero Guest Program is `83613a8beec226d1f29714530f1df791fa16c2c4dfcf22c50ab7edac59ca637f`.
 
 The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#finding-your-program-vkey) currently used for the DCAP SP1 Program is
-`0016d421d8599b43498eee7c30e6eca5e7aa05c02e38e5bf392937c98736fda6`.
+`0043e4e0c286cf4a2c03472ca2384f35a008558bc5de4e0f39d1d1bc989badca`.
 
 > ℹ️ **Note**: 
 >
-> The current deployment are based on the un-audited [v0](https://github.com/automata-network/automata-dcap-attestation/tree/v0) branch. We are currently getting our contracts audited, and will be re-deploying production-ready contracts then.
+> The deployment addresses shown here are currently based on the latest [changes](https://github.com/automata-network/automata-dcap-attestation/pull/6) made.
+>
+> To view deployments on the previous version (will be deprecated soon), you may refer to this [branch](https://github.com/automata-network/automata-dcap-attestation/tree/v0).
 
 ##### Testnet
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Testnet | [0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543](https://explorer-testnet.ata.network/address/0xbFDeE7A1f1bFA2267cD0DA50BE76D8c4a3864543) |
-|  | Ethereum Holesky | [0xdE5e69A2ca2556fe46883d754d987703bF28Cc51](https://holesky.etherscan.io/address/0xdE5e69A2ca2556fe46883d754d987703bF28Cc51) |
-|  | Ethereum Sepolia | [0xdc7dcF60b9580980128539Ed805D03BC60F84fd4](https://sepolia.etherscan.io/address/0xdc7dcF60b9580980128539Ed805D03BC60F84fd4) |
-| `AutomataDcapAttestation.sol` | Automata Testnet | [0xefE368b17D137E86298eec8EbC5502fb56d27832](https://explorer-testnet.ata.network/address/0xefE368b17D137E86298eec8EbC5502fb56d27832) |
-|  | Ethereum Holesky | [0x133303659F51d75ED216FD98a0B70CbCD75339b2](https://holesky.etherscan.io/address/0x133303659F51d75ED216FD98a0B70CbCD75339b2) |
-|  | Ethereum Sepolia | [0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b](https://sepolia.etherscan.io/address/0x76A3657F2d6c5C66733e9b69ACaDadCd0B68788b) |
-| `V3QuoteVerifier.sol` | Automata Testnet | [0x67042D171b8B7Da1A4a98Df787bDce79190DAc3c](https://explorer-testnet.ata.network/address/0x67042D171b8B7Da1A4a98Df787bDce79190DAc3c) |
-|  | Ethereum Holesky | [0x12d7d59Ae1e4dbF83b08C82958Ac3FcEB84fB164](https://holesky.etherscan.io/address/0x12d7d59Ae1e4dbF83b08C82958Ac3FcEB84fB164) |
-|  | Ethereum Sepolia | [0x85E156d702bb3e45690DAa812238C1A841E2c3C5](https://sepolia.etherscan.io/address/0x85E156d702bb3e45690DAa812238C1A841E2c3C5) |
-| `V4QuoteVerifier.sol` | Automata Testnet | [0x921B8F6Ec83E405B715111eC1AE8B54A3ea063EB](https://explorer-testnet.ata.network/address/0x921B8F6Ec83E405B715111eC1AE8B54A3ea063EB) |
-|  | Ethereum Holesky | [0x3Cb24c454a29e796edF47a96dF32DD1855058258](https://holesky.etherscan.io/address/0x3Cb24c454a29e796edF47a96dF32DD1855058258) |
-|  | Ethereum Sepolia | [0xdc25e1c7ACAdBdE8C1E2c2b9511B7Dbd98B44700](https://sepolia.etherscan.io/address/0xdc25e1c7ACAdBdE8C1E2c2b9511B7Dbd98B44700) |
-
-##### Mainnet
-
-| Contract | Network | Address |
-| --- | --- | --- |
-| `PCCSRouter.sol` | Automata Mainnet | [0xb76834729717868fa203b9D90fc88F859A4E594D](https://explorer.ata.network/address/0xb76834729717868fa203b9D90fc88F859A4E594D) |
-| `AutomataDcapAttestation.sol` | Automata Mainnet | [0xE26E11B257856B0bEBc4C759aaBDdea72B64351F](https://explorer.ata.network/address/0xE26E11B257856B0bEBc4C759aaBDdea72B64351F) |
-| `V3QuoteVerifier.sol` | Automata Mainnet | [0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96](https://explorer.ata.network/address/0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96) |
-| `V4QuoteVerifier.sol` | Automata Mainnet | [0xfF47ecA64898692a86926CDDa794807be3f6567D](https://explorer.ata.network/address/0xfF47ecA64898692a86926CDDa794807be3f6567D) |
+| `PCCSRouter.sol` | Automata Testnet | [0x3095741175094128ae9F451fa3693B2d23719940](https://explorer-testnet.ata.network/address/0x3095741175094128ae9F451fa3693B2d23719940) |
+| `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145](https://explorer-testnet.ata.network/address/0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145) |
+| `V3QuoteVerifier.sol` | Automata Testnet | [0x6cc70fDaB6248b374A7fD4930460F7b017190872](https://explorer-testnet.ata.network/address/0x6cc70fDaB6248b374A7fD4930460F7b017190872) |
+| `V4QuoteVerifier.sol` | Automata Testnet | [0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3](https://explorer-testnet.ata.network/address/0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3) |
