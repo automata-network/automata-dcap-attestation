@@ -29,3 +29,4 @@ ffi = true
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY_BASE_SEPOLIA}", url = "https://api-sepolia.basescan.org/api" }
 holesky = { key = "${ETHERSCAN_API_KEY_HOLESKY}", url = "https://api-holesky.etherscan.io/api" }
+sepolia = { key = "${ETHERSCAN_API_KEY_SEPOLIA}", url = "https://api-sepolia.etherscan.io/api" }
