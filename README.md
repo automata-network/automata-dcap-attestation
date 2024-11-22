@@ -183,27 +183,31 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 | Contract | Network | Address |
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Testnet | [0x3095741175094128ae9F451fa3693B2d23719940](https://explorer-testnet.ata.network/address/0x3095741175094128ae9F451fa3693B2d23719940) |
-| | Base Sepolia | [0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5](https://sepolia.basescan.org/address/0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5) |
 | | Holesky | [0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5](https://holesky.etherscan.io/address/0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5) |
 | | Sepolia | [0xfFC62c8851F54723206235E24af1bf10b9ea1d47](https://sepolia.etherscan.io/address/0xfFC62c8851F54723206235E24af1bf10b9ea1d47) |
+| | Base Sepolia | [0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5](https://sepolia.basescan.org/address/0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5) |
+| | Optimism Sepolia | [0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5](https://sepolia-optimistic.etherscan.io/address/0x729E3e7542E8A6630818E9a14A67e0Cb7008a5E5) |
 | `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145](https://explorer-testnet.ata.network/address/0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145) |
-| | Base Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia.basescan.org/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 | | Holesky | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://holesky.etherscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 | | Sepolia | [0xE28ea4E574871CA6A4331d6692bd3DD602Fb4f76](https://sepolia.etherscan.io/address/0xE28ea4E574871CA6A4331d6692bd3DD602Fb4f76) |
+| | Base Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia.basescan.org/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+| | Optimism Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia-optimistic.etherscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x6cc70fDaB6248b374A7fD4930460F7b017190872](https://explorer-testnet.ata.network/address/0x6cc70fDaB6248b374A7fD4930460F7b017190872) |
-| | Base Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia.basescan.org/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 | | Holesky | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://holesky.etherscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 | | Sepolia | [0x6E64769A13617f528a2135692484B681Ee1a7169](https://sepolia.etherscan.io/address/0x6E64769A13617f528a2135692484B681Ee1a7169) |
+| | Base Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia.basescan.org/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+| | Optimism Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia-optimistic.etherscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3](https://explorer-testnet.ata.network/address/0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3) |
-| | Base Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia.basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 | | Holesky | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://holesky.etherscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 | | Sepolia | [0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A](https://sepolia.etherscan.io/address/0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A) |
+| | Base Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia.basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
+| | Optimism Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia-optimistic.etherscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 
 ## Mainnet
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Testnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://explorer-testnet.ata.network/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
-| `AutomataDcapAttestationFee.sol` | Automata Testnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://explorer-testnet.ata.network/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
-| `V3QuoteVerifier.sol` | Automata Testnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://explorer-testnet.ata.network/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
-| `V4QuoteVerifier.sol` | Automata Testnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://explorer-testnet.ata.network/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
+| `PCCSRouter.sol` | Automata Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://explorer.ata.network/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+| `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://explorer.ata.network/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+| `V3QuoteVerifier.sol` | Automata Mainnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://explorer.ata.network/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+| `V4QuoteVerifier.sol` | Automata Mainnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://explorer.ata.network/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
