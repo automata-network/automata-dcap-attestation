@@ -19,10 +19,9 @@ solc = "0.8.27"
 optimizer = true
 optimizer_runs = 200
 
-# NOTE: Be very careful with this when deploying, because I have had issues 
-# performing contract verification
-# https://github.com/foundry-rs/foundry/issues/3507
+# Useful link: https://github.com/foundry-rs/foundry/issues/3507
 viaIR = true
+evm_version = "paris"
 
 ffi = true
 
@@ -31,4 +30,5 @@ base_sepolia = { key = "${ETHERSCAN_API_KEY_BASE_SEPOLIA}", url = "https://api-s
 holesky = { key = "${ETHERSCAN_API_KEY_HOLESKY}", url = "https://api-holesky.etherscan.io/api" }
 sepolia = { key = "${ETHERSCAN_API_KEY_SEPOLIA}", url = "https://api-sepolia.etherscan.io/api" }
 optimism_sepolia = { key = "${ETHERSCAN_API_KEY_OPTIMISM_SEPOLIA}", url = "https://api-sepolia-optimistic.etherscan.io/api" }
+arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY_ARBITRUM_SEPOLIA}", url = "https://api-sepolia.arbiscan.io/api" }
 ata_mainnet = { key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/65536_2/etherscan/api?", chain = 65536 }
