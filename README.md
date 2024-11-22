@@ -198,3 +198,12 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 | | Base Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia.basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 | | Holesky | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://holesky.etherscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 | | Sepolia | [0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A](https://sepolia.etherscan.io/address/0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A) |
+
+## Mainnet
+
+| Contract | Network | Address |
+| --- | --- | --- |
+| `PCCSRouter.sol` | Automata Testnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://explorer-testnet.ata.network/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+| `AutomataDcapAttestationFee.sol` | Automata Testnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://explorer-testnet.ata.network/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+| `V3QuoteVerifier.sol` | Automata Testnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://explorer-testnet.ata.network/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+| `V4QuoteVerifier.sol` | Automata Testnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://explorer-testnet.ata.network/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
