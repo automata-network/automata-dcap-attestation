@@ -31,4 +31,5 @@ holesky = { key = "${ETHERSCAN_API_KEY_HOLESKY}", url = "https://api-holesky.eth
 sepolia = { key = "${ETHERSCAN_API_KEY_SEPOLIA}", url = "https://api-sepolia.etherscan.io/api" }
 optimism_sepolia = { key = "${ETHERSCAN_API_KEY_OPTIMISM_SEPOLIA}", url = "https://api-sepolia-optimistic.etherscan.io/api" }
 arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY_ARBITRUM_SEPOLIA}", url = "https://api-sepolia.arbiscan.io/api" }
+world_sepolia = { key = "${ETHERSCAN_API_KEY_WORLDCHAIN_SEPOLIA}", url = "https://api-sepolia.worldscan.org/api" }
 ata_mainnet = { key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/65536_2/etherscan/api?", chain = 65536 }
