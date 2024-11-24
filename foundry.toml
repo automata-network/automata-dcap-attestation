@@ -33,3 +33,4 @@ optimism_sepolia = { key = "${ETHERSCAN_API_KEY_OPTIMISM}", url = "https://api-s
 arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY_ARBITRUM}", url = "https://api-sepolia.arbiscan.io/api" }
 world_sepolia = { key = "${ETHERSCAN_API_KEY_WORLDCHAIN}", url = "https://api-sepolia.worldscan.org/api" }
 ata_mainnet = { key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/65536_2/etherscan/api?", chain = 65536 }
+base = { key = "${ETHERSCAN_API_KEY_BASE}", url = "https://api.basescan.org/api" }
