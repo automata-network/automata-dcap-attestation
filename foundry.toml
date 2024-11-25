@@ -36,3 +36,4 @@ ata_mainnet = { key = "verifyContract", url = "https://api.routescan.io/v2/netwo
 base = { key = "${ETHERSCAN_API_KEY_BASE}", url = "https://api.basescan.org/api" }
 optimism = { key = "${ETHERSCAN_API_KEY_OPTIMISM}", url = "https://api-optimistic.etherscan.io/api" }
 arbitrum = { key = "${ETHERSCAN_API_KEY_ARBITRUM}", url = "https://api.arbiscan.io/api" }
+world = { key = "${ETHERSCAN_API_KEY_WORLDCHAIN}", url = "https://api.worldscan.org/api" }
