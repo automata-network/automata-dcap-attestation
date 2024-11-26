@@ -216,6 +216,26 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 | Contract | Network | Address |
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://explorer.ata.network/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+|  | Ethereum Mainnet | [0x09bBC921be046726bb5b694A49888e4e2e7AA9C3](https://etherscan.io/address/0x09bBC921be046726bb5b694A49888e4e2e7AA9C3) |
+|  | Base Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://basescan.org/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+|  | OP Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://optimistic.etherscan.io/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+|  | World Mainnet | [0x09bBC921be046726bb5b694A49888e4e2e7AA9C3](https://worldchain-mainnet.explorer.alchemy.com/address/0x09bBC921be046726bb5b694A49888e4e2e7AA9C3) |
+|  | Arbitrum Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://arbiscan.io/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
 | `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://explorer.ata.network/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+|  | Ethereum Mainnet | [0xE26E11B257856B0bEBc4C759aaBDdea72B64351F](https://etherscan.io/address/0xE26E11B257856B0bEBc4C759aaBDdea72B64351F) |
+|  | Base Mainnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://basescan.org/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+|  | OP Mainnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://optimistic.etherscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
+|  | World Mainnet | [0xE26E11B257856B0bEBc4C759aaBDdea72B64351F](https://worldchain-mainnet.explorer.alchemy.com/address/0xE26E11B257856B0bEBc4C759aaBDdea72B64351F) |
+|  | Arbitrum Mainnet | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://arbiscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 | `V3QuoteVerifier.sol` | Automata Mainnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://explorer.ata.network/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+|  | Ethereum Mainnet | [0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96](https://etherscan.io/address/0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96) |
+|  | Base Mainnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://basescan.org/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+|  | OP Mainnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://optimistic.etherscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
+|  | World Mainnet | [0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96](https://worldchain-mainnet.explorer.alchemy.com/address/0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96) |
+|  | Arbitrum Mainnet | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://arbiscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 | `V4QuoteVerifier.sol` | Automata Mainnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://explorer.ata.network/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
+|  | Ethereum Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://etherscan.io/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) |
+|  | Base Mainnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
+|  | OP Mainnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://optimistic.etherscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
+|  | World Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://worldchain-mainnet.explorer.alchemy.com/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) |
+|  | Arbitrum Mainnet | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://arbiscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
