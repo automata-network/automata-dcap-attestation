@@ -95,8 +95,6 @@ contract ExampleDcapContract {
 }
 ```
 
-To execute the DCAP RiscZero Guest Program and fetch proofs from Bonsai, we recommend checking out the [DCAP Bonsai Demo CLI](https://github.com/automata-network/dcap-bonsai-cli).
-
 ---
 
 # BUIDL 🛠️
