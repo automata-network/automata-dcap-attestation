@@ -21,7 +21,15 @@ contract DeployRouter is Script {
         vm.startBroadcast(deployerKey);
 
         PCCSRouter router =
-            new PCCSRouter(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr);
+            new PCCSRouter(
+                enclaveIdDaoAddr, 
+                tcbDaoAddr, 
+                pcsDaoAddr, 
+                pckDaoAddr,
+                pckHelperAddr,
+                crlHelperAddr,
+                tcbHelperAddr
+            );
         console2.log("Deployed PCCSRouter to", address(router));
 
         vm.stopBroadcast();
@@ -31,7 +39,15 @@ contract DeployRouter is Script {
         vm.startBroadcast(deployerKey);
 
         PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
-        router.setConfig(enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr);
+        router.setConfig(
+            enclaveIdDaoAddr, 
+            tcbDaoAddr, 
+            pcsDaoAddr, 
+            pckDaoAddr,
+            pckHelperAddr,
+            crlHelperAddr,
+            tcbHelperAddr
+        );
 
         vm.stopBroadcast();
     }

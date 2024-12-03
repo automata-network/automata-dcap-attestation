@@ -23,7 +23,7 @@ import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/Auto
 import {AutomataPckDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPckDao.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
 
-import {PCCSRouter} from "../../contracts/PCCSRouter.sol";
+import "../../contracts/PCCSRouter.sol";
 
 abstract contract PCCSSetupBase is Test {
     using JSONParserLib for JSONParserLib.Item;
@@ -96,7 +96,8 @@ abstract contract PCCSSetupBase is Test {
             address(pcsDao),
             address(pckDao),
             address(x509),
-            address(x509Crl)
+            address(x509Crl),
+            address(tcbHelper)
         );
 
         // allow PCCS Router to read collaterals from the storage
