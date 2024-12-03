@@ -140,10 +140,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(TcbId.SGX), fmspc, 2);
         TcbInfoBasic memory tcbInfo;
-        uint256 a = gasleft();
         bytes memory data = tcbDao.getAttestedData(key);
-        uint256 b = gasleft();
-        console.log(a-b);
         valid = data.length > 0;
         if (valid) {
             bytes memory encodedLevels;
@@ -169,10 +166,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, 3);
         TcbInfoBasic memory tcbInfo;
-        uint256 a = gasleft();
         bytes memory data = tcbDao.getAttestedData(key);
-        uint256 b = gasleft();
-        console.log(a-b);
         valid = data.length > 0;
         if (valid) {
             bytes memory encodedLevels;
