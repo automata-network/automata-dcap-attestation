@@ -30,6 +30,8 @@ interface IPCCSRouter {
 
     function crlHelperAddr() external view returns (address);
 
+    function fmspcTcbHelperAddr() external view returns (address);
+
     function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (bool, IdentityObj memory);
 
     function getFmspcTcbV2(bytes6 fmspc) external view returns (bool, TCBLevelsObj[] memory);

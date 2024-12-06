@@ -83,7 +83,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         // verify the quote
         uint256 balanceBefore = user.balance;
         uint256 expectedFee = GAS_PRICE_WEI * EXPECTED_GAS;
-        console.log("expected fee: ", expectedFee);
+        // console.log("expected fee: ", expectedFee);
 
         vm.prank(user);
         uint256 a = gasleft();
@@ -94,11 +94,11 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
             console.log(string(output));
         } else {
             uint256 gas = a - b;
-            console.log("gas: ", gas);
+            // console.log("gas: ", gas);
 
             uint256 balanceAfter = user.balance;
             uint256 paidFee = balanceBefore - balanceAfter;
-            console.log("paid fee: ", paidFee);
+            // console.log("paid fee: ", paidFee);
         }
 
         assertTrue(success);

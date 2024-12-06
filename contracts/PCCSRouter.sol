@@ -8,6 +8,7 @@ import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveI
 import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
 import {PcsDao} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 import {PckDao} from "@automata-network/on-chain-pccs/bases/PckDao.sol";
+import {FmspcTcbHelper} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 
 /**
  * @title Automata PCCS Router
@@ -31,10 +32,19 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     address public override pckDaoAddr;
     address public override pckHelperAddr;
     address public override crlHelperAddr;
+    address public override fmspcTcbHelperAddr;
 
-    constructor(address _qeid, address _fmspcTcb, address _pcs, address _pck, address _pckHelper, address _crlHelper) {
+    constructor(
+        address _qeid, 
+        address _fmspcTcb, 
+        address _pcs, 
+        address _pck,
+        address _x509,
+        address _x509Crl,
+        address _tcbHelper
+    ) {
         _initializeOwner(msg.sender);
-        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
+        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
 
         // allowing eth_call
         _authorized[address(0)] = true;
@@ -73,30 +83,33 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     }
 
     function setConfig(
-        address _qeid,
-        address _fmspcTcb,
-        address _pcs,
+        address _qeid, 
+        address _fmspcTcb, 
+        address _pcs, 
         address _pck,
-        address _pckHelper,
-        address _crlHelper
+        address _x509,
+        address _x509Crl,
+        address _tcbHelper
     ) external onlyOwner {
-        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _pckHelper, _crlHelper);
+        _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
     }
 
     function _setConfig(
-        address _qeid,
-        address _fmspcTcb,
-        address _pcs,
+        address _qeid, 
+        address _fmspcTcb, 
+        address _pcs, 
         address _pck,
-        address _pckHelper,
-        address _crlHelper
+        address _x509,
+        address _x509Crl,
+        address _tcbHelper
     ) private {
         qeIdDaoAddr = _qeid;
         fmspcTcbDaoAddr = _fmspcTcb;
         pcsDaoAddr = _pcs;
         pckDaoAddr = _pck;
-        pckHelperAddr = _pckHelper;
-        crlHelperAddr = _crlHelper;
+        pckHelperAddr = _x509;
+        crlHelperAddr = _x509Crl;
+        fmspcTcbHelperAddr = _tcbHelper;
     }
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion)
@@ -130,7 +143,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         bytes memory data = tcbDao.getAttestedData(key);
         valid = data.length > 0;
         if (valid) {
-            (tcbInfo, tcbLevelsV2,,) = abi.decode(data, (TcbInfoBasic, TCBLevelsObj[], string, bytes));
+            bytes memory encodedLevels;
+            (tcbInfo, encodedLevels,,) = abi.decode(data, (TcbInfoBasic, bytes, string, bytes));
+            tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
         } else {
             revert FmspcTcbNotFound(TcbId.SGX, 2);
         }
@@ -154,8 +169,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         bytes memory data = tcbDao.getAttestedData(key);
         valid = data.length > 0;
         if (valid) {
-            (tcbInfo, tdxModule, tdxModuleIdentities, tcbLevelsV3,,) =
-                abi.decode(data, (TcbInfoBasic, TDXModule, TDXModuleIdentity[], TCBLevelsObj[], string, bytes));
+            bytes memory encodedLevels;
+            (tcbInfo, tdxModule, tdxModuleIdentities, encodedLevels,,) =
+                abi.decode(data, (TcbInfoBasic, TDXModule, TDXModuleIdentity[], bytes, string, bytes));
+            tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
         } else {
             revert FmspcTcbNotFound(id, 3);
         }
@@ -186,6 +203,16 @@ contract PCCSRouter is IPCCSRouter, Ownable {
 
     function getCrlHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
         (success, hash) = _getPcsHash(ca, true);
+    }
+
+    function _decodeTcbLevels(bytes memory encodedTcbLevels) private view returns (TCBLevelsObj[] memory tcbLevels) {
+        FmspcTcbHelper fmspcTcbHelper = FmspcTcbHelper(fmspcTcbHelperAddr);
+        bytes[] memory encodedTcbLevelsArr = abi.decode(encodedTcbLevels, (bytes[]));
+        uint256 n = encodedTcbLevelsArr.length;
+        tcbLevels = new TCBLevelsObj[](n);
+        for (uint256 i = 0; i < n; i++) {
+            tcbLevels[i] = fmspcTcbHelper.tcbLevelsObjFromBytes(encodedTcbLevelsArr[i]);
+        }
     }
 
     function _getPcsAttestationData(CA ca, bool crl) private view returns (bool valid, bytes memory ret) {
