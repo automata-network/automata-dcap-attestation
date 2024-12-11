@@ -4,16 +4,12 @@ out = 'out'
 libs = ['lib']
 script = 'forge-script'
 test = 'forge-test'
-cache_path  = 'cache_forge'
-fs_permissions = [{ access = "read", path = "./"}]
+cache_path = 'cache_forge'
+fs_permissions = [{ access = "read", path = "./" }]
 remappings = [
     "solady/=lib/automata-on-chain-pccs/lib/solady/src/",
     "p256-verifier/=lib/automata-on-chain-pccs/lib/p256-verifier/src/",
     "@automata-network/on-chain-pccs/=lib/automata-on-chain-pccs/src/",
-    "risc0/=lib/risc0-ethereum/contracts/src/",
-    # foundry is not able to detect this particular remapping for some reason...
-    "openzeppelin/=lib/risc0-ethereum/lib/openzeppelin-contracts/",
-    "@sp1-contracts/=lib/sp1-contracts/contracts/src/"
 ]
 solc = "0.8.27"
 optimizer = true
@@ -26,15 +22,6 @@ evm_version = "paris"
 ffi = true
 
 [etherscan]
-base_sepolia = { key = "${ETHERSCAN_API_KEY_BASE}", url = "https://api-sepolia.basescan.org/api" }
 holesky = { key = "${ETHERSCAN_OG_API_KEY}", url = "https://api-holesky.etherscan.io/api" }
 sepolia = { key = "${ETHERSCAN_OG_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
-optimism_sepolia = { key = "${ETHERSCAN_API_KEY_OPTIMISM}", url = "https://api-sepolia-optimistic.etherscan.io/api" }
-arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY_ARBITRUM}", url = "https://api-sepolia.arbiscan.io/api" }
-world_sepolia = { key = "${ETHERSCAN_API_KEY_WORLDCHAIN}", url = "https://api-sepolia.worldscan.org/api" }
 mainnet = { key = "${ETHERSCAN_OG_API_KEY}", url = "https://api.etherscan.io/api" }
-ata_mainnet = { key = "verifyContract", url = "https://api.routescan.io/v2/network/mainnet/evm/65536_2/etherscan/api?", chain = 65536 }
-base = { key = "${ETHERSCAN_API_KEY_BASE}", url = "https://api.basescan.org/api" }
-optimism = { key = "${ETHERSCAN_API_KEY_OPTIMISM}", url = "https://api-optimistic.etherscan.io/api" }
-arbitrum = { key = "${ETHERSCAN_API_KEY_ARBITRUM}", url = "https://api.arbiscan.io/api" }
-world = { key = "${ETHERSCAN_API_KEY_WORLDCHAIN}", url = "https://api.worldscan.org/api" }

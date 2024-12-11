@@ -48,41 +48,19 @@ Then, add the following to your `remappings.txt`
 ### Example
 
 ```solidity
-import "@automata-network/dcap-attestation/AutomataDcapAttestationFee.sol";
+import "@automata-network/dcap-attestation/AutomataDcapAttestation.sol";
 
 contract ExampleDcapContract {
 
-    AutomataDcapAttestationFee attest;
+    AutomataDcapAttestation attest;
 
     constructor(address _attest) {
-        attest = AutomataDcapAttestationFee(_attest);
+        attest = AutomataDcapAttestation(_attest);
     }
 
     // On-Chain Attestation example
     function attestOnChain(bytes calldata quote) public {
         (bool success, bytes memory output) = attest.verifyAndAttestOnChain(quote);
-
-        if (success) {
-            // ... implementation to handle successful attestations
-        } else {
-            string memory errorMessage = string(output);
-            // ... implementation to handle failed attestations
-        }
-    }
-
-    // SNARK Attestation example
-    // ZkCoProcessorType can either be RiscZero or Succinct
-    function attestWithSnark(
-        bytes calldata output,
-        ZkCoProcessorType zkvm,
-        bytes calldata proofBytes
-    ) public 
-    {
-        (bool success, bytes memory output) = attest.verifyAndAttestWithZKProof(
-            output,
-            zkvm,
-            proofBytes
-        );
 
         if (success) {
             // ... implementation to handle successful attestations

@@ -27,27 +27,6 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
-    function verifyZkOutput(bytes calldata outputBytes)
-        external
-        view
-        override
-        returns (bool success, bytes memory output)
-    {
-        bytes4 teeType = bytes4(outputBytes[4:8]);
-        if (teeType != SGX_TEE && teeType != TDX_TEE) {
-            return (false, bytes("Unknown TEE type"));
-        }
-
-        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
-
-        success = checkCollateralHashes(offset + 72, outputBytes);
-        if (success) {
-            output = outputBytes[2:offset];
-        } else {
-            output = bytes("Found one or more collaterals mismatch");
-        }
-    }
-
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
         external
         view
