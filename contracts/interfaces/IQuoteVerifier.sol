@@ -21,9 +21,4 @@ interface IQuoteVerifier {
     function quoteVersion() external view returns (uint16);
 
     function verifyQuote(Header calldata, bytes calldata) external view returns (bool, bytes memory);
-
-    /**
-     * @notice additional check on the public output obtained from the ZK Program execution
-     */
-    function verifyZkOutput(bytes calldata) external view returns (bool, bytes memory);
 }
