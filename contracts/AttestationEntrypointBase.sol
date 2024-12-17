@@ -42,6 +42,8 @@ abstract contract AttestationEntrypointBase is Ownable {
 
     mapping(uint16 quoteVersion => IQuoteVerifier verifier) public quoteVerifiers;
 
+    event AttestationSubmitted(bool success, bytes output);
+
     constructor() {
         _initializeOwner(msg.sender);
     }
@@ -91,7 +93,6 @@ abstract contract AttestationEntrypointBase is Ownable {
      */
     function _verifyAndAttestOnChain(bytes calldata rawQuote)
         internal
-        view
         returns (bool success, bytes memory output)
     {
         // Parse the header
@@ -105,6 +106,8 @@ abstract contract AttestationEntrypointBase is Ownable {
         // We found a supported version, begin verifying the quote
         // Note: The quote header cannot be trusted yet, it will be validated by the Verifier library
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
+
+        emit AttestationSubmitted(success, output);
     }
 
     /**
@@ -125,7 +128,6 @@ abstract contract AttestationEntrypointBase is Ownable {
         bytes calldata proofBytes
     )
         internal
-        view
         returns (bool success, bytes memory verifiedOutput)
     {
         ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
@@ -147,6 +149,8 @@ abstract contract AttestationEntrypointBase is Ownable {
             return (false, bytes("Unsupported quote version"));
         }
         (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
+
+        emit AttestationSubmitted(success, output);
     }
 
     /**
