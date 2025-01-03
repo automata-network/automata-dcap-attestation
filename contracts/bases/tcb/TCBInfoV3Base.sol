@@ -35,7 +35,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
             }
             if (sgxTcbFound && sgxStatus != TCBStatus.TCB_REVOKED) {
                 if (teeTcbSvn != bytes16(0)) {
-                    if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxSvns)) {
+                    if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxComponentCpuSvns)) {
                         tdxTcbFound = true;
                         status = current.status;
                         tcbLevelSelected = i;
@@ -102,13 +102,13 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
     }
 
-    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxSvns) internal pure returns (bool) {
-        if (tdxSvns.length != CPUSVN_LENGTH) {
+    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns) internal pure returns (bool) {
+        if (tdxComponentCpuSvns.length != CPUSVN_LENGTH) {
             return false;
         }
 
         for (uint256 i = 0; i < CPUSVN_LENGTH; i++) {
-            if (uint8(teeTcbSvn[i]) < uint8(tdxSvns[i])) {
+            if (uint8(teeTcbSvn[i]) < uint8(tdxComponentCpuSvns[i])) {
                 return false;
             }
         }

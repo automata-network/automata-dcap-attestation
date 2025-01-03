@@ -170,9 +170,13 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         valid = data.length > 0;
         if (valid) {
             bytes memory encodedLevels;
-            (tcbInfo, tdxModule, tdxModuleIdentities, encodedLevels,,) =
-                abi.decode(data, (TcbInfoBasic, TDXModule, TDXModuleIdentity[], bytes, string, bytes));
+            bytes memory encodedTdxModuleIdentities;
+            (tcbInfo, tdxModule, encodedTdxModuleIdentities, encodedLevels,,) =
+                abi.decode(data, (TcbInfoBasic, TDXModule, bytes, bytes, string, bytes));
             tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
+            if (encodedTdxModuleIdentities.length > 0) {
+                tdxModuleIdentities = _decodeTdxModuleIdentities(encodedTdxModuleIdentities);
+            }
         } else {
             revert FmspcTcbNotFound(id, 3);
         }
@@ -210,8 +214,24 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         bytes[] memory encodedTcbLevelsArr = abi.decode(encodedTcbLevels, (bytes[]));
         uint256 n = encodedTcbLevelsArr.length;
         tcbLevels = new TCBLevelsObj[](n);
-        for (uint256 i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; ) {
             tcbLevels[i] = fmspcTcbHelper.tcbLevelsObjFromBytes(encodedTcbLevelsArr[i]);
+            unchecked {
+                i++;
+            }
+        }
+    }
+
+    function _decodeTdxModuleIdentities(bytes memory encodedTdxModuleIdentities) private view returns (TDXModuleIdentity[] memory tdxModuleIdentities) {
+        FmspcTcbHelper fmspcTcbHelper = FmspcTcbHelper(fmspcTcbHelperAddr);
+        bytes[] memory encodedTdxModuleIdentitiesArr = abi.decode(encodedTdxModuleIdentities, (bytes[]));
+        uint256 n = encodedTdxModuleIdentitiesArr.length;
+        tdxModuleIdentities = new TDXModuleIdentity[](n);
+        for (uint256 i = 0; i < n; ) {
+            tdxModuleIdentities[i] = fmspcTcbHelper.tdxModuleIdentityFromBytes(encodedTdxModuleIdentitiesArr[i]);
+            unchecked {
+                i++;
+            }
         }
     }
 
