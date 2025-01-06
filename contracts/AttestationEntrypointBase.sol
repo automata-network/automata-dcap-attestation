@@ -13,7 +13,9 @@ import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ISP1Verifier} from "@sp1-contracts/ISP1Verifier.sol";
 
 enum ZkCoProcessorType {
-    Unknown,
+    // if the ZkCoProcessorType is included as None in the AttestationSubmitted event log
+    // it indicates that the attestation of the DCAP quote is executed entirely on-chain
+    None,
     RiscZero,
     Succinct
 }
@@ -42,7 +44,7 @@ abstract contract AttestationEntrypointBase is Ownable {
 
     mapping(uint16 quoteVersion => IQuoteVerifier verifier) public quoteVerifiers;
 
-    event AttestationSubmitted(bool success, bytes output);
+    event AttestationSubmitted(bool success, ZkCoProcessorType verifierType, bytes output);
 
     constructor() {
         _initializeOwner(msg.sender);
@@ -107,7 +109,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         // Note: The quote header cannot be trusted yet, it will be validated by the Verifier library
         (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
 
-        emit AttestationSubmitted(success, output);
+        emit AttestationSubmitted(success, ZkCoProcessorType.None, output);
     }
 
     /**
@@ -150,7 +152,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         }
         (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
 
-        emit AttestationSubmitted(success, output);
+        emit AttestationSubmitted(success, zkCoprocessor, output);
     }
 
     /**
