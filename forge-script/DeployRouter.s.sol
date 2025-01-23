@@ -18,11 +18,14 @@ contract DeployRouter is Script {
     address pcsDaoAddr = vm.envAddress("PCS_DAO");
     address pckDaoAddr = vm.envAddress("PCK_DAO");
 
+    address owner = vm.addr(deployerKey);
+
     function run() public {
         vm.startBroadcast(deployerKey);
 
         PCCSRouter router =
             new PCCSRouter{salt: PCCS_ROUTER_SALT}(
+                owner,
                 enclaveIdDaoAddr, 
                 tcbDaoAddr, 
                 pcsDaoAddr, 

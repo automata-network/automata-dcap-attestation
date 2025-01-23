@@ -30,7 +30,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         vm.startPrank(admin);
 
         // PCCS Setup
-        pccsRouter = setupPccsRouter();
+        pccsRouter = setupPccsRouter(admin);
         pcsDaoUpserts();
 
         // DCAP Contract Deployment
