@@ -46,8 +46,8 @@ abstract contract AttestationEntrypointBase is Ownable {
 
     event AttestationSubmitted(bool success, ZkCoProcessorType verifierType, bytes output);
 
-    constructor() {
-        _initializeOwner(msg.sender);
+    constructor(address owner) {
+        _initializeOwner(owner);
     }
 
     /**

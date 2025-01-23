@@ -11,10 +11,12 @@ import "./utils/Salt.sol";
 contract AttestationScript is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
 
+    address owner = vm.addr(deployerKey);
+
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
 
-        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee{salt: DCAP_ATTESTATION_SALT}();
+        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee{salt: DCAP_ATTESTATION_SALT}(owner);
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
 

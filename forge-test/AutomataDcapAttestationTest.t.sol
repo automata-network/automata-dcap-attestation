@@ -34,7 +34,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         pcsDaoUpserts();
 
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestationFee();
+        attestation = new AutomataDcapAttestationFee(admin);
 
         vm.stopPrank();
     }

@@ -39,7 +39,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         setUpRiscZero();
 
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestationFee();
+        attestation = new AutomataDcapAttestationFee(admin);
 
         // Setup Fee Management
 
