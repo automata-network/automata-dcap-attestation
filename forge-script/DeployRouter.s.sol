@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import "../contracts/PCCSRouter.sol";
+import "./utils/Salt.sol";
 
 contract DeployRouter is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
@@ -21,7 +22,7 @@ contract DeployRouter is Script {
         vm.startBroadcast(deployerKey);
 
         PCCSRouter router =
-            new PCCSRouter(
+            new PCCSRouter{salt: PCCS_ROUTER_SALT}(
                 enclaveIdDaoAddr, 
                 tcbDaoAddr, 
                 pcsDaoAddr, 
