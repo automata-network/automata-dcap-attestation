@@ -97,7 +97,7 @@ contract ExampleDcapContract {
 
 ---
 
-# BUIDL 🛠️
+# BUILD 🛠️
 
 ## Getting Started
 
