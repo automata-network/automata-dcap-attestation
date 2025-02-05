@@ -1,0 +1,19 @@
+[package]
+name = "automata-dcap-client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+solana-sdk = { workspace = true }
+solana-rpc-client = { workspace = true }
+anyhow = { workspace = true }
+borsh = { workspace = true }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+solana-transaction-status-client-types = "2.1.6"
