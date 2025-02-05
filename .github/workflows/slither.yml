@@ -18,6 +18,10 @@ jobs:
     env:
       commit_url: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/
 
+    defaults:
+      run:
+        working-directory: evm
+
     steps:
       - uses: actions/checkout@v3
 
