@@ -1,0 +1,19 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+broadcast/**/31337/
+broadcast/**/run-*.json
+broadcast/**/dry-run/
+!broadcast/**/*-latest.json
+
+# Docs
+docs/
+
+# Dotenv file
+.env
+
+**/.DS_Store
+
+**/node_modules/

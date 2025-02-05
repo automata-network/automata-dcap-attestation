@@ -1,0 +1,47 @@
+name: Slither Static Analysis
+
+# Runs only on PR merging to main
+on: 
+  pull_request:
+    branches: [ main ]
+    types: [ opened, reopened, synchronize, ready_for_review ]
+
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    # Do not run when PR is still a draft
+    if: ${{ !github.event.pull_request.draft }}
+
+    env:
+      commit_url: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.0
+        id: slither
+        with:
+          fail-on: none
+          slither-args: --checklist --show-ignored-findings --markdown-root ${{ env.commit_url }}
+          sarif: results.sarif
+      
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
+
+      # - name: Create/update checklist as PR comment
+      #   uses: actions/github-script@v7
+      #   if: github.event_name == 'pull_request'
+      #   env:
+      #     REPORT: ${{ steps.slither.outputs.stdout }}
+      #   with:
+      #     script: |
+      #       const script = require('.github/scripts/slither-comment')
+      #       const header = '# Slither report'
+      #       const body = process.env.REPORT
+      #       await script({ github, context, header, body })

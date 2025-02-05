@@ -1,0 +1,177 @@
+{
+    "abi": [
+        {
+            "type": "function",
+            "name": "FmspcTcbLib",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "contract FmspcTcbHelper"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "Pcs",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "contract PcsDao"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "fmspcTcbInfoAttestations",
+            "inputs": [
+                {
+                    "name": "",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "fmspcTcbSchemaID",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "FMSPC_TCB_SCHEMA_ID",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "getTcbInfo",
+            "inputs": [
+                {
+                    "name": "tcbType",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "fmspc",
+                    "type": "string",
+                    "internalType": "string"
+                },
+                {
+                    "name": "version",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "tcbObj",
+                    "type": "tuple",
+                    "internalType": "struct TcbInfoJsonObj",
+                    "components": [
+                        {
+                            "name": "tcbInfoStr",
+                            "type": "string",
+                            "internalType": "string"
+                        },
+                        {
+                            "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "getTcbIssuerChain",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "signingCert",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                },
+                {
+                    "name": "rootCert",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "upsertFmspcTcb",
+            "inputs": [
+                {
+                    "name": "tcbInfoObj",
+                    "type": "tuple",
+                    "internalType": "struct TcbInfoJsonObj",
+                    "components": [
+                        {
+                            "name": "tcbInfoStr",
+                            "type": "string",
+                            "internalType": "string"
+                        },
+                        {
+                            "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "attestationId",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "event",
+            "name": "TCBInfoMissing",
+            "inputs": [
+                {
+                    "name": "tcbType",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "fmspc",
+                    "type": "string",
+                    "indexed": false,
+                    "internalType": "string"
+                },
+                {
+                    "name": "version",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        }
+    ]
+}

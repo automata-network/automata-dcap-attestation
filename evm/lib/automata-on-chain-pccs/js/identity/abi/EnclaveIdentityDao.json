@@ -1,0 +1,181 @@
+{
+    "abi": [
+        {
+            "type": "function",
+            "name": "EnclaveIdentityLib",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "contract EnclaveIdentityHelper"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "Pcs",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "contract PcsDao"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "enclaveIdentityAttestations",
+            "inputs": [
+                {
+                    "name": "",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "enclaveIdentitySchemaID",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "ENCLAVE_IDENTITY_SCHEMA_ID",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "getEnclaveIdentity",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "version",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "enclaveIdObj",
+                    "type": "tuple",
+                    "internalType": "struct EnclaveIdentityJsonObj",
+                    "components": [
+                        {
+                            "name": "identityStr",
+                            "type": "string",
+                            "internalType": "string"
+                        },
+                        {
+                            "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "getEnclaveIdentityIssuerChain",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "signingCert",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                },
+                {
+                    "name": "rootCert",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "upsertEnclaveIdentity",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "version",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "enclaveIdentityObj",
+                    "type": "tuple",
+                    "internalType": "struct EnclaveIdentityJsonObj",
+                    "components": [
+                        {
+                            "name": "identityStr",
+                            "type": "string",
+                            "internalType": "string"
+                        },
+                        {
+                            "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "attestationId",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "event",
+            "name": "EnclaveIdentityMissing",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "version",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "error",
+            "name": "Enclave_Id_Mismatch",
+            "inputs": []
+        }
+    ]
+}

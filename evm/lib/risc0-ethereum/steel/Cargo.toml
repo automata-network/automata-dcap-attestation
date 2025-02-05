@@ -1,0 +1,61 @@
+[package]
+name = "risc0-steel"
+description = "Query Ethereum state, or any other EVM-based blockchain state within the RISC Zero zkVM."
+version = "0.13.3"
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+alloy = { workspace = true, optional = true, features = ["eips", "network", "provider-http", "rpc-types"] }
+alloy-consensus = { workspace = true }
+alloy-contract = { workspace = true, optional = true }
+alloy-network = { workspace = true, optional = true }
+alloy-network-primitives = { workspace = true, optional = true }
+alloy-primitives = { workspace = true, features = ["rlp", "serde"] }
+alloy-provider = { workspace = true, optional = true }
+alloy-rlp = { workspace = true }
+alloy-rlp-derive = { workspace = true }
+alloy-rpc-types-eth = { workspace = true, optional = true }
+alloy-sol-types = { workspace = true }
+anyhow = { workspace = true }
+beacon-api-client = { workspace = true, optional = true }
+ethereum-consensus = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
+nybbles = { workspace = true, features = ["serde"] }
+once_cell = { workspace = true }
+revm = { workspace = true, features = ["serde"] }
+serde = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
+
+[dev-dependencies]
+alloy = { workspace = true, features = ["contract", "node-bindings"] }
+alloy-node-bindings = { workspace = true }
+alloy-trie = { workspace = true }
+bincode = { workspace = true }
+risc0-steel = { path = ".", features = ["host"] }
+serde_json = { workspace = true }
+test-log = { workspace = true }
+
+[features]
+default = []
+host = [
+    "dep:alloy",
+    "dep:alloy-rpc-types-eth",
+    "dep:alloy-contract",
+    "dep:alloy-network",
+    "dep:alloy-network-primitives",
+    "dep:alloy-provider",
+    "dep:beacon-api-client",
+    "dep:ethereum-consensus",
+    "dep:log",
+    "dep:tokio",
+    "dep:url",
+]

@@ -1,0 +1,11 @@
+{
+  "name": "@automata-network/on-chain-pccs-sdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Preston Ong",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.10.0",
+    "node-forge": "^1.3.1"
+  }
+}
