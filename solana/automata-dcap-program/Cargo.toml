@@ -7,6 +7,7 @@ homepage.workspace = true
 license.workspace = true
 
 [lib]
+name = "automata_dcap_program"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]

@@ -167,7 +167,7 @@ fn process_verify_dcap_proof(
     if !output_account_info_state.verified {
         // pre-process the data before invoking the Verifier program
         let output_data = output_account_info_state.output.as_slice();
-        let output_data_digest = Sha256::digest(output_data).to_vec();;
+        let output_data_digest = Sha256::digest(output_data).to_vec();
         let verifier_pubkey;
         let verifier_instruction_data = match zkvm_selector {
             1 => {

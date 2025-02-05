@@ -31,7 +31,7 @@ struct TestEnv {
 }
 
 async fn setup_test() -> TestEnv {
-    std::env::set_var("SBF_OUT_DIR", "../target/deploy");
+    std::env::set_var("SBF_OUT_DIR", "../../target/deploy");
     let program_id = Pubkey::from_str_const("DcapE9GZZ2KSu6udeW1pVdmqBAHP9NMBLBrxUUYdw1Qk");
 
     // instantiate ProgramTest environment and deploy the program
