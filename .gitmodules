@@ -10,4 +10,4 @@
 [submodule "lib/automata-on-chain-pccs"]
 	path = lib/automata-on-chain-pccs
 	url = https://github.com/automata-network/automata-on-chain-pccs
-	branch = main
+	branch = DEV-3784
