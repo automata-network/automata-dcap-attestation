@@ -45,6 +45,8 @@ abstract contract AttestationEntrypointBase is Ownable {
     mapping(uint16 quoteVersion => IQuoteVerifier verifier) public quoteVerifiers;
 
     event AttestationSubmitted(bool success, ZkCoProcessorType verifierType, bytes output);
+    event QuoteVerifierUpdated(uint16 indexed version);
+    event ZkCoProcessorUpdated(ZkCoProcessorType indexed zkCoProcessor, bytes32 programIdentifier, address zkVerifier);
 
     constructor() {
         _initializeOwner(msg.sender);
@@ -56,7 +58,10 @@ abstract contract AttestationEntrypointBase is Ownable {
      */
     function setQuoteVerifier(address verifier) external onlyOwner {
         IQuoteVerifier quoteVerifier = IQuoteVerifier(verifier);
-        quoteVerifiers[quoteVerifier.quoteVersion()] = quoteVerifier;
+        uint16 version = quoteVerifier.quoteVersion();
+        quoteVerifiers[version] = quoteVerifier;
+
+        emit QuoteVerifierUpdated(version);
     }
 
     /**
@@ -67,6 +72,8 @@ abstract contract AttestationEntrypointBase is Ownable {
         onlyOwner
     {
         _zkConfig[zkCoProcessor] = config;
+
+        emit ZkCoProcessorUpdated(zkCoProcessor, config.dcapProgramIdentifier, config.zkVerifier);
     }
 
     /**
