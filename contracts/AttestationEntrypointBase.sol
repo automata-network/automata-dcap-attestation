@@ -167,7 +167,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         header = Header({
             version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
             attestationKeyType: attestationKeyType,
-            teeType: bytes4(uint32(BELE.leBytesToBeUint(rawQuote[4:8]))),
+            teeType: bytes4(rawQuote[4:8]),
             qeSvn: qeSvn,
             pceSvn: pceSvn,
             qeVendorId: qeVendorId,
