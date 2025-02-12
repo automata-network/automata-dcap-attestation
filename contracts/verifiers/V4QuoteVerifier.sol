@@ -40,12 +40,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
         uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
 
-        success = checkCollateralHashes(offset + 72, outputBytes);
-        if (success) {
-            output = outputBytes[2:offset];
-        } else {
-            output = bytes("Found one or more collaterals mismatch");
-        }
+        (success, output) = checkCollateralHashes(offset + 72, outputBytes);
     }
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
@@ -71,14 +66,18 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             EnclaveReport memory localEnclaveReport;
             (success, localEnclaveReport) = parseEnclaveReport(rawQuoteBody);
             if (!success) {
-                return (false, bytes("failed to parse local isv report"));
+                return (false, bytes("local isv report length is incorrect"));
             }
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH];
             V4SGXQuote memory quote =
                 V4SGXQuote({header: header, localEnclaveReport: localEnclaveReport, authData: authData});
             (success, output) = _verifySGXQuote(quote, rawHeader, rawBody, rawQeReport);
         } else if (header.teeType == TDX_TEE) {
-            TD10ReportBody memory tdReport = parseTD10ReportBody(rawQuoteBody);
+            TD10ReportBody memory tdReport;
+            (success, tdReport) = parseTD10ReportBody(rawQuoteBody);
+            if (!success) {
+                return (false, bytes("local td10 report length is incorrect"));
+            }
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH];
             V4TDXQuote memory quote = V4TDXQuote({header: header, reportBody: tdReport, authData: authData});
             (success, output) = _verifyTDXQuote(quote, rawHeader, rawBody, rawQeReport);
@@ -116,11 +115,17 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
         rawQuoteBody = quote[HEADER_LENGTH:offset];
 
+        if (quote.length < offset) {
+            return (false, "quote body length is incorrect", rawQuoteBody, rawQeReport, authData);
+        }
+
         // check authData length
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
+        // we don't strictly require the auth data to be equal to the provided length
+        // but this ignores any trailing bytes after the indicated length allocated for authData
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote length is incorrect", rawQuoteBody, rawQeReport, authData);
+            return (false, "quote auth data length is incorrect", rawQuoteBody, rawQeReport, authData);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
@@ -304,22 +309,25 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     /**
      * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
      */
-    function parseTD10ReportBody(bytes memory reportBytes) internal pure returns (TD10ReportBody memory report) {
-        report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
-        report.mrSeam = reportBytes.substring(16, 48);
-        report.mrsignerSeam = reportBytes.substring(64, 48);
-        report.seamAttributes = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(112, 8))));
-        report.tdAttributes = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(120, 8))));
-        report.xFAM = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(128, 8))));
-        report.mrTd = reportBytes.substring(136, 48);
-        report.mrConfigId = reportBytes.substring(184, 48);
-        report.mrOwner = reportBytes.substring(232, 48);
-        report.mrOwnerConfig = reportBytes.substring(280, 48);
-        report.rtMr0 = reportBytes.substring(328, 48);
-        report.rtMr1 = reportBytes.substring(376, 48);
-        report.rtMr2 = reportBytes.substring(424, 48);
-        report.rtMr3 = reportBytes.substring(472, 48);
-        report.reportData = reportBytes.substring(520, 64);
+    function parseTD10ReportBody(bytes memory reportBytes) internal pure returns (bool success, TD10ReportBody memory report) {
+        success = reportBytes.length == TD_REPORT10_LENGTH;
+        if (success) {
+            report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
+            report.mrSeam = reportBytes.substring(16, 48);
+            report.mrsignerSeam = reportBytes.substring(64, 48);
+            report.seamAttributes = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(112, 8))));
+            report.tdAttributes = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(120, 8))));
+            report.xFAM = bytes8(uint64(BELE.leBytesToBeUint(reportBytes.substring(128, 8))));
+            report.mrTd = reportBytes.substring(136, 48);
+            report.mrConfigId = reportBytes.substring(184, 48);
+            report.mrOwner = reportBytes.substring(232, 48);
+            report.mrOwnerConfig = reportBytes.substring(280, 48);
+            report.rtMr0 = reportBytes.substring(328, 48);
+            report.rtMr1 = reportBytes.substring(376, 48);
+            report.rtMr2 = reportBytes.substring(424, 48);
+            report.rtMr3 = reportBytes.substring(472, 48);
+            report.reportData = reportBytes.substring(520, 64);
+        }
     }
 
     /**
