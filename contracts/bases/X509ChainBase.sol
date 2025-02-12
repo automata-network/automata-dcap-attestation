@@ -91,12 +91,12 @@ abstract contract X509ChainBase is P256Verifier {
                 }
             }
 
-            bytes20 issuerSubjectKeyIdentifier = issuer.subjectKeyIdentifier;
+            bytes memory issuerSubjectKeyIdentifier = issuer.subjectKeyIdentifier;
 
             if (crl.length > 0) {
                 // check issuer subject key identifier against crl authority key identifier
-                bytes20 crlAuthorityKeyIdentifier = crlHelper.getAuthorityKeyIdentifier(crl);
-                if (issuerSubjectKeyIdentifier != crlAuthorityKeyIdentifier) {
+                bytes memory crlAuthorityKeyIdentifier = crlHelper.getAuthorityKeyIdentifier(crl);
+                if (!BytesUtils.compareBytes(issuerSubjectKeyIdentifier, crlAuthorityKeyIdentifier)) {
                     return false;
                 }
                 certRevoked = crlHelper.serialNumberIsRevoked(current.serialNumber, crl);
@@ -111,8 +111,8 @@ abstract contract X509ChainBase is P256Verifier {
             }
 
             {
-                bytes20 currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
-                if (currentAuthorityKeyIdentifier == issuerSubjectKeyIdentifier) {
+                bytes memory currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
+                if (BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)) {
                      verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
                 }
                 if (!verified) {
