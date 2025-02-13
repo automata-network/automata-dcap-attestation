@@ -38,8 +38,11 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             return (false, bytes("Unknown TEE type"));
         }
 
-        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
-
+        uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
+        uint256 offset = 2 + outputLength;
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+            return (false, "invalid output length");
+        }
         (success, output) = checkCollateralHashes(offset + 72, outputBytes);
     }
 

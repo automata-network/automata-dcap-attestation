@@ -18,7 +18,11 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         override
         returns (bool success, bytes memory output)
     {
-        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
+        uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
+        uint256 offset = 2 + outputLength;
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+            return (false, "invalid output length");
+        }
         (success, output) = checkCollateralHashes(offset + 72, outputBytes);
     }
 

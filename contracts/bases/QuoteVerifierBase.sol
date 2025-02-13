@@ -152,11 +152,6 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     }
 
     function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
-        uint256 expectedLength = offset + 128;
-        if (expectedLength != zkOutput.length) {
-            return (false, "zkOutput collateral does not match the expected length");
-        }
-        
         string memory mismatchMessage = "collateral mismatch";
         bytes32 rootCaHash = bytes32(zkOutput[offset:offset + 32]);
         bytes32 tcbSigningHash = bytes32(zkOutput[offset + 32:offset + 64]);
