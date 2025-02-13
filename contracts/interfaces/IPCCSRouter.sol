@@ -55,4 +55,9 @@ interface IPCCSRouter {
     function getCertHash(CA ca) external view returns (bool, bytes32);
 
     function getCrlHash(CA ca) external view returns (bool, bytes32);
+
+    // *withTimestamp() methods to check collateral expiration status based on the provided timestamp
+    function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
+
+    function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
 }

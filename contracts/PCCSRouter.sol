@@ -129,7 +129,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
         bytes32 key = enclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
-        if (_loadDataIfNotExpired(key, qeIdDaoAddr)) {
+        if (_loadDataIfNotExpired(key, qeIdDaoAddr, block.timestamp)) {
             bytes memory data = enclaveIdDao.getAttestedData(key);
             valid = data.length > 0;
             if (valid) {
@@ -151,7 +151,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(TcbId.SGX), fmspc, 2);
-        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr)) {
+        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr, block.timestamp)) {
             TcbInfoBasic memory tcbInfo;
             bytes memory data = tcbDao.getAttestedData(key);
             valid = data.length > 0;
@@ -181,7 +181,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, 3);
-        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr)) {
+        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr, block.timestamp)) {
             TcbInfoBasic memory tcbInfo;
             bytes memory data = tcbDao.getAttestedData(key);
             valid = data.length > 0;
@@ -214,19 +214,27 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     }
 
     function getCert(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509Der) {
-        (success, x509Der) = _getPcsAttestationData(ca, false);
+        (success, x509Der) = _getPcsAttestationData(ca, false, block.timestamp);
     }
 
     function getCrl(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509CrlDer) {
-        (success, x509CrlDer) = _getPcsAttestationData(ca, true);
+        (success, x509CrlDer) = _getPcsAttestationData(ca, true, block.timestamp);
     }
 
     function getCertHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
-        (success, hash) = _getPcsHash(ca, false);
+        (success, hash) = _getPcsHash(ca, false, block.timestamp);
     }
 
     function getCrlHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
-        (success, hash) = _getPcsHash(ca, true);
+        (success, hash) = _getPcsHash(ca, true, block.timestamp);
+    }
+
+    function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+        (, hash) = _getPcsHash(ca, false, timestamp);
+    }
+
+    function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+        (, hash) = _getPcsHash(ca, true, timestamp);
     }
 
     function _decodeTcbLevels(bytes memory encodedTcbLevels) private view returns (TCBLevelsObj[] memory tcbLevels) {
@@ -255,10 +263,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function _getPcsAttestationData(CA ca, bool crl) private view returns (bool valid, bytes memory ret) {
+    function _getPcsAttestationData(CA ca, bool crl, uint256 timestamp) private view returns (bool valid, bytes memory ret) {
         PcsDao pcsDao = PcsDao(pcsDaoAddr);
         bytes32 key = pcsDao.PCS_KEY(ca, crl);
-        if (_loadDataIfNotExpired(key, pcsDaoAddr)) {
+        if (_loadDataIfNotExpired(key, pcsDaoAddr, timestamp)) {
             ret = pcsDao.getAttestedData(key);
             valid = ret.length > 0;
             if (!valid) {
@@ -277,10 +285,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function _getPcsHash(CA ca, bool crl) private view returns (bool valid, bytes32 hash) {
+    function _getPcsHash(CA ca, bool crl, uint256 timestamp) private view returns (bool valid, bytes32 hash) {
         PcsDao pcsDao = PcsDao(pcsDaoAddr);
         bytes32 key = pcsDao.PCS_KEY(ca, crl);
-        if (_loadDataIfNotExpired(key, pcsDaoAddr)) {
+        if (_loadDataIfNotExpired(key, pcsDaoAddr, timestamp)) {
              hash = pcsDao.getCollateralHash(key);
             valid = hash != bytes32(0);
             if (!valid) {
@@ -290,14 +298,20 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                     revert CertNotFound(ca);
                 }
             }
+        } else {
+            if (crl) {
+                revert CrlExpired(ca);
+            } else {
+                revert CertExpired(ca);
+            }
         }
     }
 
-    function _loadDataIfNotExpired(bytes32 key, address dao) private view returns (bool valid) {
+    function _loadDataIfNotExpired(bytes32 key, address dao, uint256 timestamp) private view returns (bool valid) {
         bytes4 COLLATERAL_VALIDITY_SELECTOR = 0x3e960426;
         (bool success, bytes memory ret) = dao.staticcall(abi.encodeWithSelector(COLLATERAL_VALIDITY_SELECTOR, key));
         require(success, "Failed to determine collateral validity");
         (uint64 issuedAt, uint64 expiredAt) = abi.decode(ret, (uint64, uint64));
-        valid = block.timestamp >= issuedAt || block.timestamp <= expiredAt;
+        valid = timestamp >= issuedAt || timestamp <= expiredAt;
     }
 }
