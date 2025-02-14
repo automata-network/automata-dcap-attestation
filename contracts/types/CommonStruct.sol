@@ -59,8 +59,8 @@ struct PCKCertTCB {
 }
 
 struct Output {
-    uint16 quoteVersion; // BE (we should change this)
-    bytes4 tee; // BE (we should change this)
+    uint16 quoteVersion;
+    bytes4 tee;
     TCBStatus tcbStatus;
     bytes6 fmspcBytes;
     bytes quoteBody;
