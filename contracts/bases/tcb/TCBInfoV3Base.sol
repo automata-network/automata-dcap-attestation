@@ -7,6 +7,7 @@ import {
     TDXModuleIdentity,
     TDXModuleTCBLevelsObj
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {BELE} from "../../utils/BELE.sol";
 import "./TCBInfoV2Base.sol";
 
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
@@ -60,12 +61,12 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
     function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
         internal
         pure
-        returns (bool, TCBStatus, uint8, bytes memory, bytes8)
+        returns (bool, TCBStatus, uint8, bytes memory, uint64)
     {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
         bytes memory expectedMrSignerSeam;
-        bytes8 expectedSeamAttributes;
+        uint64 expectedSeamAttributes;
 
         if (tdxModuleVersion == 0) {
             return (true, TCBStatus.OK, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
@@ -87,7 +88,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
                         tdxModuleIdentityFound = true;
                         moduleStatus = tdxModuleTcbLevels[j].status;
                         expectedMrSignerSeam = currId.mrsigner;
-                        expectedSeamAttributes = currId.attributes;
+                        expectedSeamAttributes = uint64(BELE.leBytesToBeUint(abi.encodePacked(currId.attributes)));
                         break;
                     }
                 }
