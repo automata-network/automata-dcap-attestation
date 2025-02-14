@@ -312,22 +312,25 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     /**
      * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
      */
-    function parseTD10ReportBody(bytes memory reportBytes) internal pure returns (TD10ReportBody memory report) {
-        report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
-        report.mrSeam = reportBytes.substring(16, 48);
-        report.mrsignerSeam = reportBytes.substring(64, 48);
-        report.seamAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(112, 8)));
-        report.tdAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(120, 8)));
-        report.xFAM = uint64(BELE.leBytesToBeUint(reportBytes.substring(128, 8)));
-        report.mrTd = reportBytes.substring(136, 48);
-        report.mrConfigId = reportBytes.substring(184, 48);
-        report.mrOwner = reportBytes.substring(232, 48);
-        report.mrOwnerConfig = reportBytes.substring(280, 48);
-        report.rtMr0 = reportBytes.substring(328, 48);
-        report.rtMr1 = reportBytes.substring(376, 48);
-        report.rtMr2 = reportBytes.substring(424, 48);
-        report.rtMr3 = reportBytes.substring(472, 48);
-        report.reportData = reportBytes.substring(520, 64);
+    function parseTD10ReportBody(bytes memory reportBytes) internal pure returns (bool success, TD10ReportBody memory report) {
+        success = reportBytes.length == TD_REPORT10_LENGTH;
+        if (success) {
+            report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
+            report.mrSeam = reportBytes.substring(16, 48);
+            report.mrsignerSeam = reportBytes.substring(64, 48);
+            report.seamAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(112, 8)));
+            report.tdAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(120, 8)));
+            report.xFAM = uint64(BELE.leBytesToBeUint(reportBytes.substring(128, 8)));
+            report.mrTd = reportBytes.substring(136, 48);
+            report.mrConfigId = reportBytes.substring(184, 48);
+            report.mrOwner = reportBytes.substring(232, 48);
+            report.mrOwnerConfig = reportBytes.substring(280, 48);
+            report.rtMr0 = reportBytes.substring(328, 48);
+            report.rtMr1 = reportBytes.substring(376, 48);
+            report.rtMr2 = reportBytes.substring(424, 48);
+            report.rtMr3 = reportBytes.substring(472, 48);
+            report.reportData = reportBytes.substring(520, 64);
+        }
     }
 
     /**

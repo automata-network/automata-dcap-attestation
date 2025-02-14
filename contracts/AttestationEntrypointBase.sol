@@ -192,3 +192,4 @@ abstract contract AttestationEntrypointBase is Ownable {
         });
     }
 }
+}

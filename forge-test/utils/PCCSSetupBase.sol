@@ -81,7 +81,10 @@ abstract contract PCCSSetupBase is Test {
             address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509)
         );
 
-        pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
+        pccsStorage.grantDao(address(pcsDao));
+        pccsStorage.grantDao(address(pckDao));
+        pccsStorage.grantDao(address(fmspcTcbDao));
+        pccsStorage.grantDao(address(enclaveIdDao));
 
         vm.stopPrank();
     }
