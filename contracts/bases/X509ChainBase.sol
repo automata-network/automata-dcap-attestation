@@ -72,7 +72,9 @@ abstract contract X509ChainBase is P256Verifier {
         bool verified;
         bool certChainCanBeTrusted;
         for (uint256 i = 0; i < PCK_CERT_CHAIN_LENGTH; i++) {
+            X509CertObj memory current = certs[i];
             X509CertObj memory issuer;
+            bytes memory crl;
             if (i == PCK_CERT_CHAIN_LENGTH - 1) {
                 // the last cert must be the root CA
                 issuer = certs[i];
@@ -83,11 +85,10 @@ abstract contract X509ChainBase is P256Verifier {
                 }
             } else {
                 issuer = certs[i + 1];
-                bytes memory crl;
                 if (i == PCK_CERT_CHAIN_LENGTH - 2) {
                     (, crl) = pccsRouter.getCrl(CA.ROOT);
                 } else if (i == 0) {
-                    string memory issuerName = certs[i].issuerCommonName;
+                    string memory issuerName = current.issuerCommonName;
                     if (LibString.eq(issuerName, PLATFORM_ISSUER_NAME)) {
                         (, crl) = pccsRouter.getCrl(CA.PLATFORM);
                     } else if (LibString.eq(issuerName, PROCESSOR_ISSUER_NAME)) {
@@ -96,21 +97,32 @@ abstract contract X509ChainBase is P256Verifier {
                         return false;
                     }
                 }
-                if (crl.length > 0) {
-                    certRevoked = crlHelper.serialNumberIsRevoked(certs[i].serialNumber, crl);
-                }
-                if (certRevoked) {
-                    break;
-                }
             }
 
-            certNotExpired = block.timestamp > certs[i].validityNotBefore && block.timestamp < certs[i].validityNotAfter;
+            bytes memory issuerSubjectKeyIdentifier = issuer.subjectKeyIdentifier;
+
+            if (crl.length > 0) {
+                // check issuer subject key identifier against crl authority key identifier
+                bytes memory crlAuthorityKeyIdentifier = crlHelper.getAuthorityKeyIdentifier(crl);
+                if (!BytesUtils.compareBytes(issuerSubjectKeyIdentifier, crlAuthorityKeyIdentifier)) {
+                    return false;
+                }
+                certRevoked = crlHelper.serialNumberIsRevoked(current.serialNumber, crl);
+            }
+            if (certRevoked) {
+                break;
+            }
+
+            certNotExpired = block.timestamp > current.validityNotBefore && block.timestamp < current.validityNotAfter;
             if (!certNotExpired) {
                 break;
             }
 
             {
-                verified = ecdsaVerify(sha256(certs[i].tbs), certs[i].signature, issuer.subjectPublicKey);
+                bytes memory currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
+                if (BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)) {
+                     verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
+                }
                 if (!verified) {
                     break;
                 }
