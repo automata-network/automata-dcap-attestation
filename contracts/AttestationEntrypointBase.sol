@@ -177,15 +177,14 @@ abstract contract AttestationEntrypointBase is Ownable {
             bytes2 pceSvn = bytes2(rawQuote[10:12]);
             bytes16 qeVendorId = bytes16(rawQuote[12:28]);
 
-            header = Header({
-                version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
-                attestationKeyType: attestationKeyType,
-                teeType: bytes4(uint32(BELE.leBytesToBeUint(rawQuote[4:8]))),
-                qeSvn: qeSvn,
-                pceSvn: pceSvn,
-                qeVendorId: qeVendorId,
-                userData: bytes20(rawQuote[28:48])
-            });
-        }
+        header = Header({
+            version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
+            attestationKeyType: attestationKeyType,
+            teeType: bytes4(rawQuote[4:8]),
+            qeSvn: qeSvn,
+            pceSvn: pceSvn,
+            qeVendorId: qeVendorId,
+            userData: bytes20(rawQuote[28:48])
+        });
     }
 }
