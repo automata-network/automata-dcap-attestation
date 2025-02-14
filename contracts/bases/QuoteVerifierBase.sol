@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TCBStatus} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {TCBStatus, TcbId} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 
 import {IQuoteVerifier, IPCCSRouter} from "../interfaces/IQuoteVerifier.sol";
 import {BytesUtils} from "../utils/BytesUtils.sol";
@@ -153,19 +154,45 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
     function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
         string memory mismatchMessage = "collateral mismatch";
-        bytes32 rootCaHash = bytes32(zkOutput[offset:offset + 32]);
-        bytes32 tcbSigningHash = bytes32(zkOutput[offset + 32:offset + 64]);
-        bytes32 rootCaCrlHash = bytes32(zkOutput[offset + 64:offset + 96]);
-        bytes32 pckCrlHash = bytes32(zkOutput[offset + 96:offset + 128]);
+        uint64 timestamp = uint64(bytes8(journal[offset:offset + 8]));
+        bytes32 tcbInfoContentHash = bytes32(journal[offset + 8:offset + 40]);
+        bytes32 identityContentHash = bytes32(journal[offset + 40:offset + 72]);
+        bytes32 rootCaHash = bytes32(journal[offset + 72:offset + 104]);
+        bytes32 tcbSigningHash = bytes32(journal[offset + 104:offset + 136]);
+        bytes32 rootCaCrlHash = bytes32(journal[offset + 136:offset + 168]);
+        bytes32 pckCrlHash = bytes32(journal[offset + 168:offset + 200]);
+
+        bytes4 tee = bytes4(journal[4:8]);
+        bytes6 fmspc = bytes6(journal[9:15]);
+        bytes32 expectedTcbInfoContentHash = 
+            pccsRouter.getFmspcTcbContentHash(
+                tee == SGX_TEE ? TcbId.SGX : TcbId.TDX,
+                fmspc,
+                quoteVersion < 4 ? 2 : 3
+            );
+        if (tcbInfoContentHash != expectedTcbInfoContentHash) {
+            return false;
+        }
+
+        bytes32 expectedIdentityContentHash =
+            pccsRouter.getQeIdentityContentHash(
+                tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE,
+                quoteVersion
+            );
+        if (identityContentHash != expectedIdentityContentHash) {
+            return false;
+        }
+
+        (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
+        if (!rootCaFound || rootCaHash != expectedRootCaHash) {
+            return false;
+        }
 
         (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
         if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
             return (false, bytes(mismatchMessage));
         }
-        (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
-        if (!rootCaFound || rootCaHash != expectedRootCaHash) {
-            return (false, bytes(mismatchMessage));
-        }
+        
         (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
         if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
             return (false, bytes(mismatchMessage));

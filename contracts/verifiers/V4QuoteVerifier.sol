@@ -43,7 +43,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
             return (false, "invalid output length");
         }
-        (success, output) = checkCollateralHashes(offset + 72, outputBytes);
+        (success, output) = checkCollateralHashes(offset, outputBytes);
     }
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
