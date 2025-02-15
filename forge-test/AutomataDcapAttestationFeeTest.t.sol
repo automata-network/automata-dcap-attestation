@@ -36,8 +36,6 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         pccsRouter = setupPccsRouter();
         pcsDaoUpserts();
 
-        setUpRiscZero();
-
         // DCAP Contract Deployment
         attestation = new AutomataDcapAttestationFee();
 
