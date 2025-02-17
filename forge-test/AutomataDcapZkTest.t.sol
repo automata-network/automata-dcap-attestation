@@ -27,7 +27,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         vm.startPrank(admin);
 
         // setup pccs
-        pccsRouter = setupPccsRouter();
+        pccsRouter = setupPccsRouter(admin);
         pcsDaoUpserts();
 
         vm.warp(1739589300);
@@ -35,7 +35,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         fmspcTcbDaoUpsert("/forge-test/assets/0225/tcbinfo.json");
         pcsDao.upsertPckCrl(CA.PLATFORM, pckCrl);
 
-        attestation = new AutomataDcapAttestationFee();
+        attestation = new AutomataDcapAttestationFee(admin);
         quoteVerifier = new V4QuoteVerifier(P256_VERIFIER, address(pccsRouter));
         attestation.setQuoteVerifier(address(quoteVerifier));
 

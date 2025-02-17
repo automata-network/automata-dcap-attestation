@@ -70,7 +70,7 @@ abstract contract PCCSSetupBase is Test {
         x509 = new PCKHelper();
         x509Crl = new X509CRLHelper();
 
-        pccsStorage = new AutomataDaoStorage();
+        pccsStorage = new AutomataDaoStorage(admin);
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
