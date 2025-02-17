@@ -35,6 +35,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     address public override fmspcTcbHelperAddr;
 
     constructor(
+        address owner,
         address _qeid, 
         address _fmspcTcb, 
         address _pcs, 
@@ -43,7 +44,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         address _x509Crl,
         address _tcbHelper
     ) {
-        _initializeOwner(msg.sender);
+        _initializeOwner(owner);
         _setConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
 
         // allowing eth_call

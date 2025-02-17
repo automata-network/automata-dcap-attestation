@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../utils/P256Configuration.sol";
+import "../utils/salt.sol";
 import "../../contracts/verifiers/V4QuoteVerifier.sol";
 
 contract DeployV4 is P256Configuration {
@@ -11,14 +12,14 @@ contract DeployV4 is P256Configuration {
 
     function run() public override {
         vm.startBroadcast(deployerKey);
-        V4QuoteVerifier verifier = new V4QuoteVerifier(simulateVerify(), router);
+        V4QuoteVerifier verifier = new V4QuoteVerifier{salt: V4_VERIFIER_SALT}(simulateVerify(), router);
         vm.stopBroadcast();
         console.log("V4QuoteVerifier deployed at ", address(verifier));
     }
 
     function overrideVerifier(address p256Verifier) public {
         vm.startBroadcast(deployerKey);
-        V4QuoteVerifier verifier = new V4QuoteVerifier(p256Verifier, router);
+        V4QuoteVerifier verifier = new V4QuoteVerifier{salt: V4_VERIFIER_SALT}(p256Verifier, router);
         vm.stopBroadcast();
         console.log("V4QuoteVerifier deployed at ", address(verifier));
     }

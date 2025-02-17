@@ -10,6 +10,9 @@ import "./bases/FeeManagerBase.sol";
  * needed to perform DCAP attestation.
  */
 contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase {
+    
+    constructor(address owner) AttestationEntrypointBase(owner) {}
+    
     function setBp(uint16 _newBp) public override onlyOwner {
         super.setBp(_newBp);
     }

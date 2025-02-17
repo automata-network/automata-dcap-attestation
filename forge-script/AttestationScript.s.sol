@@ -6,13 +6,17 @@ import "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import "../contracts/AutomataDcapAttestationFee.sol";
 
+import "./utils/Salt.sol";
+
 contract AttestationScript is Script {
     uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
+
+    address owner = vm.addr(deployerKey);
 
     function deployEntrypoint() public {
         vm.startBroadcast(deployerKey);
 
-        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee();
+        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee{salt: DCAP_ATTESTATION_SALT}(owner);
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
 
