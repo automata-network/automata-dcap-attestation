@@ -32,16 +32,16 @@ interface IPCCSRouter {
 
     function fmspcTcbHelperAddr() external view returns (address);
 
-    function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (bool, IdentityObj memory);
+    function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (IdentityObj memory);
 
     function getQeIdentityContentHash(EnclaveId id, uint256 version) external view returns (bytes32);
 
-    function getFmspcTcbV2(bytes6 fmspc) external view returns (bool, TCBLevelsObj[] memory);
+    function getFmspcTcbV2(bytes6 fmspc) external view returns (TCBLevelsObj[] memory);
 
     function getFmspcTcbV3(TcbId id, bytes6 fmspc)
         external
         view
-        returns (bool, TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
+        returns (TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
 
     function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) external view returns (bytes32);
 
@@ -50,15 +50,15 @@ interface IPCCSRouter {
         string calldata platformCpuSvn,
         string calldata platformPceSvn,
         string calldata pceid
-    ) external view returns (bool, bytes memory);
+    ) external view returns (bytes memory);
 
-    function getCert(CA ca) external view returns (bool, bytes memory);
+    function getCert(CA ca) external view returns (bytes memory);
 
-    function getCrl(CA ca) external view returns (bool, bytes memory);
+    function getCrl(CA ca) external view returns (bytes memory);
 
-    function getCertHash(CA ca) external view returns (bool, bytes32);
+    function getCertHash(CA ca) external view returns (bytes32);
 
-    function getCrlHash(CA ca) external view returns (bool, bytes32);
+    function getCrlHash(CA ca) external view returns (bytes32);
 
     // *withTimestamp() methods to check collateral expiration status based on the provided timestamp
     function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);

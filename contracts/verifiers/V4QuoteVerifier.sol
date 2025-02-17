@@ -170,14 +170,10 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         PCKCertTCB memory pckTcb = authData.qeReportCertData.certification.pck.pckExtension;
         TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
         (
-            bool tcbValid,
             TCBLevelsObj[] memory tcbLevels,
             TDXModule memory tdxModule,
             TDXModuleIdentity[] memory tdxModuleIdentities
         ) = pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
-        if (!tcbValid) {
-            return (false, "TCB not found or expired", ret);
-        }
 
         // Step 3: verify cert chain
         success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);

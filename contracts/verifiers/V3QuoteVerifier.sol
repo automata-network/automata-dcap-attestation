@@ -113,10 +113,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         // Step 2: Fetch FMSPC TCB then get TCBStatus
         X509CertObj[] memory parsedCerts = quote.authData.certification.pck.pckChain;
         PCKCertTCB memory pckTcb = quote.authData.certification.pck.pckExtension;
-        (bool tcbValid, TCBLevelsObj[] memory tcbLevels) = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes));
-        if (!tcbValid) {
-            return (false, bytes("TCB not found or expired"));
-        }
+        TCBLevelsObj[] memory tcbLevels = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes));
         TCBStatus tcbStatus;
         bool statusFound;
         for (uint256 i = 0; i < tcbLevels.length; i++) {

@@ -82,11 +82,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity;
-        (success, qeIdentity) = pccsRouter.getQeIdentity(id, quoteVersion);
-        if (!success) {
-            return (success, EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_NOT_SUPPORTED);
-        }
+        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );
@@ -182,18 +178,16 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             return (false, bytes("identity content hash mismatch"));
         }
 
-        (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
-        if (!rootCaFound || rootCaHash != expectedRootCaHash) {
-            return (false, bytes("root ca hash mismatch"));
-        }
-
-        (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
-        if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
+        bytes32 expectedTcbSigningHash = pccsRouter.getCertHash(CA.SIGNING);
+        if (tcbSigningHash != expectedTcbSigningHash) {
             return (false, bytes("tcb signing ca hash mismatch"));
         }
-        
-        (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
-        if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
+        bytes32 expectedRootCaHash = pccsRouter.getCertHash(CA.ROOT);
+        if (rootCaHash != expectedRootCaHash) {
+            return (false, bytes("root ca hash mismatch"));
+        }
+        bytes32 expectedRootCrlHash = pccsRouter.getCrlHash(CA.ROOT);
+        if (rootCaCrlHash != expectedRootCrlHash) {
             return (false, bytes("root ca crl hash mismatch"));
         }
 

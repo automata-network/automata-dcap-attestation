@@ -86,13 +86,13 @@ abstract contract X509ChainBase is P256Verifier {
             } else {
                 issuer = certs[i + 1];
                 if (i == PCK_CERT_CHAIN_LENGTH - 2) {
-                    (, crl) = pccsRouter.getCrl(CA.ROOT);
+                    crl = pccsRouter.getCrl(CA.ROOT);
                 } else if (i == 0) {
                     string memory issuerName = current.issuerCommonName;
                     if (LibString.eq(issuerName, PLATFORM_ISSUER_NAME)) {
-                        (, crl) = pccsRouter.getCrl(CA.PLATFORM);
+                        crl = pccsRouter.getCrl(CA.PLATFORM);
                     } else if (LibString.eq(issuerName, PROCESSOR_ISSUER_NAME)) {
-                        (, crl) = pccsRouter.getCrl(CA.PROCESSOR);
+                        crl = pccsRouter.getCrl(CA.PROCESSOR);
                     } else {
                         return false;
                     }
