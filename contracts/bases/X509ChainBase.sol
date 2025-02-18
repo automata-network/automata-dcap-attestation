@@ -15,6 +15,8 @@ abstract contract X509ChainBase is P256Verifier {
     using BytesUtils for bytes;
     using LibString for bytes;
 
+    uint8 constant PCK_CERT_CHAIN_LENGTH = 3;
+
     string constant PLATFORM_ISSUER_NAME = "Intel SGX PCK Platform CA";
     string constant PROCESSOR_ISSUER_NAME = "Intel SGX PCK Processor CA";
 
@@ -62,21 +64,27 @@ abstract contract X509ChainBase is P256Verifier {
         view
         returns (bool)
     {
+        require(certs.length == PCK_CERT_CHAIN_LENGTH, "Invalid PCK certificate chain length");
+        
         X509CRLHelper crlHelper = X509CRLHelper(crlHelperAddr);
-        uint256 n = certs.length;
         bool certRevoked;
         bool certNotExpired;
         bool verified;
         bool certChainCanBeTrusted;
-        for (uint256 i = 0; i < n; i++) {
+        for (uint256 i = 0; i < PCK_CERT_CHAIN_LENGTH; i++) {
             X509CertObj memory issuer;
-            if (i == n - 1) {
-                // rootCA
+            if (i == PCK_CERT_CHAIN_LENGTH - 1) {
+                // the last cert must be the root CA
                 issuer = certs[i];
+                bytes32 issuerPubKeyHash = keccak256(issuer.subjectPublicKey);
+                certChainCanBeTrusted = issuerPubKeyHash == ROOTCA_PUBKEY_HASH;
+                if (!certChainCanBeTrusted) {
+                    break;
+                }
             } else {
                 issuer = certs[i + 1];
                 bytes memory crl;
-                if (i == n - 2) {
+                if (i == PCK_CERT_CHAIN_LENGTH - 2) {
                     (, crl) = pccsRouter.getCrl(CA.ROOT);
                 } else if (i == 0) {
                     string memory issuerName = certs[i].issuerCommonName;
@@ -106,13 +114,6 @@ abstract contract X509ChainBase is P256Verifier {
                 if (!verified) {
                     break;
                 }
-            }
-
-            bytes32 issuerPubKeyHash = keccak256(issuer.subjectPublicKey);
-
-            if (issuerPubKeyHash == ROOTCA_PUBKEY_HASH) {
-                certChainCanBeTrusted = true;
-                break;
             }
         }
         return !certRevoked && certNotExpired && verified && certChainCanBeTrusted;
