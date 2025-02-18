@@ -1,8 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {IdentityObj, EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
+import {EnclaveIdentityJsonObj, IdentityObj, EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 import {
+    TcbInfoJsonObj,
     TCBLevelsObj,
     TcbInfoBasic,
     TcbId,
