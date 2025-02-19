@@ -165,13 +165,12 @@ abstract contract AttestationEntrypointBase is Ownable {
         if (address(quoteVerifier) == address(0)) {
             return (false, bytes("Unsupported quote version"));
         }
-        bytes memory errorMessage;
-        (success, errorMessage) = quoteVerifier.verifyZkOutput(output);
+        (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
 
         emit AttestationSubmitted(
             success, 
             zkCoprocessor, 
-            success ? output : errorMessage    
+            verifiedOutput  
         );
     }
 
