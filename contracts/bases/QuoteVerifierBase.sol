@@ -178,15 +178,15 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             return (false, bytes("identity content hash mismatch"));
         }
 
-        bytes32 expectedTcbSigningHash = pccsRouter.getCertHash(CA.SIGNING);
+        bytes32 expectedTcbSigningHash = pccsRouter.getCertHashWithTimestamp(CA.SIGNING, timestamp);
         if (tcbSigningHash != expectedTcbSigningHash) {
             return (false, bytes("tcb signing ca hash mismatch"));
         }
-        bytes32 expectedRootCaHash = pccsRouter.getCertHash(CA.ROOT);
+        bytes32 expectedRootCaHash = pccsRouter.getCertHashWithTimestamp(CA.ROOT, timestamp);
         if (rootCaHash != expectedRootCaHash) {
             return (false, bytes("root ca hash mismatch"));
         }
-        bytes32 expectedRootCrlHash = pccsRouter.getCrlHash(CA.ROOT);
+        bytes32 expectedRootCrlHash = pccsRouter.getCrlHashWithTimestamp(CA.ROOT, timestamp);
         if (rootCaCrlHash != expectedRootCrlHash) {
             return (false, bytes("root ca crl hash mismatch"));
         }
