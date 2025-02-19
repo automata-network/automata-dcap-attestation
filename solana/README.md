@@ -1,4 +1,4 @@
-# Automata DCAP Solana Program
+# Automata DCAP Solana Program Guide
 
 This repository includes the implementations for: 
 
@@ -41,11 +41,6 @@ We recommend running each test individually.
 ```bash
 cargo test-sbf <insert-test-name>
 ```
-
-The DCAP Program and Counter account have been deployed to `devnet` at:
-
-- DCAP Program: `DcapE9GZZ2KSu6udeW1pVdmqBAHP9NMBLBrxUUYdw1Qk`
-- DCAP Counter: `DcapH8Bt1y6MQHE1hR2Rp1WEBeWfog2Kh9UxtG8UMaNu`
 
 To deploy the program yourself, you must first generate the keypairs for both the program and counter accounts. This requires changes to be made on the constant values at `automata-dcap-program/src/lib.rs` and `automata-dcap-client/src/lib.rs`.
 
