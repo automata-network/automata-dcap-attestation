@@ -11,7 +11,7 @@ name = "automata_dcap_program"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-solana-program = { version = "=2.1.6" }
+solana-program = { workspace = true }
 anyhow = { workspace = true }
 borsh = { workspace = true }
 sha2 = { workspace = true }
