@@ -8,9 +8,6 @@ on:
 
     workflow_dispatch:
 
-env:
-  DCAP_RISCZERO_IMAGE_ID: "0x83613a8beec226d1f29714530f1df791fa16c2c4dfcf22c50ab7edac59ca637f"
-
 jobs:
   check:
     strategy:
@@ -18,6 +15,11 @@ jobs:
 
     name: Foundry project
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: evm
+
     steps:
       - uses: actions/checkout@v4
         with:

@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [ 
+    "solana/automata-dcap-client",
+    "solana/programs/*"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Automata Team"]
+homepage = "https://ata.network/"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+anyhow = { version = "^1.0.93" }
+borsh = { version = "^1.5.3" }
+sha2 = { version = "0.10.8" }
+hex = { version = "0.4.3" }
+solana-sdk = { version = "2.1.6" }
+solana-rpc-client = { version = "2.1.6" }
+solana-program = { version = "2.1.6" }
+
+# Patch zerorize, see: https://github.com/solana-labs/solana/issues/26688
+[patch.crates-io]
+curve25519-dalek = { git = "https://github.com/ivs/curve25519-dalek", branch = "rustls-dep-hell" }
