@@ -8,8 +8,8 @@ abstract contract FeeManagerBase {
 
     // 1356a63b
     error BP_Not_Valid();
-    // 1a72054d
-    error Insuccifient_Funds();
+    // 9bb42d4b
+    error Insufficient_Funds();
     // c40a532b
     error Withdrawal_Failed();
 
@@ -27,7 +27,7 @@ abstract contract FeeManagerBase {
 
     function withdraw(address beneficiary, uint256 amount) public virtual {
         if (amount > address(this).balance) {
-            revert Insuccifient_Funds();
+            revert Insufficient_Funds();
         }
 
         _refund(beneficiary, amount);
@@ -41,7 +41,7 @@ abstract contract FeeManagerBase {
             uint256 gasAfter = gasleft();
             txFee = ((gasBefore - gasAfter) * tx.gasprice * _feeBP) / MAX_BP;
             if (msg.value < txFee) {
-                revert Insuccifient_Funds();
+                revert Insufficient_Funds();
             }
         } else {
             _;
