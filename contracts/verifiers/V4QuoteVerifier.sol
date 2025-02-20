@@ -257,7 +257,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
 
         // Step 2: Fetch FMSPC TCB
-        // then get the TCB Status from the TDXComponenet of the matching TCBLevel
+        // then get the TCB Status from the TDXComponent of the matching TCBLevel
         TCBStatus tcbStatus;
         uint256 tcbLevelSelected;
         (success, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
