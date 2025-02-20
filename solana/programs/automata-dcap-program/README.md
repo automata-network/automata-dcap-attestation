@@ -50,4 +50,4 @@ SOLANA_RPC_URL=<url_string> cargo run --bin counter
 
 ---
 
-To learn more about integrating the client into your Rust code, click [here](./automata-dcap-client/README.md) to read the guide.
+To learn more about integrating the client into your Rust code, click [here](../../automata-dcap-client/README.md) to read the guide.
