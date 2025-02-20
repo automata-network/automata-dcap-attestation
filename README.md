@@ -146,6 +146,13 @@ The following diagram illustrates an overview of the execution flow of the DCAP 
 8. Updates the data in `VerifiedOutput` PDA to indicate the status showing successful verification.
 9. Downstream programs consume the data directly from the `VerifiedOutput` PDA.
 
+### zkVM Verifier Programs
+
+Depending on which zkVM programs that the user has chosen, the Automata DCAP Solana Program sends the processed `VerifiedOutput` along with proofs to one of the following programs:
+
+- [RiscZero Groth16 Verifier](https://github.com/risc0/risc0-solana/blob/main/solana-verifier/programs/groth_16_verifier/src/lib.rs), this is a general-purpose Groth16 Verifier built by RiscZero that can be called by any Solana programs to perform Groth16 Verifications.
+
+- [DCAP SP1 Solana Program](./solana/programs/dcap-sp1-solana-program/), this is a wrapper verifier program to be called only by the Automata DCAP Solana Program because it hardcodes the vkey. This program imports the [SP1 Solana Library](https://github.com/succinctlabs/sp1-solana/blob/master/example/program/src/lib.rs).
 
 ### Deployment
 
