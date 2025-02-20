@@ -81,14 +81,14 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia-optimism.etherscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 |  | World Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://worldchain-sepolia.explorer.alchemy.com/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
 |  | Arbitrum Sepolia | [0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246](https://sepolia.arbiscan.io/address/0xaEd8bF5907fC8690b1cb70DFD459Ca5Ed1529246) |
-| `V3QuoteVerifier.sol` | Automata Testnet | [0x6cc70fDaB6248b374A7fD4930460F7b017190872](https://explorer-testnet.ata.network/address/0x6cc70fDaB6248b374A7fD4930460F7b017190872) |
+| `V3QuoteVerifier.sol` | Automata Testnet | [0x03F3082cC6521179b30Bccf92561ea0576931Ffc](https://explorer-testnet.ata.network/address/0x03F3082cC6521179b30Bccf92561ea0576931Ffc) |
 |  | Ethereum Sepolia | [0x6E64769A13617f528a2135692484B681Ee1a7169](https://sepolia.etherscan.io/address/0x6E64769A13617f528a2135692484B681Ee1a7169) |
 |  | Ethereum Holesky | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://holesky.etherscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 |  | Base Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia.basescan.org/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 |  | OP Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia-optimism.etherscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 |  | World Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://worldchain-sepolia.explorer.alchemy.com/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
 |  | Arbitrum Sepolia | [0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1](https://sepolia.arbiscan.io/address/0x4613038C93aF8963dc9E5e46c9fb3cbc68724df1) |
-| `V4QuoteVerifier.sol` | Automata Testnet | [0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3](https://explorer-testnet.ata.network/address/0x015E89a5fF935Fbc361DcB4Bac71e5cD8a5CeEe3) |
+| `V4QuoteVerifier.sol` | Automata Testnet | [0x72221D7D8eB8949383404B1d1027E5eBd39fE53C](https://explorer-testnet.ata.network/address/0x72221D7D8eB8949383404B1d1027E5eBd39fE53C) |
 |  | Ethereum Sepolia | [0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A](https://sepolia.etherscan.io/address/0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A) |
 |  | Ethereum Holesky | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://holesky.etherscan.io/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
 |  | Base Sepolia | [0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2](https://sepolia.basescan.org/address/0xdE13b52a02Bd0a48AcF4FCaefccb094b41135Ee2) |
