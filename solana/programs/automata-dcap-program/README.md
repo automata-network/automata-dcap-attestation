@@ -1,13 +1,5 @@
 # Automata DCAP Solana Program Guide
 
-This repository includes the implementations for: 
-
-- DCAP Attestation Solana Program
-
-and
-
-- DCAP Attestation Solana Rust Client
-
 To interact with the program, you must install the following on your machine:
 
 - [Rust](https://www.rust-lang.org/tools/install)

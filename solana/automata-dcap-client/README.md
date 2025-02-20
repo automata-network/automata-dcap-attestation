@@ -1,10 +1,10 @@
-# Automata DCAP Rust Client
+# Automata DCAP on Solana Rust Client
 
 Add the line below in your project's `Cargo.toml`.
 
 ```toml
 [dependencies]
-automata-dcap-client = { git = "https://github.com/automata-network/automata-dcap-attestation-solana.git" }
+automata-dcap-client = { git = "https://github.com/automata-network/automata-dcap-attestation.git" }
 # other dependencies...
 ```
 
@@ -95,4 +95,4 @@ fn main() -> Result<()> {
 }
 ```
 
-More examples can be found at our [`Automata DCAP zkVM Demo`](https://github.com/automata-network/automata-dcap-zkvm-cli/tree/solana). 
+More examples can be found at our [`Automata DCAP zkVM Demo`](https://github.com/automata-network/automata-dcap-zkvm-cli/blob/solana/dcap-sp1-cli/src/solana/mod.rs). 
