@@ -5,6 +5,7 @@ typechain-types/
 **/.DS_Store
 out/
 **/.env
+**/keystores
 
 # Ignores development broadcast logs
 broadcast/**/31337/
