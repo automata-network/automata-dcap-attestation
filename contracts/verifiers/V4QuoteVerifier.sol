@@ -275,7 +275,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         TCBStatus tdxModuleStatus;
         uint8 tdxModuleVersion;
         bytes memory expectedMrSignerSeam;
-        uint64 expectedSeamAttributes;
+        bytes8 expectedSeamAttributes;
         (success, tdxModuleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes) =
             checkTdxModuleTcbStatus(quote.reportBody.teeTcbSvn, ret.tdxModuleIdentities);
         if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
@@ -316,9 +316,9 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
             report.mrSeam = reportBytes.substring(16, 48);
             report.mrsignerSeam = reportBytes.substring(64, 48);
-            report.seamAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(112, 8)));
-            report.tdAttributes = uint64(BELE.leBytesToBeUint(reportBytes.substring(120, 8)));
-            report.xFAM = uint64(BELE.leBytesToBeUint(reportBytes.substring(128, 8)));
+            report.seamAttributes = bytes8(reportBytes.substring(112, 8));
+            report.tdAttributes = bytes8(reportBytes.substring(120, 8));
+            report.xFAM = bytes8(reportBytes.substring(128, 8));
             report.mrTd = reportBytes.substring(136, 48);
             report.mrConfigId = reportBytes.substring(184, 48);
             report.mrOwner = reportBytes.substring(232, 48);

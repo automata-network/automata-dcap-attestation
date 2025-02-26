@@ -12,9 +12,9 @@ struct TD10ReportBody {
     bytes16 teeTcbSvn;
     bytes mrSeam; // 48 bytes
     bytes mrsignerSeam; // 48 bytes
-    uint64 seamAttributes; // LE -> BE
-    uint64 tdAttributes; // LE -> BE
-    uint64 xFAM; // LE -> BE
+    bytes8 seamAttributes;
+    bytes8 tdAttributes;
+    bytes8 xFAM;
     bytes mrTd; // 48 bytes
     bytes mrConfigId; // 48 bytes
     bytes mrOwner; // 48 bytes
