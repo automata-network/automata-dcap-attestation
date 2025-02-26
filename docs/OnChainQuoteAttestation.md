@@ -4,7 +4,7 @@ This document provides a high-level overview of the full on-chain verification w
 
 We advise reading through the code and refer to [Intel's official documentation](https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/) for a deep dive into the technical details about DCAP Quote Verification.
 
-The verification process leverages dedicated quote verifiers to attest hardware authenticity by verifying the root-of-trust and checking TCB Statuses with collaterals provided by a PCCS.
+The verification process leverages dedicated quote verifiers to attest hardware authenticity by verifying the root-of-trust and checking TCB Statuses using collaterals sourced from the [On Chain PCCS](https://github.com/automata-network/automata-on-chain-pccs).
 
 ---
 
