@@ -19,7 +19,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         returns (bool success, bytes memory output)
     {
         uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
-        success = checkCollateralHashes(offset + 72, outputBytes);
+        success = checkCollateralHashes(offset, outputBytes);
         if (success) {
             output = outputBytes[2:offset];
         } else {
