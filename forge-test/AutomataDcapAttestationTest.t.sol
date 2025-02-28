@@ -107,7 +107,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     }
 
     function testRiscZeroProofAttestation() public {
-        bytes32 imageId = vm.envBytes32("DCAP_RISCZERO_IMAGE_ID");
+        bytes32 imageId = 0x83613a8beec226d1f29714530f1df791fa16c2c4dfcf22c50ab7edac59ca637f;
         setUpRiscZero();
         ZkCoProcessorConfig memory riscZeroConfig =
             ZkCoProcessorConfig({dcapProgramIdentifier: imageId, zkVerifier: address(riscZeroVerifier)});

@@ -153,6 +153,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
     function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
         string memory mismatchMessage = "collateral mismatch";
+        
         uint64 timestamp = uint64(bytes8(zkOutput[offset:offset + 8]));
         bytes32 rootCaHash = bytes32(zkOutput[offset + 72:offset + 104]);
         bytes32 tcbSigningHash = bytes32(zkOutput[offset + 104:offset + 136]);
