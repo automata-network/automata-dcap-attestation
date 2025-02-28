@@ -50,6 +50,18 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         _authorized[address(0)] = true;
     }
 
+    event SetCallerAuthorization(address caller, bool authorized);
+    event UpdateCallerRestriction(bool restricted);
+    event UpdateConfig(
+        address qeid, 
+        address fmspcTcb, 
+        address pcs, 
+        address pck,
+        address x509,
+        address x509Crl,
+        address tcbHelper
+    );
+
     // Reverts for missing collaterals
 
     // a93fad2a
@@ -73,14 +85,17 @@ contract PCCSRouter is IPCCSRouter, Ownable {
 
     function setAuthorized(address caller, bool authorized) external onlyOwner {
         _authorized[caller] = authorized;
+        emit SetCallerAuthorization(caller, authorized);
     }
 
     function enableCallerRestriction() external onlyOwner {
         _isCallerRestricted = true;
+        emit UpdateCallerRestriction(true);
     }
 
     function disableCallerRestriction() external onlyOwner {
         _isCallerRestricted = false;
+        emit UpdateCallerRestriction(false);
     }
 
     modifier onlyAuthorized() {
@@ -118,6 +133,8 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         pckHelperAddr = _x509;
         crlHelperAddr = _x509Crl;
         fmspcTcbHelperAddr = _tcbHelper;
+
+        emit UpdateConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
     }
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion)
