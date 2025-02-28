@@ -122,12 +122,12 @@ forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "deplo
 
 RiscZero:
 ```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "onfigureZk(uint8,address,bytes32)" 1 $RISC0_VERIFIER $DCAP_RISCZERO_IMAGE_ID
+forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configureZk(uint8,address,bytes32)" 1 $RISC0_VERIFIER $DCAP_RISCZERO_IMAGE_ID
 ```
 
 SP1:
 ```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "onfigureZk(uint8,address,bytes32)" 2 $SP1_VERIFIER_GATEWAY $DCAP_SUCCINCT_VKEY
+forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configureZk(uint8,address,bytes32)" 2 $SP1_VERIFIER_GATEWAY $DCAP_SUCCINCT_VKEY
 ```
 
 #### Deploy Quote Verifier(s):
