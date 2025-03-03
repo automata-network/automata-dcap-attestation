@@ -167,7 +167,11 @@ abstract contract AttestationEntrypointBase is Ownable {
         }
         (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
 
-        emit AttestationSubmitted(success, zkCoprocessor, output);
+        emit AttestationSubmitted(
+            success, 
+            zkCoprocessor, 
+            verifiedOutput  
+        );
     }
 
     /**
@@ -176,19 +180,22 @@ abstract contract AttestationEntrypointBase is Ownable {
     function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (bool success, Header memory header) {
         success = rawQuote.length >= HEADER_LENGTH;
         if (success) {
+            uint16 version = uint16(BELE.leBytesToBeUint(rawQuote[0:2]));
+            bytes4 teeType = bytes4(rawQuote[4:8]);
             bytes2 attestationKeyType = bytes2(rawQuote[2:4]);
             bytes2 qeSvn = bytes2(rawQuote[8:10]);
             bytes2 pceSvn = bytes2(rawQuote[10:12]);
             bytes16 qeVendorId = bytes16(rawQuote[12:28]);
+            bytes20 userData = bytes20(rawQuote[28:48]);
 
             header = Header({
-                version: uint16(BELE.leBytesToBeUint(rawQuote[0:2])),
+                version: version,
                 attestationKeyType: attestationKeyType,
-                teeType: bytes4(uint32(BELE.leBytesToBeUint(rawQuote[4:8]))),
+                teeType: teeType,
                 qeSvn: qeSvn,
                 pceSvn: pceSvn,
                 qeVendorId: qeVendorId,
-                userData: bytes20(rawQuote[28:48])
+                userData: userData
             });
         }
     }

@@ -11,8 +11,8 @@ abstract contract TDXModuleBase {
     function checkTdxModule(
         bytes memory mrsignerSeam,
         bytes memory expectedMrsignerSeam,
-        uint64 seamAttributes,
-        uint64 expectedSeamAttributes
+        bytes8 seamAttributes,
+        bytes8 expectedSeamAttributes
     ) internal pure returns (bool) {
         return mrsignerSeam.equals(expectedMrsignerSeam) && seamAttributes == expectedSeamAttributes;
     }
