@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../utils/P256Configuration.sol";
-import "../utils/salt.sol";
+import "../utils/Salt.sol";
 import "../../contracts/verifiers/V4QuoteVerifier.sol";
 
 contract DeployV4 is P256Configuration {
