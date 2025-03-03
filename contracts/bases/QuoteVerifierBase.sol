@@ -151,48 +151,52 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         );
     }
 
-    function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool) {
-        bytes32 rootCaHash = bytes32(journal[offset:offset + 32]);
-        bytes32 tcbSigningHash = bytes32(journal[offset + 32:offset + 64]);
-        bytes32 rootCaCrlHash = bytes32(journal[offset + 64:offset + 96]);
-        bytes32 pckCrlHash = bytes32(journal[offset + 96:offset + 128]);
+    function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
+        string memory mismatchMessage = "collateral mismatch";
+        
+        uint64 timestamp = uint64(bytes8(zkOutput[offset:offset + 8]));
+        bytes32 rootCaHash = bytes32(zkOutput[offset + 72:offset + 104]);
+        bytes32 tcbSigningHash = bytes32(zkOutput[offset + 104:offset + 136]);
+        bytes32 rootCaCrlHash = bytes32(zkOutput[offset + 136:offset + 168]);
+        bytes32 pckCrlHash = bytes32(zkOutput[offset + 168:offset + 200]);
 
         (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
         if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
-            return false;
+            return (false, bytes(mismatchMessage));
         }
         (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
         if (!rootCaFound || rootCaHash != expectedRootCaHash) {
-            return false;
+            return (false, bytes(mismatchMessage));
         }
         (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
         if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
-            return false;
+            return (false, bytes(mismatchMessage));
         }
 
         // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
         // to verify the quote
         // we can catch reverts here, and consider it a valid quote as long as:
         // - one of the PCK CAs has a CRL stored on-chain
-        // - the hash of the on-chain CRL matches with the CRL hash in the journal
+        // - the hash of the on-chain CRL matches with the CRL hash in the zkOutput
 
         (bool platformSuccess, bytes memory platformRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PLATFORM));
+            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp));
 
         (bool processorSuccess, bytes memory processorRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PROCESSOR));
+            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp));
 
         bytes32 expectedPlatformCrlHash;
         bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
-            (, expectedPlatformCrlHash) = abi.decode(platformRet, (bool, bytes32));
+            expectedPlatformCrlHash = abi.decode(platformRet, (bytes32));
         } else if (processorSuccess) {
-            (, expectedProcessorCrlHash) = abi.decode(processorRet, (bool, bytes32));
+            expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
         } else {
             // Both Processor and Platform PCKs not found
-            return false;
+            return (false, bytes(mismatchMessage));
         }
 
-        return pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
+        bool crlHashMatched = pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
+        return (crlHashMatched, crlHashMatched ? bytes("") : bytes(mismatchMessage));
     }
 }

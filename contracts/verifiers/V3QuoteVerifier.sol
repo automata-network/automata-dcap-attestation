@@ -18,13 +18,12 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         override
         returns (bool success, bytes memory output)
     {
-        uint256 offset = 2 + uint16(bytes2(outputBytes[0:2]));
-        success = checkCollateralHashes(offset + 72, outputBytes);
-        if (success) {
-            output = outputBytes[2:offset];
-        } else {
-            output = bytes("Found one or more collaterals mismatch");
+        uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
+        uint256 offset = 2 + outputLength;
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+            return (false, "invalid output length");
         }
+        (success, output) = checkCollateralHashes(offset, outputBytes);
     }
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
@@ -65,14 +64,16 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         uint256 offset = HEADER_LENGTH + ENCLAVE_REPORT_LENGTH;
         (success, localReport) = parseEnclaveReport(quote[HEADER_LENGTH:offset]);
         if (!success) {
-            return (false, "failed to parse local isv report", parsed, rawQeReport);
+            return (false, "local isv report length is incorrect", parsed, rawQeReport);
         }
 
         // check authData length
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
+        // we don't strictly require the auth data to be equal to the provided length
+        // but this ignores any trailing bytes after the indicated length allocated for authData
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote length is incorrect", parsed, rawQeReport);
+            return (false, "quote auth data length is incorrect", parsed, rawQeReport);
         }
 
         // at this point, we have verified the length of the entire quote to be correct

@@ -50,29 +50,52 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         _authorized[address(0)] = true;
     }
 
+    event SetCallerAuthorization(address caller, bool authorized);
+    event UpdateCallerRestriction(bool restricted);
+    event UpdateConfig(
+        address qeid, 
+        address fmspcTcb, 
+        address pcs, 
+        address pck,
+        address x509,
+        address x509Crl,
+        address tcbHelper
+    );
+
     // Reverts for missing collaterals
 
     // a93fad2a
     error QEIdentityNotFound(EnclaveId id, uint256 quoteVersion);
+    // cb5a2635
+    error QEIdentityExpired(EnclaveId id, uint256 quoteVersion);
     // eb9cf5a3
     error FmspcTcbNotFound(TcbId id, uint256 tcbVersion);
+    // 2fff9f55
+    error FmspcTcbExpired(TcbId id, uint256 tcbVersion);
     // da236293
     error CertNotFound(CA ca);
+    // 52a1f316
+    error CertExpired(CA ca);
     // 18c6f762
     error CrlNotFound(CA ca);
+    // a5b5088a
+    error CrlExpired(CA ca);
     // ee90c468
     error Forbidden();
 
     function setAuthorized(address caller, bool authorized) external onlyOwner {
         _authorized[caller] = authorized;
+        emit SetCallerAuthorization(caller, authorized);
     }
 
     function enableCallerRestriction() external onlyOwner {
         _isCallerRestricted = true;
+        emit UpdateCallerRestriction(true);
     }
 
     function disableCallerRestriction() external onlyOwner {
         _isCallerRestricted = false;
+        emit UpdateCallerRestriction(false);
     }
 
     modifier onlyAuthorized() {
@@ -110,6 +133,8 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         pckHelperAddr = _x509;
         crlHelperAddr = _x509Crl;
         fmspcTcbHelperAddr = _tcbHelper;
+
+        emit UpdateConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
     }
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion)
@@ -121,12 +146,16 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
         bytes32 key = enclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
-        bytes memory data = enclaveIdDao.getAttestedData(key);
-        valid = data.length > 0;
-        if (valid) {
-            (identity,,) = abi.decode(data, (IdentityObj, string, bytes));
+        if (_loadDataIfNotExpired(key, qeIdDaoAddr, block.timestamp)) {
+            bytes memory data = enclaveIdDao.getAttestedData(key);
+            valid = data.length > 0;
+            if (valid) {
+                (identity,,) = abi.decode(data, (IdentityObj, string, bytes));
+            } else {
+                revert QEIdentityNotFound(id, quoteVersion);
+            }
         } else {
-            revert QEIdentityNotFound(id, quoteVersion);
+            revert QEIdentityExpired(id, quoteVersion);
         }
     }
 
@@ -139,15 +168,19 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(TcbId.SGX), fmspc, 2);
-        TcbInfoBasic memory tcbInfo;
-        bytes memory data = tcbDao.getAttestedData(key);
-        valid = data.length > 0;
-        if (valid) {
-            bytes memory encodedLevels;
-            (tcbInfo, encodedLevels,,) = abi.decode(data, (TcbInfoBasic, bytes, string, bytes));
-            tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
+        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr, block.timestamp)) {
+            TcbInfoBasic memory tcbInfo;
+            bytes memory data = tcbDao.getAttestedData(key);
+            valid = data.length > 0;
+            if (valid) {
+                bytes memory encodedLevels;
+                (tcbInfo, encodedLevels,,) = abi.decode(data, (TcbInfoBasic, bytes, string, bytes));
+                tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
+            } else {
+                revert FmspcTcbNotFound(TcbId.SGX, 2);
+            }
         } else {
-            revert FmspcTcbNotFound(TcbId.SGX, 2);
+            revert FmspcTcbExpired(TcbId.SGX, 2);
         }
     }
 
@@ -165,20 +198,24 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, 3);
-        TcbInfoBasic memory tcbInfo;
-        bytes memory data = tcbDao.getAttestedData(key);
-        valid = data.length > 0;
-        if (valid) {
-            bytes memory encodedLevels;
-            bytes memory encodedTdxModuleIdentities;
-            (tcbInfo, tdxModule, encodedTdxModuleIdentities, encodedLevels,,) =
-                abi.decode(data, (TcbInfoBasic, TDXModule, bytes, bytes, string, bytes));
-            tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
-            if (encodedTdxModuleIdentities.length > 0) {
-                tdxModuleIdentities = _decodeTdxModuleIdentities(encodedTdxModuleIdentities);
+        if (_loadDataIfNotExpired(key, fmspcTcbDaoAddr, block.timestamp)) {
+            TcbInfoBasic memory tcbInfo;
+            bytes memory data = tcbDao.getAttestedData(key);
+            valid = data.length > 0;
+            if (valid) {
+                bytes memory encodedLevels;
+                bytes memory encodedTdxModuleIdentities;
+                (tcbInfo, tdxModule, encodedTdxModuleIdentities, encodedLevels,,) =
+                    abi.decode(data, (TcbInfoBasic, TDXModule, bytes, bytes, string, bytes));
+                tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
+                if (encodedTdxModuleIdentities.length > 0) {
+                    tdxModuleIdentities = _decodeTdxModuleIdentities(encodedTdxModuleIdentities);
+                }
+            } else {
+                revert FmspcTcbNotFound(id, 3);
             }
         } else {
-            revert FmspcTcbNotFound(id, 3);
+            revert FmspcTcbExpired(id, 3);
         }
     }
 
@@ -194,19 +231,27 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     }
 
     function getCert(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509Der) {
-        (success, x509Der) = _getPcsAttestationData(ca, false);
+        (success, x509Der) = _getPcsAttestationData(ca, false, block.timestamp);
     }
 
     function getCrl(CA ca) external view override onlyAuthorized returns (bool success, bytes memory x509CrlDer) {
-        (success, x509CrlDer) = _getPcsAttestationData(ca, true);
+        (success, x509CrlDer) = _getPcsAttestationData(ca, true, block.timestamp);
     }
 
     function getCertHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
-        (success, hash) = _getPcsHash(ca, false);
+        (success, hash) = _getPcsHash(ca, false, block.timestamp);
     }
 
     function getCrlHash(CA ca) external view override onlyAuthorized returns (bool success, bytes32 hash) {
-        (success, hash) = _getPcsHash(ca, true);
+        (success, hash) = _getPcsHash(ca, true, block.timestamp);
+    }
+
+    function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+        (, hash) = _getPcsHash(ca, false, timestamp);
+    }
+
+    function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+        (, hash) = _getPcsHash(ca, true, timestamp);
     }
 
     function _decodeTcbLevels(bytes memory encodedTcbLevels) private view returns (TCBLevelsObj[] memory tcbLevels) {
@@ -235,29 +280,55 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function _getPcsAttestationData(CA ca, bool crl) private view returns (bool valid, bytes memory ret) {
+    function _getPcsAttestationData(CA ca, bool crl, uint256 timestamp) private view returns (bool valid, bytes memory ret) {
         PcsDao pcsDao = PcsDao(pcsDaoAddr);
-        ret = pcsDao.getAttestedData(pcsDao.PCS_KEY(ca, crl));
-        valid = ret.length > 0;
-        if (!valid) {
+        bytes32 key = pcsDao.PCS_KEY(ca, crl);
+        if (_loadDataIfNotExpired(key, pcsDaoAddr, timestamp)) {
+            ret = pcsDao.getAttestedData(key);
+            valid = ret.length > 0;
+            if (!valid) {
+                if (crl) {
+                    revert CrlNotFound(ca);
+                } else {
+                    revert CertNotFound(ca);
+                }
+            }
+        } else {
             if (crl) {
-                revert CrlNotFound(ca);
+                revert CrlExpired(ca);
             } else {
-                revert CertNotFound(ca);
+                revert CertExpired(ca);
             }
         }
     }
 
-    function _getPcsHash(CA ca, bool crl) private view returns (bool valid, bytes32 hash) {
+    function _getPcsHash(CA ca, bool crl, uint256 timestamp) private view returns (bool valid, bytes32 hash) {
         PcsDao pcsDao = PcsDao(pcsDaoAddr);
-        hash = pcsDao.getCollateralHash(pcsDao.PCS_KEY(ca, crl));
-        valid = hash != bytes32(0);
-        if (!valid) {
+        bytes32 key = pcsDao.PCS_KEY(ca, crl);
+        if (_loadDataIfNotExpired(key, pcsDaoAddr, timestamp)) {
+             hash = pcsDao.getCollateralHash(key);
+            valid = hash != bytes32(0);
+            if (!valid) {
+                if (crl) {
+                    revert CrlNotFound(ca);
+                } else {
+                    revert CertNotFound(ca);
+                }
+            }
+        } else {
             if (crl) {
-                revert CrlNotFound(ca);
+                revert CrlExpired(ca);
             } else {
-                revert CertNotFound(ca);
+                revert CertExpired(ca);
             }
         }
+    }
+
+    function _loadDataIfNotExpired(bytes32 key, address dao, uint256 timestamp) private view returns (bool valid) {
+        bytes4 COLLATERAL_VALIDITY_SELECTOR = 0x3e960426;
+        (bool success, bytes memory ret) = dao.staticcall(abi.encodeWithSelector(COLLATERAL_VALIDITY_SELECTOR, key));
+        require(success, "Failed to determine collateral validity");
+        (uint64 issuedAt, uint64 expiredAt) = abi.decode(ret, (uint64, uint64));
+        valid = timestamp >= issuedAt || timestamp <= expiredAt;
     }
 }
