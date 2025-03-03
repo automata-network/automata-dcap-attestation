@@ -1,0 +1,24 @@
+[package]
+name = "automata-dcap-verifier"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[lib]
+name = "automata_dcap_verifier"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = { workspace = true }
+dcap-rs = { workspace = true }
+borsh = { workspace = true }
+
+[features]
+no-entrypoint = []
+
+[dev-dependencies]
+solana-program-test = { version = "=2.1.6" }
+solana-sdk = { workspace = true }
+tokio = { version = "1.41.1" }
