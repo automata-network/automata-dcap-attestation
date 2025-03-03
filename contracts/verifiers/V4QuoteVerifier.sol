@@ -277,7 +277,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         TCBStatus tdxModuleStatus;
         uint8 tdxModuleVersion;
         bytes memory expectedMrSignerSeam;
-        bytes8 expectedSeamAttributes;
+        uint64 expectedSeamAttributes;
         (success, tdxModuleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes) =
             checkTdxModuleTcbStatus(quote.reportBody.teeTcbSvn, ret.tdxModuleIdentities);
         if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
