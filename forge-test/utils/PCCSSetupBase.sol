@@ -89,8 +89,9 @@ abstract contract PCCSSetupBase is Test {
         vm.stopPrank();
     }
 
-    function setupPccsRouter() internal returns (PCCSRouter pccsRouter) {
+    function setupPccsRouter(address owner) internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
+            owner,
             address(enclaveIdDao),
             address(fmspcTcbDao),
             address(pcsDao),

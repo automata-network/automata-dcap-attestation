@@ -48,8 +48,8 @@ abstract contract AttestationEntrypointBase is Ownable {
     event QuoteVerifierUpdated(uint16 indexed version);
     event ZkCoProcessorUpdated(ZkCoProcessorType indexed zkCoProcessor, bytes32 programIdentifier, address zkVerifier);
 
-    constructor() {
-        _initializeOwner(msg.sender);
+    constructor(address owner) {
+        _initializeOwner(owner);
     }
 
     /**
