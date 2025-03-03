@@ -1,7 +1,6 @@
 artifacts/
 cache*/
-node_modules/
-typechain-types/
+**/node_modules/
 **/.DS_Store
 out/
 **/.env
