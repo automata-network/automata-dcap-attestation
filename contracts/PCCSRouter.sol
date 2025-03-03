@@ -160,6 +160,17 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
+    function getQeIdentityContentHash(EnclaveId id, uint256 quoteVersion) 
+        external 
+        view 
+        override 
+        returns (bytes32 contentHash)
+    {
+        EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
+        bytes32 key = enclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
+        contentHash = enclaveIdDao.getIdentityContentHash(key);
+    }
+
     function getFmspcTcbV2(bytes6 fmspc)
         external
         view
@@ -218,6 +229,17 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         } else {
             revert FmspcTcbExpired(id, 3);
         }
+    }
+
+    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) 
+        external 
+        view
+        override
+        returns (bytes32) 
+    {
+        FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
+        bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
+        return tcbDao.getTcbInfoContentHash(key);
     }
 
     function getPckCert(

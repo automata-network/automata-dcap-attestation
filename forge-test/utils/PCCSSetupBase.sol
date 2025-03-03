@@ -121,7 +121,7 @@ abstract contract PCCSSetupBase is Test {
 
     function qeIdDaoUpsert(uint256 quoteVersion, string memory path) internal {
         EnclaveIdentityJsonObj memory identityJson = _readIdentityJson(path);
-        IdentityObj memory identity = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
+        (IdentityObj memory identity,) = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
         enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), quoteVersion, identityJson);
     }
 

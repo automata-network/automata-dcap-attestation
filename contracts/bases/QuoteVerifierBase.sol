@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TCBStatus} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {TCBStatus, TcbId} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 
 import {IQuoteVerifier, IPCCSRouter} from "../interfaces/IQuoteVerifier.sol";
 import {BytesUtils} from "../utils/BytesUtils.sol";
@@ -152,25 +153,48 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     }
 
     function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
-        string memory mismatchMessage = "collateral mismatch";
-        
         uint64 timestamp = uint64(bytes8(zkOutput[offset:offset + 8]));
+        bytes32 tcbInfoContentHash = bytes32(zkOutput[offset + 8:offset + 40]);
+        bytes32 identityContentHash = bytes32(zkOutput[offset + 40:offset + 72]);
         bytes32 rootCaHash = bytes32(zkOutput[offset + 72:offset + 104]);
         bytes32 tcbSigningHash = bytes32(zkOutput[offset + 104:offset + 136]);
         bytes32 rootCaCrlHash = bytes32(zkOutput[offset + 136:offset + 168]);
         bytes32 pckCrlHash = bytes32(zkOutput[offset + 168:offset + 200]);
 
-        (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
-        if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
-            return (false, bytes(mismatchMessage));
+        bytes4 tee = bytes4(zkOutput[4:8]);
+        bytes6 fmspc = bytes6(zkOutput[9:15]);
+        bytes32 expectedTcbInfoContentHash = 
+            pccsRouter.getFmspcTcbContentHash(
+                tee == SGX_TEE ? TcbId.SGX : TcbId.TDX,
+                fmspc,
+                quoteVersion < 4 ? 2 : 3
+            );
+        if (tcbInfoContentHash != expectedTcbInfoContentHash) {
+            return (false, bytes("tcb info content hash mismatch"));
         }
+
+        bytes32 expectedIdentityContentHash =
+            pccsRouter.getQeIdentityContentHash(
+                tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE,
+                quoteVersion
+            );
+        if (identityContentHash != expectedIdentityContentHash) {
+            return (false, bytes("identity content hash mismatch"));
+        }
+
         (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
         if (!rootCaFound || rootCaHash != expectedRootCaHash) {
-            return (false, bytes(mismatchMessage));
+            return (false, bytes("root ca hash mismatch"));
         }
+
+        (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
+        if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
+            return (false, bytes("tcb signing ca hash mismatch"));
+        }
+        
         (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
         if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
-            return (false, bytes(mismatchMessage));
+            return (false, bytes("root ca crl hash mismatch"));
         }
 
         // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
@@ -193,10 +217,10 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
         } else {
             // Both Processor and Platform PCKs not found
-            return (false, bytes(mismatchMessage));
+            return (false, bytes("missing either pck platform or processor crl"));
         }
 
         bool crlHashMatched = pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
-        return (crlHashMatched, crlHashMatched ? bytes("") : bytes(mismatchMessage));
+        return (crlHashMatched, crlHashMatched ? bytes("") : bytes("pck crl hash mismatch"));
     }
 }

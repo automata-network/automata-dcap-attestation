@@ -127,7 +127,11 @@ abstract contract AttestationEntrypointBase is Ownable {
      * @notice verifies an attestation using SNARK proofs
      * 
      * @param output - The output of the Guest program, this includes:
+     * - uint16 VerifiedOutput bytes length
      * - VerifiedOutput struct
+     * - uint64 timestamp (in seconds)
+     * - FMSPC TCB Info content hash
+     * - QEIdentity content hash
      * - RootCA hash
      * - TCB Signing CA hash
      * - Root CRL hash

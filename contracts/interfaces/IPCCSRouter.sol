@@ -34,12 +34,16 @@ interface IPCCSRouter {
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (bool, IdentityObj memory);
 
+    function getQeIdentityContentHash(EnclaveId id, uint256 version) external view returns (bytes32);
+
     function getFmspcTcbV2(bytes6 fmspc) external view returns (bool, TCBLevelsObj[] memory);
 
     function getFmspcTcbV3(TcbId id, bytes6 fmspc)
         external
         view
         returns (bool, TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
+
+    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) external view returns (bytes32);
 
     function getPckCert(
         string calldata qeid,

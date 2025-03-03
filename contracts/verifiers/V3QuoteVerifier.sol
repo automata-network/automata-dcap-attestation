@@ -23,7 +23,9 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
             return (false, "invalid output length");
         }
-        (success, output) = checkCollateralHashes(offset, outputBytes);
+        bytes memory errorMessage;
+        (success, errorMessage) = checkCollateralHashes(offset, outputBytes);
+        output = success ? outputBytes[2 : offset] : errorMessage;
     }
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
