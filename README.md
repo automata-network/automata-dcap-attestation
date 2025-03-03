@@ -165,10 +165,10 @@ forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "confi
 
 #### Deployment Information
 
-The [ImageID](https://dev.risczero.com/terminology#image-id) currently used for the DCAP RiscZero Guest Program is `83613a8beec226d1f29714530f1df791fa16c2c4dfcf22c50ab7edac59ca637f`.
+The [ImageID](https://dev.risczero.com/terminology#image-id) currently used for the DCAP RiscZero Guest Program is `0xb9a96822814a06ff0b7445a922946b264447676ac6a9a2e1a14179b1c3705e91`.
 
 The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#finding-your-program-vkey) currently used for the DCAP SP1 Program is
-`0043e4e0c286cf4a2c03472ca2384f35a008558bc5de4e0f39d1d1bc989badca`.
+`0x00d9e1e42163e23deefcd5b7b69ed0362425aeda23a32606e499ef1736682eb3`.
 
 > ℹ️ **Note**: 
 >
