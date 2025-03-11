@@ -1,14 +1,5 @@
 # Ignores build artifacts
-artifacts/
-cache*/
-out/
 **/target
-
-# Ignores development broadcast logs
-broadcast/**/31337/
-broadcast/**/run-*.json
-broadcast/**/dry-run/
-!broadcast/**/*-latest.json
 
 # Misc
 **/keystores

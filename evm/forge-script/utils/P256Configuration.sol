@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 
 pragma solidity ^0.8.0;
 
-contract P256Configuration is Script {
+abstract contract P256Configuration is Script {
     using BytesUtils for bytes;
 
     address constant RIP7212_P256_PRECOMPILE = 0x0000000000000000000000000000000000000100;
