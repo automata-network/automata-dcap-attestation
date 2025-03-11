@@ -1,17 +1,13 @@
-# Ignores build artifacts
 artifacts/
 cache*/
+node_modules/
+typechain-types/
+**/.DS_Store
 out/
-**/target
+**/.env
 
 # Ignores development broadcast logs
 broadcast/**/31337/
 broadcast/**/run-*.json
 broadcast/**/dry-run/
 !broadcast/**/*-latest.json
-
-# Misc
-**/keystores
-**/.DS_Store
-**/.env
-**/node_modules/
