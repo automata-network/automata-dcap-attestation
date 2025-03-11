@@ -20,7 +20,6 @@ struct FetchedCollateralsAndStatuses {
 /**
  * @title Automata DCAP QuoteV4 Verifier
  */
-
 contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
     using BytesUtils for bytes;
@@ -45,7 +44,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
         bytes memory errorMessage;
         (success, errorMessage) = checkCollateralHashes(offset, outputBytes);
-        output = success ? outputBytes[2 : offset] : errorMessage;
+        output = success ? outputBytes[2:offset] : errorMessage;
     }
 
     function verifyQuote(Header calldata header, bytes calldata rawQuote)
@@ -171,11 +170,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         X509CertObj[] memory parsedCerts = authData.qeReportCertData.certification.pck.pckChain;
         PCKCertTCB memory pckTcb = authData.qeReportCertData.certification.pck.pckExtension;
         TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
-        (
-            TCBLevelsObj[] memory tcbLevels,
-            TDXModule memory tdxModule,
-            TDXModuleIdentity[] memory tdxModuleIdentities
-        ) = pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
+        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
+            pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
 
         // Step 3: verify cert chain
         success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
@@ -310,7 +306,11 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     /**
      * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
      */
-    function parseTD10ReportBody(bytes memory reportBytes) internal pure returns (bool success, TD10ReportBody memory report) {
+    function parseTD10ReportBody(bytes memory reportBytes)
+        internal
+        pure
+        returns (bool success, TD10ReportBody memory report)
+    {
         success = reportBytes.length == TD_REPORT10_LENGTH;
         if (success) {
             report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));

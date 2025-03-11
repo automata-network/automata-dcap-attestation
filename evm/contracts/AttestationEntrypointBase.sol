@@ -100,10 +100,7 @@ abstract contract AttestationEntrypointBase is Ownable {
      * For verification failures, the output is simply a UTF-8 encoded string, describing the reason for failure.
      * @dev can directly type-cast the failed output as a string
      */
-    function _verifyAndAttestOnChain(bytes calldata rawQuote)
-        internal
-        returns (bool success, bytes memory output)
-    {
+    function _verifyAndAttestOnChain(bytes calldata rawQuote) internal returns (bool success, bytes memory output) {
         // Parse the header
         Header memory header;
         (success, header) = _parseQuoteHeader(rawQuote);
@@ -125,7 +122,7 @@ abstract contract AttestationEntrypointBase is Ownable {
 
     /**
      * @notice verifies an attestation using SNARK proofs
-     * 
+     *
      * @param output - The output of the Guest program, this includes:
      * - uint16 VerifiedOutput bytes length
      * - VerifiedOutput struct
@@ -140,19 +137,14 @@ abstract contract AttestationEntrypointBase is Ownable {
      * @param proofBytes - The encoded cryptographic proof (i.e. SNARK)).
      */
     function _verifyAndAttestWithZKProof(
-        bytes calldata output, 
-        ZkCoProcessorType zkCoprocessor, 
+        bytes calldata output,
+        ZkCoProcessorType zkCoprocessor,
         bytes calldata proofBytes
-    )
-        internal
-        returns (bool success, bytes memory verifiedOutput)
-    {
+    ) internal returns (bool success, bytes memory verifiedOutput) {
         ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
 
         if (zkCoprocessor == ZkCoProcessorType.RiscZero) {
-            IRiscZeroVerifier(zkConfig.zkVerifier).verify(
-                proofBytes, zkConfig.dcapProgramIdentifier, sha256(output)
-            );
+            IRiscZeroVerifier(zkConfig.zkVerifier).verify(proofBytes, zkConfig.dcapProgramIdentifier, sha256(output));
         } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
             ISP1Verifier(zkConfig.zkVerifier).verifyProof(zkConfig.dcapProgramIdentifier, output, proofBytes);
         } else {
@@ -167,11 +159,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         }
         (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
 
-        emit AttestationSubmitted(
-            success, 
-            zkCoprocessor, 
-            verifiedOutput  
-        );
+        emit AttestationSubmitted(success, zkCoprocessor, verifiedOutput);
     }
 
     /**

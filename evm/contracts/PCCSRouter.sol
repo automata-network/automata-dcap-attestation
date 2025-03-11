@@ -18,7 +18,6 @@ import {FmspcTcbHelper} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHe
  * @dev this contract ensures that it is pointing to the most up-to-date PCCS DAOs
  * and all collaterals are to be returned in Solidity "friendlier" types.
  */
-
 contract PCCSRouter is IPCCSRouter, Ownable {
     /// @dev PCCS Router is currently access-controlled
     /// @dev can be disabled using Pausable later when desired
@@ -36,9 +35,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
 
     constructor(
         address owner,
-        address _qeid, 
-        address _fmspcTcb, 
-        address _pcs, 
+        address _qeid,
+        address _fmspcTcb,
+        address _pcs,
         address _pck,
         address _x509,
         address _x509Crl,
@@ -54,13 +53,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     event SetCallerAuthorization(address caller, bool authorized);
     event UpdateCallerRestriction(bool restricted);
     event UpdateConfig(
-        address qeid, 
-        address fmspcTcb, 
-        address pcs, 
-        address pck,
-        address x509,
-        address x509Crl,
-        address tcbHelper
+        address qeid, address fmspcTcb, address pcs, address pck, address x509, address x509Crl, address tcbHelper
     );
 
     // Reverts for missing collaterals
@@ -101,9 +94,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     }
 
     function setConfig(
-        address _qeid, 
-        address _fmspcTcb, 
-        address _pcs, 
+        address _qeid,
+        address _fmspcTcb,
+        address _pcs,
         address _pck,
         address _x509,
         address _x509Crl,
@@ -113,9 +106,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     }
 
     function _setConfig(
-        address _qeid, 
-        address _fmspcTcb, 
-        address _pcs, 
+        address _qeid,
+        address _fmspcTcb,
+        address _pcs,
         address _pck,
         address _x509,
         address _x509Crl,
@@ -149,10 +142,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function getQeIdentityContentHash(EnclaveId id, uint256 quoteVersion) 
-        external 
-        view 
-        override 
+    function getQeIdentityContentHash(EnclaveId id, uint256 quoteVersion)
+        external
+        view
+        override
         returns (bytes32 contentHash)
     {
         EnclaveIdentityDao enclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
@@ -209,12 +202,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) 
-        external 
-        view
-        override
-        returns (bytes32) 
-    {
+    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) external view override returns (bytes32) {
         FmspcTcbDao tcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
         bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
         return tcbDao.getTcbInfoContentHash(key);
@@ -265,7 +253,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         bytes[] memory encodedTcbLevelsArr = abi.decode(encodedTcbLevels, (bytes[]));
         uint256 n = encodedTcbLevelsArr.length;
         tcbLevels = new TCBLevelsObj[](n);
-        for (uint256 i = 0; i < n; ) {
+        for (uint256 i = 0; i < n;) {
             tcbLevels[i] = fmspcTcbHelper.tcbLevelsObjFromBytes(encodedTcbLevelsArr[i]);
             unchecked {
                 i++;
@@ -273,12 +261,16 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function _decodeTdxModuleIdentities(bytes memory encodedTdxModuleIdentities) private view returns (TDXModuleIdentity[] memory tdxModuleIdentities) {
+    function _decodeTdxModuleIdentities(bytes memory encodedTdxModuleIdentities)
+        private
+        view
+        returns (TDXModuleIdentity[] memory tdxModuleIdentities)
+    {
         FmspcTcbHelper fmspcTcbHelper = FmspcTcbHelper(fmspcTcbHelperAddr);
         bytes[] memory encodedTdxModuleIdentitiesArr = abi.decode(encodedTdxModuleIdentities, (bytes[]));
         uint256 n = encodedTdxModuleIdentitiesArr.length;
         tdxModuleIdentities = new TDXModuleIdentity[](n);
-        for (uint256 i = 0; i < n; ) {
+        for (uint256 i = 0; i < n;) {
             tdxModuleIdentities[i] = fmspcTcbHelper.tdxModuleIdentityFromBytes(encodedTdxModuleIdentitiesArr[i]);
             unchecked {
                 i++;

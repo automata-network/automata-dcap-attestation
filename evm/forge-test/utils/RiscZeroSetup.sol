@@ -8,9 +8,6 @@ abstract contract RiscZeroSetup {
     RiscZeroGroth16Verifier riscZeroVerifier;
 
     function setUpRiscZero() internal {
-        riscZeroVerifier = new RiscZeroGroth16Verifier(
-            ControlID.CONTROL_ROOT, 
-            ControlID.BN254_CONTROL_ID
-        );
+        riscZeroVerifier = new RiscZeroGroth16Verifier(ControlID.CONTROL_ROOT, ControlID.BN254_CONTROL_ID);
     }
 }

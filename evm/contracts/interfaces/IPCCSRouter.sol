@@ -1,7 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {EnclaveIdentityJsonObj, IdentityObj, EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
+import {
+    EnclaveIdentityJsonObj,
+    IdentityObj,
+    EnclaveId
+} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 import {
     TcbInfoJsonObj,
     TCBLevelsObj,
@@ -17,7 +21,6 @@ import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
  * @notice The PCCS Router is a central contract that serves all other contracts in the network
  * to fetch collaterals from the On Chain PCCS
  */
-
 interface IPCCSRouter {
     function qeIdDaoAddr() external view returns (address);
 

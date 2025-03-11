@@ -10,9 +10,8 @@ import "./bases/FeeManagerBase.sol";
  * needed to perform DCAP attestation.
  */
 contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase {
-    
     constructor(address owner) AttestationEntrypointBase(owner) {}
-    
+
     function setBp(uint16 _newBp) public override onlyOwner {
         super.setBp(_newBp);
     }
@@ -31,15 +30,10 @@ contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase
     }
 
     function verifyAndAttestWithZKProof(
-        bytes calldata output, 
+        bytes calldata output,
         ZkCoProcessorType zkCoprocessor,
         bytes calldata proofBytes
-    )
-        external
-        payable
-        collectFee
-        returns (bool success, bytes memory verifiedOutput)
-    {
+    ) external payable collectFee returns (bool success, bytes memory verifiedOutput) {
         (success, verifiedOutput) = _verifyAndAttestWithZKProof(output, zkCoprocessor, proofBytes);
     }
 }

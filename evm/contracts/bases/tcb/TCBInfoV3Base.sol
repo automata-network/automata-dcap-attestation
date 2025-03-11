@@ -103,7 +103,11 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
     }
 
-    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns) internal pure returns (bool) {
+    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns)
+        internal
+        pure
+        returns (bool)
+    {
         if (tdxComponentCpuSvns.length != CPUSVN_LENGTH) {
             return false;
         }

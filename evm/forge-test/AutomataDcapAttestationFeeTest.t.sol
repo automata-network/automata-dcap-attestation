@@ -56,7 +56,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
 
     function testTDXQuoteV4OnChainAttestationWithFee() public {
         pcsDao.upsertPckCrl(CA.PLATFORM, platformCrlDer);
-        
+
         // pinned June 15th,2024 Midnight UTC
         // bypassing expiry errors
         vm.warp(1718409600);

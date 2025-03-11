@@ -23,17 +23,9 @@ contract DeployRouter is Script {
     function run() public {
         vm.startBroadcast(deployerKey);
 
-        PCCSRouter router =
-            new PCCSRouter{salt: PCCS_ROUTER_SALT}(
-                owner,
-                enclaveIdDaoAddr, 
-                tcbDaoAddr, 
-                pcsDaoAddr, 
-                pckDaoAddr,
-                pckHelperAddr,
-                crlHelperAddr,
-                tcbHelperAddr
-            );
+        PCCSRouter router = new PCCSRouter{salt: PCCS_ROUTER_SALT}(
+            owner, enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+        );
         console2.log("Deployed PCCSRouter to", address(router));
 
         vm.stopBroadcast();
@@ -44,13 +36,7 @@ contract DeployRouter is Script {
 
         PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
         router.setConfig(
-            enclaveIdDaoAddr, 
-            tcbDaoAddr, 
-            pcsDaoAddr, 
-            pckDaoAddr,
-            pckHelperAddr,
-            crlHelperAddr,
-            tcbHelperAddr
+            enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
 
         vm.stopBroadcast();
@@ -58,7 +44,7 @@ contract DeployRouter is Script {
 
     function setAuthorizedCaller(address caller, bool authorized) public {
         vm.startBroadcast(deployerKey);
-        
+
         PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
         router.setAuthorized(caller, authorized);
 

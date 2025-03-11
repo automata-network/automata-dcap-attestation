@@ -65,7 +65,7 @@ abstract contract X509ChainBase is P256Verifier {
         returns (bool)
     {
         require(certs.length == PCK_CERT_CHAIN_LENGTH, "Invalid PCK certificate chain length");
-        
+
         X509CRLHelper crlHelper = X509CRLHelper(crlHelperAddr);
         bool certRevoked;
         bool certNotExpired;
@@ -121,7 +121,7 @@ abstract contract X509ChainBase is P256Verifier {
             {
                 bytes memory currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
                 if (BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)) {
-                     verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
+                    verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
                 }
                 if (!verified) {
                     break;

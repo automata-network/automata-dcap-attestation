@@ -75,7 +75,12 @@ abstract contract PCCSSetupBase is Test {
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(enclaveIdHelper), address(x509), address(x509Crl)
+            address(pccsStorage),
+            P256_VERIFIER,
+            address(pcsDao),
+            address(enclaveIdHelper),
+            address(x509),
+            address(x509Crl)
         );
         fmspcTcbDao = new AutomataFmspcTcbDao(
             address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509), address(x509Crl)

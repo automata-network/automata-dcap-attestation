@@ -141,14 +141,18 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         return abi.encodePacked(
             output.quoteVersion,
             output.tee,
-            output.tcbStatus, 
-            output.fmspcBytes, 
-            output.quoteBody, 
+            output.tcbStatus,
+            output.fmspcBytes,
+            output.quoteBody,
             output.advisoryIDs.length > 0 ? abi.encode(output.advisoryIDs) : bytes("")
         );
     }
 
-    function checkCollateralHashes(uint256 offset, bytes calldata zkOutput) internal view returns (bool, bytes memory) {
+    function checkCollateralHashes(uint256 offset, bytes calldata zkOutput)
+        internal
+        view
+        returns (bool, bytes memory)
+    {
         uint64 timestamp = uint64(bytes8(zkOutput[offset:offset + 8]));
         bytes32 tcbInfoContentHash = bytes32(zkOutput[offset + 8:offset + 40]);
         bytes32 identityContentHash = bytes32(zkOutput[offset + 40:offset + 72]);
@@ -159,21 +163,14 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         bytes4 tee = bytes4(zkOutput[4:8]);
         bytes6 fmspc = bytes6(zkOutput[9:15]);
-        bytes32 expectedTcbInfoContentHash = 
-            pccsRouter.getFmspcTcbContentHash(
-                tee == SGX_TEE ? TcbId.SGX : TcbId.TDX,
-                fmspc,
-                quoteVersion < 4 ? 2 : 3
-            );
+        bytes32 expectedTcbInfoContentHash =
+            pccsRouter.getFmspcTcbContentHash(tee == SGX_TEE ? TcbId.SGX : TcbId.TDX, fmspc, quoteVersion < 4 ? 2 : 3);
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
             return (false, bytes("tcb info content hash mismatch"));
         }
 
         bytes32 expectedIdentityContentHash =
-            pccsRouter.getQeIdentityContentHash(
-                tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE,
-                quoteVersion
-            );
+            pccsRouter.getQeIdentityContentHash(tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion);
         if (identityContentHash != expectedIdentityContentHash) {
             return (false, bytes("identity content hash mismatch"));
         }
@@ -197,11 +194,13 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         // - one of the PCK CAs has a CRL stored on-chain
         // - the hash of the on-chain CRL matches with the CRL hash in the zkOutput
 
-        (bool platformSuccess, bytes memory platformRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp));
+        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp)
+        );
 
-        (bool processorSuccess, bytes memory processorRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp));
+        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp)
+        );
 
         bytes32 expectedPlatformCrlHash;
         bytes32 expectedProcessorCrlHash;

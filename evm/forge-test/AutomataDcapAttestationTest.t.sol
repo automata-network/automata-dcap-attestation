@@ -4,7 +4,9 @@ pragma solidity ^0.8.13;
 import "./utils/PCCSSetupBase.sol";
 
 import {
-    AutomataDcapAttestationFee, ZkCoProcessorConfig, ZkCoProcessorType
+    AutomataDcapAttestationFee,
+    ZkCoProcessorConfig,
+    ZkCoProcessorType
 } from "../contracts/AutomataDcapAttestationFee.sol";
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
@@ -65,7 +67,7 @@ contract AutomataDcapOnChainAttestationTest is PCCSSetupBase {
 
     function testTDXQuoteV4OnChainAttestation() public {
         pcsDao.upsertPckCrl(CA.PLATFORM, platformCrlDer);
-        
+
         // pinned June 15th,2024 Midnight UTC
         // bypassing expiry errors
         vm.warp(1718409600);
