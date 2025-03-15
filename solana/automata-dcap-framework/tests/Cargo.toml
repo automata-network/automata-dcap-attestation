@@ -1,0 +1,16 @@
+[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-client = "0.30.1"
+## We are pinning these dependnecies as their latest version require
+## Rust 1.81.0 as minimum version. And at the time of this writing,
+## Solana only supports Rust 1.79.0
+base64ct = "=1.6.0"
+litemap = "=0.7.4"
+zerofrom = "=0.1.5"
+zerovec = "=0.11.0"
+automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
