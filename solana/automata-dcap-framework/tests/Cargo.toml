@@ -13,4 +13,7 @@ base64ct = "=1.6.0"
 litemap = "=0.7.4"
 zerofrom = "=0.1.5"
 zerovec = "=0.11.0"
+hex = "0.4.3"
 automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
+tokio = { version = "1.39.0", features = ["full"] }
+anyhow = "1.0.89"
