@@ -5,7 +5,7 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor-client = "0.30.1"
+anchor-client = "0.31.0"
 ## We are pinning these dependnecies as their latest version require
 ## Rust 1.81.0 as minimum version. And at the time of this writing,
 ## Solana only supports Rust 1.79.0

@@ -22,7 +22,7 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            program_id: "9u6JzcNQtgyw2gMW4WDMnwVyz4Ju5eVqVfkTLnEgnfzh".to_string(),
+            program_id: "CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV".to_string(),
             rpc_url: "http://localhost:8899".to_string(),
         }
     }

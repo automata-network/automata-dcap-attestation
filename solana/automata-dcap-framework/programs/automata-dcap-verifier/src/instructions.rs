@@ -53,5 +53,4 @@ pub struct AddQuoteChunk<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(quote_data: Vec<u8>)]
 pub struct VerifyDcapQuote {}
