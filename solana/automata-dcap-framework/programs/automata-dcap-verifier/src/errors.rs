@@ -16,4 +16,7 @@ pub enum DcapVerifierError {
 
     #[msg("Incomplete quote")]
     IncompleteQuote,
+
+    #[msg("Invalid quote")]
+    InvalidQuote,
 }

@@ -13,6 +13,9 @@ declare_id!("CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV");
 
 #[program]
 pub mod automata_dcap_verifier {
+
+    use dcap_rs::types::quote::Quote;
+
     use super::*;
 
     pub fn init_quote_buffer(
@@ -78,8 +81,16 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
-    pub fn verify_dcap_quote(_ctx: Context<VerifyDcapQuote>, quote: Vec<u8>) -> Result<()> {
-        msg!("Received quote data with length: {}", quote.len());
+    pub fn verify_dcap_quote(ctx: Context<VerifyDcapQuote>) -> Result<()> {
+        let data_buffer = &ctx.accounts.data_buffer;
+        let quote_data = &data_buffer.data;
+
+        let quote = Quote::read(&mut &quote_data[..]).map_err(|e| {
+            msg!("Error reading quote: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
+
+        msg!("Quote: {:?}", quote);
         Ok(())
     }
 }

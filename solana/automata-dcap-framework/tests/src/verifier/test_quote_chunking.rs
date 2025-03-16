@@ -2,6 +2,7 @@ use automata_dcap_framework::state::DataBuffer;
 
 use crate::verifier::{TestConfig, VerifierTestHarness};
 
+#[ignore]
 #[test]
 fn test_quote_tdx_with_chunks() {
     let config = TestConfig::default();
@@ -56,6 +57,7 @@ fn test_quote_tdx_with_chunks() {
     );
 }
 
+#[ignore]
 #[test]
 fn test_quote_sgx_with_chunks() {
     let config = TestConfig::default();

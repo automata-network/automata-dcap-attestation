@@ -1,3 +1,4 @@
+use crate::errors::DcapVerifierError;
 use crate::state::DataBuffer;
 use anchor_lang::prelude::*;
 
@@ -53,4 +54,13 @@ pub struct AddQuoteChunk<'info> {
 }
 
 #[derive(Accounts)]
-pub struct VerifyDcapQuote {}
+pub struct VerifyDcapQuote<'info> {
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        constraint = data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+}

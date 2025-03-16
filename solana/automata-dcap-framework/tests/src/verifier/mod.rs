@@ -14,6 +14,9 @@ use std::{str::FromStr, sync::Arc};
 #[cfg(test)]
 mod test_quote_chunking;
 
+#[cfg(test)]
+mod test_quote_verification;
+
 pub struct TestConfig {
     pub program_id: String,
     pub rpc_url: String,
@@ -116,6 +119,22 @@ impl VerifierTestHarness {
 
             println!("Transaction signature: {}", tx);
         }
+        Ok(())
+    }
+
+    pub fn verify_quote(&self, quote_buffer_pubkey: Pubkey) -> anyhow::Result<()> {
+        let tx = self
+            .program
+            .request()
+            .accounts(automata_dcap_framework::accounts::VerifyDcapQuote {
+                owner: self.program.payer(),
+                data_buffer: quote_buffer_pubkey,
+            })
+            .args(automata_dcap_framework::instruction::VerifyDcapQuote {})
+            .send()
+            .expect("Failed to verify quote");
+
+        println!("Transaction signature: {}", tx);
         Ok(())
     }
 

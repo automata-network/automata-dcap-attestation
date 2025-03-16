@@ -17,3 +17,4 @@ hex = "0.4.3"
 automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
 tokio = { version = "1.39.0", features = ["full"] }
 anyhow = "1.0.89"
+solana-net-utils = "=2.1.16"
