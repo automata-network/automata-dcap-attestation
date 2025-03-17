@@ -1,8 +1,8 @@
-use crate::verifier::{TestConfig, VerifierTestHarness};
+use crate::verifier::{VerifierTestConfig, VerifierTestHarness};
 
 #[test]
 fn test_quote_tdx_verification() {
-    let config = TestConfig::default();
+    let config = VerifierTestConfig::default();
     let harness = VerifierTestHarness::new(config);
 
     let quote_data = include_bytes!("../../data/quote_tdx.bin");

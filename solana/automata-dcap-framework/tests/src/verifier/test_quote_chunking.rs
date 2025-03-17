@@ -1,11 +1,11 @@
 use automata_dcap_framework::state::DataBuffer;
 
-use crate::verifier::{TestConfig, VerifierTestHarness};
+use crate::verifier::{VerifierTestConfig, VerifierTestHarness};
 
 #[ignore]
 #[test]
 fn test_quote_tdx_with_chunks() {
-    let config = TestConfig::default();
+    let config = VerifierTestConfig::default();
     let harness = VerifierTestHarness::new(config);
 
     let quote_data = include_bytes!("../../data/quote_tdx.bin");
@@ -60,7 +60,7 @@ fn test_quote_tdx_with_chunks() {
 #[ignore]
 #[test]
 fn test_quote_sgx_with_chunks() {
-    let config = TestConfig::default();
+    let config = VerifierTestConfig::default();
     let harness = VerifierTestHarness::new(config);
 
     let quote_data = include_bytes!("../../data/quote_sgx.bin");

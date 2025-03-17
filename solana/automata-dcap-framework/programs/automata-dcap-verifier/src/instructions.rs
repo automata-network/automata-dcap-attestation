@@ -59,8 +59,8 @@ pub struct VerifyDcapQuote<'info> {
 
     #[account(
         mut,
-        constraint = data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
-        constraint = data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
-    pub data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: Account<'info, DataBuffer>,
 }

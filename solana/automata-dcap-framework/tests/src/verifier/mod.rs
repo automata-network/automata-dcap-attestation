@@ -17,12 +17,12 @@ mod test_quote_chunking;
 #[cfg(test)]
 mod test_quote_verification;
 
-pub struct TestConfig {
+pub struct VerifierTestConfig {
     pub program_id: String,
     pub rpc_url: String,
 }
 
-impl Default for TestConfig {
+impl Default for VerifierTestConfig {
     fn default() -> Self {
         Self {
             program_id: "CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV".to_string(),
@@ -33,12 +33,12 @@ impl Default for TestConfig {
 
 pub struct VerifierTestHarness {
     program: Program<Arc<Keypair>>,
-    _config: TestConfig,
+    _config: VerifierTestConfig,
     _rpc_client: RpcClient,
 }
 
 impl VerifierTestHarness {
-    pub fn new(config: TestConfig) -> Self {
+    pub fn new(config: VerifierTestConfig) -> Self {
         let anchor_wallet =
             std::env::var("ANCHOR_WALLET").expect("ANCHOR_WALLET environment variable not set");
         let payer = read_keypair_file(&anchor_wallet).expect("Failed to read keypair file");
@@ -128,7 +128,7 @@ impl VerifierTestHarness {
             .request()
             .accounts(automata_dcap_framework::accounts::VerifyDcapQuote {
                 owner: self.program.payer(),
-                data_buffer: quote_buffer_pubkey,
+                quote_data_buffer: quote_buffer_pubkey,
             })
             .args(automata_dcap_framework::instruction::VerifyDcapQuote {})
             .send()
