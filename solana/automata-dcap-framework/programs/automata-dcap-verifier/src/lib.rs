@@ -9,7 +9,7 @@ pub mod state;
 use errors::*;
 use instructions::*;
 
-declare_id!("CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV");
+declare_id!("ASW2HDqoYTJttHbvQMqySgSKZa8dptyRYvU5xoHsTjUB");
 
 #[program]
 pub mod automata_dcap_verifier {

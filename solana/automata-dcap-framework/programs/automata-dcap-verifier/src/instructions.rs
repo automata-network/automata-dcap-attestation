@@ -13,7 +13,7 @@ pub struct Initialize {}
 /// stored in this account. Once all chunks are received, the quote can be
 /// verified in a single instruction.
 ///
-/// The space calculation (8 + 32 + 4 + 1 + 1 + 1 + 4 + 512 * 10) provides ~5KB
+/// The space calculation (8 + 32 + 4 + 1 + 1 + 1 + 4 + 1024 * 9) provides ~9KB
 /// of storage and breaks down as:
 /// - 8 bytes: Account discriminator (Anchor identifier)
 /// - 32 bytes: Pubkey for the owner

@@ -18,7 +18,18 @@ pub struct PckCertificate {
     pub tcbm: [u8; 18],
 
     /// Certificate data
-    pub cert_data: String,
+    pub cert_data: Vec<u8>,
+}
+
+
+#[account]
+pub struct DataBuffer {
+    pub owner: Pubkey,
+    pub total_size: u32,
+    pub num_chunks: u8,
+    pub chunks_received: u8,
+    pub complete: bool,
+    pub data: Vec<u8>,
 }
 
 /// Represents the different types of Certificate Authorities in the Intel SGX

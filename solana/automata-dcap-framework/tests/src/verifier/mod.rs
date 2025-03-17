@@ -1,13 +1,7 @@
 use anchor_client::{
-    Client, Cluster, Program,
-    anchor_lang::AccountDeserialize,
-    solana_client::nonblocking::rpc_client::RpcClient,
-    solana_sdk::{
-        commitment_config::CommitmentConfig,
-        pubkey::Pubkey,
-        signature::{Keypair, read_keypair_file},
-        signer::Signer,
-    },
+    anchor_lang::AccountDeserialize, solana_client::nonblocking::rpc_client::RpcClient, solana_sdk::{
+        commitment_config::CommitmentConfig, compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::{read_keypair_file, Keypair}, signer::Signer
+    }, Client, Cluster, Program
 };
 use std::{str::FromStr, sync::Arc};
 
@@ -25,7 +19,7 @@ pub struct VerifierTestConfig {
 impl Default for VerifierTestConfig {
     fn default() -> Self {
         Self {
-            program_id: "CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV".to_string(),
+            program_id: "ASW2HDqoYTJttHbvQMqySgSKZa8dptyRYvU5xoHsTjUB".to_string(),
             rpc_url: "http://localhost:8899".to_string(),
         }
     }
@@ -126,6 +120,9 @@ impl VerifierTestHarness {
         let tx = self
             .program
             .request()
+            .instruction(
+                ComputeBudgetInstruction::set_compute_unit_limit(2_000_000)
+            )
             .accounts(automata_dcap_framework::accounts::VerifyDcapQuote {
                 owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,

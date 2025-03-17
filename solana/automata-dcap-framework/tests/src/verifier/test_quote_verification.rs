@@ -5,7 +5,7 @@ fn test_quote_tdx_verification() {
     let config = VerifierTestConfig::default();
     let harness = VerifierTestHarness::new(config);
 
-    let quote_data = include_bytes!("../../data/quote_tdx.bin");
+    let quote_data = include_bytes!("../../data/quote_sgx.bin");
 
     let quote_buffer_pubkey = harness
         .init_quote_buffer(
