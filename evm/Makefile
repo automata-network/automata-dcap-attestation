@@ -30,7 +30,7 @@ endif
 # Deployment targets
 deploy-router: check_env get_owner
 	@echo "Deploying PCCSRouter..."
-	@OWNER=$(OWNER) \
+	OWNER=$(OWNER) \
 		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
 		forge script DeployRouter \
 		--rpc-url $(RPC_URL) \
@@ -42,7 +42,7 @@ deploy-router: check_env get_owner
 
 deploy-attestation: check_env get_owner
 	@echo "Deploying AutomataDCAPAttestationFee..."
-	@OWNER=$(OWNER) \
+	OWNER=$(OWNER) \
 		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
 		forge script AttestationScript \
 		--sig "deployEntrypoint()" \
@@ -58,7 +58,7 @@ ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
 	@echo "Deploying QuoteVerifierV$(QUOTE_VERIFIER_VERSION)..."
-	@OWNER=$(OWNER) \
+	OWNER=$(OWNER) \
 		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
 		forge script DeployV$(QUOTE_VERIFIER_VERSION) \
 		--rpc-url $(RPC_URL) \
@@ -98,6 +98,46 @@ verify-all: check_env
 		fi \
 	done
 
+# ZK Configurations
+config-zk: check_env get_owner
+	OWNER=$(OWNER) \
+		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+		forge script AttestationScript \
+		--rpc-url $(RPC_URL) \
+		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		$(if $(SIMULATED),, --broadcast) \
+		-vv \
+		--sig "configureZk(uint8,address,bytes32)" \
+		$(if $(ZKVM_SELECTOR), $(ZKVM_SELECTOR), $(error ZKVM_SELECTOR is not set)) \
+		$(if $(ZKVM_VERIFIER_ADDRESS), $(ZKVM_VERIFIER_ADDRESS), $(error ZKVM_VERIFIER_ADDRESS is not set)) \
+		$(if $(ZKVM_PROGRAM_IDENTIFIER), $(ZKVM_PROGRAM_IDENTIFIER), $(error ZKVM_PROGRAM_IDENTIFIER is not set))
+
+config-verifier: check_env get_owner
+	OWNER=$(OWNER) \
+		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+		forge script AttestationScript \
+		--rpc-url $(RPC_URL) \
+		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		$(if $(SIMULATED),, --broadcast) \
+		-vv \
+		--sig "configVerifier(uint8)" \
+		$(if $(QUOTE_VERIFIER_VERSION), $(QUOTE_VERIFIER_VERSION), $(error QUOTE_VERIFIER_VERSION is not set)) \
+
+config-router: check_env get_owner
+	OWNER=$(OWNER) \
+		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+		forge script DeployRouter \
+		--rpc-url $(RPC_URL) \
+		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		$(if $(SIMULATED),, --broadcast) \
+		-vv \
+		--sig "setAuthorizedCaller(address,bool)" \
+		$(if $(CALLER_ADDRESS), $(CALLER_ADDRESS), $(error CALLER_ADDRESS is not set)) \
+		$(if $(AUTHORIZED), true, false)
+
 # Utility targets
 clean:
 	forge clean
@@ -111,23 +151,26 @@ help:
 	@echo "  deploy-all-verifiers   Deploy all QuoteVerifier contracts with versions that are currently supported"
 	@echo "  deploy-all             Deploy all contracts"
 	@echo "  verify-all             Verify all contracts"
+	@echo "  config-zk              zkVM Configuraton"
+	@echo "  config-verifier        QuoteVerifier Configuration"
+	@echo "  config-router          Set authorization for calling PCCSRouter"
 	@echo "  clean                  Remove build artifacts"
 	@echo ""
 	@echo "Wallet environment variables: (you only need to set one)"
-	@echo "  PRIVATE_KEY         Private key for wallet"
-	@echo "  KEYSTORE_PATH       Path to keystore directory"
+	@echo "  PRIVATE_KEY            Private key for wallet"
+	@echo "  KEYSTORE_PATH          Path to keystore directory"
 	@echo ""
 	@echo "Required environment variables:"
-	@echo "  RPC_URL             RPC URL for the target network"
+	@echo "  RPC_URL                RPC URL for the target network"
 	@echo ""
 	@echo "Optional environment variables:"
-	@echo "  VERIFIER            Contract verifier (default: etherscan)"
-	@echo "  VERIFIER_URL        Custom verifier API URL"
-	@echo "  ETHERSCAN_API_KEY   API key for contract verification"
-	@echo "  SIMULATED           Simulate deployment (default: false)"
+	@echo "  VERIFIER               Contract verifier (default: etherscan)"
+	@echo "  VERIFIER_URL           Custom verifier API URL"
+	@echo "  ETHERSCAN_API_KEY      API key for contract verification"
+	@echo "  SIMULATED              Simulate deployment (default: false)"
 	@echo ""
 	@echo "Example usage:"
 	@echo "  make deploy-all RPC_URL=xxx"
 	@echo "  make verify-all RPC_URL=xxx ETHERSCAN_API_KEY=xxx"
 
-.PHONY: check_env clean help deploy-% verify-%
+.PHONY: check_env clean help deploy-% verify-% config-%
