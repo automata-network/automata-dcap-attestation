@@ -10,10 +10,11 @@ declare_id!("7UuiyphTDFxz4BTBA8MhwwEHVAt4ttREXEhqdRicaVpA");
 
 use errors::*;
 use instructions::*;
+use state::*;
 
 #[program]
 pub mod automata_on_chain_pccs {
-    use crate::instructions::UpsertPckCertificate;
+    use crate::{instructions::UpsertPckCertificate, state::CertificateAuthority};
 
     use super::*;
 
@@ -110,6 +111,24 @@ pub mod automata_on_chain_pccs {
         msg!(
             "PCK certificate upserted to {}",
             ctx.accounts.pck_certificate.key()
+        );
+
+        Ok(())
+    }
+
+    pub fn upsert_pcs_certificate(
+        ctx: Context<UpsertPcsCertificate>,
+        ca_type: CertificateAuthority,
+    ) -> Result<()> {
+        let pcs_certificate = &mut ctx.accounts.pcs_certificate;
+        let cert_data = ctx.accounts.data_buffer.data.clone();
+
+        pcs_certificate.ca_type = ca_type;
+        pcs_certificate.cert_data = cert_data;
+
+        msg!(
+            "PCS certificate upserted to {}",
+            ctx.accounts.pcs_certificate.key()
         );
 
         Ok(())

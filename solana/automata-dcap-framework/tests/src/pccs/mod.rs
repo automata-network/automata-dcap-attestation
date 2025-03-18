@@ -7,9 +7,13 @@ use anchor_client::{
         signature::{read_keypair_file, Keypair}, signer::Signer,
     }, Client, Cluster, Program
 };
+use automata_on_chain_pccs::state::CertificateAuthority;
 
 #[cfg(test)]
 mod test_pck_certificate;
+
+#[cfg(test)]
+mod test_pcs_certificate;
 
 pub struct PccsTestConfig {
     pub program_id: String,
@@ -94,6 +98,34 @@ impl PccsTestHarness {
         Ok(())
     }
 
+    pub fn upsert_pcs_certificate(
+        &self,
+        ca_type: CertificateAuthority,
+        data_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<()> {
+        let pcs_certificate_pda = Pubkey::find_program_address(
+            &[b"pcs_cert", ca_type.common_name().as_bytes()],
+            &self.program.id()
+        );
+        let tx = self
+            .program
+            .request()
+            .accounts(automata_on_chain_pccs::accounts::UpsertPcsCertificate {
+                authority: self.program.payer(),
+                pcs_certificate: pcs_certificate_pda.0,
+                data_buffer: data_buffer_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(automata_on_chain_pccs::instruction::UpsertPcsCertificate {
+                ca_type,
+            })
+            .send()
+            .expect("Failed to upsert PCS certificate");
+
+        println!("Transaction signature: {}", tx);
+        Ok(())
+    }
+
     pub fn get_pck_certificate(
         &self,
         qe_id: String,
@@ -118,6 +150,19 @@ impl PccsTestHarness {
         println!("Found PCK certificate for QE_ID: {}, PCE_ID: {}, TCBM: {}",
             qe_id, pce_id, tcbm);
 
+        Ok(account)
+    }
+
+    pub fn get_pcs_certificate(
+        &self,
+        ca_type: CertificateAuthority,
+    ) -> anyhow::Result<automata_on_chain_pccs::state::PcsCertificate> {
+        let pcs_certificate_pda = Pubkey::find_program_address(
+            &[b"pcs_cert", ca_type.common_name().as_bytes()],
+            &self.program.id()
+        );
+        let account = self.program
+            .account::<automata_on_chain_pccs::state::PcsCertificate>(pcs_certificate_pda.0)?;
         Ok(account)
     }
 

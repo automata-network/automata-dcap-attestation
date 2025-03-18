@@ -21,6 +21,17 @@ pub struct PckCertificate {
     pub cert_data: Vec<u8>,
 }
 
+#[account]
+pub struct PcsCertificate {
+    /// The owner that has permission to modify data in this account.
+    pub owner: Pubkey,
+
+    /// The type of certificate authority that signed this certificate
+    pub ca_type: CertificateAuthority,
+
+    /// Certificate data
+    pub cert_data: Vec<u8>,
+}
 
 #[account]
 pub struct DataBuffer {
