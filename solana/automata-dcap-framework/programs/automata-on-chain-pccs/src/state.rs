@@ -34,6 +34,21 @@ pub struct PcsCertificate {
 }
 
 #[account]
+pub struct EnclaveIdentity {
+    /// The owner that has permission to modify data in this account.
+    pub owner: Pubkey,
+
+    /// The type of enclave identity
+    pub identity_type: EnclaveIdentityType,
+
+    /// The version of the enclave identity
+    pub version: u8,
+
+    /// The data of the enclave identity
+    pub data: Vec<u8>,
+}
+
+#[account]
 pub struct DataBuffer {
     pub owner: Pubkey,
     pub total_size: u32,
@@ -78,6 +93,34 @@ impl CertificateAuthority {
             1 => Some(CertificateAuthority::PLATFORM),
             2 => Some(CertificateAuthority::PROCESSOR),
             3 => Some(CertificateAuthority::SIGNING),
+            _ => None,
+        }
+    }
+}
+
+/// Represents the different types of Enclave Identities in the Intel SGX
+/// attestation.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EnclaveIdentityType {
+    QE = 0,
+    QVE = 1,
+    TdQe = 2,
+}
+
+impl EnclaveIdentityType {
+    pub fn common_name(&self) -> &'static str {
+        match self {
+            EnclaveIdentityType::QE => "QE",
+            EnclaveIdentityType::QVE => "QVE",
+            EnclaveIdentityType::TdQe => "TD_QE",
+        }
+    }
+
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(EnclaveIdentityType::QE),
+            1 => Some(EnclaveIdentityType::QVE),
+            2 => Some(EnclaveIdentityType::TdQe),
             _ => None,
         }
     }

@@ -7,13 +7,16 @@ use anchor_client::{
         signature::{read_keypair_file, Keypair}, signer::Signer,
     }, Client, Cluster, Program
 };
-use automata_on_chain_pccs::state::CertificateAuthority;
+use automata_on_chain_pccs::state::{CertificateAuthority, EnclaveIdentityType};
 
 #[cfg(test)]
 mod test_pck_certificate;
 
 #[cfg(test)]
 mod test_pcs_certificate;
+
+#[cfg(test)]
+mod test_enclave_identity;
 
 pub struct PccsTestConfig {
     pub program_id: String,
@@ -126,6 +129,36 @@ impl PccsTestHarness {
         Ok(())
     }
 
+    pub fn upsert_enclave_identity(
+        &self,
+        id: EnclaveIdentityType,
+        version: u8,
+        data_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<()> {
+        let enclave_identity_pda = Pubkey::find_program_address(
+            &[b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
+            &self.program.id()
+        );
+        let tx = self
+            .program
+            .request()
+            .accounts(automata_on_chain_pccs::accounts::UpsertEnclaveIdentity {
+                authority: self.program.payer(),
+                enclave_identity: enclave_identity_pda.0,
+                data_buffer: data_buffer_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(automata_on_chain_pccs::instruction::UpsertEnclaveIdentity {
+                id,
+                version,
+            })
+            .send()
+            .expect("Failed to upsert enclave identity");
+
+        println!("Transaction signature: {}", tx);
+        Ok(())
+    }
+
     pub fn get_pck_certificate(
         &self,
         qe_id: String,
@@ -163,6 +196,20 @@ impl PccsTestHarness {
         );
         let account = self.program
             .account::<automata_on_chain_pccs::state::PcsCertificate>(pcs_certificate_pda.0)?;
+        Ok(account)
+    }
+
+    pub fn get_enclave_identity(
+        &self,
+        id: EnclaveIdentityType,
+        version: u8,
+    ) -> anyhow::Result<automata_on_chain_pccs::state::EnclaveIdentity> {
+        let enclave_identity_pda = Pubkey::find_program_address(
+            &[b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
+            &self.program.id()
+        );
+        let account = self.program
+            .account::<automata_on_chain_pccs::state::EnclaveIdentity>(enclave_identity_pda.0)?;
         Ok(account)
     }
 

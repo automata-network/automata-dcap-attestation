@@ -133,7 +133,27 @@ pub mod automata_on_chain_pccs {
 
         Ok(())
     }
-}
 
-#[derive(Accounts)]
-pub struct Initialize {}
+    pub fn upsert_enclave_identity(
+        ctx: Context<UpsertEnclaveIdentity>,
+        id: EnclaveIdentityType,
+        version: u8,
+    ) -> Result<()> {
+        let enclave_identity = &mut ctx.accounts.enclave_identity;
+        let data_buffer = &ctx.accounts.data_buffer;
+
+        enclave_identity.owner = *ctx.accounts.authority.key;
+        enclave_identity.identity_type = id;
+        enclave_identity.version = version;
+        enclave_identity.data = data_buffer.data.clone();
+
+        msg!(
+            "Enclave identity  with id: {}, version: {} upserted to {}",
+            id.common_name(),
+            version,
+            ctx.accounts.enclave_identity.key()
+        );
+
+        Ok(())
+    }
+}

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{DataBuffer, PckCertificate, PcsCertificate, CertificateAuthority};
+use crate::state::{DataBuffer, PckCertificate, PcsCertificate, CertificateAuthority, EnclaveIdentityType, EnclaveIdentity};
 use crate::errors::PccsError;
 
 // Maximum size of the certificate data in bytes (4KB)
@@ -98,6 +98,32 @@ pub struct UpsertPcsCertificate<'info> {
         bump,
     )]
     pub pcs_certificate: Account<'info, PcsCertificate>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == authority.key() @ PccsError::Unauthorized,
+        constraint = data_buffer.complete == true @ PccsError::IncompleteBuffer,
+        close = authority
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(id: EnclaveIdentityType, version: u8)]
+pub struct UpsertEnclaveIdentity<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + 32 + 1 + 16 + 1 + 1 + MAX_CERT_DATA_SIZE,
+        seeds = [b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
+        bump,
+    )]
+    pub enclave_identity: Account<'info, EnclaveIdentity>,
 
     #[account(
         mut,
