@@ -49,6 +49,21 @@ pub struct EnclaveIdentity {
 }
 
 #[account]
+pub struct TcbInfo {
+    /// The owner that has permission to modify data in this account.
+    pub owner: Pubkey,
+
+    /// The type of TCB
+    pub tcb_type: TcbType,
+
+    /// The version of the TCB
+    pub version: u8,
+
+    /// The data of the TCB
+    pub data: Vec<u8>,
+}
+
+#[account]
 pub struct DataBuffer {
     pub owner: Pubkey,
     pub total_size: u32,
@@ -121,6 +136,30 @@ impl EnclaveIdentityType {
             0 => Some(EnclaveIdentityType::QE),
             1 => Some(EnclaveIdentityType::QVE),
             2 => Some(EnclaveIdentityType::TdQe),
+            _ => None,
+        }
+    }
+}
+
+/// Represents different types of TCB
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TcbType {
+    Sgx = 0,
+    Tdx = 1,
+}
+
+impl TcbType {
+    pub fn common_name(&self) -> &'static str {
+        match self {
+            TcbType::Sgx => "SGX",
+            TcbType::Tdx => "TDX",
+        }
+    }
+
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(TcbType::Sgx),
+            1 => Some(TcbType::Tdx),
             _ => None,
         }
     }

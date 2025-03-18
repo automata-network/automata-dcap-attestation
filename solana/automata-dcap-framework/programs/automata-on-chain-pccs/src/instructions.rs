@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{DataBuffer, PckCertificate, PcsCertificate, CertificateAuthority, EnclaveIdentityType, EnclaveIdentity};
 use crate::errors::PccsError;
+use crate::state::{
+    CertificateAuthority, DataBuffer, EnclaveIdentity, EnclaveIdentityType, PckCertificate,
+    PcsCertificate, TcbInfo, TcbType,
+};
 
 // Maximum size of the certificate data in bytes (4KB)
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
-
 
 #[derive(Accounts)]
 #[instruction(
@@ -13,7 +15,6 @@ pub const MAX_CERT_DATA_SIZE: usize = 4096;
     num_chunks: u8,
 )]
 pub struct InitDataBuffer<'info> {
-
     /// The signer who will own this quote buffer.
     /// Must sign the transaction and pay for the account creation.
     #[account(mut)]
@@ -46,7 +47,6 @@ pub struct AddDataChunk<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 }
 
-
 #[derive(Accounts)]
 #[instruction(
     qe_id: String,
@@ -54,7 +54,6 @@ pub struct AddDataChunk<'info> {
     tcbm: String,
 )]
 pub struct UpsertPckCertificate<'info> {
-
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -86,7 +85,6 @@ pub struct UpsertPckCertificate<'info> {
 #[derive(Accounts)]
 #[instruction(ca_type: CertificateAuthority)]
 pub struct UpsertPcsCertificate<'info> {
-
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -124,6 +122,32 @@ pub struct UpsertEnclaveIdentity<'info> {
         bump,
     )]
     pub enclave_identity: Account<'info, EnclaveIdentity>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == authority.key() @ PccsError::Unauthorized,
+        constraint = data_buffer.complete == true @ PccsError::IncompleteBuffer,
+        close = authority
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(tcb_type: TcbType, version: u8)]
+pub struct UpsertTcbInfo<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + 32 + 1 + 16 + 1 + 1 + MAX_CERT_DATA_SIZE,
+        seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1]],
+        bump,
+    )]
+    pub tcb_info: Account<'info, TcbInfo>,
 
     #[account(
         mut,

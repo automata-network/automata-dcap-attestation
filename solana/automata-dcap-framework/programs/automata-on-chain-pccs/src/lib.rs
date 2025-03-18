@@ -53,10 +53,7 @@ pub mod automata_on_chain_pccs {
             data_buffer.owner == *ctx.accounts.owner.key,
             PccsError::InvalidOwner
         );
-        require!(
-            !data_buffer.complete,
-            PccsError::BufferAlreadyComplete
-        );
+        require!(!data_buffer.complete, PccsError::BufferAlreadyComplete);
         require!(
             chunk_index < data_buffer.num_chunks,
             PccsError::InvalidChunkIndex
@@ -81,8 +78,6 @@ pub mod automata_on_chain_pccs {
 
         Ok(())
     }
-
-
 
     pub fn upsert_pck_certificate(
         ctx: Context<UpsertPckCertificate>,
@@ -154,6 +149,28 @@ pub mod automata_on_chain_pccs {
             ctx.accounts.enclave_identity.key()
         );
 
+        Ok(())
+    }
+
+    pub fn upsert_tcb_info(
+        ctx: Context<UpsertTcbInfo>,
+        tcb_type: TcbType,
+        version: u8,
+    ) -> Result<()> {
+        let tcb_info = &mut ctx.accounts.tcb_info;
+        let data_buffer = &ctx.accounts.data_buffer;
+
+        tcb_info.owner = *ctx.accounts.authority.key;
+        tcb_info.tcb_type = tcb_type;
+        tcb_info.version = version;
+        tcb_info.data = data_buffer.data.clone();
+
+        msg!(
+            "TCB info with type: {}, version: {} upserted to {}",
+            tcb_type.common_name(),
+            version,
+            ctx.accounts.tcb_info.key()
+        );
         Ok(())
     }
 }
