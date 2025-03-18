@@ -77,6 +77,27 @@ deploy-all-verifiers: check_env get_owner
 deploy-all: deploy-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
+verify-all: check_env
+	@echo "Verifying PCCSRouter, AutomataDCAPAttestation and Verifier contracts..."
+	@if [ ! -f deployment/$(CHAIN_ID)/dcap.json ]; then \
+		echo "Deployment not found."; \
+		exit 1; \
+	fi
+	@for contract in PCCSRouter AutomataDcapAttestationFee V3QuoteVerifier V4QuoteVerifier; do \
+		addr=$$(jq -r ".$$contract" deployment/$(CHAIN_ID).json); \
+		if [ "$$addr" != "null" ]; then \
+			echo "Verifying $$contract at $$addr..."; \
+			forge verify-contract \
+				--rpc-url $(RPC_URL) \
+				--verifier $(VERIFIER) \
+				--watch \
+				$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL) \
+				, --etherscan-api-key $(ETHERSCAN_API_KEY)) \
+				$$addr \
+				src/automata_pccs/$$contract.sol:$$contract || true; \
+		fi \
+	done
+
 # Utility targets
 clean:
 	forge clean
@@ -89,6 +110,7 @@ help:
 	@echo "  deploy-verifier        Deploy QuoteVerifier, must specify QUOTE_VERIFIER_VERSION"
 	@echo "  deploy-all-verifiers   Deploy all QuoteVerifier contracts with versions that are currently supported"
 	@echo "  deploy-all             Deploy all contracts"
+	@echo "  verify-all             Verify all contracts"
 	@echo "  clean                  Remove build artifacts"
 	@echo ""
 	@echo "Wallet environment variables: (you only need to set one)"
