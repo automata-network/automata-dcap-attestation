@@ -70,7 +70,7 @@ impl PccsTestHarness {
     ) -> anyhow::Result<()> {
 
         let pck_certificate_pda = Pubkey::find_program_address(
-            &[b"pck_cert"],
+            &[b"pck_cert", &qe_id.as_bytes()[..8], &pce_id.as_bytes()[..2], &tcbm.as_bytes()[..8]],
             &self.program.id()
         );
         let tx = self
@@ -92,6 +92,33 @@ impl PccsTestHarness {
 
         println!("Transaction signature: {}", tx);
         Ok(())
+    }
+
+    pub fn get_pck_certificate(
+        &self,
+        qe_id: String,
+        pce_id: String,
+        tcbm: String,
+    ) -> anyhow::Result<automata_on_chain_pccs::state::PckCertificate> {
+         // Derive the same PDA as used when upserting
+        let (pck_certificate_pda, _) = Pubkey::find_program_address(
+            &[
+                b"pck_cert",
+                &qe_id.as_bytes()[..8],
+                &pce_id.as_bytes()[..2],
+                &tcbm.as_bytes()[..8]
+            ],
+            &self.program.id()
+        );
+
+        // Fetch the account data
+        let account = self.program
+            .account::<automata_on_chain_pccs::state::PckCertificate>(pck_certificate_pda)?;
+
+        println!("Found PCK certificate for QE_ID: {}, PCE_ID: {}, TCBM: {}",
+            qe_id, pce_id, tcbm);
+
+        Ok(account)
     }
 
     pub fn init_data_buffer(

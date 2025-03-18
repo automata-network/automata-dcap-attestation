@@ -1,6 +1,5 @@
 use crate::pccs::{PccsTestConfig, PccsTestHarness};
 
-#[ignore]
 #[test]
 fn test_pck_certificate_upsert() {
     let config = PccsTestConfig::default();
@@ -24,4 +23,19 @@ fn test_pck_certificate_upsert() {
         tcbm.to_string(),
         data_buffer_pubkey,
     ).unwrap();
+
+    let pck_cert = harness.get_pck_certificate(
+        qe_id.to_string(),
+        pce_id.to_string(),
+        tcbm.to_string(),
+   ).unwrap();
+
+   let qe_id_bytes = hex::decode(qe_id).unwrap();
+   let pce_id_bytes = hex::decode(pce_id).unwrap();
+   let tcbm_bytes = hex::decode(tcbm).unwrap();
+
+   assert_eq!(pck_cert.qe_id, qe_id_bytes.as_slice());
+   assert_eq!(pck_cert.pce_id, pce_id_bytes.as_slice());
+   assert_eq!(pck_cert.tcbm, tcbm_bytes.as_slice());
+   assert_eq!(pck_cert.cert_data, pck_cert_data);
 }

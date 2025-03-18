@@ -54,6 +54,7 @@ pub struct AddDataChunk<'info> {
     tcbm: String,
 )]
 pub struct UpsertPckCertificate<'info> {
+
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -63,6 +64,9 @@ pub struct UpsertPckCertificate<'info> {
         space = 8 + 32 + 1 + 16 + 2 + 18 + MAX_CERT_DATA_SIZE,
         seeds = [
             b"pck_cert",
+            &qe_id.as_bytes()[..8],
+            &pce_id.as_bytes()[..2],
+            &tcbm.as_bytes()[..8],
         ],
         bump,
     )]

@@ -83,14 +83,13 @@ pub mod automata_dcap_verifier {
 
     pub fn verify_dcap_quote(ctx: Context<VerifyDcapQuote>) -> Result<()> {
         let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote_data = &data_buffer.data;
+        let quote_data = &mut data_buffer.data.as_slice();
 
-        let quote = Quote::read(&mut &quote_data[..]).map_err(|e| {
+        let _quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
             DcapVerifierError::InvalidQuote
         })?;
 
-        msg!("Quote: {:?}", quote);
         Ok(())
     }
 }
