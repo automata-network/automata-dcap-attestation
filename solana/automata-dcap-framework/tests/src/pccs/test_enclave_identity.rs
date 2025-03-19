@@ -29,6 +29,4 @@ fn test_enclave_identity_upsert() {
     assert_eq!(enclave_identity.identity_type, EnclaveIdentityType::QE);
     assert_eq!(enclave_identity.version, 3);
     assert_eq!(enclave_identity.data, enclave_identity_data);
-
-
 }

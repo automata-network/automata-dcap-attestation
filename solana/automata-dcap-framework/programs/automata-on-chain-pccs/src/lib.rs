@@ -156,6 +156,7 @@ pub mod automata_on_chain_pccs {
         ctx: Context<UpsertTcbInfo>,
         tcb_type: TcbType,
         version: u8,
+        fmspc: String,
     ) -> Result<()> {
         let tcb_info = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
@@ -163,6 +164,13 @@ pub mod automata_on_chain_pccs {
         tcb_info.owner = *ctx.accounts.authority.key;
         tcb_info.tcb_type = tcb_type;
         tcb_info.version = version;
+
+        let fmspc_bytes: [u8; 6] = hex::decode(fmspc)
+            .map_err(|_| PccsError::InvalidHexString)?
+            .try_into()
+            .map_err(|_| PccsError::InvalidHexString)?;
+
+        tcb_info.fmspc = fmspc_bytes;
         tcb_info.data = data_buffer.data.clone();
 
         msg!(

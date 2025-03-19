@@ -3,7 +3,6 @@ use automata_on_chain_pccs::state::CertificateAuthority;
 use crate::pccs::{PccsTestConfig, PccsTestHarness};
 
 
-
 #[test]
 fn test_pcs_crl_certificate_upsert() {
     let config = PccsTestConfig::default();

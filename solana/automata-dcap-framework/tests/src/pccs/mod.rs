@@ -7,7 +7,7 @@ use anchor_client::{
         signature::{read_keypair_file, Keypair}, signer::Signer,
     }, Client, Cluster, Program
 };
-use automata_on_chain_pccs::state::{CertificateAuthority, EnclaveIdentityType};
+use automata_on_chain_pccs::state::{CertificateAuthority, EnclaveIdentityType, TcbType};
 
 #[cfg(test)]
 mod test_pck_certificate;
@@ -17,6 +17,9 @@ mod test_pcs_certificate;
 
 #[cfg(test)]
 mod test_enclave_identity;
+
+#[cfg(test)]
+mod test_tcb_info;
 
 pub struct PccsTestConfig {
     pub program_id: String,
@@ -159,6 +162,40 @@ impl PccsTestHarness {
         Ok(())
     }
 
+    pub fn upsert_tcb_info(
+        &self,
+        tcb_type: TcbType,
+        version: u8,
+        fmspc: String,
+        data_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<()> {
+        let tcb_info_pda = Pubkey::find_program_address(
+            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()[..8]],
+            &self.program.id()
+        );
+        let tx = self
+            .program
+            .request()
+            .accounts(automata_on_chain_pccs::accounts::UpsertTcbInfo {
+                authority: self.program.payer(),
+                tcb_info: tcb_info_pda.0,
+                data_buffer: data_buffer_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(automata_on_chain_pccs::instruction::UpsertTcbInfo {
+                tcb_type,
+                version,
+                fmspc,
+            })
+            .send()
+            .expect("Failed to upsert TCB info");
+
+        println!("Transaction signature: {}", tx);
+        Ok(())
+    }
+
+
+
     pub fn get_pck_certificate(
         &self,
         qe_id: String,
@@ -210,6 +247,21 @@ impl PccsTestHarness {
         );
         let account = self.program
             .account::<automata_on_chain_pccs::state::EnclaveIdentity>(enclave_identity_pda.0)?;
+        Ok(account)
+    }
+
+    pub fn get_tcb_info(
+        &self,
+        tcb_type: TcbType,
+        version: u8,
+        fmspc: String,
+    ) -> anyhow::Result<automata_on_chain_pccs::state::TcbInfo> {
+        let tcb_info_pda = Pubkey::find_program_address(
+            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()[..8]],
+            &self.program.id()
+        );
+        let account = self.program
+            .account::<automata_on_chain_pccs::state::TcbInfo>(tcb_info_pda.0)?;
         Ok(account)
     }
 

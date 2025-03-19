@@ -59,6 +59,9 @@ pub struct TcbInfo {
     /// The version of the TCB
     pub version: u8,
 
+    /// The FMSPC of the TCB
+    pub fmspc: [u8; 6],
+
     /// The data of the TCB
     pub data: Vec<u8>,
 }
