@@ -91,34 +91,32 @@ Automata DCAP Attestation contract implements two attestation methods available 
 
 <!-- |  | World Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-sepolia.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) | -->
 
-<!-- #### Mainnet
+#### Mainnet
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://explorer.ata.network/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
-|  | Ethereum Mainnet | [0x09bBC921be046726bb5b694A49888e4e2e7AA9C3](https://etherscan.io/address/0x09bBC921be046726bb5b694A49888e4e2e7AA9C3) |
-|  | Base Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://basescan.org/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
-|  | OP Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://optimistic.etherscan.io/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
-|  | World Mainnet | [0x09bBC921be046726bb5b694A49888e4e2e7AA9C3](https://worldchain-mainnet.explorer.alchemy.com/address/0x09bBC921be046726bb5b694A49888e4e2e7AA9C3) |
-|  | Arbitrum Mainnet | [0x722525B96b62e182F8A095af0a79d4EA2037795C](https://arbiscan.io/address/0x722525B96b62e182F8A095af0a79d4EA2037795C) |
+| `PCCSRouter.sol` | Automata Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://explorer.ata.network/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | Base Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://basescan.org/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | OP Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://optimistic.etherscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | World Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-mainnet.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | Arbitrum Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://arbiscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 | `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://explorer.ata.network/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
-|  | Ethereum Mainnet | [0xE26E11B257856B0bEBc4C759aaBDdea72B64351F](https://etherscan.io/address/0xE26E11B257856B0bEBc4C759aaBDdea72B64351F) |
 |  | Base Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://basescan.org/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | OP Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://optimistic.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
-|  | World Mainnet | [0xE26E11B257856B0bEBc4C759aaBDdea72B64351F](https://worldchain-mainnet.explorer.alchemy.com/address/0xE26E11B257856B0bEBc4C759aaBDdea72B64351F) |
+|  | World Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://worldchain-mainnet.explorer.alchemy.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Arbitrum Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://arbiscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 | `V3QuoteVerifier.sol` | Automata Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://explorer.ata.network/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
-|  | Ethereum Mainnet | [0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96](https://etherscan.io/address/0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96) |
 |  | Base Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://basescan.org/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | OP Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://optimistic.etherscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
-|  | World Mainnet | [0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96](https://worldchain-mainnet.explorer.alchemy.com/address/0xF38a49322cAA0Ead71D4B1cF2afBb6d02BE5FC96) |
+|  | World Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://worldchain-mainnet.explorer.alchemy.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Arbitrum Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://arbiscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 | `V4QuoteVerifier.sol` | Automata Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://explorer.ata.network/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
-|  | Ethereum Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://etherscan.io/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) |
 |  | Base Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://basescan.org/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | OP Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://optimistic.etherscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
-|  | World Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://worldchain-mainnet.explorer.alchemy.com/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) |
-|  | Arbitrum Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://arbiscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) | -->
+|  | World Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-mainnet.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+|  | Arbitrum Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://arbiscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+
+<!-- |  | Ethereum Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://etherscan.io/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) | -->
 
 
 ---
@@ -129,7 +127,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 
 The following diagram illustrates an overview of the execution flow of the DCAP Solana Program.
 
-![DCAP Solana Diagram](./docs/images/DCAP%20Solana%20Diagram.jpg)
+![DCAP Solana Diagram](./solana/docs/images/DCAP%20Solana%20Diagram.jpg)
 
 1. Invokes the `CreateDcapOutputAccount` instruction on the DCAP Program.
 2. Reads the current count from DCAP Counter, which is used as seed to derive the address of the `VerifiedOutput` PDA.
