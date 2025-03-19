@@ -1,7 +1,6 @@
 # Configuration
 VERIFIER ?= etherscan
 VERIFIER_URL ?= 
-ETHERSCAN_API_KEY ?= verifyContract
 SIMULATED ?=
 KEYSTORE_PATH ?= keystores/dcap_prod
 PRIVATE_KEY ?=
@@ -30,8 +29,7 @@ endif
 # Deployment targets
 deploy-router: check_env get_owner
 	@echo "Deploying PCCSRouter..."
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script DeployRouter \
 		--rpc-url $(RPC_URL) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
@@ -42,8 +40,7 @@ deploy-router: check_env get_owner
 
 deploy-attestation: check_env get_owner
 	@echo "Deploying AutomataDCAPAttestationFee..."
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		--sig "deployEntrypoint()" \
 		--rpc-url $(RPC_URL) \
@@ -58,8 +55,7 @@ ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
 	@echo "Deploying QuoteVerifierV$(QUOTE_VERIFIER_VERSION)..."
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script DeployV$(QUOTE_VERIFIER_VERSION) \
 		--rpc-url $(RPC_URL) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
@@ -78,30 +74,36 @@ deploy-all: deploy-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
 verify-all: check_env
-	@echo "Verifying PCCSRouter, AutomataDCAPAttestation and Verifier contracts..."
 	@if [ ! -f deployment/$(CHAIN_ID)/dcap.json ]; then \
 		echo "Deployment not found."; \
 		exit 1; \
 	fi
 	@for contract in PCCSRouter AutomataDcapAttestationFee V3QuoteVerifier V4QuoteVerifier; do \
-		addr=$$(jq -r ".$$contract" deployment/$(CHAIN_ID).json); \
+		addr=$$(jq -r ".$$contract" deployment/$(CHAIN_ID)/dcap.json); \
 		if [ "$$addr" != "null" ]; then \
-			echo "Verifying $$contract at $$addr..."; \
-			forge verify-contract \
-				--rpc-url $(RPC_URL) \
-				--verifier $(VERIFIER) \
-				--watch \
-				$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL) \
-				, --etherscan-api-key $(ETHERSCAN_API_KEY)) \
-				$$addr \
-				src/automata_pccs/$$contract.sol:$$contract || true; \
+			if [ "$$contract" == "PCCSRouter" ] || [ "$$contract" == "AutomataDcapAttestationFee" ]; then \
+				forge verify-contract \
+					--rpc-url $(RPC_URL) \
+					--verifier $(VERIFIER) \
+					--watch \
+					$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL)) \
+					$$addr \
+					contracts/$$contract.sol:$$contract || true; \
+			else \
+				forge verify-contract \
+					--rpc-url $(RPC_URL) \
+					--verifier $(VERIFIER) \
+					--watch \
+					$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL)) \
+					$$addr \
+					contracts/verifiers/$$contract.sol:$$contract || true; \
+			fi \
 		fi \
 	done
 
 # ZK Configurations
 config-zk: check_env get_owner
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		--rpc-url $(RPC_URL) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
@@ -114,20 +116,18 @@ config-zk: check_env get_owner
 		$(if $(ZKVM_PROGRAM_IDENTIFIER), $(ZKVM_PROGRAM_IDENTIFIER), $(error ZKVM_PROGRAM_IDENTIFIER is not set))
 
 config-verifier: check_env get_owner
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		--rpc-url $(RPC_URL) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
 		-vv \
-		--sig "configVerifier(uint8)" \
+		--sig "configVerifier(uint256)" \
 		$(if $(QUOTE_VERIFIER_VERSION), $(QUOTE_VERIFIER_VERSION), $(error QUOTE_VERIFIER_VERSION is not set)) \
 
 config-router: check_env get_owner
-	OWNER=$(OWNER) \
-		ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) \
+	@OWNER=$(OWNER) \
 		forge script DeployRouter \
 		--rpc-url $(RPC_URL) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
