@@ -52,7 +52,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | On-Chain | Groth16 Proof Verification with RiscZero v1.2.1 | Groth16 Proof Verification with SP1 v4.1 | Plonk Proof Verification with SP1 v4.1| 
 | --- | --- | --- | --- | --- |
 | Quote Verification Time | Instant | Proving takes <2 minutes, instant verification | Proving takes ~30 seconds, instant verification  | Proving takes ~2 minutes, instant verification |
-| Gas Cost | ~4-5M gas (varies by collateral size) | 360k gas | 333k gas | 419k gas |
+| Gas Cost | ~4M gas (with RIP-7212 precompile); ~5M gas (without precompile) | 437k gas | 410k gas | 496k gas |
 | Execution | Runs fully on-chain | Execution proven by remote prover Bonsai | Execution proven by the SP1 Network | Execution proven by the SP1 Network |
 
 ### Deployment
@@ -68,12 +68,16 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia-optimism.etherscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | World Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-sepolia.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Arbitrum Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia.arbiscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | Avalanche C-Chain Fuji | [0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a](https://subnets-test.avax.network/c-chain/address/0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a) |
+|  | BSC Testnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://testnet.bscscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 | `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://explorer-testnet.ata.network/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Ethereum Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Ethereum Holesky | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://holesky.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Base Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia.basescan.org/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | OP Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia-optimism.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Arbitrum Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia.arbiscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | Avalanche C-Chain Fuji | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://subnets-test.avax.network/c-chain/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | BSC Testnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://testnet.bscscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://explorer-testnet.ata.network/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Ethereum Sepolia | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://sepolia.etherscan.io/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
 |  | Ethereum Holesky | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://holesky.etherscan.io/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
@@ -81,12 +85,16 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://sepolia-optimism.etherscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | World Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://worldchain-sepolia.explorer.alchemy.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Arbitrum Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://sepolia.arbiscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
+|  | Avalanche C-Chain Fuji | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://subnets-test.avax.network/c-chain/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
+|  | BSC Testnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://testnet.bscscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://explorer-testnet.ata.network/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Ethereum Sepolia | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://sepolia.etherscan.io/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
 |  | Ethereum Holesky | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://holesky.etherscan.io/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
 |  | Base Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia.basescan.org/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | OP Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia-optimism.etherscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Arbitrum Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia.arbiscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+|  | Avalanche C-Chain Fuji | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://subnets-test.avax.network/c-chain/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
+|  | BSC Testnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://testnet.bscscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 
 
 <!-- |  | World Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-sepolia.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) | -->
@@ -96,28 +104,37 @@ Automata DCAP Attestation contract implements two attestation methods available 
 | Contract | Network | Address |
 | --- | --- | --- |
 | `PCCSRouter.sol` | Automata Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://explorer.ata.network/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | Ethereum Mainnet | [0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a](https://etherscan.io/address/0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a) |
 |  | Base Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://basescan.org/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | OP Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://optimistic.etherscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | World Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-mainnet.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Arbitrum Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://arbiscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | Polygon PoS Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://polygonscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | BSC Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://bscscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 | `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://explorer.ata.network/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | Ethereum Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Base Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://basescan.org/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | OP Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://optimistic.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | World Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://worldchain-mainnet.explorer.alchemy.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Arbitrum Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://arbiscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | Polygon PoS Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://polygonscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | BSC Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://bscscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 | `V3QuoteVerifier.sol` | Automata Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://explorer.ata.network/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
+|  | Ethereum Mainnet | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://etherscan.io/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
 |  | Base Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://basescan.org/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | OP Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://optimistic.etherscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | World Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://worldchain-mainnet.explorer.alchemy.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Arbitrum Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://arbiscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
+|  | Polygon PoS Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://polygonscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
+|  | BSC Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://bscscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 | `V4QuoteVerifier.sol` | Automata Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://explorer.ata.network/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+|  | Ethereum Mainnet | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://etherscan.io/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
 |  | Base Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://basescan.org/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | OP Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://optimistic.etherscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | World Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-mainnet.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Arbitrum Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://arbiscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
-
-<!-- |  | Ethereum Mainnet | [0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7](https://etherscan.io/address/0xC86EE37Ee5030B9fF737F3E71f7611Abf5dfD9B7) | -->
-
+|  | Polygon PoS Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://polygonscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+|  | BSC Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://bscscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 
 ---
 
