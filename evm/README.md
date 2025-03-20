@@ -150,7 +150,10 @@ make deploy-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
 make config-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
 ```
 
-#### Grant QuoteVerifier(s) READ permission from the PCCS Router
+> ℹ️ **NOTE**: This command automatically grants the Quote Verifier read access to the PCCS Router.
+
+
+#### Explicitly Granting or Revoking the access privilege for the specified caller address to the PCCS Router
 
 ```bash
 make config-router RPC_URL=<rpc-url> CALLER_ADDRESS=<address> AUTHORIZED=<true | false>

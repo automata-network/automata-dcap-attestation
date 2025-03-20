@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {console2} from "forge-std/console2.sol";
 import "../contracts/AutomataDcapAttestationFee.sol";
+import "../contracts/PCCSRouter.sol";
 
 import "./utils/Salt.sol";
 import "./utils/DeploymentConfig.sol";
@@ -31,9 +32,14 @@ contract AttestationScript is DeploymentConfig {
         );
         address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
         address quoteVerifier = readContractAddress(ProjectType.DCAP, verifierName);
+        address routerAddr = readContractAddress(ProjectType.DCAP, "PCCSRouter");
 
-        vm.broadcast(owner);
+        vm.startBroadcast(owner);
+
         AutomataDcapAttestationFee(attestationAddr).setQuoteVerifier(quoteVerifier);
+        PCCSRouter(routerAddr).setAuthorized(address(quoteVerifier), true);
+
+        vm.stopBroadcast();
     }
 
     function configureZk(uint8 zk, address verifierGateway, bytes32 programId) public {

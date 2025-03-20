@@ -35,6 +35,7 @@ deploy-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv
 	@echo "PCCSRouter deployed"
 
@@ -47,10 +48,11 @@ deploy-attestation: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv \
 	@echo "AutomataDCAPAttestationFee deployed"
 
-deploy-verifier: 
+deploy-verifier:
 ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
@@ -61,14 +63,15 @@ else
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv
 	@echo "QuoteVerifierV$(QUOTE_VERIFIER_VERSION) deployed"
 endif
 
 # deploy all verifiers with the versions we support
 deploy-all-verifiers: check_env get_owner
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED)
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED)
+	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
+	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
 
 deploy-all: deploy-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
@@ -109,6 +112,7 @@ config-zk: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "configureZk(uint8,address,bytes32)" \
 		$(if $(ZKVM_SELECTOR), $(ZKVM_SELECTOR), $(error ZKVM_SELECTOR is not set)) \
@@ -122,6 +126,7 @@ config-verifier: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "configVerifier(uint256)" \
 		$(if $(QUOTE_VERIFIER_VERSION), $(QUOTE_VERIFIER_VERSION), $(error QUOTE_VERIFIER_VERSION is not set)) \
@@ -133,6 +138,7 @@ config-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "setAuthorizedCaller(address,bool)" \
 		$(if $(CALLER_ADDRESS), $(CALLER_ADDRESS), $(error CALLER_ADDRESS is not set)) \
@@ -141,6 +147,7 @@ config-router: check_env get_owner
 # Utility targets
 clean:
 	forge clean
+	rm -rf cache_forge
 
 # Help target
 help:
