@@ -68,6 +68,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia-optimism.etherscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | World Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-sepolia.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Arbitrum Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia.arbiscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
+|  | World Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-sepolia.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Avalanche C-Chain Fuji | [0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a](https://subnets-test.avax.network/c-chain/address/0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a) |
 |  | BSC Testnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://testnet.bscscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 | `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://explorer-testnet.ata.network/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
@@ -76,6 +77,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Base Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia.basescan.org/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | OP Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia-optimism.etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Arbitrum Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://sepolia.arbiscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | World Sepolia | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://worldchain-sepolia.explorer.alchemy.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Avalanche C-Chain Fuji | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://subnets-test.avax.network/c-chain/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | BSC Testnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://testnet.bscscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://explorer-testnet.ata.network/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
@@ -85,6 +87,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://sepolia-optimism.etherscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | World Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://worldchain-sepolia.explorer.alchemy.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Arbitrum Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://sepolia.arbiscan.io/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
+|  | World Sepolia | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://worldchain-sepolia.explorer.alchemy.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Avalanche C-Chain Fuji | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://subnets-test.avax.network/c-chain/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
 |  | BSC Testnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://testnet.bscscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://explorer-testnet.ata.network/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
@@ -93,11 +96,9 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Base Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia.basescan.org/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | OP Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia-optimism.etherscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Arbitrum Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://sepolia.arbiscan.io/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
+|  | World Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-sepolia.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Avalanche C-Chain Fuji | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://subnets-test.avax.network/c-chain/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
 |  | BSC Testnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://testnet.bscscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
-
-
-<!-- |  | World Sepolia | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://worldchain-sepolia.explorer.alchemy.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) | -->
 
 #### Mainnet
 
