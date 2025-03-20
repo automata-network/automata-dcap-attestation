@@ -87,7 +87,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         assertTrue(success);
     }
 
-    function testSP1Verification() public {
+    function testSP1PlonkVerification() public {
         ISP1Verifier sp1PlonkVerifier = ISP1Verifier(setupSp1Plonk.setup());
 
         vm.prank(admin);
