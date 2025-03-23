@@ -39,6 +39,24 @@ deploy-router: check_env get_owner
 		-vv
 	@echo "PCCSRouter deployed"
 
+setup-router: check_env get_owner
+ifndef SIMULATED
+	@storageaddr=$$(jq -r ".AutomataDaoStorage" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	routeraddr=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
+	if [ "$$storageaddr" != "null" ] && [ "$$routeraddr" != "null" ]; then \
+		echo "Granting PCCSRouter authorization to call PCCS Storage..."; \
+		cast send $$storageaddr \
+			--rpc-url $(RPC_URL) \
+			$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
+			--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+			"setCallerAuthorization(address,bool)" \
+			$$routeraddr \
+			true; \
+	fi
+else
+	@echo "Skipping setup-router in simulated mode"
+endif
+
 deploy-attestation: check_env get_owner
 	@echo "Deploying AutomataDCAPAttestationFee..."
 	@OWNER=$(OWNER) \
@@ -73,7 +91,7 @@ deploy-all-verifiers: check_env get_owner
 	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
 	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
 
-deploy-all: deploy-router deploy-attestation deploy-all-verifiers
+deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
 verify-all: check_env
