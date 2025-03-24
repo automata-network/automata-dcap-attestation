@@ -51,8 +51,8 @@ Automata DCAP Attestation contract implements two attestation methods available 
 
 |  | On-Chain | Groth16 Proof Verification with RiscZero v1.2.1 | Groth16 Proof Verification with SP1 v4.1 | Plonk Proof Verification with SP1 v4.1| 
 | --- | --- | --- | --- | --- |
-| Quote Verification Time | Instant | Proving takes <2 minutes, instant verification | Proving takes ~30 seconds, instant verification  | Proving takes ~2 minutes, instant verification |
-| Gas Cost | ~4M gas (with RIP-7212 precompile); ~5M gas (without precompile) | 437k gas | 410k gas | 496k gas |
+| Quote Verification Time | Instant | Proving takes <1 minute, instant verification | Proving takes <1 minute, instant verification  | Proving takes ~2 minutes, instant verification |
+| Gas Cost | ~4M gas (with RIP-7212 precompile); ~5M gas (without precompile) | 450k gas | 425k gas | 510k gas |
 | Execution | Runs fully on-chain | Execution proven by remote prover Bonsai | Execution proven by the SP1 Network | Execution proven by the SP1 Network |
 
 ### Deployment
