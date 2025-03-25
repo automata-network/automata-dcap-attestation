@@ -1,13 +1,13 @@
 artifacts/
 cache*/
-node_modules/
-typechain-types/
 **/.DS_Store
 out/
-**/.env
 
 # Ignores development broadcast logs
 broadcast/**/31337/
 broadcast/**/run-*.json
 broadcast/**/dry-run/
 !broadcast/**/*-latest.json
+
+# Ignores local deployment
+deployment/31337

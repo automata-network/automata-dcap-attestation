@@ -2,7 +2,7 @@ name: Foundry Build CI/CD
 
 on: 
     push:
-        branches: [main]
+        branches: [main, development]
     pull_request:
         branches: [main]
 
@@ -28,7 +28,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       - name: Run Forge build
         run: |

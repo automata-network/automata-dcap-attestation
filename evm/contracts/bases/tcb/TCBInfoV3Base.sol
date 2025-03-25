@@ -7,6 +7,7 @@ import {
     TDXModuleIdentity,
     TDXModuleTCBLevelsObj
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {BELE} from "../../utils/BELE.sol";
 import "./TCBInfoV2Base.sol";
 
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
@@ -102,7 +103,11 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
     }
 
-    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns) internal pure returns (bool) {
+    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns)
+        internal
+        pure
+        returns (bool)
+    {
         if (tdxComponentCpuSvns.length != CPUSVN_LENGTH) {
             return false;
         }

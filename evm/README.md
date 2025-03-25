@@ -78,12 +78,6 @@ Clone this repo, by running the following command:
 git clone https://github.com/automata-network/automata-dcap-attestation.git --recurse-submodules
 ```
 
-Before you begin, make sure to create a copy of the `.env` file with the example provided. Then, please provide any remaining variables that are missing.
-
-```bash
-cp env/.testnet.env.example .env #or you can make a copy from examples for any network
-```
-
 ### Building With Foundry
 
 Compile the contracts:
@@ -106,46 +100,61 @@ To provide additional scripts, please include those in the `/forge-script` direc
 
 ### Deployment Scripts
 
+Before beginning with contract deployment, it is recommended that you store your wallet key as an encrypted keystore using [`cast wallet import`](https://book.getfoundry.sh/reference/cast/cast-wallet-import)
+
+```bash
+cast wallet import -k keystores dcap_prod --interactive
+```
+
+You may also simply pass your wallet key to the `PRIVATE_KEY` environment variable, but we do not recommend doing this with production keys.
+
 #### Deploy the PCCS Router:
 
 ```bash
-forge script DeployRouter --rpc-url $RPC_URL --broadcast -vvvv
+make deploy-router RPC_URL=<rpc-url>
 ```
 
 #### Deploy Automata DCAP Attestation Entrypoint:
 
 ```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "deployEntrypoint()"
+make deploy-attestation RPC_URL=<rpc-url>
 ```
 
 ### Automata DCAP Entrypoint zkVM Configuration
 
-RiscZero:
-```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configureZk(uint8,address,bytes32)" 1 $RISC0_VERIFIER $DCAP_RISCZERO_IMAGE_ID
-```
-
-SP1:
-```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configureZk(uint8,address,bytes32)" 2 $SP1_VERIFIER_GATEWAY $DCAP_SUCCINCT_VKEY
-```
-
-#### Deploy Quote Verifier(s):
+| zkVM | zkVM Selector | zkVM Program ID |
+| --- | --- | --- |
+| RiscZero | 1 | `0xd6c3b4b08fa163dd44f89125f97223f6f7163e3f0f62e360d707adab8f6b7799` |
+| SP1 | 2 | `0x0036efd519bb371b29a40322e40031833716e9441c6907f8aefc5e52ceebc9a6` |
 
 ```bash
-forge script DeployV3 --rpc-url $RPC_URL --broadcast -vvvv
+make config-zk RPC_URL=<rpc-url> ZKVM_SELECTOR=<number> ZKVM_VERIFIER_ADDRESS=<address> ZKVM_PROGRAM_IDENTIFIER=<identifier>
 ```
 
-The naming format for the script is simply `DeployV{x}`, where `x` is the quote version supported by the verifier. Currently, we only support V3 and V4 quotes.
+#### Deploy Quote Verifiers For All Supported Versions:
+
+```bash
+make deploy-all-verifiers RPC_URL=<rpc-url>
+```
+Currently, we only support V3 and V4 quotes.
+
+#### Deploy Quote Verifier For A Specific Version
+
+```bash
+make deploy-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
+```
 
 #### Add QuoteVerifier(s) to the Entrypoint contract:
 
 ```bash
-forge script AttestationScript --rpc-url $RPC_URL --broadcast -vvvv --sig "configVerifier(address)" <verifier-address>
+make config-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
 ```
 
-#### Grant QuoteVerifier(s) READ permission from the PCCS Router
+> ℹ️ **NOTE**: This command automatically grants the Quote Verifier read access to the PCCS Router.
+
+
+#### Explicitly Granting or Revoking the access privilege for the specified caller address to the PCCS Router
 
 ```bash
-forge script DeployRouter --rpc-url $RPC_URL --broadcast -vvvv --sig "setAuthorizedCaller(address,bool)" <verifier-address> true
+make config-router RPC_URL=<rpc-url> CALLER_ADDRESS=<address> AUTHORIZED=<true | false>
 ```

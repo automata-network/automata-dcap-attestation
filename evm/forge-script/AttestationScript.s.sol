@@ -2,36 +2,53 @@
 
 pragma solidity ^0.8.0;
 
-import "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import "../contracts/AutomataDcapAttestationFee.sol";
+import "../contracts/PCCSRouter.sol";
 
-contract AttestationScript is Script {
-    uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
+import "./utils/Salt.sol";
+import "./utils/DeploymentConfig.sol";
+
+contract AttestationScript is DeploymentConfig {
+
+    address owner = vm.envAddress("OWNER");
 
     function deployEntrypoint() public {
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast(owner);
 
-        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee();
+        AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee{salt: DCAP_ATTESTATION_SALT}(owner);
 
         console.log("Automata Dcap Attestation deployed at: ", address(attestation));
+        writeToJson("AutomataDcapAttestationFee", address(attestation));
 
         vm.stopBroadcast();
     }
 
-    function configVerifier(address verifier) public {
-        address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
-        vm.broadcast(deployerKey);
-        AutomataDcapAttestationFee(attestationAddr).setQuoteVerifier(verifier);
+    function configVerifier(uint256 version) public {
+        string memory verifierName = string.concat(
+            "V",
+            vm.toString(version),
+            "QuoteVerifier"
+        );
+        address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
+        address quoteVerifier = readContractAddress(ProjectType.DCAP, verifierName);
+        address routerAddr = readContractAddress(ProjectType.DCAP, "PCCSRouter");
+
+        vm.startBroadcast(owner);
+
+        AutomataDcapAttestationFee(attestationAddr).setQuoteVerifier(quoteVerifier);
+        PCCSRouter(routerAddr).setAuthorized(address(quoteVerifier), true);
+
+        vm.stopBroadcast();
     }
 
     function configureZk(uint8 zk, address verifierGateway, bytes32 programId) public {
-        address attestationAddr = vm.envAddress("DCAP_ATTESTATION");
+        address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
 
         ZkCoProcessorConfig memory config =
             ZkCoProcessorConfig({dcapProgramIdentifier: programId, zkVerifier: verifierGateway});
 
-        vm.broadcast(deployerKey);
+        vm.broadcast(owner);
         AutomataDcapAttestationFee(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
     }
 }

@@ -32,13 +32,11 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         vm.startPrank(admin);
 
         // PCCS Setup
-        pccsRouter = setupPccsRouter();
+        pccsRouter = setupPccsRouter(admin);
         pcsDaoUpserts();
 
-        setUpRiscZero();
-
         // DCAP Contract Deployment
-        attestation = new AutomataDcapAttestationFee();
+        attestation = new AutomataDcapAttestationFee(admin);
 
         // Setup Fee Management
 
@@ -58,7 +56,7 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
 
     function testTDXQuoteV4OnChainAttestationWithFee() public {
         pcsDao.upsertPckCrl(CA.PLATFORM, platformCrlDer);
-        
+
         // pinned June 15th,2024 Midnight UTC
         // bypassing expiry errors
         vm.warp(1718409600);

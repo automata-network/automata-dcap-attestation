@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TCBStatus} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {TCBStatus, TcbId} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {EnclaveId} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 
 import {IQuoteVerifier, IPCCSRouter} from "../interfaces/IQuoteVerifier.sol";
 import {BytesUtils} from "../utils/BytesUtils.sol";
@@ -81,11 +82,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity;
-        (success, qeIdentity) = pccsRouter.getQeIdentity(id, quoteVersion);
-        if (!success) {
-            return (success, EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_NOT_SUPPORTED);
-        }
+        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );
@@ -142,57 +139,81 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            output.quoteVersion, 
-            output.tee, 
-            output.tcbStatus, 
-            output.fmspcBytes, 
-            output.quoteBody, 
+            output.quoteVersion,
+            output.tee,
+            output.tcbStatus,
+            output.fmspcBytes,
+            output.quoteBody,
             output.advisoryIDs.length > 0 ? abi.encode(output.advisoryIDs) : bytes("")
         );
     }
 
-    function checkCollateralHashes(uint256 offset, bytes calldata journal) internal view returns (bool) {
-        bytes32 rootCaHash = bytes32(journal[offset:offset + 32]);
-        bytes32 tcbSigningHash = bytes32(journal[offset + 32:offset + 64]);
-        bytes32 rootCaCrlHash = bytes32(journal[offset + 64:offset + 96]);
-        bytes32 pckCrlHash = bytes32(journal[offset + 96:offset + 128]);
+    function checkCollateralHashes(uint256 offset, bytes calldata zkOutput)
+        internal
+        view
+        returns (bool, bytes memory)
+    {
+        uint64 timestamp = uint64(bytes8(zkOutput[offset:offset + 8]));
+        bytes32 tcbInfoContentHash = bytes32(zkOutput[offset + 8:offset + 40]);
+        bytes32 identityContentHash = bytes32(zkOutput[offset + 40:offset + 72]);
+        bytes32 rootCaHash = bytes32(zkOutput[offset + 72:offset + 104]);
+        bytes32 tcbSigningHash = bytes32(zkOutput[offset + 104:offset + 136]);
+        bytes32 rootCaCrlHash = bytes32(zkOutput[offset + 136:offset + 168]);
+        bytes32 pckCrlHash = bytes32(zkOutput[offset + 168:offset + 200]);
 
-        (bool tcbSigningFound, bytes32 expectedTcbSigningHash) = pccsRouter.getCertHash(CA.SIGNING);
-        if (!tcbSigningFound || tcbSigningHash != expectedTcbSigningHash) {
-            return false;
+        bytes4 tee = bytes4(zkOutput[4:8]);
+        bytes6 fmspc = bytes6(zkOutput[9:15]);
+        bytes32 expectedTcbInfoContentHash =
+            pccsRouter.getFmspcTcbContentHash(tee == SGX_TEE ? TcbId.SGX : TcbId.TDX, fmspc, quoteVersion < 4 ? 2 : 3);
+        if (tcbInfoContentHash != expectedTcbInfoContentHash) {
+            return (false, bytes("tcb info content hash mismatch"));
         }
-        (bool rootCaFound, bytes32 expectedRootCaHash) = pccsRouter.getCertHash(CA.ROOT);
-        if (!rootCaFound || rootCaHash != expectedRootCaHash) {
-            return false;
+
+        bytes32 expectedIdentityContentHash =
+            pccsRouter.getQeIdentityContentHash(tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion);
+        if (identityContentHash != expectedIdentityContentHash) {
+            return (false, bytes("identity content hash mismatch"));
         }
-        (bool rootCrlFound, bytes32 expectedRootCrlHash) = pccsRouter.getCrlHash(CA.ROOT);
-        if (!rootCrlFound || rootCaCrlHash != expectedRootCrlHash) {
-            return false;
+
+        bytes32 expectedRootCaHash = pccsRouter.getCertHashWithTimestamp(CA.ROOT, timestamp);
+        if (rootCaHash != expectedRootCaHash) {
+            return (false, bytes("root ca hash mismatch"));
+        }
+        bytes32 expectedTcbSigningHash = pccsRouter.getCertHashWithTimestamp(CA.SIGNING, timestamp);
+        if (tcbSigningHash != expectedTcbSigningHash) {
+            return (false, bytes("tcb signing ca hash mismatch"));
+        }
+        bytes32 expectedRootCrlHash = pccsRouter.getCrlHashWithTimestamp(CA.ROOT, timestamp);
+        if (rootCaCrlHash != expectedRootCrlHash) {
+            return (false, bytes("root ca crl hash mismatch"));
         }
 
         // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
         // to verify the quote
         // we can catch reverts here, and consider it a valid quote as long as:
         // - one of the PCK CAs has a CRL stored on-chain
-        // - the hash of the on-chain CRL matches with the CRL hash in the journal
+        // - the hash of the on-chain CRL matches with the CRL hash in the zkOutput
 
-        (bool platformSuccess, bytes memory platformRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PLATFORM));
+        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp)
+        );
 
-        (bool processorSuccess, bytes memory processorRet) =
-            address(pccsRouter).staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHash.selector, CA.PROCESSOR));
+        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp)
+        );
 
         bytes32 expectedPlatformCrlHash;
         bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
-            (, expectedPlatformCrlHash) = abi.decode(platformRet, (bool, bytes32));
+            expectedPlatformCrlHash = abi.decode(platformRet, (bytes32));
         } else if (processorSuccess) {
-            (, expectedProcessorCrlHash) = abi.decode(processorRet, (bool, bytes32));
+            expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
         } else {
             // Both Processor and Platform PCKs not found
-            return false;
+            return (false, bytes("missing either pck platform or processor crl"));
         }
 
-        return pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
+        bool crlHashMatched = pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
+        return (crlHashMatched, crlHashMatched ? bytes("") : bytes("pck crl hash mismatch"));
     }
 }

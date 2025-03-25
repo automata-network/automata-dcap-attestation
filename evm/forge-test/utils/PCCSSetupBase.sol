@@ -70,24 +70,33 @@ abstract contract PCCSSetupBase is Test {
         x509 = new PCKHelper();
         x509Crl = new X509CRLHelper();
 
-        pccsStorage = new AutomataDaoStorage();
+        pccsStorage = new AutomataDaoStorage(admin);
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(enclaveIdHelper), address(x509)
+            address(pccsStorage),
+            P256_VERIFIER,
+            address(pcsDao),
+            address(enclaveIdHelper),
+            address(x509),
+            address(x509Crl)
         );
         fmspcTcbDao = new AutomataFmspcTcbDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509)
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509), address(x509Crl)
         );
 
-        pccsStorage.updateDao(address(pcsDao), address(pckDao), address(enclaveIdDao), address(fmspcTcbDao));
+        pccsStorage.grantDao(address(pcsDao));
+        pccsStorage.grantDao(address(pckDao));
+        pccsStorage.grantDao(address(fmspcTcbDao));
+        pccsStorage.grantDao(address(enclaveIdDao));
 
         vm.stopPrank();
     }
 
-    function setupPccsRouter() internal returns (PCCSRouter pccsRouter) {
+    function setupPccsRouter(address owner) internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
+            owner,
             address(enclaveIdDao),
             address(fmspcTcbDao),
             address(pcsDao),
@@ -117,7 +126,7 @@ abstract contract PCCSSetupBase is Test {
 
     function qeIdDaoUpsert(uint256 quoteVersion, string memory path) internal {
         EnclaveIdentityJsonObj memory identityJson = _readIdentityJson(path);
-        IdentityObj memory identity = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
+        (IdentityObj memory identity,) = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
         enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), quoteVersion, identityJson);
     }
 

@@ -2,60 +2,51 @@
 
 pragma solidity ^0.8.0;
 
-import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import "../contracts/PCCSRouter.sol";
+import "./utils/Salt.sol";
+import "./utils/DeploymentConfig.sol";
 
-contract DeployRouter is Script {
-    uint256 deployerKey = uint256(vm.envBytes32("PRIVATE_KEY"));
-    address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_ID_DAO");
-    address enclaveIdHelperAddr = vm.envAddress("ENCLAVE_IDENTITY_HELPER");
-    address pckHelperAddr = vm.envAddress("X509_HELPER");
-    address tcbDaoAddr = vm.envAddress("FMSPC_TCB_DAO");
-    address tcbHelperAddr = vm.envAddress("FMSPC_TCB_HELPER");
-    address crlHelperAddr = vm.envAddress("X509_CRL_HELPER");
-    address pcsDaoAddr = vm.envAddress("PCS_DAO");
-    address pckDaoAddr = vm.envAddress("PCK_DAO");
+contract DeployRouter is DeploymentConfig {
 
-    function run() public {
-        vm.startBroadcast(deployerKey);
+    address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
+    address enclaveIdHelperAddr = readContractAddress(ProjectType.PCCS, "EnclaveIdentityHelper");
+    address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
+    address tcbDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataFmspcTcbDao");
+    address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
+    address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
+    address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
+    address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
 
-        PCCSRouter router =
-            new PCCSRouter(
-                enclaveIdDaoAddr, 
-                tcbDaoAddr, 
-                pcsDaoAddr, 
-                pckDaoAddr,
-                pckHelperAddr,
-                crlHelperAddr,
-                tcbHelperAddr
-            );
+    address owner = vm.envAddress("OWNER");
+
+    function run() public checkPccsHasDeployed {
+        vm.startBroadcast(owner);
+
+        PCCSRouter router = new PCCSRouter{salt: PCCS_ROUTER_SALT}(
+            owner, enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+        );
         console2.log("Deployed PCCSRouter to", address(router));
+        writeToJson("PCCSRouter", address(router));
 
         vm.stopBroadcast();
     }
 
     function updateConfig() public {
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast(owner);
 
-        PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
         router.setConfig(
-            enclaveIdDaoAddr, 
-            tcbDaoAddr, 
-            pcsDaoAddr, 
-            pckDaoAddr,
-            pckHelperAddr,
-            crlHelperAddr,
-            tcbHelperAddr
+            enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
 
         vm.stopBroadcast();
     }
 
     function setAuthorizedCaller(address caller, bool authorized) public {
-        vm.startBroadcast(deployerKey);
-        
-        PCCSRouter router = PCCSRouter(vm.envAddress("PCCS_ROUTER"));
+        vm.startBroadcast(owner);
+
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
         router.setAuthorized(caller, authorized);
 
         vm.stopBroadcast();
