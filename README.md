@@ -157,6 +157,10 @@ Automata DCAP Attestation contract implements two attestation methods available 
 
 ## Automata DCAP Attestation on Solana
 
+> [!CAUTION]
+>
+> The Solana programs are not audited for production use.
+
 ### Overview
 
 The following diagram illustrates an overview of the execution flow of the DCAP Solana Program.
