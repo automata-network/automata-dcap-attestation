@@ -37,6 +37,10 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 
 ## Automata DCAP Attestation on EVM
 
+> ℹ️ **UPDATE (March 2025)**： The EVM contracts for both [Automata On Chain PCCS](https://github.com/automata-network/automata-on-chain-pccs) and Automata DCAP Attestation have been fully audited by Trails of Bit. 
+>
+> Click [here](https://github.com/trailofbits/publications/blob/master/reviews/2025-02-automata-dcap-attestation-onchain-pccs-securityreview.pdf) to view the audit report.
+
 It consists of three smart contracts:
 
 - PCCS Router: A central contract to read collaterals from [`automata-on-chain-pccs`](https://github.com/automata-network/automata-on-chain-pccs)
