@@ -19,4 +19,7 @@ pub enum DcapVerifierError {
 
     #[msg("Invalid quote")]
     InvalidQuote,
+
+    #[msg("Invalid Secp256r1 instruction")]
+    InvalidSecp256r1Instruction,
 }

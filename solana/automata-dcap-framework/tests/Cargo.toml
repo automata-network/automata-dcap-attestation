@@ -5,7 +5,7 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor-client = "0.31.0"
+anchor-client = { version = "0.31.0" }
 ## We are pinning these dependnecies as their latest version require
 ## Rust 1.81.0 as minimum version. And at the time of this writing,
 ## Solana only supports Rust 1.79.0
@@ -16,6 +16,6 @@ zerovec = "=0.11.0"
 hex = "0.4.3"
 automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
 automata-on-chain-pccs = { version = "0.1.0", path = "../programs/automata-on-chain-pccs" }
+sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
 anyhow = "1.0.89"
-solana-net-utils = "=2.1.16"

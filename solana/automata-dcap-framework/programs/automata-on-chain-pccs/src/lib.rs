@@ -6,7 +6,7 @@ pub mod errors;
 pub mod instructions;
 pub mod state;
 
-declare_id!("7UuiyphTDFxz4BTBA8MhwwEHVAt4ttREXEhqdRicaVpA");
+declare_id!("FadmkyzTzNRjkMYWZ5pz9MZuVZAytAyu5eHB4PB8sMSw");
 
 use errors::*;
 use instructions::*;
@@ -114,12 +114,14 @@ pub mod automata_on_chain_pccs {
     pub fn upsert_pcs_certificate(
         ctx: Context<UpsertPcsCertificate>,
         ca_type: CertificateAuthority,
+        is_crl: bool,
     ) -> Result<()> {
         let pcs_certificate = &mut ctx.accounts.pcs_certificate;
         let cert_data = ctx.accounts.data_buffer.data.clone();
 
         pcs_certificate.ca_type = ca_type;
         pcs_certificate.cert_data = cert_data;
+        pcs_certificate.is_crl = is_crl;
 
         msg!(
             "PCS certificate upserted to {}",

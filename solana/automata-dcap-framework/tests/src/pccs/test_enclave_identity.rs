@@ -1,32 +1,30 @@
-use automata_on_chain_pccs::state::EnclaveIdentityType;
+use crate::pccs::get_signer;
+use sdk::EnclaveIdentityType;
 
-use super::{PccsTestConfig, PccsTestHarness};
-
-#[test]
-fn test_enclave_identity_upsert() {
-    let config = PccsTestConfig::default();
-    let harness = PccsTestHarness::new(config);
-
-    let enclave_identity_data = "7b226964223a225145222c2276657273696f6e223a322c22697373756544617465223a22323032342d30362d31395430373a32323a32365a222c226e657874557064617465223a22323032342d30372d31395430373a32323a32365a222c227463624576616c756174696f6e446174614e756d626572223a31362c226d69736373656c656374223a223030303030303030222c226d69736373656c6563744d61736b223a224646464646464646222c2261747472696275746573223a223131303030303030303030303030303030303030303030303030303030303030222c22617474726962757465734d61736b223a224642464646464646464646464646464630303030303030303030303030303030222c226d727369676e6572223a2238433446353737354437393635303345393631333746373743363841383239413030353641433844454437303134304230383142303934343930433537424646222c2269737670726f646964223a312c227463624c6576656c73223a5b7b22746362223a7b2269737673766e223a387d2c2274636244617465223a22323032332d30382d30395430303a30303a30305a222c22746362537461747573223a225570546f44617465227d2c7b22746362223a7b2269737673766e223a367d2c2274636244617465223a22323032312d31312d31305430303a30303a30305a222c22746362537461747573223a224f75744f6644617465227d2c7b22746362223a7b2269737673766e223a357d2c2274636244617465223a22323032302d31312d31315430303a30303a30305a222c22746362537461747573223a224f75744f6644617465227d2c7b22746362223a7b2269737673766e223a347d2c2274636244617465223a22323031392d31312d31335430303a30303a30305a222c22746362537461747573223a224f75744f6644617465227d2c7b22746362223a7b2269737673766e223a327d2c2274636244617465223a22323031392d30352d31355430303a30303a30305a222c22746362537461747573223a224f75744f6644617465227d2c7b22746362223a7b2269737673766e223a317d2c2274636244617465223a22323031382d30382d31355430303a30303a30305a222c22746362537461747573223a224f75744f6644617465227d5d7d";
-    let enclave_identity_data = hex::decode(enclave_identity_data).unwrap();
+#[tokio::test]
+async fn test_enclave_identity_upsert() {
+    let enclave_identity_data = include_bytes!("../../data/qe_identity.json").to_vec();
 
 
-    let num_chunks = PccsTestHarness::get_num_chunks(enclave_identity_data.len(), 512);
-    let data_buffer_pubkey = harness.init_data_buffer(enclave_identity_data.len() as u32, num_chunks).unwrap();
-    harness.upload_chunks(data_buffer_pubkey, &enclave_identity_data, 512).unwrap();
+    let client = sdk::PccsClient::new(get_signer()).unwrap();
+    let num_chunks = sdk::get_num_chunks(enclave_identity_data.len(), 512);
+    let data_buffer_pubkey = client.init_data_buffer(enclave_identity_data.len() as u32, num_chunks).await.unwrap();
+    client.upload_chunks(data_buffer_pubkey, &enclave_identity_data, 512).await.unwrap();
 
-    let _tx = harness.upsert_enclave_identity(
-        EnclaveIdentityType::QE,
-        3,
+    let _tx = client.upsert_enclave_identity(
+        EnclaveIdentityType::TdQe,
+        2,
         data_buffer_pubkey,
-    ).unwrap();
+    ).await.unwrap();
 
-    let enclave_identity = harness.get_enclave_identity(
-        EnclaveIdentityType::QE,
-        3,
-    ).unwrap();
+    let enclave_identity = client.get_enclave_identity(
+        EnclaveIdentityType::TdQe,
+        2,
+    ).await.unwrap();
 
-    assert_eq!(enclave_identity.identity_type, EnclaveIdentityType::QE);
-    assert_eq!(enclave_identity.version, 3);
+    let actual_identity_type: EnclaveIdentityType = enclave_identity.identity_type.into();
+    let expected_identity_type = EnclaveIdentityType::TdQe;
+    assert_eq!(actual_identity_type, expected_identity_type);
+    assert_eq!(enclave_identity.version, 2);
     assert_eq!(enclave_identity.data, enclave_identity_data);
 }

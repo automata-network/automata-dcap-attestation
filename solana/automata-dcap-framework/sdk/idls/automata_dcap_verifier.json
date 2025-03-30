@@ -1,0 +1,362 @@
+{
+  "address": "B9sQRDqMHPQAzWEgCr4tqq8jaqwaVHn5AmrMSCyTVV4S",
+  "metadata": {
+    "name": "automata_dcap_verifier",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_quote_chunk",
+      "discriminator": [
+        93,
+        28,
+        10,
+        61,
+        222,
+        222,
+        191,
+        23
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "chunk_index",
+          "type": "u8"
+        },
+        {
+          "name": "chunk_data",
+          "type": "bytes"
+        },
+        {
+          "name": "offset",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_quote_buffer",
+      "discriminator": [
+        53,
+        20,
+        246,
+        11,
+        2,
+        115,
+        211,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The signer who will own this quote buffer.",
+            "Must sign the transaction and pay for account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "docs": [
+            "The account that will store the DCAP quote data.",
+            "This is initialized with the specified space and",
+            "owned by the program."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Required by the system program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "total_size",
+          "type": "u32"
+        },
+        {
+          "name": "num_chunks",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_enclave_source",
+      "discriminator": [
+        7,
+        60,
+        137,
+        108,
+        41,
+        253,
+        177,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "qe_identity_pda"
+        }
+      ],
+      "args": [
+        {
+          "name": "_qe_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_integrity",
+      "discriminator": [
+        178,
+        183,
+        98,
+        209,
+        167,
+        76,
+        100,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_dcap_quote_isv_signature",
+      "discriminator": [
+        0,
+        249,
+        164,
+        83,
+        46,
+        80,
+        247,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DataBuffer",
+      "discriminator": [
+        235,
+        220,
+        51,
+        248,
+        56,
+        77,
+        241,
+        89
+      ]
+    },
+    {
+      "name": "EnclaveIdentity",
+      "discriminator": [
+        214,
+        36,
+        189,
+        105,
+        171,
+        103,
+        129,
+        177
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidOwner",
+      "msg": "Invalid buffer owner"
+    },
+    {
+      "code": 6001,
+      "name": "BufferAlreadyComplete",
+      "msg": "Buffer already complete"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidChunkIndex",
+      "msg": "Invalid chunk index"
+    },
+    {
+      "code": 6003,
+      "name": "ChunkOutOfBounds",
+      "msg": "Chunk out of bounds"
+    },
+    {
+      "code": 6004,
+      "name": "IncompleteQuote",
+      "msg": "Incomplete quote"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidQuote",
+      "msg": "Invalid quote"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSecp256r1Instruction",
+      "msg": "Invalid Secp256r1 instruction"
+    }
+  ],
+  "types": [
+    {
+      "name": "DataBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_size",
+            "type": "u32"
+          },
+          {
+            "name": "num_chunks",
+            "type": "u8"
+          },
+          {
+            "name": "chunks_received",
+            "type": "u8"
+          },
+          {
+            "name": "complete",
+            "type": "bool"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "docs": [
+              "The owner that has permission to modify data in this account."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "identity_type",
+            "docs": [
+              "The type of enclave identity"
+            ],
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the enclave identity"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the enclave identity"
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentityType",
+      "docs": [
+        "Represents the different types of Enclave Identities in the Intel SGX",
+        "attestation."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "QE"
+          },
+          {
+            "name": "QVE"
+          },
+          {
+            "name": "TdQe"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -29,6 +29,9 @@ pub struct PcsCertificate {
     /// The type of certificate authority that signed this certificate
     pub ca_type: CertificateAuthority,
 
+    /// Whether this is a CRL
+    pub is_crl: bool,
+
     /// Certificate data
     pub cert_data: Vec<u8>,
 }

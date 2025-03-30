@@ -1,6 +1,9 @@
+use anchor_lang::prelude::*;
 use crate::errors::DcapVerifierError;
 use crate::state::DataBuffer;
-use anchor_lang::prelude::*;
+use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
+use automata_on_chain_pccs::state::EnclaveIdentity;
+//use automata_on_chain_pccs::state::TcbInfo;
 
 #[derive(Accounts)]
 pub struct Initialize {}
@@ -54,7 +57,7 @@ pub struct AddQuoteChunk<'info> {
 }
 
 #[derive(Accounts)]
-pub struct VerifyDcapQuote<'info> {
+pub struct VerifyDcapQuoteIntegrity<'info> {
     pub owner: Signer<'info>,
 
     #[account(
@@ -63,4 +66,79 @@ pub struct VerifyDcapQuote<'info> {
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    /// CHECK: The address check is needed because otherwise
+    /// the supplied Sysvar could be anything else.
+    /// The Instruction Sysvar has not been implemented
+    /// in the Anchor framework yet, so this is the safe approach.
+    #[account(address = INSTRUCTIONS_SYSVAR_ID)]
+    pub instructions_sysvar: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct VerifyDcapQuoteIsvSignature<'info> {
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    /// CHECK: The address check is needed because otherwise
+    /// the supplied Sysvar could be anything else.
+    /// The Instruction Sysvar has not been implemented
+    /// in the Anchor framework yet, so this is the safe approach.
+    #[account(address = INSTRUCTIONS_SYSVAR_ID)]
+    pub instructions_sysvar: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(qe_type: String,  version: u8)]
+pub struct VerifyDcapQuoteEnclaveSource<'info> {
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        seeds = [
+            b"enclave_identity",
+            qe_type.as_bytes(),
+            &version.to_le_bytes()[..1],
+        ],
+        bump,
+        seeds::program = automata_on_chain_pccs::ID,
+    )]
+    pub qe_identity_pda: Account<'info, EnclaveIdentity>,
+}
+
+// #[derive(Accounts)]
+// #[instruction(tcb_type: String, version: u8, fmspc: String)]
+// pub struct VerifyDcapQuoteTcbStatus<'info> {
+//     pub owner: Signer<'info>,
+
+//     #[account(
+//         mut,
+//         constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+//         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+//     )]
+//     pub quote_data_buffer: Account<'info, DataBuffer>,
+
+//     #[account(
+//         seeds = [
+//             b"tcb_info",
+//             tcb_type.as_bytes(),
+//             &version.to_le_bytes()[..1],
+//             &fmspc.as_bytes(),
+//         ],
+//         bump,
+//         seeds::program = automata_on_chain_pccs::ID,
+//     )]
+//     pub tcb_info_pda: Account<'info, TcbInfo>,
+// }

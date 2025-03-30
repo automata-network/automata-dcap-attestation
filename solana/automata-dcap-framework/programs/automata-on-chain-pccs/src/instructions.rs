@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-
 use crate::errors::PccsError;
 use crate::state::{
     CertificateAuthority, DataBuffer, EnclaveIdentity, EnclaveIdentityType, PckCertificate,
@@ -8,6 +7,7 @@ use crate::state::{
 
 // Maximum size of the certificate data in bytes (4KB)
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
+pub const TCB_INFO_MAX_SIZE: usize = 8096;
 
 #[derive(Accounts)]
 #[instruction(
@@ -83,7 +83,7 @@ pub struct UpsertPckCertificate<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(ca_type: CertificateAuthority)]
+#[instruction(ca_type: CertificateAuthority, is_crl: bool)]
 pub struct UpsertPcsCertificate<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -92,7 +92,7 @@ pub struct UpsertPcsCertificate<'info> {
         init_if_needed,
         payer = authority,
         space = 8 + 32 + 1 + MAX_CERT_DATA_SIZE,
-        seeds = [b"pcs_cert", ca_type.common_name().as_bytes()],
+        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[is_crl as u8]],
         bump,
     )]
     pub pcs_certificate: Account<'info, PcsCertificate>,
@@ -143,8 +143,8 @@ pub struct UpsertTcbInfo<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + 16 + 1 + 1 + MAX_CERT_DATA_SIZE,
-        seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()[..8]],
+        space = 8 + 32 + 1 + 16 + 1 + 1 + TCB_INFO_MAX_SIZE,
+        seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()],
         bump,
     )]
     pub tcb_info: Account<'info, TcbInfo>,
