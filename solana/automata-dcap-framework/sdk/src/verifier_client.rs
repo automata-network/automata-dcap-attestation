@@ -1,11 +1,11 @@
-use std::ops::Deref;
+use std::{ops::Deref, str::FromStr};
 
-use anchor_client::{solana_sdk::{commitment_config::CommitmentConfig, compute_budget::ComputeBudgetInstruction, signature::{Keypair, Signature}, signer::Signer}, Client, Program};
+use anchor_client::{solana_sdk::{commitment_config::CommitmentConfig, signature::{Keypair, Signature}, signer::Signer}, Client, Program};
 use anchor_lang::{declare_program, prelude::Pubkey, AccountDeserialize};
 
 declare_program!(automata_dcap_verifier);
 use automata_dcap_verifier::{client::accounts, client::args};
-use dcap_rs::{types::{quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE}, tcb_info::TcbInfoAndSignature}, verify_tcb_status};
+use dcap_rs::{types::{enclave_identity::QeTcbStatus, quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE}, tcb_info::{TcbInfo, TcbInfoAndSignature, TcbStatus}}, verify_tcb_status};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
 use x509_cert::der::Decode;
@@ -68,6 +68,28 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(quote_buffer_pubkey)
     }
 
+    pub async fn init_verified_output_account(
+        &self,
+    ) -> anyhow::Result<Pubkey> {
+        let verified_output_keypair = Keypair::new();
+        let verified_output_pubkey = verified_output_keypair.pubkey();
+
+        let _tx = self
+            .program
+            .request()
+            .accounts(accounts::InitVerifiedOutputAccount {
+                owner: self.program.payer(),
+                verified_output: verified_output_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(args::InitVerifiedOutputAccount {})
+            .signer(verified_output_keypair)
+            .send()
+            .await?;
+
+        Ok(verified_output_pubkey)
+    }
+
     pub async fn upload_chunks(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -102,6 +124,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     pub async fn verify_quote(
         &self,
         quote_buffer_pubkey: Pubkey,
+        verified_output_pubkey: Pubkey,
     ) -> anyhow::Result<Vec<Signature>> {
 
         // Parse Quote
@@ -127,11 +150,21 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
         // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
         // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
-        self.verify_pck_cert_chain(&quote).await?;
+        let fmspc = self.verify_pck_cert_chain(&quote).await?;
 
         // Verify TCB status. This is done off-chain as well. Mainly due to the fact that parsing the TCB info
         // is a heavy computation and we go out of memory in solana.
-        self.verify_tcb_status(&quote).await?;
+        let (tcb_status, advisory_ids) = self.verify_tcb_status(&quote).await?;
+
+        // Update the verified output account
+        let tx = self.update_verified_output_account(
+            quote_buffer_pubkey,
+            verified_output_pubkey,
+            tcb_status,
+            advisory_ids,
+            fmspc
+        ).await?;
+        signatures.push(tx);
 
         Ok(signatures)
     }
@@ -232,6 +265,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             &PCCS_PROGRAM_ID
         ).0;
 
+        let qe_tcb_status_pda = Pubkey::find_program_address(
+            &[b"qe_tcb_status", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+
         let tx = self
             .program
             .request()
@@ -239,6 +277,8 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,
                 qe_identity_pda: qe_identity_pda,
+                qe_tcb_status_pda: qe_tcb_status_pda,
+                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteEnclaveSource {
                 _qe_type: qe_type.to_string(),
@@ -249,7 +289,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
-    async fn verify_pck_cert_chain(&self, quote: &Quote<'_>) -> anyhow::Result<()> {
+    async fn verify_pck_cert_chain(&self, quote: &Quote<'_>) -> anyhow::Result<[u8; 6]> {
         let pck_cert_chain_data = quote.signature.get_pck_cert_chain()?;
 
 
@@ -289,11 +329,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             pk.verify_strict(cert)
                 .map_err(|e| anyhow::anyhow!("failed to verify certificate: {}, error: {}", cert.tbs_certificate.subject.to_string(), e))?;
         }
-        Ok(())
+        Ok(pck_cert_chain_data.pck_extension.fmspc)
 
     }
 
-    async fn verify_tcb_status(&self, quote: &Quote<'_>) -> anyhow::Result<()> {
+    async fn verify_tcb_status(&self, quote: &Quote<'_>) -> anyhow::Result<(TcbStatus, Vec<String>)> {
         let pck_extension = quote.signature.get_pck_extension()?;
         let fmspc = hex::encode(pck_extension.fmspc);
         let version = 3 as u8;
@@ -306,10 +346,49 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         let tcb_info: TcbInfoAndSignature = serde_json::from_slice(&tcb_info_data)?;
         let tcb_info = tcb_info.get_tcb_info()?;
 
-        let _tcb_status = verify_tcb_status(&tcb_info, &pck_extension)?;
+        let (mut tcb_status, advisory_ids) = verify_tcb_status(&tcb_info, &pck_extension)?;
+        if quote.header.tee_type == TDX_TEE_TYPE {
+            let tdx_module_status = tcb_info.verify_tdx_module(quote.body.as_tdx_report_body().unwrap())?;
+            tcb_status = TcbInfo::converge_tcb_status_with_tdx_module(tcb_status, tdx_module_status);
+        }
 
-        Ok(())
+        Ok((tcb_status, advisory_ids))
     }
+
+    async fn update_verified_output_account(
+        &self,
+        quote_buffer_pubkey: Pubkey,
+        verified_output_pubkey: Pubkey,
+        mut tcb_status: TcbStatus,
+        advisory_ids: Vec<String>,
+        fmspc: [u8; 6]
+    ) -> anyhow::Result<Signature> {
+
+        let qe_tcb_status = self.get_qe_tcb_status(quote_buffer_pubkey).await?;
+        let qe_tcb_status = QeTcbStatus::from_str(&qe_tcb_status.status).map_err(
+            |e| anyhow::anyhow!("failed to parse qe tcb status: {}", e)
+        )?;
+
+        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status.into());
+
+
+        let tx = self.program.request()
+            .accounts(accounts::UpdateVerifiedOutputAccount {
+                owner: self.program.payer(),
+                verified_output: verified_output_pubkey,
+                quote_data_buffer: quote_buffer_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(args::UpdateVerifiedOutputAccount {
+                tcb_status: tcb_status.to_string(),
+                advisory_ids,
+                fmspc,
+            })
+            .send().await?;
+
+        Ok(tx)
+    }
+
 
     async fn check_certificate_revocation(
         &self,
@@ -332,6 +411,16 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
     pub fn get_payer(&self) -> Pubkey {
         self.program.payer().clone()
+    }
+
+    pub async fn get_qe_tcb_status(&self, quote_buffer_pubkey: Pubkey) -> anyhow::Result<automata_dcap_verifier::accounts::QeTcbStatus> {
+        let qe_tcb_status_pda = Pubkey::find_program_address(
+            &[b"qe_tcb_status", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+
+        let qe_tcb_status = self.get_account::<automata_dcap_verifier::accounts::QeTcbStatus>(qe_tcb_status_pda).await?;
+        Ok(qe_tcb_status)
     }
 
     pub async fn get_account<T: AccountDeserialize>(&self, pubkey: Pubkey) -> anyhow::Result<T> {

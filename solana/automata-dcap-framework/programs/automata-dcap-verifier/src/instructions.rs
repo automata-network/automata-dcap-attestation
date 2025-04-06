@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::errors::DcapVerifierError;
-use crate::state::DataBuffer;
+use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 use automata_on_chain_pccs::state::EnclaveIdentity;
 //use automata_on_chain_pccs::state::TcbInfo;
@@ -45,6 +45,21 @@ pub struct InitQuoteBuffer<'info> {
 
     /// Required by the system program for account creation.
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct InitVerifiedOutput<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        init,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
+
+    pub system_program: Program<'info, System>
 }
 
 #[derive(Accounts)]
@@ -97,6 +112,7 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
 #[derive(Accounts)]
 #[instruction(qe_type: String,  version: u8)]
 pub struct VerifyDcapQuoteEnclaveSource<'info> {
+    #[account(mut)]
     pub owner: Signer<'info>,
 
     #[account(
@@ -116,29 +132,40 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
         seeds::program = automata_on_chain_pccs::ID,
     )]
     pub qe_identity_pda: Account<'info, EnclaveIdentity>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 64 + 1,
+        seeds = [
+            b"qe_tcb_status",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub qe_tcb_status_pda: Account<'info, QeTcbStatus>,
+
+    pub system_program: Program<'info, System>,
 }
 
-// #[derive(Accounts)]
-// #[instruction(tcb_type: String, version: u8, fmspc: String)]
-// pub struct VerifyDcapQuoteTcbStatus<'info> {
-//     pub owner: Signer<'info>,
+#[derive(Accounts)]
+#[instruction(tcb_status: String, advisory_ids: Vec<String>, fmspc: [u8; 6])]
+pub struct UpdateVerifiedOutput<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
 
-//     #[account(
-//         mut,
-//         constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
-//         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
-//     )]
-//     pub quote_data_buffer: Account<'info, DataBuffer>,
+    #[account(
+        mut,
+        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
 
-//     #[account(
-//         seeds = [
-//             b"tcb_info",
-//             tcb_type.as_bytes(),
-//             &version.to_le_bytes()[..1],
-//             &fmspc.as_bytes(),
-//         ],
-//         bump,
-//         seeds::program = automata_on_chain_pccs::ID,
-//     )]
-//     pub tcb_info_pda: Account<'info, TcbInfo>,
-// }
+    #[account(
+        mut,
+        constraint = verified_output.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
+
+    pub system_program: Program<'info, System>,
+}

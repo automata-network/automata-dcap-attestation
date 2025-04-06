@@ -1,5 +1,5 @@
 {
-  "address": "B9sQRDqMHPQAzWEgCr4tqq8jaqwaVHn5AmrMSCyTVV4S",
+  "address": "7obE3U8nYg7h1kaenZhkMwa8Dxzcfk5H8BRP6L4twwcx",
   "metadata": {
     "name": "automata_dcap_verifier",
     "version": "0.1.0",
@@ -97,6 +97,89 @@
       ]
     },
     {
+      "name": "init_verified_output_account",
+      "discriminator": [
+        8,
+        137,
+        28,
+        110,
+        224,
+        186,
+        251,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_verified_output_account",
+      "discriminator": [
+        210,
+        228,
+        141,
+        248,
+        157,
+        220,
+        18,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tcb_status",
+          "type": "string"
+        },
+        {
+          "name": "advisory_ids",
+          "type": {
+            "vec": "string"
+          }
+        },
+        {
+          "name": "fmspc",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "verify_dcap_quote_enclave_source",
       "discriminator": [
         7,
@@ -111,6 +194,7 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true
         },
         {
@@ -119,6 +203,40 @@
         },
         {
           "name": "qe_identity_pda"
+        },
+        {
+          "name": "qe_tcb_status_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  101,
+                  95,
+                  116,
+                  99,
+                  98,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -224,6 +342,32 @@
         103,
         129,
         177
+      ]
+    },
+    {
+      "name": "QeTcbStatus",
+      "discriminator": [
+        232,
+        80,
+        189,
+        226,
+        83,
+        127,
+        137,
+        173
+      ]
+    },
+    {
+      "name": "VerifiedOutput",
+      "discriminator": [
+        33,
+        23,
+        162,
+        153,
+        121,
+        58,
+        199,
+        180
       ]
     }
   ],
@@ -354,6 +498,71 @@
           },
           {
             "name": "TdQe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QeTcbStatus",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifiedOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_version",
+            "type": "u16"
+          },
+          {
+            "name": "tee_type",
+            "type": "u32"
+          },
+          {
+            "name": "tcb_status",
+            "type": "string"
+          },
+          {
+            "name": "fmspc",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "quote_body",
+            "type": "bytes"
+          },
+          {
+            "name": "advisor_ids",
+            "type": {
+              "option": {
+                "vec": "string"
+              }
+            }
+          },
+          {
+            "name": "completed",
+            "type": "bool"
           }
         ]
       }

@@ -12,7 +12,7 @@ use instructions::*;
 use utils::*;
 use zerocopy::AsBytes;
 
-declare_id!("B9sQRDqMHPQAzWEgCr4tqq8jaqwaVHn5AmrMSCyTVV4S");
+declare_id!("7obE3U8nYg7h1kaenZhkMwa8Dxzcfk5H8BRP6L4twwcx");
 
 #[program]
 pub mod automata_dcap_verifier {
@@ -21,8 +21,6 @@ pub mod automata_dcap_verifier {
     use dcap_rs::types::quote::Quote;
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
     use anchor_lang::solana_program::instruction::Instruction;
-    //use dcap_rs::types::tcb_info::TcbInfoAndSignature;
-    //use dcap_rs::verify_tcb_status;
 
     use super::*;
 
@@ -45,6 +43,26 @@ pub mod automata_dcap_verifier {
             total_size,
             num_chunks
         );
+        Ok(())
+    }
+
+    pub fn init_verified_output_account(
+        ctx: Context<InitVerifiedOutput>,
+    ) -> Result<()> {
+
+        let verified_output = &mut ctx.accounts.verified_output;
+
+        // Initialize the verified output account
+        verified_output.owner = *ctx.accounts.owner.key;
+        verified_output.quote_version = 0;
+        verified_output.tee_type = 0;
+        verified_output.tcb_status = String::new();
+        verified_output.fmspc = [0; 6];
+        verified_output.quote_body = Vec::new();
+        verified_output.advisor_ids = None;
+        verified_output.completed = false;
+
+        msg!("Verified output account initialized");
         Ok(())
     }
 
@@ -207,43 +225,39 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::InvalidQuote.into());
         }
 
+        let qe_tcb_status = qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
+        let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
+        qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
+            msg!("Error serializing qe tcb status: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
+
         Ok(())
     }
 
-    // pub fn verify_dcap_quote_tcb_status(
-    //     ctx: Context<VerifyDcapQuoteTcbStatus>,
-    //     _tcb_type: String,
-    //     _version: u8,
-    //     _fmspc: String,
-    // ) -> Result<()> {
-    //     let data_buffer = &ctx.accounts.quote_data_buffer;
-    //     let quote_data = &mut data_buffer.data.as_slice();
+    pub fn update_verified_output_account(
+        ctx: Context<UpdateVerifiedOutput>,
+        tcb_status: String,
+        advisory_ids: Vec<String>,
+        fmspc: [u8; 6],
+    ) -> Result<()> {
+        let verified_output = &mut ctx.accounts.verified_output;
 
-    //     let quote = Quote::read(quote_data).map_err(|e| {
-    //         msg!("Error reading quote: {}", e);
-    //         DcapVerifierError::InvalidQuote
-    //     })?;
+        let data_buffer = &ctx.accounts.quote_data_buffer;
+        let quote = Quote::read(&mut data_buffer.data.as_slice()).map_err(|e| {
+            msg!("Error reading quote: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
 
-    //     let tcb_info = &ctx.accounts.tcb_info_pda.data;
-    //     let tcb_info_and_signature: TcbInfoAndSignature = serde_json::from_slice(tcb_info).map_err(|e| {
-    //         msg!("Error deserializing tcb info: {}", e);
-    //         DcapVerifierError::InvalidQuote
-    //     })?;
+        verified_output.tcb_status = tcb_status;
+        verified_output.advisor_ids = Some(advisory_ids);
+        verified_output.fmspc = fmspc;
+        verified_output.quote_version = quote.header.version.get();
+        verified_output.tee_type = quote.header.tee_type;
+        verified_output.quote_body = quote.body.as_bytes().to_vec();
+        verified_output.completed = true;
 
-    //     let pck_extension = quote.signature.get_pck_extension().map_err(|e| {
-    //         msg!("Error getting pck extension: {}", e);
-    //         DcapVerifierError::InvalidQuote
-    //     })?;
+        Ok(())
+    }
 
-    //     let tcb_info = tcb_info_and_signature.get_tcb_info().map_err(|e| {
-    //         msg!("Error getting tcb info: {}", e);
-    //         DcapVerifierError::InvalidQuote
-    //     })?;
-
-    //     let (_tcb_status, _advisory_ids) = verify_tcb_status(&tcb_info, &pck_extension).map_err(|e| {
-    //         msg!("Error verifying tcb status: {}", e);
-    //         DcapVerifierError::InvalidQuote
-    //     })?;
-    //     Ok(())
-    // }
 }
