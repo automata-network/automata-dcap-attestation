@@ -5,12 +5,14 @@ use anchor_lang::prelude::*;
 pub mod errors;
 pub mod instructions;
 pub mod state;
+pub mod event;
 
 declare_id!("E74ADc35qxEsTFuj5d256gdfMvVBwBRbXTbi9ctpgXhN");
 
 use errors::*;
 use instructions::*;
 use state::*;
+use event::*;
 
 #[program]
 pub mod automata_on_chain_pccs {
@@ -103,10 +105,19 @@ pub mod automata_on_chain_pccs {
 
         pck_certificate.cert_data = cert_data;
 
+        // Emit event
+        emit!(PckCertificateUpserted {
+            qe_id: pck_certificate.qe_id,
+            pce_id: pck_certificate.pce_id,
+            tcbm: pck_certificate.tcbm,
+            pda: pck_certificate.key(),
+        });
+
         msg!(
             "PCK certificate upserted to {}",
             ctx.accounts.pck_certificate.key()
         );
+
 
         Ok(())
     }
@@ -122,6 +133,14 @@ pub mod automata_on_chain_pccs {
         pcs_certificate.ca_type = ca_type;
         pcs_certificate.cert_data = cert_data;
         pcs_certificate.is_crl = is_crl;
+
+
+        // Emit event
+        emit!(PcsCertificateUpserted {
+            ca_type: pcs_certificate.ca_type,
+            is_crl: pcs_certificate.is_crl,
+            pda: pcs_certificate.key(),
+        });
 
         msg!(
             "PCS certificate upserted to {}",
@@ -148,8 +167,14 @@ pub mod automata_on_chain_pccs {
             "Enclave identity  with id: {}, version: {} upserted to {}",
             id.common_name(),
             version,
-            ctx.accounts.enclave_identity.key()
+            enclave_identity.key()
         );
+
+        emit!(EnclaveIdentityUpserted {
+            id: enclave_identity.identity_type,
+            version: enclave_identity.version,
+            pda: enclave_identity.key(),
+        });
 
         Ok(())
     }
@@ -174,6 +199,13 @@ pub mod automata_on_chain_pccs {
 
         tcb_info.fmspc = fmspc_bytes;
         tcb_info.data = data_buffer.data.clone();
+
+        emit!(TcbInfoUpdated {
+            tcb_type: tcb_info.tcb_type,
+            version: tcb_info.version,
+            fmspc: tcb_info.fmspc,
+            pda: tcb_info.key(),
+        });
 
         msg!(
             "TCB info with type: {}, version: {} upserted to {}",

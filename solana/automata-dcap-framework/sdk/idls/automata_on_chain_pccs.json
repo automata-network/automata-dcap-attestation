@@ -350,6 +350,60 @@
       ]
     }
   ],
+  "events": [
+    {
+      "name": "EnclaveIdentityUpserted",
+      "discriminator": [
+        175,
+        100,
+        199,
+        211,
+        108,
+        27,
+        100,
+        92
+      ]
+    },
+    {
+      "name": "PckCertificateUpserted",
+      "discriminator": [
+        162,
+        80,
+        9,
+        130,
+        28,
+        152,
+        117,
+        119
+      ]
+    },
+    {
+      "name": "PcsCertificateUpserted",
+      "discriminator": [
+        251,
+        19,
+        105,
+        18,
+        135,
+        171,
+        52,
+        140
+      ]
+    },
+    {
+      "name": "TcbInfoUpdated",
+      "discriminator": [
+        154,
+        66,
+        145,
+        8,
+        184,
+        57,
+        40,
+        243
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 6000,
@@ -506,6 +560,30 @@
       }
     },
     {
+      "name": "EnclaveIdentityUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "PckCertificate",
       "type": {
         "kind": "struct",
@@ -575,6 +653,45 @@
       }
     },
     {
+      "name": "PckCertificateUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "qe_id",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "pce_id",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "tcbm",
+            "type": {
+              "array": [
+                "u8",
+                18
+              ]
+            }
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "PcsCertificate",
       "type": {
         "kind": "struct",
@@ -610,6 +727,30 @@
               "Certificate data"
             ],
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PcsCertificateUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ca_type",
+            "type": {
+              "defined": {
+                "name": "CertificateAuthority"
+              }
+            }
+          },
+          {
+            "name": "is_crl",
+            "type": "bool"
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
           }
         ]
       }
@@ -662,6 +803,39 @@
               "The data of the TCB"
             ],
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfoUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
           }
         ]
       }
