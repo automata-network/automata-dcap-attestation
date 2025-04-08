@@ -1,0 +1,20 @@
+[toolchain]
+anchor_version = "0.31.0"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+automata-on-chain-pccs = "H2w3Z4HMFws4VswB812AA5RvgaESGHTGWffSPRvcAoJn"
+automata_dcap_verifier = "CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test -- --nocapture"
