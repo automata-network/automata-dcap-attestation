@@ -3,11 +3,14 @@
 pragma solidity ^0.8.0;
 
 import {console2} from "forge-std/console2.sol";
+import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
+
 import "../contracts/PCCSRouter.sol";
 import "./utils/Salt.sol";
 import "./utils/DeploymentConfig.sol";
+import "./utils/Multichain.sol";
 
-contract DeployRouter is DeploymentConfig {
+contract DeployRouter is DeploymentConfig, Multichain {
 
     address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
     address enclaveIdHelperAddr = readContractAddress(ProjectType.PCCS, "EnclaveIdentityHelper");
@@ -19,6 +22,8 @@ contract DeployRouter is DeploymentConfig {
     address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
 
     address owner = vm.envAddress("OWNER");
+
+    bool useMultichain = vm.envBool("MULTICHAIN");
 
     function run() public checkPccsHasDeployed {
         vm.startBroadcast(owner);
@@ -51,4 +56,25 @@ contract DeployRouter is DeploymentConfig {
 
         vm.stopBroadcast();
     }
+
+    function grantAccessToStorage() public multichain(useMultichain) {
+        vm.startBroadcast(owner);
+
+        console.log("Checking PCCSRouter access to AutomataDaoStorage on chain: ", block.chainid);
+
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        AutomataDaoStorage storageContract = AutomataDaoStorage(
+            readContractAddress(ProjectType.PCCS, "AutomataDaoStorage")
+        );
+
+        bool authorized = storageContract.isAuthorizedCaller(address(router));
+        if (!authorized) {
+            storageContract.setCallerAuthorization(address(router), true);
+            console2.log("PCCSRouter granted access to AutomataDaoStorage");
+        } else {
+            console2.log("PCCSRouter already has access to AutomataDaoStorage");
+        }
+
+        vm.stopBroadcast();
+    } 
 }
