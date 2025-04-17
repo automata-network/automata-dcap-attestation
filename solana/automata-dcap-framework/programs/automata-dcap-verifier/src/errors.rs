@@ -31,4 +31,16 @@ pub enum DcapVerifierError {
 
     #[msg("Invalid Secp256r1 instruction")]
     InvalidSecp256r1Instruction,
+
+    #[msg("Invalid Solana ZK Program")]
+    InvalidSolanaZkProgram,
+
+    #[msg("Invalid zkVM selector")]
+    InvalidZkvmSelector,
+
+    #[msg("Invalid zkVM program")]
+    InvalidZkvmProgram,
+
+    #[msg("Invalid zk proof")]
+    InvalidZkProof,
 }

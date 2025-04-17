@@ -1,5 +1,5 @@
 {
-  "address": "2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj",
+  "address": "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt",
   "metadata": {
     "name": "automata_on_chain_pccs",
     "version": "0.1.0",
@@ -113,6 +113,15 @@
           "writable": true
         },
         {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -129,6 +138,18 @@
         {
           "name": "version",
           "type": "u8"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -159,11 +180,28 @@
           "writable": true
         },
         {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
         {
           "name": "qe_id",
           "type": "string"
@@ -175,6 +213,18 @@
         {
           "name": "tcbm",
           "type": "string"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -205,6 +255,15 @@
           "writable": true
         },
         {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -221,6 +280,70 @@
         {
           "name": "is_crl",
           "type": "bool"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_root_ca",
+      "discriminator": [
+        115,
+        57,
+        70,
+        77,
+        149,
+        211,
+        45,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_ca",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -251,6 +374,15 @@
           "writable": true
         },
         {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -276,6 +408,18 @@
               6
             ]
           }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     }
@@ -436,6 +580,26 @@
       "code": 6006,
       "name": "IncompleteBuffer",
       "msg": "Incomplete Buffer"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidSubject",
+      "msg": "Invalid Subject Certificate or CRL"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidIssuer",
+      "msg": "Missing or invalid issuer"
+    },
+    {
+      "code": 6009,
+      "name": "UnsupportedZkvm",
+      "msg": "Unsupported ZKVM Selector"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidProof",
+      "msg": "Invalid Proof"
     }
   ],
   "types": [
@@ -532,13 +696,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -594,13 +751,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "ca_type",
             "docs": [
               "The type of certificate authority that signed this certificate"
@@ -648,6 +798,13 @@
             }
           },
           {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": "bytes"
+          },
+          {
             "name": "digest",
             "docs": [
               "The digest of the certificate"
@@ -658,20 +815,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
-          },
-          {
-            "name": "cert_data",
-            "docs": [
-              "Certificate data"
-            ],
-            "type": "bytes"
           }
         ]
       }
@@ -756,13 +899,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -844,13 +980,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -901,6 +1030,26 @@
           },
           {
             "name": "Tdx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkvmSelector",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Invalid"
+          },
+          {
+            "name": "RiscZero"
+          },
+          {
+            "name": "Succinct"
           }
         ]
       }

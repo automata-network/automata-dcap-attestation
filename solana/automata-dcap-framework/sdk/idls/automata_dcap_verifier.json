@@ -1,5 +1,5 @@
 {
-  "address": "BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm",
+  "address": "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC",
   "metadata": {
     "name": "automata_dcap_verifier",
     "version": "0.1.0",
@@ -386,38 +386,38 @@
             "program": {
               "kind": "const",
               "value": [
-                154,
-                154,
-                179,
-                37,
-                25,
-                98,
-                45,
-                4,
-                152,
-                100,
-                149,
-                129,
-                119,
-                227,
-                211,
-                232,
-                104,
-                220,
+                221,
+                5,
+                32,
+                160,
+                177,
+                69,
+                180,
+                185,
+                223,
+                151,
                 21,
-                226,
-                78,
+                32,
+                139,
+                75,
+                53,
+                14,
+                26,
+                101,
+                137,
+                147,
+                140,
+                232,
+                241,
                 55,
-                246,
-                155,
-                83,
-                108,
-                193,
-                81,
-                100,
-                9,
-                100,
-                200
+                79,
+                157,
+                85,
+                174,
+                227,
+                234,
+                187,
+                99
               ]
             }
           }
@@ -476,6 +476,85 @@
               6
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "verify_pck_cert_chain_zk",
+      "discriminator": [
+        251,
+        227,
+        244,
+        138,
+        52,
+        134,
+        202,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer"
+        },
+        {
+          "name": "zkvm_verifier_program",
+          "docs": [
+            "we need to read from the zkvm_verifier_config_pda account data"
+          ]
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof_bytes",
+          "type": "bytes"
         }
       ]
     }
@@ -580,21 +659,36 @@
     },
     {
       "code": 6006,
+      "name": "InvalidZkvmSelector",
+      "msg": "Invalid zkVM selector"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidZkvmProgram",
+      "msg": "Invalid zkVM program"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidZkProof",
+      "msg": "Invalid zk proof"
+    },
+    {
+      "code": 6009,
       "name": "SerializationError",
       "msg": "Serialization error"
     },
     {
-      "code": 6007,
+      "code": 6010,
       "name": "InvalidSgxPckExtension",
       "msg": "Invalid SgxPckExtension"
     },
     {
-      "code": 6008,
+      "code": 6011,
       "name": "UnsuccessfulTcbStatusVerification",
       "msg": "Unsuccessful TcbStatus verification"
     },
     {
-      "code": 6009,
+      "code": 6012,
       "name": "InvalidSecp256r1Instruction",
       "msg": "Invalid Secp256r1 instruction"
     }
@@ -665,13 +759,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -762,13 +849,6 @@
                 32
               ]
             }
-          },
-          {
-            "name": "verified",
-            "docs": [
-              "Boolean indicating whether it is verified"
-            ],
-            "type": "bool"
           }
         ]
       }
@@ -851,6 +931,26 @@
           {
             "name": "completed",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkvmSelector",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Invalid"
+          },
+          {
+            "name": "RiscZero"
+          },
+          {
+            "name": "Succinct"
           }
         ]
       }
