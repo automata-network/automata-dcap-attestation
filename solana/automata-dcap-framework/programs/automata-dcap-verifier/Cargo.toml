@@ -25,5 +25,8 @@ automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = ["cpi"
 serde_json   	= { version = "1.0.125", features = ["raw_value"] }
 hex = { version = "0.4.3" }
 pem = { version = "3.0.5" }
+solana-zk = { git = "ssh://git@github.com/automata-network/solana-zkvm-verifier.git", features = ["no-entrypoint"] }
+solana-zk-client = { path = "/Users/prestonong/Desktop/work/solana-zk/apps/solana-zk-client", default-features = false }
+alloy-primitives = { version = "=0.8.0" }
+alloy-sol-types = { version = "=0.8.0" }
 sha2 = { version = "0.10.8" }
-p256 = { version = "=0.13.2" }

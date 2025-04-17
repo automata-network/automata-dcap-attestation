@@ -7,7 +7,7 @@ pub mod instructions;
 pub mod state;
 pub mod event;
 
-declare_id!("2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj");
+declare_id!("P33BtU5EDMHCVexoG4iv3ru9tC9v4CrFWFSgnEdFaAB");
 
 use errors::*;
 use instructions::*;

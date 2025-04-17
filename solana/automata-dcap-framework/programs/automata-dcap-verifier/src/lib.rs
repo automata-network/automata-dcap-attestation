@@ -1,6 +1,13 @@
 #![allow(unexpected_cfgs)]
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke;
+use solana_zk::instructions::VerifyZkProof;
+use solana_zk_client::verify::{
+    risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
+};
+use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
+use zerocopy::AsBytes;
 
 pub mod errors;
 pub mod instructions;
@@ -9,23 +16,19 @@ pub mod utils;
 
 use errors::*;
 use instructions::*;
-use utils::*;
-use zerocopy::AsBytes;
-use p256::ecdsa::VerifyingKey;
-use p256::ecdsa::Signature;
+use utils::certs::compute_output_digest_from_pem;
+use utils::ecdsa::*;
+use utils::zk::*;
 
-declare_id!("BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm");
+declare_id!("EBV7xychBtcjcDfQbXtTpZE8zyrL8BP9VhG7Fb5zaMab");
 
 #[program]
 pub mod automata_dcap_verifier {
 
-    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
-    use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
-    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
     use anchor_lang::solana_program::instruction::Instruction;
-    use dcap_rs::types::tcb_info::TcbInfo;
-    use dcap_rs::verify_tcb_status;
-    use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
+    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
+    use dcap_rs::types::quote::Quote;
 
     use super::*;
 
@@ -47,6 +50,22 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
+    pub fn init_verified_output_account(ctx: Context<InitVerifiedOutput>) -> Result<()> {
+        let verified_output = &mut ctx.accounts.verified_output;
+
+        // Initialize the verified output account
+        verified_output.owner = *ctx.accounts.owner.key;
+        verified_output.quote_version = 0;
+        verified_output.tee_type = 0;
+        verified_output.tcb_status = String::new();
+        verified_output.fmspc = [0; 6];
+        verified_output.quote_body = Vec::new();
+        verified_output.advisor_ids = None;
+        verified_output.completed = false;
+
+        msg!("Verified output account initialized");
+        Ok(())
+    }
 
     pub fn add_quote_chunk(
         ctx: Context<AddQuoteChunk>,
@@ -134,7 +153,9 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
-    pub fn verify_dcap_quote_isv_signature(ctx: Context<VerifyDcapQuoteIsvSignature>) -> Result<()> {
+    pub fn verify_dcap_quote_isv_signature(
+        ctx: Context<VerifyDcapQuoteIsvSignature>,
+    ) -> Result<()> {
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote_data = &mut data_buffer.data.as_slice();
 
@@ -194,10 +215,11 @@ pub mod automata_dcap_verifier {
         })?;
 
         let enclave_identity = &ctx.accounts.qe_identity_pda.data;
-        let enclave_identity: QuotingEnclaveIdentityAndSignature = serde_json::from_slice(enclave_identity).map_err(|e| {
-            msg!("Error deserializing enclave identity: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        let enclave_identity: QuotingEnclaveIdentityAndSignature =
+            serde_json::from_slice(enclave_identity).map_err(|e| {
+                msg!("Error deserializing enclave identity: {}", e);
+                DcapVerifierError::InvalidQuote
+            })?;
 
         let qe_identity = enclave_identity.get_enclave_identity_bytes();
         let qe_identity: EnclaveIdentity = serde_json::from_slice(&qe_identity).map_err(|e| {
@@ -257,7 +279,8 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::InvalidQuote.into());
         }
 
-        let qe_tcb_status = qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
+        let qe_tcb_status =
+            qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
         let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
         qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
             msg!("Error serializing qe tcb status: {}", e);
@@ -270,10 +293,90 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
-    pub fn verify_dcap_quote_tcb_status(
-        ctx: Context<VerifyDcapQuoteTcbStatus>,
-        _tcb_type: String,
-        _version: u8,
+    pub fn verify_pck_cert_chain_zk(
+        ctx: Context<VerifyPckCertChainZk>,
+        zkvm_selector: ZkvmSelector,
+        proof_bytes: Vec<u8>,
+    ) -> Result<()> {
+        let data_buffer = &ctx.accounts.quote_data_buffer;
+        let quote_data = &mut data_buffer.data.as_slice();
+
+        let quote = Quote::read(quote_data).map_err(|e| {
+            msg!("Error reading quote: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
+
+        // Step 1: Extract the PCK Certificate Chain from the quote data
+        let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
+
+        // Step 2: Compute the zkVM output data
+        // the data consists of ABI-encoded of (bytes32, bytes32, bool) containing these values:
+        // - the hash of the abi-encoded bytes array contains the PCK Certificate DER chain
+        // - the hash of the root certificate DER
+        // - true
+        let output_digest: [u8; 32] = compute_output_digest_from_pem(pck_cert_chain_pem);
+
+        // Step 3: make CPI to the Solana ZK Verifier program to verify proofs
+
+        // First, we get the instruction data and the zkvm verifier address
+        let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
+            ZkvmSelector::RiscZero => (
+                risc0_verify_instruction_data(&proof_bytes, RISCZERO_DCAP_IMAGE_UD, output_digest),
+                RISC0_VERIFIER_ROUTER_ID,
+            ),
+            ZkvmSelector::Succinct => (
+                sp1_groth16_verify_instruction_data(
+                    &proof_bytes,
+                    SUCCINCT_DCAP_VKEY,
+                    output_digest,
+                ),
+                SUCCINCT_SP1_VERIFIER_ID,
+            ),
+            _ => {
+                return Err(DcapVerifierError::InvalidZkvmSelector.try_into().unwrap());
+            },
+        };
+
+        // Check zkvm verifier program
+        let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
+        require!(
+            zkvm_verifier_program.key == &zkvm_verifier_address,
+            DcapVerifierError::InvalidZkvmProgram
+        );
+
+        // Next, we generate the context for the CPI call
+        let verifier_config_pda = &ctx.accounts.zkvm_verifier_config_pda;
+        let verify_cpi_accounts = VerifyZkProof {
+            zkvm_verifier_account: verifier_config_pda.clone(),
+            zkvm_verifier_program: zkvm_verifier_program.to_account_info(),
+            system_program: ctx.accounts.system_program.clone(),
+        };
+
+        // Finally, we call the CPI
+        if invoke(
+            &Instruction {
+                program_id: ctx.accounts.solana_zk_program.key(),
+                accounts: verify_cpi_accounts.to_account_metas(None),
+                data: zk_verify_instruction_data,
+            },
+            &[
+                verifier_config_pda.to_account_info(),
+                zkvm_verifier_program.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )
+        .is_err()
+        {
+            return Err(DcapVerifierError::InvalidZkProof.try_into().unwrap());
+        }
+
+        Ok(())
+    }
+
+    pub fn update_verified_output_account(
+        ctx: Context<UpdateVerifiedOutput>,
+        tcb_status: String,
+        advisory_ids: Vec<String>,
         fmspc: [u8; 6],
     ) -> Result<()> {
         let data_buffer = &ctx.accounts.quote_data_buffer;
@@ -338,5 +441,4 @@ pub mod automata_dcap_verifier {
 
         Ok(())
     }
-
 }

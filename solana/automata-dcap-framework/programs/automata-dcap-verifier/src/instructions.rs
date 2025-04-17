@@ -1,9 +1,14 @@
 use anchor_lang::prelude::*;
-use crate::errors::DcapVerifierError;
-use crate::state::{DataBuffer, QeTcbStatus, VerifiedOutput};
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
-use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
+use solana_zk::program::SolanaZk;
+use solana_zk::state::ZkvmVerifier;
+use solana_zk::ID;
+use automata_on_chain_pccs::state::EnclaveIdentity;
+//use automata_on_chain_pccs::state::TcbInfo;
 
+use crate::errors::DcapVerifierError;
+use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
+use crate::utils::zk::ZkvmSelector;
 
 /// Accounts required for initializing a quote buffer.
 ///
@@ -172,8 +177,42 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tcb_type: String , version: u8, fmspc: [u8; 6])]
-pub struct VerifyDcapQuoteTcbStatus<'info> {
+#[instruction(
+    zkvm_selector: ZkvmSelector,
+    proof_bytes: Vec<u8>,
+)]
+pub struct VerifyPckCertChainZk<'info> {
+    #[account(
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        constraint = solana_zk_program.key() == ID @ DcapVerifierError::InvalidSolanaZkProgram,
+    )]
+    pub solana_zk_program: Program<'info, SolanaZk>,
+
+    #[account(
+        seeds = [
+            b"zkvm_verifier",
+            zkvm_selector.to_u64().to_le_bytes().as_ref(),
+            zkvm_verifier_program.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub zkvm_verifier_config_pda: Account<'info, ZkvmVerifier>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// Currently, there isn't any defined standards to structure the program.
+    /// The program is abitrary
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(tcb_status: String, advisory_ids: Vec<String>, fmspc: [u8; 6])]
+pub struct UpdateVerifiedOutput<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
