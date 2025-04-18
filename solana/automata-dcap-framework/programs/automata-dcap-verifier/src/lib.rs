@@ -1,19 +1,11 @@
 #![allow(unexpected_cfgs)]
 
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke;
-use solana_zk::instructions::VerifyZkProof;
-use solana_zk_client::verify::{
-    risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
-};
-use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
-use zerocopy::AsBytes;
-
 pub mod errors;
 pub mod instructions;
 pub mod state;
 pub mod utils;
 
+use anchor_lang::prelude::*;
 use errors::*;
 use instructions::*;
 use utils::certs::compute_output_digest_from_pem;
@@ -27,6 +19,13 @@ pub mod automata_dcap_verifier {
 
     use anchor_lang::solana_program::instruction::Instruction;
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+    use anchor_lang::solana_program::program::invoke;
+    use solana_zk::instructions::VerifyZkProof;
+    use solana_zk_client::verify::{
+        risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
+    };
+    use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
+    use zerocopy::AsBytes;
     use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
     use dcap_rs::types::quote::Quote;
 

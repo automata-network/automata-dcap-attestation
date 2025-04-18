@@ -19,6 +19,9 @@ dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9
 p256 = { version = "0.13.2" }
 zerocopy = { version = "0.7.34", features = ["derive"] }
 serde_json = { version = "1.0.100" }
+pem = { version = "3.0.5" }
+zk-x509-client = { path = "/Users/prestonong/Desktop/work/zk-x509/apps" }
+solana-zk-client = { git = "ssh://git@github.com/automata-network/solana-zkvm-verifier.git" }
 
 [dependencies.x509-verify]
 version = "0.4.6"
