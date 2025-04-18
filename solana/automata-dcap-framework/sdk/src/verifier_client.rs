@@ -5,15 +5,27 @@ use anchor_lang::{declare_program, prelude::Pubkey, AccountDeserialize};
 
 declare_program!(automata_dcap_verifier);
 use automata_dcap_verifier::{client::accounts, client::args};
-use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
+use automata_dcap_verifier::types::ZkvmSelector;
+use dcap_rs::{types::{enclave_identity::QeTcbStatus, quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE}, tcb_info::{TcbInfo, TcbInfoAndSignature, TcbStatus}}, verify_tcb_status};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
 use x509_cert::der::Decode;
-use x509_verify::VerifyingKey;
+// use x509_verify::VerifyingKey;
 use zerocopy::AsBytes;
+use solana_zk_client::{
+    derive_zkvm_verifier_pda, 
+    RISC0_VERIFIER_ROUTER_ID,
+    ID as SOLANA_ZK_PROGRAM_ID
+};
 
-
-use crate::{get_issuer_common_name, get_secp256r1_instruction, CertificateAuthority, PccsClient, TcbType, PCCS_PROGRAM_ID};
+use crate::{
+    get_issuer_common_name,
+    utils::ecdsa::get_secp256r1_instruction, 
+    CertificateAuthority, 
+    PccsClient, 
+    TcbType, 
+    PCCS_PROGRAM_ID
+};
 
 const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
 const PROCESSOR_ISSUER_NAME: &str = "Intel SGX PCK Processor CA";
@@ -190,7 +202,12 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
         // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
         // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
-        self.verify_pck_cert_chain(&quote).await?;
+        let fmspc = self.verify_pck_cert_chain(
+            quote_buffer_pubkey, 
+            &quote,
+            ZkvmSelector::RiscZero,
+            RISC0_VERIFIER_ROUTER_ID
+        ).await?;
 
         // Verify TCB status
         let tx = self.verify_tcb_status(&quote, quote_buffer_pubkey).await?;
@@ -380,60 +397,77 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
-    /// Verifies the PCK (Provisioning Certification Key) certificate chain of the DCAP quote.
-    ///
-    /// This method performs off-chain verification of the PCK certificate chain extracted from the quote.
-    /// It validates each certificate in the chain against its issuer, checks for certificate revocation
-    /// using Certificate Revocation Lists (CRLs), and ensures the chain's cryptographic integrity.
-    ///
-    /// Off-chain validation is used because the certificate data exceeds Solana transaction size limits.
-    ///
-    /// # Parameters
-    /// - `quote`: The parsed Quote object containing the certificate chain
-    ///
-    /// # Returns
-    /// - `anyhow::Result<()>`: Success or an error if verification fails
-    async fn verify_pck_cert_chain(&self, quote: &Quote<'_>) -> anyhow::Result<()> {
-        let pck_cert_chain_data = quote.signature.get_pck_cert_chain()?;
+    async fn verify_pck_cert_chain(
+        &self, 
+        quote_buffer_pubkey: Pubkey, 
+        quote: &Quote<'_>,
+        zkvm_selector: ZkvmSelector,
+        zkvm_verifier_program: Pubkey
+    ) -> anyhow::Result<[u8; 6]> {
+        // let cert_chain_size = pck_cert_chain_data.pck_cert_chain.len();
+        // for (index, cert) in pck_cert_chain_data.pck_cert_chain.iter().enumerate() {
 
+        //     let issuer = if index == cert_chain_size - 1 {
+        //         cert
+        //     } else {
+        //         &pck_cert_chain_data.pck_cert_chain[index + 1]
+        //     };
 
-        let cert_chain_size = pck_cert_chain_data.pck_cert_chain.len();
-        for (index, cert) in pck_cert_chain_data.pck_cert_chain.iter().enumerate() {
+        //     // Need to check if the certificate is not revoked.
+        //     let issuer_common_name = get_issuer_common_name(&cert.tbs_certificate)
+        //         .ok_or_else(|| anyhow::anyhow!("Certificate missing Common Name in issuer field"))?;
 
-            let issuer = if index == cert_chain_size - 1 {
-                cert
-            } else {
-                &pck_cert_chain_data.pck_cert_chain[index + 1]
-            };
+        //     match issuer_common_name.as_str() {
+        //         PLATFORM_ISSUER_NAME => {
+        //             // Get the PLATFORM CRL from the PCCS program
+        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PLATFORM).await?;
+        //         },
+        //         PROCESSOR_ISSUER_NAME => {
+        //             // Get the PROCESSOR CRL from the PCCS program
+        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PROCESSOR).await?;
+        //         },
+        //         ROOT_ISSUER_NAME => {
+        //             // Get the ROOT CRL from the PCCS program
+        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::ROOT).await?;
+        //         },
+        //         other => return Err(anyhow::anyhow!("Unsupported issuer common name: {}", other)),
+        //     }
 
-            // Need to check if the certificate is not revoked.
-            let issuer_common_name = get_issuer_common_name(&cert.tbs_certificate)
-                .ok_or_else(|| anyhow::anyhow!("Certificate missing Common Name in issuer field"))?;
+        //     let pk: VerifyingKey= (issuer)
+        //         .try_into()
+        //         .map_err(|e| anyhow::anyhow!("failed to decode key from certificate: {}", e))?;
 
-            match issuer_common_name.as_str() {
-                PLATFORM_ISSUER_NAME => {
-                    // Get the PLATFORM CRL from the PCCS program
-                    self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PLATFORM).await?;
-                },
-                PROCESSOR_ISSUER_NAME => {
-                    // Get the PROCESSOR CRL from the PCCS program
-                    self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PROCESSOR).await?;
-                },
-                ROOT_ISSUER_NAME => {
-                    // Get the ROOT CRL from the PCCS program
-                    self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::ROOT).await?;
-                },
-                other => return Err(anyhow::anyhow!("Unsupported issuer common name: {}", other)),
-            }
+        //     pk.verify_strict(cert)
+        //         .map_err(|e| anyhow::anyhow!("failed to verify certificate: {}, error: {}", cert.tbs_certificate.subject.to_string(), e))?;
+        // }
 
-            let pk: VerifyingKey= (issuer)
-                .try_into()
-                .map_err(|e| anyhow::anyhow!("failed to decode key from certificate: {}", e))?;
+        let pem_chain = quote.signature.cert_data.cert_data;
+        let (image_id, _journal_bytes, groth16_seal) = crate::utils::pck::verify_pck_chain_zk(&pem_chain)?;
 
-            pk.verify_strict(cert)
-                .map_err(|e| anyhow::anyhow!("failed to verify certificate: {}, error: {}", cert.tbs_certificate.subject.to_string(), e))?;
-        }
-        Ok(())
+        let (zkvm_verifier_config_pda, _) = derive_zkvm_verifier_pda(
+            1u64, 
+            &zkvm_verifier_program
+        );
+
+        println!("iamge_id: {:?}", image_id);
+        let tx = self
+            .program
+            .request()
+            .accounts(accounts::VerifyPckCertChainZk {
+                quote_data_buffer: quote_buffer_pubkey,
+                solana_zk_program: SOLANA_ZK_PROGRAM_ID,
+                zkvm_verifier_config_pda,
+                zkvm_verifier_program,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .args(args::VerifyPckCertChainZk {
+                zkvm_selector,
+                proof_bytes: groth16_seal
+            })
+            .send()
+            .await?;
+
+        Ok(quote.signature.get_pck_cert_chain()?.pck_extension.fmspc)
 
     }
 
