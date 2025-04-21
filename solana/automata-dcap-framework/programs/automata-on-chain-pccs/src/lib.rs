@@ -7,7 +7,7 @@ pub mod instructions;
 pub mod state;
 pub mod event;
 
-declare_id!("E74ADc35qxEsTFuj5d256gdfMvVBwBRbXTbi9ctpgXhN");
+declare_id!("2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj");
 
 use errors::*;
 use instructions::*;
@@ -158,7 +158,6 @@ pub mod automata_on_chain_pccs {
         let enclave_identity = &mut ctx.accounts.enclave_identity;
         let data_buffer = &ctx.accounts.data_buffer;
 
-        enclave_identity.owner = *ctx.accounts.authority.key;
         enclave_identity.identity_type = id;
         enclave_identity.version = version;
         enclave_identity.data = data_buffer.data.clone();
@@ -183,21 +182,14 @@ pub mod automata_on_chain_pccs {
         ctx: Context<UpsertTcbInfo>,
         tcb_type: TcbType,
         version: u8,
-        fmspc: String,
+        fmspc: [u8; 6],
     ) -> Result<()> {
         let tcb_info = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
-        tcb_info.owner = *ctx.accounts.authority.key;
         tcb_info.tcb_type = tcb_type;
         tcb_info.version = version;
-
-        let fmspc_bytes: [u8; 6] = hex::decode(fmspc)
-            .map_err(|_| PccsError::InvalidHexString)?
-            .try_into()
-            .map_err(|_| PccsError::InvalidHexString)?;
-
-        tcb_info.fmspc = fmspc_bytes;
+        tcb_info.fmspc = fmspc;
         tcb_info.data = data_buffer.data.clone();
 
         emit!(TcbInfoUpdated {

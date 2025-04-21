@@ -135,7 +135,7 @@ pub struct UpsertEnclaveIdentity<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tcb_type: TcbType, version: u8, fmspc: String)]
+#[instruction(tcb_type: TcbType, version: u8, fmspc: [u8; 6])]
 pub struct UpsertTcbInfo<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -144,7 +144,7 @@ pub struct UpsertTcbInfo<'info> {
         init_if_needed,
         payer = authority,
         space = 8 + 32 + 1 + 16 + 1 + 1 + TCB_INFO_MAX_SIZE,
-        seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()],
+        seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
         bump,
     )]
     pub tcb_info: Account<'info, TcbInfo>,

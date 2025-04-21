@@ -1,9 +1,8 @@
 use anchor_lang::prelude::*;
 use crate::errors::DcapVerifierError;
-use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
+use crate::state::{DataBuffer, QeTcbStatus, VerifiedOutput};
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
-use automata_on_chain_pccs::state::EnclaveIdentity;
-//use automata_on_chain_pccs::state::TcbInfo;
+use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
 
 #[derive(Accounts)]
 pub struct Initialize {}
@@ -47,20 +46,6 @@ pub struct InitQuoteBuffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(Accounts)]
-pub struct InitVerifiedOutput<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-
-    #[account(
-        init,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
-    )]
-    pub verified_output: Account<'info, VerifiedOutput>,
-
-    pub system_program: Program<'info, System>
-}
 
 #[derive(Accounts)]
 pub struct AddQuoteChunk<'info> {
@@ -149,8 +134,8 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tcb_status: String, advisory_ids: Vec<String>, fmspc: [u8; 6])]
-pub struct UpdateVerifiedOutput<'info> {
+#[instruction(tcb_type: String , version: u8, fmspc: [u8; 6])]
+pub struct VerifyDcapQuoteTcbStatus<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
@@ -162,8 +147,36 @@ pub struct UpdateVerifiedOutput<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     #[account(
-        mut,
-        constraint = verified_output.owner == *owner.key @ DcapVerifierError::InvalidOwner,
+        seeds = [
+            b"tcb_info",
+            tcb_type.as_bytes(),
+            &version.to_le_bytes()[..1],
+            &fmspc,
+        ],
+        bump,
+        seeds::program = automata_on_chain_pccs::ID,
+    )]
+    pub tcb_info_pda: Account<'info, TcbInfo>,
+
+    #[account(
+        seeds = [
+            b"qe_tcb_status",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+        seeds::program = crate::ID,
+    )]
+    pub qe_tcb_status_pda: Account<'info, QeTcbStatus>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
 

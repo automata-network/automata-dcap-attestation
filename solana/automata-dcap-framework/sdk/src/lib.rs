@@ -32,11 +32,12 @@ pub async fn verify_quote<S: Clone + Deref<Target = impl Signer>>(
         512,
     ).await?;
 
-    let verified_output_pubkey = verifier_client.init_verified_output_account().await?;
-
     let signatures = verifier_client.verify_quote(
         quote_buffer_pubkey,
-        verified_output_pubkey,
+    ).await?;
+
+    let verified_output_pubkey = verifier_client.get_verified_output_pubkey(
+        quote_buffer_pubkey,
     ).await?;
 
     Ok((verified_output_pubkey, signatures))

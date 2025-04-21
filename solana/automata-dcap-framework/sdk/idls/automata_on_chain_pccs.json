@@ -1,5 +1,5 @@
 {
-  "address": "E74ADc35qxEsTFuj5d256gdfMvVBwBRbXTbi9ctpgXhN",
+  "address": "2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj",
   "metadata": {
     "name": "automata_on_chain_pccs",
     "version": "0.1.0",
@@ -278,7 +278,12 @@
         },
         {
           "name": "fmspc",
-          "type": "string"
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
         }
       ]
     }
@@ -504,13 +509,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "identity_type",
             "docs": [
               "The type of enclave identity"
@@ -697,13 +695,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "ca_type",
             "docs": [
               "The type of certificate authority that signed this certificate"
@@ -760,13 +751,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
           {
             "name": "tcb_type",
             "docs": [

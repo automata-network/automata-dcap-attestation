@@ -20,6 +20,15 @@ pub enum DcapVerifierError {
     #[msg("Invalid quote")]
     InvalidQuote,
 
+    #[msg("Serialization error")]
+    SerializationError,
+
+    #[msg("Invalid SgxPckExtension")]
+    InvalidSgxPckExtension,
+
+    #[msg("Unsuccessful TcbStatus verification")]
+    UnsuccessfulTcbStatusVerification,
+
     #[msg("Invalid Secp256r1 instruction")]
     InvalidSecp256r1Instruction,
 }

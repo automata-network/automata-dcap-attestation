@@ -23,9 +23,6 @@ pub struct PckCertificate {
 
 #[account]
 pub struct PcsCertificate {
-    /// The owner that has permission to modify data in this account.
-    pub owner: Pubkey,
-
     /// The type of certificate authority that signed this certificate
     pub ca_type: CertificateAuthority,
 
@@ -38,9 +35,6 @@ pub struct PcsCertificate {
 
 #[account]
 pub struct EnclaveIdentity {
-    /// The owner that has permission to modify data in this account.
-    pub owner: Pubkey,
-
     /// The type of enclave identity
     pub identity_type: EnclaveIdentityType,
 
@@ -53,9 +47,6 @@ pub struct EnclaveIdentity {
 
 #[account]
 pub struct TcbInfo {
-    /// The owner that has permission to modify data in this account.
-    pub owner: Pubkey,
-
     /// The type of TCB
     pub tcb_type: TcbType,
 

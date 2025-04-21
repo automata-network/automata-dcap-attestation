@@ -12,15 +12,17 @@ use instructions::*;
 use utils::*;
 use zerocopy::AsBytes;
 
-declare_id!("7obE3U8nYg7h1kaenZhkMwa8Dxzcfk5H8BRP6L4twwcx");
+declare_id!("BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm");
 
 #[program]
 pub mod automata_dcap_verifier {
 
     use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
-    use dcap_rs::types::quote::Quote;
+    use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
     use anchor_lang::solana_program::instruction::Instruction;
+    use dcap_rs::types::tcb_info::TcbInfo;
+    use dcap_rs::verify_tcb_status;
 
     use super::*;
 
@@ -46,25 +48,6 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
-    pub fn init_verified_output_account(
-        ctx: Context<InitVerifiedOutput>,
-    ) -> Result<()> {
-
-        let verified_output = &mut ctx.accounts.verified_output;
-
-        // Initialize the verified output account
-        verified_output.owner = *ctx.accounts.owner.key;
-        verified_output.quote_version = 0;
-        verified_output.tee_type = 0;
-        verified_output.tcb_status = String::new();
-        verified_output.fmspc = [0; 6];
-        verified_output.quote_body = Vec::new();
-        verified_output.advisor_ids = None;
-        verified_output.completed = false;
-
-        msg!("Verified output account initialized");
-        Ok(())
-    }
 
     pub fn add_quote_chunk(
         ctx: Context<AddQuoteChunk>,
@@ -235,27 +218,69 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
-    pub fn update_verified_output_account(
-        ctx: Context<UpdateVerifiedOutput>,
-        tcb_status: String,
-        advisory_ids: Vec<String>,
+    pub fn verify_dcap_quote_tcb_status(
+        ctx: Context<VerifyDcapQuoteTcbStatus>,
+        _tcb_type: String,
+        _version: u8,
         fmspc: [u8; 6],
     ) -> Result<()> {
-        let verified_output = &mut ctx.accounts.verified_output;
-
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote = Quote::read(&mut data_buffer.data.as_slice()).map_err(|e| {
             msg!("Error reading quote: {}", e);
             DcapVerifierError::InvalidQuote
         })?;
 
-        verified_output.tcb_status = tcb_status;
+        let pck_extension = quote.signature.get_pck_extension().map_err(|e| {
+            msg!("Error getting pck extension: {}", e);
+            DcapVerifierError::InvalidSgxPckExtension
+        })?;
+
+        let tcb_info = &ctx.accounts.tcb_info_pda;
+        msg!("tcb info len: {}", tcb_info.data.len());
+        let _tcb_info = TcbInfo::from_bytes(tcb_info.data.as_slice()).map_err(|e| {
+            msg!("Error deserializing tcb info: {}", e);
+            DcapVerifierError::SerializationError
+        })?;
+
+        let (sgx_tcb_status, tdx_tcb_status, advisory_ids) = verify_tcb_status(&_tcb_info, &pck_extension, &quote).map_err(|e| {
+            msg!("Error verifying tcb status: {}", e);
+            DcapVerifierError::UnsuccessfulTcbStatusVerification
+        })?;
+
+
+        let mut tcb_status;
+        if quote.header.tee_type == TDX_TEE_TYPE {
+            let tdx_module_status = _tcb_info.verify_tdx_module(quote.body.as_tdx_report_body().unwrap()).map_err(|e| {
+                msg!("Error verifying tdx module: {}", e);
+                DcapVerifierError::InvalidQuote
+            })?;
+            tcb_status = TcbInfo::converge_tcb_status_with_tdx_module(tdx_tcb_status, tdx_module_status);
+        } else {
+            tcb_status = sgx_tcb_status;
+        }
+
+        let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
+        let qe_tcb_status = serde_json::from_str(&qe_tcb_status_pda.status).map_err(|e| {
+            msg!("Error deserializing qe tcb status: {}", e);
+            DcapVerifierError::SerializationError
+        })?;
+
+        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status);
+
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.tcb_status = serde_json::to_string(&tcb_status).map_err(|e| {
+            msg!("Error serializing tcb status: {}", e);
+            DcapVerifierError::SerializationError
+        })?;
+
         verified_output.advisor_ids = Some(advisory_ids);
         verified_output.fmspc = fmspc;
         verified_output.quote_version = quote.header.version.get();
         verified_output.tee_type = quote.header.tee_type;
         verified_output.quote_body = quote.body.as_bytes().to_vec();
         verified_output.completed = true;
+        verified_output.owner = *ctx.accounts.owner.key;
+
 
         Ok(())
     }

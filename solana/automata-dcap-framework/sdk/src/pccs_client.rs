@@ -9,12 +9,20 @@ use automata_on_chain_pccs::{client::accounts, client::args};
 
 use crate::{CertificateAuthority, EnclaveIdentityType, TcbType};
 
+/// The Solana program ID for the PCCS (Provisioning Certificate Caching Service) on-chain program.
 pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
 
-
-/// A client for the PCCS program.
+/// A client for interacting with the PCCS (Provisioning Certificate Caching Service) program on Solana.
 ///
-/// It helps to interact with the PCCS program on the Solana blockchain.
+/// The PCCS program provides on-chain storage and validation for Intel SGX/TDX attestation-related
+/// certificates and metadata, including:
+/// - PCK (Provisioning Certification Key) Certificates
+/// - PCS (Provisioning Certification Service) Certificates
+/// - Enclave Identity information
+/// - TCB (Trusted Computing Base) information
+///
+/// This client abstracts the complexity of interacting with the on-chain program by providing
+/// methods to initialize data buffers, upload data in chunks, and manage various certificate types.
 pub struct PccsClient<S>
 {
     program: Program<S>,
@@ -22,6 +30,15 @@ pub struct PccsClient<S>
 
 
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
+    /// Creates a new PCCS client instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `signer` - The signer that will pay for transactions and be used as the authority
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A new PCCS client or an error
     pub fn new(signer: S) -> anyhow::Result<Self> {
         let client = Client::new_with_options(
             anchor_client::Cluster::Localnet,
@@ -34,6 +51,18 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(Self { program })
     }
 
+    /// Initializes a new data buffer account on-chain for storing certificates or other attestation data.
+    ///
+    /// This method creates a new Solana account that will be used to store data in chunks.
+    ///
+    /// # Arguments
+    ///
+    /// * `total_size` - The total size in bytes of the data to be stored
+    /// * `num_chunks` - The number of chunks the data will be split into
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Pubkey>` - The public key of the created data buffer account
     pub async fn init_data_buffer(&self, total_size: u32, num_chunks: u8) -> anyhow::Result<Pubkey> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
@@ -57,6 +86,20 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(quote_buffer_pubkey)
     }
 
+    /// Uploads data to a previously initialized data buffer in chunks.
+    ///
+    /// Because of Solana's transaction size limitations, large data must be split into
+    /// smaller chunks and uploaded sequentially.
+    ///
+    /// # Arguments
+    ///
+    /// * `quote_buffer_pubkey` - The public key of the data buffer account
+    /// * `data` - The byte slice containing the data to upload
+    /// * `chunk_size` - The size of each chunk in bytes
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
     pub async fn upload_chunks(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -89,6 +132,22 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     }
 
 
+    /// Creates or updates a PCK (Provisioning Certification Key) certificate on-chain.
+    ///
+    /// PCK certificates are used in the Intel SGX attestation process to verify
+    /// the authenticity of an enclave.
+    ///
+    /// # Arguments
+    ///
+    /// * `qe_id` - Quoting Enclave ID
+    /// * `pce_id` - Provisioning Certification Enclave ID
+    /// * `tcbm` - Trusted Computing Base Manifest
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
+    ///
     pub async fn upsert_pck_certificate(
         &self,
         qe_id: String,
@@ -119,6 +178,22 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
+    /// Creates or updates a PCS (Provisioning Certification Service) certificate on-chain.
+    ///
+    /// PCS certificates are part of the Intel certificate hierarchy used in attestation.
+    /// This includes root CA certificates, platform certificates, processor certificates,
+    /// and potentially their certificate revocation lists (CRLs).
+    ///
+    /// # Arguments
+    ///
+    /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// * `is_crl` - Whether this is a Certificate Revocation List
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
+    ///
     pub async fn upsert_pcs_certificate(
         &self,
         ca_type: CertificateAuthority,
@@ -147,6 +222,21 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
+    /// Creates or updates enclave identity information on-chain.
+    ///
+    /// Enclave identity provides information about security properties of Intel SGX enclaves
+    /// such as the Quoting Enclave (QE), TD Quoting Enclave (TD_QE), or Quote Verification Enclave (QVE).
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Enclave identity type (TdQe, QE, QVE)
+    /// * `version` - Version number of the enclave identity
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the identity data
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
+    ///
     pub async fn upsert_enclave_identity(
         &self,
         id: EnclaveIdentityType,
@@ -175,15 +265,30 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
+    /// Creates or updates TCB (Trusted Computing Base) information on-chain.
+    ///
+    /// TCB information describes the security properties and status of Intel SGX or TDX
+    /// platforms, including security advisories and patch status.
+    ///
+    /// # Arguments
+    ///
+    /// * `tcb_type` - TCB type (Sgx or Tdx)
+    /// * `version` - Version number of the TCB info
+    /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value, a 6-byte identifier
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the TCB info
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
     pub async fn upsert_tcb_info(
         &self,
         tcb_type: TcbType,
         version: u8,
-        fmspc: String,
+        fmspc: [u8; 6],
         data_buffer_pubkey: Pubkey,
     ) -> anyhow::Result<()> {
         let tcb_info_pda = Pubkey::find_program_address(
-            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()],
+            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
             &self.program.id()
         );
         let _tx = self
@@ -206,6 +311,16 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     }
 
 
+    /// Retrieves enclave identity information from the blockchain.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Enclave identity type (TdQe, QE, QVE)
+    /// * `version` - Version number of the enclave identity
+    ///
+    /// # Returns
+    ///
+    /// * `Result<EnclaveIdentity>` - The enclave identity account data
     pub async fn get_enclave_identity(
         &self,
         id: EnclaveIdentityType,
@@ -220,21 +335,44 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(account)
     }
 
+    /// Retrieves TCB information from the blockchain.
+    ///
+    /// # Arguments
+    ///
+    /// * `tcb_type` - TCB type (Sgx or Tdx)
+    /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value
+    /// * `version` - Version number of the TCB info
+    ///
+    /// # Returns
+    ///
+    /// * `Result<TcbInfo>` - The TCB info account data
     pub async fn get_tcb_info(
         &self,
         tcb_type: TcbType,
-        fmspc: String,
+        fmspc: [u8; 6],
         version: u8,
     ) -> anyhow::Result<automata_on_chain_pccs::accounts::TcbInfo> {
         let tcb_info_pda = Pubkey::find_program_address(
-            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc.as_bytes()],
+            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
             &self.program.id()
         );
+        println!("tcb_info_pda: {}", tcb_info_pda.0);
         let account = self.program
             .account::<automata_on_chain_pccs::accounts::TcbInfo>(tcb_info_pda.0).await?;
         Ok(account)
     }
 
+    /// Retrieves a PCK certificate from the blockchain.
+    ///
+    /// # Arguments
+    ///
+    /// * `qe_id` - Quoting Enclave ID
+    /// * `pce_id` - Provisioning Certification Enclave ID
+    /// * `tcbm` - Trusted Computing Base Manifest
+    ///
+    /// # Returns
+    ///
+    /// * `Result<PckCertificate>` - The PCK certificate account data
     pub async fn get_pck_certificate(
         &self,
         qe_id: String,
@@ -250,6 +388,16 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(account)
     }
 
+    /// Retrieves a PCS certificate from the blockchain.
+    ///
+    /// # Arguments
+    ///
+    /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// * `is_crl` - Whether this is a Certificate Revocation List
+    ///
+    /// # Returns
+    ///
+    /// * `Result<PcsCertificate>` - The PCS certificate account data
     pub async fn get_pcs_certificate(
         &self,
         ca_type: CertificateAuthority,
@@ -264,6 +412,16 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(account)
     }
 
+    /// Retrieves PCS certificate data directly as a byte vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// * `is_crl` - Whether this is a Certificate Revocation List
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Vec<u8>>` - The raw certificate data
     pub async fn get_pcs_certificate_data(
         &self,
         ca_type: CertificateAuthority,
@@ -273,10 +431,21 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(pcs_certificate.cert_data)
     }
 
+    /// Retrieves TCB info data directly as a byte vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `tcb_type` - TCB type (Sgx or Tdx)
+    /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value
+    /// * `version` - Version number of the TCB info
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Vec<u8>>` - The raw TCB info data
     pub async fn get_tcb_info_data(
         &self,
         tcb_type: TcbType,
-        fmspc: String,
+        fmspc: [u8; 6],
         version: u8,
     ) -> anyhow::Result<Vec<u8>> {
         let tcb_info = self.get_tcb_info(tcb_type, fmspc, version).await?;

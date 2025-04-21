@@ -24,6 +24,12 @@ pub struct VerifiedOutput {
 
 #[account]
 pub struct QeTcbStatus {
-    pub owner: Pubkey,
     pub status: String,
+}
+
+#[account]
+pub struct TcbStatus {
+    pub sgx_tcb_status: String,
+    pub tdx_tcb_status: String,
+    pub advisory_ids: Option<Vec<String>>,
 }

@@ -16,6 +16,9 @@ zerovec = "=0.11.0"
 hex = "0.4.3"
 automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
 automata-on-chain-pccs = { version = "0.1.0", path = "../programs/automata-on-chain-pccs" }
+serde_json = { version = "1.0.100" }
+borsh = { version = "1.5.7" }
+dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9b0aa89275e04efe58a10f254d0b6"}
 sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
 anyhow = "1.0.89"

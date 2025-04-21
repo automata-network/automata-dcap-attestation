@@ -1,11 +1,11 @@
-use std::{ops::Deref, str::FromStr};
+use std::ops::Deref;
 
-use anchor_client::{solana_sdk::{commitment_config::CommitmentConfig, signature::{Keypair, Signature}, signer::Signer}, Client, Program};
+use anchor_client::{solana_sdk::{commitment_config::CommitmentConfig, compute_budget::ComputeBudgetInstruction, signature::{Keypair, Signature}, signer::Signer}, Client, Program};
 use anchor_lang::{declare_program, prelude::Pubkey, AccountDeserialize};
 
 declare_program!(automata_dcap_verifier);
 use automata_dcap_verifier::{client::accounts, client::args};
-use dcap_rs::{types::{enclave_identity::QeTcbStatus, quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE}, tcb_info::{TcbInfo, TcbInfoAndSignature, TcbStatus}}, verify_tcb_status};
+use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
 use x509_cert::der::Decode;
@@ -19,15 +19,36 @@ const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
 const PROCESSOR_ISSUER_NAME: &str = "Intel SGX PCK Processor CA";
 const ROOT_ISSUER_NAME: &str = "Intel SGX Root CA";
 
-/// A client for the Verifier program.
+/// A client for the Automata DCAP Verifier program on Solana.
 ///
-/// It helps to interact with the Verifier program on the Solana blockchain.
+/// This client provides functionality to interact with the DCAP (Data Center Attestation Primitives)
+/// Verifier program on the Solana blockchain. It facilitates the verification of Intel SGX and TDX
+/// attestation quotes, handling buffer management, quote verification steps, and certificate chain validation.
+///
+/// The verification process includes several steps:
+/// - Initializing a buffer for storing quote data
+/// - Uploading quote data in chunks
+/// - Verifying the integrity of the quote
+/// - Verifying the ISV (Independent Software Vendor) signature
+/// - Verifying the enclave source
+/// - Verifying the PCK (Provisioning Certification Key) certificate chain
+/// - Verifying the TCB (Trusted Computing Base) status
 pub struct VerifierClient<S> {
     program: Program<S>,
     pccs_client: PccsClient<S>,
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
+    /// Creates a new instance of the VerifierClient.
+    ///
+    /// This constructor initializes a new VerifierClient with the given signer, setting up
+    /// the necessary clients to interact with the Solana blockchain and the Verifier program.
+    ///
+    /// # Parameters
+    /// - `signer`: A signable entity that implements Clone and Deref<Target = impl Signer>
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Self>`: A new VerifierClient instance or an error if initialization fails
     pub fn new(signer: S) -> anyhow::Result<Self> {
         let client = Client::new_with_options(
             anchor_client::Cluster::Localnet,
@@ -41,6 +62,18 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(Self { program, pccs_client })
     }
 
+    /// Initializes a buffer account on-chain for storing DCAP quote data.
+    ///
+    /// This method creates a new account on the Solana blockchain that will be used to store
+    /// the DCAP quote data. The account is initialized with the specified size and chunk configuration.
+    ///
+    /// # Parameters
+    /// - `total_size`: The total size in bytes required for the quote data
+    /// - `num_chunks`: The number of chunks the data will be split into for upload
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Pubkey>`: The public key of the newly created buffer account,
+    ///   or an error if initialization fails
     pub async fn init_quote_buffer(
         &self,
         total_size: u32,
@@ -68,28 +101,19 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(quote_buffer_pubkey)
     }
 
-    pub async fn init_verified_output_account(
-        &self,
-    ) -> anyhow::Result<Pubkey> {
-        let verified_output_keypair = Keypair::new();
-        let verified_output_pubkey = verified_output_keypair.pubkey();
-
-        let _tx = self
-            .program
-            .request()
-            .accounts(accounts::InitVerifiedOutputAccount {
-                owner: self.program.payer(),
-                verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
-            })
-            .args(args::InitVerifiedOutputAccount {})
-            .signer(verified_output_keypair)
-            .send()
-            .await?;
-
-        Ok(verified_output_pubkey)
-    }
-
+    /// Uploads quote data to the buffer account in chunks.
+    ///
+    /// This method takes the raw quote data and uploads it to the previously initialized buffer account
+    /// in chunks of the specified size. This chunking approach is necessary due to Solana transaction
+    /// size limitations.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account initialized with `init_quote_buffer`
+    /// - `data`: The raw DCAP quote data to upload
+    /// - `chunk_size`: The size of each chunk for upload (in bytes)
+    ///
+    /// # Returns
+    /// - `anyhow::Result<()>`: Success or an error if upload fails
     pub async fn upload_chunks(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -121,10 +145,28 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(())
     }
 
+    /// Verifies a DCAP quote through multiple verification steps.
+    ///
+    /// This is the main verification method that orchestrates the entire verification process.
+    /// It performs a series of verification steps, each addressing a different aspect of the quote's
+    /// trustworthiness and validity.
+    ///
+    /// The verification process includes:
+    /// 1. Quote integrity verification
+    /// 2. ISV signature verification
+    /// 3. Enclave source verification
+    /// 4. PCK certificate chain verification (performed off-chain)
+    /// 5. TCB status verification
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Vec<Signature>>`: A vector of transaction signatures for each verification step,
+    ///   or an error if any verification step fails
     pub async fn verify_quote(
         &self,
         quote_buffer_pubkey: Pubkey,
-        verified_output_pubkey: Pubkey,
     ) -> anyhow::Result<Vec<Signature>> {
 
         // Parse Quote
@@ -150,25 +192,28 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
         // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
         // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
-        let fmspc = self.verify_pck_cert_chain(&quote).await?;
+        self.verify_pck_cert_chain(&quote).await?;
 
-        // Verify TCB status. This is done off-chain as well. Mainly due to the fact that parsing the TCB info
-        // is a heavy computation and we go out of memory in solana.
-        let (tcb_status, advisory_ids) = self.verify_tcb_status(&quote).await?;
-
-        // Update the verified output account
-        let tx = self.update_verified_output_account(
-            quote_buffer_pubkey,
-            verified_output_pubkey,
-            tcb_status,
-            advisory_ids,
-            fmspc
-        ).await?;
+        // Verify TCB status
+        let tx = self.verify_tcb_status(&quote, quote_buffer_pubkey).await?;
         signatures.push(tx);
 
         Ok(signatures)
     }
 
+    /// Verifies the integrity of the DCAP quote.
+    ///
+    /// This method validates that the quote structure is intact and correctly signed. It extracts
+    /// the PCK certificate from the quote, uses the public key to verify the QE (Quoting Enclave) report
+    /// signature, and submits a transaction to the verifier program for on-chain verification.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `quote`: The parsed Quote object to verify
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    ///   or an error if verification fails
     async fn verify_quote_integrity(&self, quote_buffer_pubkey: Pubkey, quote: &Quote<'_>) -> anyhow::Result<Signature> {
         let pck_cert_chain_data = quote.signature.get_pck_cert_chain()?;
         let pck_pk_bytes = pck_cert_chain_data.pck_cert_chain[0]
@@ -210,6 +255,19 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
+    /// Verifies the ISV (Independent Software Vendor) signature in the DCAP quote.
+    ///
+    /// This method verifies that the quote was correctly signed by the attesting enclave's private key.
+    /// It extracts the attestation public key from the quote, constructs the data to be verified,
+    /// and submits a transaction to the verifier program for on-chain signature verification.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `quote`: The parsed Quote object to verify
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    ///   or an error if verification fails
     async fn verify_quote_isv_signature(&self, quote_buffer_pubkey: Pubkey, quote: &Quote<'_>) -> anyhow::Result<Signature> {
         let mut key = vec![0x4];
         key.extend_from_slice(&quote.signature.attestation_pub_key);
@@ -251,6 +309,20 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
+    /// Verifies the enclave source of the DCAP quote.
+    ///
+    /// This method verifies that the quote originates from a trusted Intel Quoting Enclave (QE).
+    /// It determines the QE type and version from the quote's header, retrieves the corresponding
+    /// enclave identity from the PCCS program, and submits a transaction to the verifier program
+    /// for on-chain verification.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `quote`: The parsed Quote object to verify
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    ///   or an error if verification fails
     async fn verify_quote_enclave_source(&self, quote_buffer_pubkey: Pubkey, quote: &Quote<'_>) -> anyhow::Result<Signature> {
 
         let (qe_type, qe_version) = match quote.header.tee_type {
@@ -289,7 +361,20 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
-    async fn verify_pck_cert_chain(&self, quote: &Quote<'_>) -> anyhow::Result<[u8; 6]> {
+    /// Verifies the PCK (Provisioning Certification Key) certificate chain of the DCAP quote.
+    ///
+    /// This method performs off-chain verification of the PCK certificate chain extracted from the quote.
+    /// It validates each certificate in the chain against its issuer, checks for certificate revocation
+    /// using Certificate Revocation Lists (CRLs), and ensures the chain's cryptographic integrity.
+    ///
+    /// Off-chain validation is used because the certificate data exceeds Solana transaction size limits.
+    ///
+    /// # Parameters
+    /// - `quote`: The parsed Quote object containing the certificate chain
+    ///
+    /// # Returns
+    /// - `anyhow::Result<()>`: Success or an error if verification fails
+    async fn verify_pck_cert_chain(&self, quote: &Quote<'_>) -> anyhow::Result<()> {
         let pck_cert_chain_data = quote.signature.get_pck_cert_chain()?;
 
 
@@ -329,59 +414,60 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             pk.verify_strict(cert)
                 .map_err(|e| anyhow::anyhow!("failed to verify certificate: {}, error: {}", cert.tbs_certificate.subject.to_string(), e))?;
         }
-        Ok(pck_cert_chain_data.pck_extension.fmspc)
+        Ok(())
 
     }
 
-    async fn verify_tcb_status(&self, quote: &Quote<'_>) -> anyhow::Result<(TcbStatus, Vec<String>)> {
-        let pck_extension = quote.signature.get_pck_extension()?;
-        let fmspc = hex::encode(pck_extension.fmspc);
+    /// Verifies the TCB (Trusted Computing Base) status of the DCAP quote.
+    ///
+    /// This method verifies that the platform TCB (hardware, firmware, and software components)
+    /// meets the required security level. It extracts the FMSPC (Family-Model-Stepping-Platform-CustomSKU)
+    /// from the quote, retrieves the corresponding TCB information from the PCCS program, and submits
+    /// a transaction to the verifier program for on-chain verification.
+    ///
+    /// # Parameters
+    /// - `quote`: The parsed Quote object to verify
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    ///   or an error if verification fails
+    async fn verify_tcb_status(&self, quote: &Quote<'_>, quote_buffer_pubkey: Pubkey) -> anyhow::Result<Signature> {
         let version = 3 as u8;
         let tcb_type = if quote.header.tee_type == SGX_TEE_TYPE {
             TcbType::Sgx
         } else {
             TcbType::Tdx
         };
-        let tcb_info_data = self.pccs_client.get_tcb_info_data(tcb_type, fmspc, version).await?;
-        let tcb_info: TcbInfoAndSignature = serde_json::from_slice(&tcb_info_data)?;
-        let tcb_info = tcb_info.get_tcb_info()?;
+        let fmspc = quote.signature.get_pck_extension()?.fmspc;
+        let tcb_info_pda = Pubkey::find_program_address(
+            &[b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
+            &PCCS_PROGRAM_ID
+        ).0;
 
-        let (mut tcb_status, advisory_ids) = verify_tcb_status(&tcb_info, &pck_extension)?;
-        if quote.header.tee_type == TDX_TEE_TYPE {
-            let tdx_module_status = tcb_info.verify_tdx_module(quote.body.as_tdx_report_body().unwrap())?;
-            tcb_status = TcbInfo::converge_tcb_status_with_tdx_module(tcb_status, tdx_module_status);
-        }
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
 
-        Ok((tcb_status, advisory_ids))
-    }
-
-    async fn update_verified_output_account(
-        &self,
-        quote_buffer_pubkey: Pubkey,
-        verified_output_pubkey: Pubkey,
-        mut tcb_status: TcbStatus,
-        advisory_ids: Vec<String>,
-        fmspc: [u8; 6]
-    ) -> anyhow::Result<Signature> {
-
-        let qe_tcb_status = self.get_qe_tcb_status(quote_buffer_pubkey).await?;
-        let qe_tcb_status = QeTcbStatus::from_str(&qe_tcb_status.status).map_err(
-            |e| anyhow::anyhow!("failed to parse qe tcb status: {}", e)
-        )?;
-
-        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status.into());
-
+        let qe_tcb_status_pda = Pubkey::find_program_address(
+            &[b"qe_tcb_status", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
 
         let tx = self.program.request()
-            .accounts(accounts::UpdateVerifiedOutputAccount {
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(5000000))
+            .accounts(accounts::VerifyDcapQuoteTcbStatus{
                 owner: self.program.payer(),
-                verified_output: verified_output_pubkey,
+                tcb_info_pda: tcb_info_pda,
                 quote_data_buffer: quote_buffer_pubkey,
+                verified_output: verified_output_pda,
+                qe_tcb_status_pda: qe_tcb_status_pda,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
-            .args(args::UpdateVerifiedOutputAccount {
-                tcb_status: tcb_status.to_string(),
-                advisory_ids,
+            .args(args::VerifyDcapQuoteTcbStatus {
+                _tcb_type: tcb_type.common_name().to_string(),
+                _version: version,
                 fmspc,
             })
             .send().await?;
@@ -389,7 +475,19 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
-
+    /// Checks if a certificate is revoked using Certificate Revocation Lists (CRLs).
+    ///
+    /// This method retrieves the appropriate CRL for the given certificate authority type
+    /// from the PCCS program and checks if the certificate's serial number is in the list
+    /// of revoked certificates.
+    ///
+    /// # Parameters
+    /// - `serial_number`: The serial number of the certificate to check
+    /// - `ca_type`: The type of Certificate Authority (PLATFORM, PROCESSOR, or ROOT)
+    ///
+    /// # Returns
+    /// - `anyhow::Result<()>`: Success if the certificate is not revoked,
+    ///   or an error if the certificate is revoked
     async fn check_certificate_revocation(
         &self,
         serial_number: &SerialNumber,
@@ -409,10 +507,44 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(())
     }
 
+    /// Returns the payer's public key associated with this client.
+    ///
+    /// # Returns
+    /// - `Pubkey`: The public key of the payer
     pub fn get_payer(&self) -> Pubkey {
         self.program.payer().clone()
     }
 
+    /// Gets the public key of the verified output account for a given quote buffer.
+    ///
+    /// This method calculates the Program Derived Address (PDA) for the verified output account
+    /// associated with the given quote buffer.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the quote buffer account
+    ///
+    /// # Returns
+    /// - `anyhow::Result<Pubkey>`: The public key of the verified output account,
+    ///   or an error if the calculation fails
+    pub async fn get_verified_output_pubkey(&self, quote_buffer_pubkey: Pubkey) -> anyhow::Result<Pubkey> {
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+        Ok(verified_output_pda)
+    }
+
+    /// Gets the QE (Quoting Enclave) TCB status for a given quote buffer.
+    ///
+    /// This method retrieves the QE TCB status account associated with the given quote buffer,
+    /// which contains information about the TCB status of the Quoting Enclave.
+    ///
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the quote buffer account
+    ///
+    /// # Returns
+    /// - `anyhow::Result<automata_dcap_verifier::accounts::QeTcbStatus>`: The QE TCB status account data,
+    ///   or an error if the retrieval fails
     pub async fn get_qe_tcb_status(&self, quote_buffer_pubkey: Pubkey) -> anyhow::Result<automata_dcap_verifier::accounts::QeTcbStatus> {
         let qe_tcb_status_pda = Pubkey::find_program_address(
             &[b"qe_tcb_status", quote_buffer_pubkey.as_ref()],
@@ -423,6 +555,16 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(qe_tcb_status)
     }
 
+    /// Gets an account of the specified type from the Solana blockchain.
+    ///
+    /// This is a generic utility method for retrieving and deserializing account data.
+    ///
+    /// # Parameters
+    /// - `pubkey`: The public key of the account to retrieve
+    ///
+    /// # Returns
+    /// - `anyhow::Result<T>`: The deserialized account data of type T,
+    ///   or an error if the retrieval or deserialization fails
     pub async fn get_account<T: AccountDeserialize>(&self, pubkey: Pubkey) -> anyhow::Result<T> {
         let account = self
             .program

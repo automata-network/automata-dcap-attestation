@@ -1,5 +1,5 @@
 {
-  "address": "7obE3U8nYg7h1kaenZhkMwa8Dxzcfk5H8BRP6L4twwcx",
+  "address": "BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm",
   "metadata": {
     "name": "automata_dcap_verifier",
     "version": "0.1.0",
@@ -93,89 +93,6 @@
         {
           "name": "num_chunks",
           "type": "u8"
-        }
-      ]
-    },
-    {
-      "name": "init_verified_output_account",
-      "discriminator": [
-        8,
-        137,
-        28,
-        110,
-        224,
-        186,
-        251,
-        188
-      ],
-      "accounts": [
-        {
-          "name": "owner",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "verified_output",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "update_verified_output_account",
-      "discriminator": [
-        210,
-        228,
-        141,
-        248,
-        157,
-        220,
-        18,
-        162
-      ],
-      "accounts": [
-        {
-          "name": "owner",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "quote_data_buffer",
-          "writable": true
-        },
-        {
-          "name": "verified_output",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "tcb_status",
-          "type": "string"
-        },
-        {
-          "name": "advisory_ids",
-          "type": {
-            "vec": "string"
-          }
-        },
-        {
-          "name": "fmspc",
-          "type": {
-            "array": [
-              "u8",
-              6
-            ]
-          }
         }
       ]
     },
@@ -315,6 +232,154 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "verify_dcap_quote_tcb_status",
+      "discriminator": [
+        232,
+        199,
+        127,
+        71,
+        188,
+        148,
+        119,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "tcb_info_pda"
+        },
+        {
+          "name": "qe_tcb_status_pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  101,
+                  95,
+                  116,
+                  99,
+                  98,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                154,
+                154,
+                179,
+                37,
+                25,
+                98,
+                45,
+                4,
+                152,
+                100,
+                149,
+                129,
+                119,
+                227,
+                211,
+                232,
+                104,
+                220,
+                21,
+                226,
+                78,
+                55,
+                246,
+                155,
+                83,
+                108,
+                193,
+                81,
+                100,
+                9,
+                100,
+                200
+              ]
+            }
+          }
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_tcb_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        },
+        {
+          "name": "fmspc",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -355,6 +420,19 @@
         127,
         137,
         173
+      ]
+    },
+    {
+      "name": "TcbInfo",
+      "discriminator": [
+        151,
+        129,
+        27,
+        70,
+        182,
+        10,
+        3,
+        12
       ]
     },
     {
@@ -404,6 +482,21 @@
     },
     {
       "code": 6006,
+      "name": "SerializationError",
+      "msg": "Serialization error"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidSgxPckExtension",
+      "msg": "Invalid SgxPckExtension"
+    },
+    {
+      "code": 6008,
+      "name": "UnsuccessfulTcbStatusVerification",
+      "msg": "Unsuccessful TcbStatus verification"
+    },
+    {
+      "code": 6009,
       "name": "InvalidSecp256r1Instruction",
       "msg": "Invalid Secp256r1 instruction"
     }
@@ -446,13 +539,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
           {
             "name": "identity_type",
             "docs": [
@@ -508,12 +594,70 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "type": "pubkey"
-          },
-          {
             "name": "status",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "docs": [
+              "The type of TCB"
+            ],
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the TCB"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "docs": [
+              "The FMSPC of the TCB"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the TCB"
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbType",
+      "docs": [
+        "Represents different types of TCB"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Sgx"
+          },
+          {
+            "name": "Tdx"
           }
         ]
       }
