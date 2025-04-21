@@ -38,12 +38,3 @@ pub fn compute_output_digest_from_pem(pck_cert_chain_pem: &[u8]) -> [u8; 32] {
 
     output_hash.into()
 }
-
-// Draft: another way to parse the PEM file
-// let ranges = find_certificate_ranges(pck_cert_chain_pem);
-// let mut cert_chain: Vec<&[u8]> = Vec::with_capacity(ranges.len());
-// for (i, range) in ranges.into_iter().enumerate() {
-//     let (start, end) = range;
-//     let pem = &pck_cert_chain_pem[start..end];
-//     // cert_chain[i] = pem::parse(pem).unwrap().contents();
-// }

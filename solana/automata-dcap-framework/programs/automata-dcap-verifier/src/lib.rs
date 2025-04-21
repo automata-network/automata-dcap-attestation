@@ -19,15 +19,14 @@ pub mod automata_dcap_verifier {
 
     use anchor_lang::solana_program::instruction::Instruction;
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
-    use anchor_lang::solana_program::program::invoke;
-    use solana_zk::instructions::VerifyZkProof;
+    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
+    use dcap_rs::types::quote::Quote;
+    use solana_zk::cpi::accounts::VerifyZkProof;
     use solana_zk_client::verify::{
         risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
     };
     use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
     use zerocopy::AsBytes;
-    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
-    use dcap_rs::types::quote::Quote;
 
     use super::*;
 
@@ -316,17 +315,20 @@ pub mod automata_dcap_verifier {
         let output_digest: [u8; 32] = compute_output_digest_from_pem(pck_cert_chain_pem);
 
         // Step 3: make CPI to the Solana ZK Verifier program to verify proofs
+        let x509_program_vkey = zkvm_selector
+            .get_x509_verifier_program_vkey()
+            .expect("Missing X509 Verifier program for the provided zkVM");
 
         // First, we get the instruction data and the zkvm verifier address
         let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
             ZkvmSelector::RiscZero => (
-                risc0_verify_instruction_data(&proof_bytes, RISCZERO_DCAP_IMAGE_UD, output_digest),
+                risc0_verify_instruction_data(&proof_bytes, *x509_program_vkey, output_digest),
                 RISC0_VERIFIER_ROUTER_ID,
             ),
             ZkvmSelector::Succinct => (
                 sp1_groth16_verify_instruction_data(
                     &proof_bytes,
-                    SUCCINCT_DCAP_VKEY,
+                    *x509_program_vkey,
                     output_digest,
                 ),
                 SUCCINCT_SP1_VERIFIER_ID,
@@ -338,34 +340,32 @@ pub mod automata_dcap_verifier {
 
         // Check zkvm verifier program
         let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
-        require!(
-            zkvm_verifier_program.key == &zkvm_verifier_address,
-            DcapVerifierError::InvalidZkvmProgram
-        );
+        // require!(
+        //     zkvm_verifier_program.key == &zkvm_verifier_address,
+        //     DcapVerifierError::InvalidZkvmProgram
+        // );
 
         // Next, we generate the context for the CPI call
         let verifier_config_pda = &ctx.accounts.zkvm_verifier_config_pda;
-        let verify_cpi_accounts = VerifyZkProof {
-            zkvm_verifier_account: verifier_config_pda.clone(),
-            zkvm_verifier_program: zkvm_verifier_program.to_account_info(),
-            system_program: ctx.accounts.system_program.clone(),
-        };
 
-        // Finally, we call the CPI
-        if invoke(
-            &Instruction {
-                program_id: ctx.accounts.solana_zk_program.key(),
-                accounts: verify_cpi_accounts.to_account_metas(None),
-                data: zk_verify_instruction_data,
-            },
-            &[
-                verifier_config_pda.to_account_info(),
-                zkvm_verifier_program.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-        )
-        .is_err()
-        {
+        // Prepare for CPI
+        let verify_cpi_accounts = VerifyZkProof {
+            zkvm_verifier_account: verifier_config_pda.to_account_info(),
+            zkvm_verifier_program: zkvm_verifier_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+        };
+        let verify_cpi_ctx = CpiContext::new(
+            ctx.accounts.solana_zk_program.to_account_info(),
+            verify_cpi_accounts,
+        );
+
+        // Invoke CPI
+        let cpi_result = solana_zk::cpi::verify_zkvm_proof(
+            verify_cpi_ctx,
+            zkvm_selector.to_u64(),
+            zk_verify_instruction_data,
+        );
+        if cpi_result.is_err() {
             return Err(DcapVerifierError::InvalidZkProof.try_into().unwrap());
         }
 

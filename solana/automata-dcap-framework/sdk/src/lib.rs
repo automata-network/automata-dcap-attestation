@@ -7,14 +7,16 @@ use std::ops::Deref;
 
 use anchor_client::solana_sdk::{signature::Signature, signer::Signer};
 use anchor_lang::prelude::Pubkey;
+use automata_dcap_verifier::types::ZkvmSelector;
 pub use pccs_client::*;
 pub use verifier_client::*;
 pub use models::*;
 pub use utils::*;
 
-
 /// Verify a quote and return the verified output address and the signatures.
 pub async fn verify_quote<S: Clone + Deref<Target = impl Signer>>(
+    zkvm_selector: ZkvmSelector,
+    zkvm_verifier_program: Pubkey,
     bytes: &[u8],
     signer:  S
 ) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
@@ -32,6 +34,8 @@ pub async fn verify_quote<S: Clone + Deref<Target = impl Signer>>(
     ).await?;
 
     let signatures = verifier_client.verify_quote(
+        zkvm_selector,
+        zkvm_verifier_program,
         quote_buffer_pubkey,
     ).await?;
 
