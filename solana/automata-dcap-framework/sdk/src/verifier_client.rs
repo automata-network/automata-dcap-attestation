@@ -514,12 +514,15 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // }
 
         let pem_chain = quote.signature.cert_data.cert_data;
-        let (image_id, journal_bytes, groth16_seal) =
+        let (image_id, journal_bytes, mut groth16_seal) =
             crate::utils::pck::verify_pck_chain_zk(&pem_chain).await?;
 
-        println!("[client] image_id: {:x?}", &image_id);
-        println!("[client] journal_bytes: {}", hex::encode(journal_bytes));
-        println!("[client] seal: {:x?}", &groth16_seal);
+        // negate risczero pi_a
+        let mut pi_a: [u8; 64] = [0; 64];
+        pi_a.copy_from_slice(&groth16_seal[0..64]);
+
+        let negated_pi_a = crate::utils::negate_g1(&pi_a);
+        groth16_seal[0..64].copy_from_slice(&negated_pi_a);
 
         let (zkvm_verifier_config_pda, _) = derive_zkvm_verifier_pda(1u64, &zkvm_verifier_program);
 
