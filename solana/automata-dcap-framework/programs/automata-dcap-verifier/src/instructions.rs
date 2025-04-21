@@ -58,14 +58,28 @@ pub struct AddQuoteChunk<'info> {
 
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIntegrity<'info> {
+    #[account(mut)]
     pub owner: Signer<'info>,
 
     #[account(
         mut,
-        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
+
+    pub system_program: Program<'info, System>,
 
     /// CHECK: The address check is needed because otherwise
     /// the supplied Sysvar could be anything else.
@@ -77,14 +91,26 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
 
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIsvSignature<'info> {
+    #[account(mut)]
     pub owner: Signer<'info>,
 
     #[account(
         mut,
-        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
 
     /// CHECK: The address check is needed because otherwise
     /// the supplied Sysvar could be anything else.
@@ -92,6 +118,8 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
     /// in the Anchor framework yet, so this is the safe approach.
     #[account(address = INSTRUCTIONS_SYSVAR_ID)]
     pub instructions_sysvar: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -102,7 +130,6 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
 
     #[account(
         mut,
-        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
@@ -130,6 +157,19 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     )]
     pub qe_tcb_status_pda: Account<'info, QeTcbStatus>,
 
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
+
+
     pub system_program: Program<'info, System>,
 }
 
@@ -141,7 +181,6 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
 
     #[account(
         mut,
-        constraint = quote_data_buffer.owner == *owner.key @ DcapVerifierError::InvalidOwner,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,

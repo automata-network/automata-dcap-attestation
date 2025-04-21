@@ -152,6 +152,38 @@
           }
         },
         {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -182,11 +214,48 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true
         },
         {
           "name": "quote_data_buffer",
           "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         },
         {
           "name": "instructions_sysvar",
@@ -215,11 +284,44 @@
       "accounts": [
         {
           "name": "owner",
+          "writable": true,
           "signer": true
         },
         {
           "name": "quote_data_buffer",
           "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
         },
         {
           "name": "instructions_sysvar",
@@ -229,6 +331,10 @@
             "in the Anchor framework yet, so this is the safe approach."
           ],
           "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -520,10 +626,6 @@
             "type": "u8"
           },
           {
-            "name": "chunks_received",
-            "type": "u8"
-          },
-          {
             "name": "complete",
             "type": "bool"
           },
@@ -668,10 +770,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "type": "pubkey"
-          },
-          {
             "name": "quote_version",
             "type": "u16"
           },
@@ -703,6 +801,26 @@
                 "vec": "string"
               }
             }
+          },
+          {
+            "name": "integrity_verified",
+            "type": "bool"
+          },
+          {
+            "name": "isv_signature_verified",
+            "type": "bool"
+          },
+          {
+            "name": "enclave_source_verified",
+            "type": "bool"
+          },
+          {
+            "name": "tcb_check_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_cert_chain_verified",
+            "type": "bool"
           },
           {
             "name": "completed",

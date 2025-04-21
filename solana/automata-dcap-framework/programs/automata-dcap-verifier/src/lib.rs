@@ -36,7 +36,6 @@ pub mod automata_dcap_verifier {
         data_buffer.owner = *ctx.accounts.owner.key;
         data_buffer.total_size = total_size;
         data_buffer.num_chunks = num_chunks;
-        data_buffer.chunks_received = 0;
         data_buffer.complete = false;
         data_buffer.data = vec![0; total_size as usize];
 
@@ -78,14 +77,13 @@ pub mod automata_dcap_verifier {
         let end_index = start_index + chunk_data.len();
 
         data_buffer.data[start_index..end_index].copy_from_slice(&chunk_data);
-        data_buffer.chunks_received += 1;
-        data_buffer.complete = data_buffer.chunks_received >= data_buffer.num_chunks;
+        data_buffer.complete = offset + chunk_data.len() as u32 == data_buffer.total_size;
 
         msg!(
-            "Added chunk {} with offset {}, total received: {}",
+            "Added chunk {} with offset {}, total bytes received until now: {}",
             chunk_index,
             offset,
-            data_buffer.chunks_received
+            data_buffer.data.len()
         );
         Ok(())
     }
@@ -107,6 +105,9 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.integrity_verified = true;
+
         Ok(())
     }
 
@@ -127,6 +128,9 @@ pub mod automata_dcap_verifier {
 
         let ix: Instruction = load_instruction_at_checked(0, &ctx.accounts.instructions_sysvar)?;
         verify_secp256r1_program_instruction_fields(&ix, &data)?;
+
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.isv_signature_verified = true;
 
         Ok(())
     }
@@ -215,6 +219,9 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.enclave_source_verified = true;
+
         Ok(())
     }
 
@@ -278,8 +285,10 @@ pub mod automata_dcap_verifier {
         verified_output.quote_version = quote.header.version.get();
         verified_output.tee_type = quote.header.tee_type;
         verified_output.quote_body = quote.body.as_bytes().to_vec();
-        verified_output.completed = true;
-        verified_output.owner = *ctx.accounts.owner.key;
+        verified_output.completed = verified_output.integrity_verified && verified_output.isv_signature_verified
+            && verified_output.enclave_source_verified
+            && verified_output.tcb_check_verified
+            && verified_output.pck_cert_chain_verified;
 
 
         Ok(())

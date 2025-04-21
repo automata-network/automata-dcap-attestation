@@ -17,6 +17,12 @@ pub struct PckCertificate {
     /// The TCBM of the certificate
     pub tcbm: [u8; 18],
 
+    /// The digest of the certificate
+    pub digest: [u8; 32],
+
+    /// Boolean indicating whether it is verified
+    pub verified: bool,
+
     /// Certificate data
     pub cert_data: Vec<u8>,
 }
@@ -31,6 +37,12 @@ pub struct PcsCertificate {
 
     /// Certificate data
     pub cert_data: Vec<u8>,
+
+    /// The digest of the certificate
+    pub digest: [u8; 32],
+
+    /// Boolean indicating whether it is verified
+    pub verified: bool,
 }
 
 #[account]
@@ -43,6 +55,12 @@ pub struct EnclaveIdentity {
 
     /// The data of the enclave identity
     pub data: Vec<u8>,
+
+    /// The digest of the certificate
+    pub digest: [u8; 32],
+
+    /// Boolean indicating whether it is verified
+    pub verified: bool,
 }
 
 #[account]
@@ -58,6 +76,12 @@ pub struct TcbInfo {
 
     /// The data of the TCB
     pub data: Vec<u8>,
+
+    /// The digest of the certificate
+    pub digest: [u8; 32],
+
+    /// Boolean indicating whether it is verified
+    pub verified: bool,
 }
 
 #[account]

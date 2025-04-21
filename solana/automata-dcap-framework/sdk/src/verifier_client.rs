@@ -238,6 +238,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             &qe_report_signature_bytes,
         );
 
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+
         let tx = self
             .program
             .request()
@@ -245,7 +250,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .accounts(accounts::VerifyDcapQuoteIntegrity {
                 owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,
+                verified_output: verified_output_pda,
                 instructions_sysvar: anchor_client::solana_sdk::sysvar::instructions::ID,
+                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteIntegrity {})
             .send()
@@ -292,6 +299,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             &sig_bytes
         );
 
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+
         let tx = self
             .program
             .request()
@@ -299,7 +311,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .accounts(accounts::VerifyDcapQuoteIsvSignature {
                 owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,
+                verified_output: verified_output_pda,
                 instructions_sysvar: anchor_client::solana_sdk::sysvar::instructions::ID,
+                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteIsvSignature {})
             .send()
@@ -342,6 +356,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             &self.program.id()
         ).0;
 
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id()
+        ).0;
+
         let tx = self
             .program
             .request()
@@ -350,6 +369,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 quote_data_buffer: quote_buffer_pubkey,
                 qe_identity_pda: qe_identity_pda,
                 qe_tcb_status_pda: qe_tcb_status_pda,
+                verified_output: verified_output_pda,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteEnclaveSource {
