@@ -5,7 +5,7 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor-client = { version = "0.31.0" }
+anchor-client = { version = "0.31.0", features = ["async"] }
 ## We are pinning these dependnecies as their latest version require
 ## Rust 1.81.0 as minimum version. And at the time of this writing,
 ## Solana only supports Rust 1.79.0
@@ -22,3 +22,6 @@ dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9
 sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
 anyhow = "1.0.89"
+solana-zk = { path = "/Users/prestonong/Desktop/work/solana-zk/programs/solana-zk" }
+solana-zk-client = { path = "/Users/prestonong/Desktop/work/solana-zk/apps/solana-zk-client" }
+solana-zk-tests = { path = "/Users/prestonong/Desktop/work/solana-zk/tests" }

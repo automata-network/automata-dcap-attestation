@@ -1,7 +1,7 @@
 use anyhow::Result;
-use zk_x509_client::prove_der_chain;
+use zk_x509_client::prove_der_chain_non_blocking;
 
-pub fn verify_pck_chain_zk(
+pub async fn verify_pck_chain_zk(
     pck_cert_chain_pem: &[u8],
 ) -> Result<(
     [u8; 32], // image_id
@@ -14,6 +14,10 @@ pub fn verify_pck_chain_zk(
         .map(|pem| pem.contents().to_vec())
         .collect();
 
-    let (image_id, journal_bytes, groth16_seal) = prove_der_chain(cert_chain)?;
+    let (image_id, journal_bytes, groth16_seal) = prove_der_chain_non_blocking(
+        cert_chain, 
+        false
+    ).await?;
+
     Ok((image_id, journal_bytes, groth16_seal))
 }

@@ -199,12 +199,12 @@ pub struct VerifyPckCertChainZk<'info> {
             zkvm_verifier_program.key().as_ref(),
         ],
         bump,
+        seeds::program = solana_zk_program.key(),
     )]
     pub zkvm_verifier_config_pda: Account<'info, ZkvmVerifier>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// Currently, there isn't any defined standards to structure the program.
-    /// The program is abitrary
+    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
