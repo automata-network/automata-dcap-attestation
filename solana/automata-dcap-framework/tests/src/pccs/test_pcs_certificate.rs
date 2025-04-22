@@ -1,26 +1,15 @@
-use anchor_client::solana_sdk::signer::Signer;
 use sdk::CertificateAuthority;
 use sdk::automata_on_chain_pccs::types::ZkvmSelector;
-
-use crate::setup_solana_zk_program;
-use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
-use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
 use solana_zk_tests::zkvm::risc0::deploy_risc0_groth16_verifier;
+use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
+use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
+use crate::{setup_solana_zk_program, TEST_RISC0_VERIFIER_PUBKEY};
 
 #[tokio::test]
 pub async fn test_pcs_root_ca_upsert() {
     use super::*;
 
     let signer = get_signer();
-
-    let rpc_client = RpcClient::new_with_commitment(
-        "http://localhost:8899".to_string(),
-        CommitmentConfig::confirmed(),
-    );
-    let zkvm_verifier_program = deploy_risc0_groth16_verifier(signer.as_ref(), &rpc_client)
-        .await
-        .unwrap();
-
     let client = sdk::PccsClient::new(signer.clone()).unwrap();
     let root_cert_data = include_bytes!("../../data/root.der").to_vec();
     let num_chunks = sdk::get_num_chunks(root_cert_data.len(), 512);
@@ -33,11 +22,22 @@ pub async fn test_pcs_root_ca_upsert() {
         .await
         .unwrap();
 
+    let rpc_client = RpcClient::new_with_commitment(
+        String::from("http://localhost:8899"),
+        CommitmentConfig::confirmed(),
+    );
+    if rpc_client.get_account(&TEST_RISC0_VERIFIER_PUBKEY).await.is_err() {
+        deploy_risc0_groth16_verifier(
+            signer.as_ref(), 
+            &rpc_client
+        ).await.unwrap();
+    }
+
     setup_solana_zk_program(
-        &client.anchor_client().program(solana_zk::ID).unwrap(),
-        &signer.pubkey(),
+        &client.anchor_client(),
+        signer.as_ref(),
         1,
-        &zkvm_verifier_program,
+        &TEST_RISC0_VERIFIER_PUBKEY
     )
     .await
     .unwrap();
@@ -49,7 +49,7 @@ pub async fn test_pcs_root_ca_upsert() {
             false,
             data_buffer_pubkey,
             ZkvmSelector::RiscZero,
-            zkvm_verifier_program,
+            TEST_RISC0_VERIFIER_PUBKEY,
         )
         .await
         .unwrap();
