@@ -14,6 +14,8 @@ anyhow = { version = "1.0.93" }
 tokio = { version = "1.39.0", features = ["full"] }
 bytemuck = { version = "1.14.0" }
 hex = { version = "0.4.3" }
+der = { version = "0.7.9", default-features = false, features = ["derive", "oid"] }
+der-parser = { version = "10.0.0" }
 x509-cert    	= { version = "0.2.5" }
 dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9b0aa89275e04efe58a10f254d0b6"}
 p256 = { version = "0.13.2" }
@@ -21,6 +23,7 @@ zerocopy = { version = "0.7.34", features = ["derive"] }
 serde_json = { version = "1.0.100" }
 pem = { version = "3.0.5" }
 zk-x509-client = { path = "/Users/prestonong/Desktop/work/zk-x509/apps" }
+ecdsa_secp256r1_host = { path = "../zk/risc0/ecdsa_secp256r1/host" }
 solana-zk-client = { path = "/Users/prestonong/Desktop/work/solana-zk/apps/solana-zk-client" }
 
 [dependencies.x509-verify]

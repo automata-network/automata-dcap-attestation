@@ -2,23 +2,29 @@
 
 use anchor_lang::prelude::*;
 
+pub mod internal;
 pub mod errors;
 pub mod instructions;
 pub mod state;
 pub mod event;
 
-declare_id!("P33BtU5EDMHCVexoG4iv3ru9tC9v4CrFWFSgnEdFaAB");
+declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 
 use errors::*;
 use instructions::*;
 use state::*;
 use event::*;
+use internal::*;
+use internal::certs::INTEL_ROOT_PUB_KEY;
 
 #[program]
 pub mod automata_on_chain_pccs {
-    use crate::{instructions::UpsertPckCertificate, state::CertificateAuthority};
-
+    use crate::{instructions::UpsertPckCertificate, internal::certs::get_certificate_tbs_and_digest, state::CertificateAuthority};
     use super::*;
+    use solana_zk::cpi::accounts::VerifyZkProof;
+    use solana_zk_client::verify::risc0::risc0_verify_instruction_data;
+    use solana_zk_client::RISC0_VERIFIER_ROUTER_ID;
+    use sha2::{Digest, Sha256};
 
     pub fn init_data_buffer(
         ctx: Context<InitDataBuffer>,
@@ -108,6 +114,96 @@ pub mod automata_on_chain_pccs {
             ctx.accounts.pck_certificate.key()
         );
 
+
+        Ok(())
+    }
+
+    pub fn upsert_root_ca(
+        ctx: Context<UpsertRootCA>,
+        zkvm_selector: zk::ZkvmSelector, 
+        proof: Vec<u8>
+    ) -> Result<()> {
+        let root_ca_pda = &mut ctx.accounts.root_ca;
+        let root_ca_data = &ctx.accounts.data_buffer.data;
+
+        let (root_tbs_digest, root_tbs) = get_certificate_tbs_and_digest(&root_ca_data);
+
+        // check root ca pubkey matches with hardcoded value
+        let root_ca_pubkey = root_tbs
+            .subject_public_key_info
+            .subject_public_key
+            .as_bytes()
+            .unwrap();
+        require!(
+            root_ca_pubkey == INTEL_ROOT_PUB_KEY,
+            PccsError::InvalidRootCA
+        );
+
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        expected_output.extend_from_slice(&root_tbs_digest);
+        expected_output.extend_from_slice(&root_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        let ecdsa_program_vkey = zkvm_selector.get_ecdsa_program_vkey().unwrap();
+        
+        // First, we get the instruction data and the zkvm verifier address
+        let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
+            zk::ZkvmSelector::RiscZero => (
+                risc0_verify_instruction_data(
+                    &proof,
+                    *ecdsa_program_vkey,
+                    output_digest
+                ),
+                RISC0_VERIFIER_ROUTER_ID,
+            ),
+            _ => {
+                return Err(PccsError::UnsupportedZkvm.into());
+            },
+        };
+
+        // Check zkvm verifier program
+        let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
+        // require!(
+        //     zkvm_verifier_program.key == &zkvm_verifier_address,
+        //     DcapVerifierError::InvalidZkvmProgram
+        // );
+
+        // Next, we generate the context for the CPI call
+        let verifier_config_pda = &ctx.accounts.zkvm_verifier_config_pda;
+
+        // Prepare for CPI
+        let verify_cpi_accounts = VerifyZkProof {
+            zkvm_verifier_account: verifier_config_pda.to_account_info(),
+            zkvm_verifier_program: zkvm_verifier_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+        };
+        let verify_cpi_ctx = CpiContext::new(
+            ctx.accounts.solana_zk_program.to_account_info(),
+            verify_cpi_accounts,
+        );
+
+        // Invoke CPI
+        let cpi_result = solana_zk::cpi::verify_zkvm_proof(
+            verify_cpi_ctx,
+            zkvm_selector.to_u64(),
+            zk_verify_instruction_data,
+        );
+        if cpi_result.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
+
+        // write to root pda data
+        root_ca_pda.ca_type = CertificateAuthority::ROOT;
+        root_ca_pda.cert_data = root_ca_data.clone();
+        root_ca_pda.is_crl = false;
+
+        // Emit event
+        emit!(PcsCertificateUpserted {
+            ca_type: root_ca_pda.ca_type,
+            is_crl: root_ca_pda.is_crl,
+            pda: root_ca_pda.key(),
+        });
 
         Ok(())
     }

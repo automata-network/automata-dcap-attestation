@@ -1,34 +1,40 @@
+use anyhow::Result;
+use ecdsa_secp256r1_host::verify_non_blocking;
 use der::{Encode, Decode};
 use der_parser::{ber::BerObjectContent, der::parse_der};
+use sha2::{Digest, Sha256};
 use x509_cert::Certificate;
-use sha2::{Sha256, Digest};
 
-#[test]
-pub fn test_verify_sample() {
-    use super::*;
+/// We use the ecdsa guest program here instead becasue
+/// we are not verifying the entire chain
+/// the ecdsa guest program can also be used to verify JSON collaterals
 
-    let root_der_bytes = include_bytes!("../sample/root.der");
-    let root_cert = Certificate::from_der(root_der_bytes).unwrap();
+pub async fn get_x509_ecdsa_verify_proof(
+    subject_der: &[u8],
+    issuer_der: &[u8]
+) -> Result<(
+    [u8; 32], // image_id
+    Vec<u8>,  // journal_bytes
+    Vec<u8>,  // Groth16 Seal
+)> {
+    let subject = Certificate::from_der(subject_der).unwrap();
+    let tbs = subject.tbs_certificate;
+    let digest: [u8; 32] = Sha256::digest(tbs.to_der().unwrap().as_slice()).into();
 
-    let root_tbs = root_cert.tbs_certificate.to_der().unwrap();
-    let root_tbs_digest: [u8; 32] = Sha256::digest(root_tbs.as_slice()).into();
-    let root_sig_der = root_cert.signature.as_bytes().unwrap();
+    let subject_signature_encoded = subject.signature.as_bytes().unwrap();
+    let subject_signature = process_sig(subject_signature_encoded);
 
-    // decode signature into (r, s)
-    let root_sig = process_sig(root_sig_der);
+    let (image_id, journal, seal) = verify_non_blocking(
+        digest, 
+        subject_signature, 
+        issuer_der.to_vec()
+    ).await?;
 
-    // println!("root tbs: {:x?}", root_tbs);
-    // println!("sig: {:x?}", root_sig);
-
-    // get proof
-    let (image_id, _output, seal) = verify(
-        root_tbs_digest,
-        root_sig,
-        root_der_bytes.to_vec()
-    ).unwrap();
-
-    println!("image_id: {:?}", image_id);
-    println!("seal: {:?}", seal);
+    Ok((
+        image_id,
+        journal,
+        seal
+    ))
 }
 
 fn process_sig(der_sig: &[u8]) -> [u8; 64] {

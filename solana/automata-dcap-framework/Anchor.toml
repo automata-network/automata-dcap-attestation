@@ -1,13 +1,13 @@
 [toolchain]
-anchor_version = "0.31.0"
+anchor_version = "0.31.1"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-automata-on-chain-pccs = "EBV7xychBtcjcDfQbXtTpZE8zyrL8BP9VhG7Fb5zaMab"
-automata_dcap_verifier = "P33BtU5EDMHCVexoG4iv3ru9tC9v4CrFWFSgnEdFaAB"
+automata-on-chain-pccs = "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC"
+automata_dcap_verifier = "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt"
 
 [registry]
 url = "https://api.apr.dev"

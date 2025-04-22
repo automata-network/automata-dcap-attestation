@@ -1,9 +1,14 @@
-use anchor_lang::prelude::*;
 use crate::errors::PccsError;
 use crate::state::{
     CertificateAuthority, DataBuffer, EnclaveIdentity, EnclaveIdentityType, PckCertificate,
     PcsCertificate, TcbInfo, TcbType,
 };
+use crate::internal::zk::ZkvmSelector;
+
+use anchor_lang::prelude::*;
+use solana_zk::program::SolanaZk;
+use solana_zk::state::ZkvmVerifier;
+use solana_zk::ID;
 
 // Maximum size of the certificate data in bytes (4KB)
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
@@ -76,6 +81,55 @@ pub struct UpsertPckCertificate<'info> {
         close = authority
     )]
     pub data_buffer: Account<'info, DataBuffer>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(
+    zkvm_selector: ZkvmSelector,
+    proof: Vec<u8>
+)]
+pub struct UpsertRootCA<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + 32 + 1 + MAX_CERT_DATA_SIZE,
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub root_ca: Account<'info, PcsCertificate>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == authority.key() @ PccsError::Unauthorized,
+        constraint = data_buffer.complete == true @ PccsError::IncompleteBuffer,
+        close = authority
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        constraint = solana_zk_program.key() == ID,
+    )]
+    pub solana_zk_program: Program<'info, SolanaZk>,
+
+    #[account(
+        seeds = [
+            b"zkvm_verifier",
+            zkvm_selector.to_u64().to_le_bytes().as_ref(),
+            zkvm_verifier_program.key().as_ref(),
+        ],
+        bump,
+        seeds::program = solana_zk_program.key(),
+    )]
+    pub zkvm_verifier_config_pda: Account<'info, ZkvmVerifier>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

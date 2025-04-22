@@ -17,7 +17,7 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = "0.31.0"
+anchor-lang = "0.31.1"
 solana-sdk-ids = "=2.2.1"
 dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9b0aa89275e04efe58a10f254d0b6"}
 zerocopy = { version = "0.7.34" }
