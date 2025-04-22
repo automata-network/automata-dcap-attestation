@@ -10,7 +10,8 @@ pub async fn test_pcs_root_ca_upsert() {
     use super::*;
 
     let signer = get_signer();
-    let client = sdk::PccsClient::new(signer.clone()).unwrap();
+    let sdk = sdk::Sdk::new(get_signer(), None);
+    let client = sdk.pccs_client();
     let root_cert_data = include_bytes!("../../data/root.der").to_vec();
     let num_chunks = sdk::get_num_chunks(root_cert_data.len(), 512);
     let data_buffer_pubkey = client
@@ -34,7 +35,7 @@ pub async fn test_pcs_root_ca_upsert() {
     }
 
     setup_solana_zk_program(
-        &client.anchor_client(),
+        sdk.anchor_provider(),
         signer.as_ref(),
         1,
         &TEST_RISC0_VERIFIER_PUBKEY

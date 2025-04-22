@@ -13,8 +13,8 @@ async fn test_tcb_info_upsert_v3_sgx() {
     let tcb_info_data = borsh::to_vec(&tcb_info).unwrap();
     println!("tcb info data len: {}", tcb_info_data.len());
 
-
-    let client = sdk::PccsClient::new(get_signer()).unwrap();
+    let sdk = sdk::Sdk::new(get_signer(), None);
+    let client = sdk.pccs_client();
     let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &tcb_info_data, 512).await.unwrap();
 
@@ -42,8 +42,8 @@ async fn test_tcb_info_upsert_v3_tdx() {
     let tcb_info_data = borsh::to_vec(&tcb_info).unwrap();
     println!("tcb info data len: {}", tcb_info_data.len());
 
-
-    let client = sdk::PccsClient::new(get_signer()).unwrap();
+    let sdk = sdk::Sdk::new(get_signer(), None);
+    let client = sdk.pccs_client();
     let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &tcb_info_data, 512).await.unwrap();
 

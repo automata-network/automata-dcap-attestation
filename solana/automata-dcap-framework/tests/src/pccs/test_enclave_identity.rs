@@ -5,8 +5,8 @@ use sdk::EnclaveIdentityType;
 async fn test_enclave_identity_upsert() {
     let enclave_identity_data = include_bytes!("../../data/qe_identity.json").to_vec();
 
-
-    let client = sdk::PccsClient::new(get_signer()).unwrap();
+    let sdk = sdk::Sdk::new(get_signer(), None);
+    let client = sdk.pccs_client();
     let data_buffer_pubkey = client.init_data_buffer(enclave_identity_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &enclave_identity_data, 512).await.unwrap();
 

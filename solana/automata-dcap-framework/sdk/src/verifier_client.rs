@@ -3,7 +3,6 @@ use std::ops::Deref;
 use anchor_client::{
     Client, Program,
     solana_sdk::{
-        commitment_config::CommitmentConfig,
         compute_budget::ComputeBudgetInstruction,
         signature::{Keypair, Signature},
         signer::Signer,
@@ -53,55 +52,18 @@ const ROOT_ISSUER_NAME: &str = "Intel SGX Root CA";
 /// - Verifying the PCK (Provisioning Certification Key) certificate chain
 /// - Verifying the TCB (Trusted Computing Base) status
 pub struct VerifierClient<S> {
-    program: Program<S>,
-    pccs_client: PccsClient<S>,
-    self_client: Client<S>,
+    program: Program<S>
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
-    /// Creates a new instance of the VerifierClient.
-    ///
-    /// This constructor initializes a new VerifierClient with the given signer, setting up
-    /// the necessary clients to interact with the Solana blockchain and the Verifier program.
-    ///
-    /// # Parameters
-    /// - `signer`: A signable entity that implements Clone and Deref<Target = impl Signer>
-    ///
-    /// # Returns
-    /// - `anyhow::Result<Self>`: A new VerifierClient instance or an error if initialization fails
-    pub fn new(signer: S) -> anyhow::Result<Self> {
-        let client = Client::new_with_options(
-            anchor_client::Cluster::Localnet,
-            signer.clone(),
-            CommitmentConfig::confirmed(),
-        );
-
+    pub fn new(client: &Client<S>) -> anyhow::Result<Self> {
         let program = client.program(automata_dcap_verifier::ID)?;
-        let pccs_client = PccsClient::new(signer)?;
 
         Ok(Self {
             program,
-            pccs_client,
-            self_client: client,
         })
     }
 
-    pub fn anchor_client(&self) -> &Client<S> {
-        &self.self_client
-    }
-
-    /// Initializes a buffer account on-chain for storing DCAP quote data.
-    ///
-    /// This method creates a new account on the Solana blockchain that will be used to store
-    /// the DCAP quote data. The account is initialized with the specified size and chunk configuration.
-    ///
-    /// # Parameters
-    /// - `total_size`: The total size in bytes required for the quote data
-    /// - `num_chunks`: The number of chunks the data will be split into for upload
-    ///
-    /// # Returns
-    /// - `anyhow::Result<Pubkey>`: The public key of the newly created buffer account,
-    ///   or an error if initialization fails
     pub async fn init_quote_buffer(
         &self,
         total_size: u32,
@@ -642,11 +604,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     ///   or an error if the certificate is revoked
     async fn check_certificate_revocation(
         &self,
+        pccs_client: &PccsClient<S>,
         serial_number: &SerialNumber,
         ca_type: CertificateAuthority,
     ) -> anyhow::Result<()> {
-        let pcs_cert_data = self
-            .pccs_client
+        let pcs_cert_data = pccs_client
             .get_pcs_certificate_data(ca_type, true)
             .await?;
         let certificate_list = CertificateList::from_der(&pcs_cert_data)?;
