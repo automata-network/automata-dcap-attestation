@@ -14,7 +14,7 @@ use zerocopy::AsBytes;
 use p256::ecdsa::VerifyingKey;
 use p256::ecdsa::Signature;
 
-declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
+declare_id!("BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm");
 
 #[program]
 pub mod automata_dcap_verifier {
@@ -32,20 +32,17 @@ pub mod automata_dcap_verifier {
     pub fn init_quote_buffer(
         ctx: Context<InitQuoteBuffer>,
         total_size: u32,
-        num_chunks: u8,
     ) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
 
         data_buffer.owner = *ctx.accounts.owner.key;
         data_buffer.total_size = total_size;
-        data_buffer.num_chunks = num_chunks;
         data_buffer.complete = false;
         data_buffer.data = vec![0; total_size as usize];
 
         msg!(
-            "Quote buffer initialized with total size: {}, num chunks: {}",
-            total_size,
-            num_chunks
+            "Quote buffer initialized with total size: {}",
+            total_size
         );
         Ok(())
     }
@@ -53,7 +50,6 @@ pub mod automata_dcap_verifier {
 
     pub fn add_quote_chunk(
         ctx: Context<AddQuoteChunk>,
-        chunk_index: u8,
         chunk_data: Vec<u8>,
         offset: u32,
     ) -> Result<()> {
@@ -68,10 +64,6 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::BufferAlreadyComplete
         );
         require!(
-            chunk_index < data_buffer.num_chunks,
-            DcapVerifierError::InvalidChunkIndex
-        );
-        require!(
             (offset as usize + chunk_data.len()) as u32 <= data_buffer.total_size,
             DcapVerifierError::ChunkOutOfBounds
         );
@@ -83,8 +75,7 @@ pub mod automata_dcap_verifier {
         data_buffer.complete = offset + chunk_data.len() as u32 == data_buffer.total_size;
 
         msg!(
-            "Added chunk {} with offset {}, total bytes received until now: {}",
-            chunk_index,
+            "Added chunk with offset {}, total bytes received until now: {}",
             offset,
             data_buffer.data.len()
         );

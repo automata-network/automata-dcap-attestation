@@ -4,8 +4,6 @@ use crate::state::{DataBuffer, QeTcbStatus, VerifiedOutput};
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
 
-#[derive(Accounts)]
-pub struct Initialize {}
 
 /// Accounts required for initializing a quote buffer.
 ///

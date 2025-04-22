@@ -23,7 +23,6 @@ pub async fn verify_quote<S: Clone + Deref<Target = impl Signer>>(
 
     let quote_buffer_pubkey = verifier_client.init_quote_buffer(
         bytes.len() as u32,
-        get_num_chunks(bytes.len(), 512),
     ).await?;
 
     verifier_client.upload_chunks(

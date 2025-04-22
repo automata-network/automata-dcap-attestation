@@ -7,8 +7,7 @@ async fn test_enclave_identity_upsert() {
 
 
     let client = sdk::PccsClient::new(get_signer()).unwrap();
-    let num_chunks = sdk::get_num_chunks(enclave_identity_data.len(), 512);
-    let data_buffer_pubkey = client.init_data_buffer(enclave_identity_data.len() as u32, num_chunks).await.unwrap();
+    let data_buffer_pubkey = client.init_data_buffer(enclave_identity_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &enclave_identity_data, 512).await.unwrap();
 
     let _tx = client.upsert_enclave_identity(
