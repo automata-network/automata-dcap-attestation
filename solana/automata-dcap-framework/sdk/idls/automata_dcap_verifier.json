@@ -1,0 +1,833 @@
+{
+  "address": "BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm",
+  "metadata": {
+    "name": "automata_dcap_verifier",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_quote_chunk",
+      "discriminator": [
+        93,
+        28,
+        10,
+        61,
+        222,
+        222,
+        191,
+        23
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "chunk_index",
+          "type": "u8"
+        },
+        {
+          "name": "chunk_data",
+          "type": "bytes"
+        },
+        {
+          "name": "offset",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_quote_buffer",
+      "discriminator": [
+        53,
+        20,
+        246,
+        11,
+        2,
+        115,
+        211,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The signer who will own this quote buffer.",
+            "Must sign the transaction and pay for account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "docs": [
+            "The account that will store the DCAP quote data.",
+            "This is initialized with the specified space and",
+            "owned by the program."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Required by the system program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "total_size",
+          "type": "u32"
+        },
+        {
+          "name": "num_chunks",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_enclave_source",
+      "discriminator": [
+        7,
+        60,
+        137,
+        108,
+        41,
+        253,
+        177,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "qe_identity_pda"
+        },
+        {
+          "name": "qe_tcb_status_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  101,
+                  95,
+                  116,
+                  99,
+                  98,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_qe_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_integrity",
+      "discriminator": [
+        178,
+        183,
+        98,
+        209,
+        167,
+        76,
+        100,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_dcap_quote_isv_signature",
+      "discriminator": [
+        0,
+        249,
+        164,
+        83,
+        46,
+        80,
+        247,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_dcap_quote_tcb_status",
+      "discriminator": [
+        232,
+        199,
+        127,
+        71,
+        188,
+        148,
+        119,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "tcb_info_pda"
+        },
+        {
+          "name": "qe_tcb_status_pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  101,
+                  95,
+                  116,
+                  99,
+                  98,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                154,
+                154,
+                179,
+                37,
+                25,
+                98,
+                45,
+                4,
+                152,
+                100,
+                149,
+                129,
+                119,
+                227,
+                211,
+                232,
+                104,
+                220,
+                21,
+                226,
+                78,
+                55,
+                246,
+                155,
+                83,
+                108,
+                193,
+                81,
+                100,
+                9,
+                100,
+                200
+              ]
+            }
+          }
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_tcb_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        },
+        {
+          "name": "fmspc",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DataBuffer",
+      "discriminator": [
+        235,
+        220,
+        51,
+        248,
+        56,
+        77,
+        241,
+        89
+      ]
+    },
+    {
+      "name": "EnclaveIdentity",
+      "discriminator": [
+        214,
+        36,
+        189,
+        105,
+        171,
+        103,
+        129,
+        177
+      ]
+    },
+    {
+      "name": "QeTcbStatus",
+      "discriminator": [
+        232,
+        80,
+        189,
+        226,
+        83,
+        127,
+        137,
+        173
+      ]
+    },
+    {
+      "name": "TcbInfo",
+      "discriminator": [
+        151,
+        129,
+        27,
+        70,
+        182,
+        10,
+        3,
+        12
+      ]
+    },
+    {
+      "name": "VerifiedOutput",
+      "discriminator": [
+        33,
+        23,
+        162,
+        153,
+        121,
+        58,
+        199,
+        180
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidOwner",
+      "msg": "Invalid buffer owner"
+    },
+    {
+      "code": 6001,
+      "name": "BufferAlreadyComplete",
+      "msg": "Buffer already complete"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidChunkIndex",
+      "msg": "Invalid chunk index"
+    },
+    {
+      "code": 6003,
+      "name": "ChunkOutOfBounds",
+      "msg": "Chunk out of bounds"
+    },
+    {
+      "code": 6004,
+      "name": "IncompleteQuote",
+      "msg": "Incomplete quote"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidQuote",
+      "msg": "Invalid quote"
+    },
+    {
+      "code": 6006,
+      "name": "SerializationError",
+      "msg": "Serialization error"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidSgxPckExtension",
+      "msg": "Invalid SgxPckExtension"
+    },
+    {
+      "code": 6008,
+      "name": "UnsuccessfulTcbStatusVerification",
+      "msg": "Unsuccessful TcbStatus verification"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidSecp256r1Instruction",
+      "msg": "Invalid Secp256r1 instruction"
+    }
+  ],
+  "types": [
+    {
+      "name": "DataBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_size",
+            "type": "u32"
+          },
+          {
+            "name": "num_chunks",
+            "type": "u8"
+          },
+          {
+            "name": "complete",
+            "type": "bool"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "identity_type",
+            "docs": [
+              "The type of enclave identity"
+            ],
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the enclave identity"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the enclave identity"
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentityType",
+      "docs": [
+        "Represents the different types of Enclave Identities in the Intel SGX",
+        "attestation."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "QE"
+          },
+          {
+            "name": "QVE"
+          },
+          {
+            "name": "TdQe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QeTcbStatus",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "docs": [
+              "The type of TCB"
+            ],
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the TCB"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "docs": [
+              "The FMSPC of the TCB"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the TCB"
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbType",
+      "docs": [
+        "Represents different types of TCB"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Sgx"
+          },
+          {
+            "name": "Tdx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifiedOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_version",
+            "type": "u16"
+          },
+          {
+            "name": "tee_type",
+            "type": "u32"
+          },
+          {
+            "name": "tcb_status",
+            "type": "string"
+          },
+          {
+            "name": "fmspc",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "quote_body",
+            "type": "bytes"
+          },
+          {
+            "name": "advisor_ids",
+            "type": {
+              "option": {
+                "vec": "string"
+              }
+            }
+          },
+          {
+            "name": "integrity_verified",
+            "type": "bool"
+          },
+          {
+            "name": "isv_signature_verified",
+            "type": "bool"
+          },
+          {
+            "name": "enclave_source_verified",
+            "type": "bool"
+          },
+          {
+            "name": "tcb_check_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_cert_chain_verified",
+            "type": "bool"
+          },
+          {
+            "name": "completed",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ]
+}

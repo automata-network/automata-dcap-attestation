@@ -1,0 +1,26 @@
+[package]
+name = "automata-dcap-verifier"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "automata_dcap_framework"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "0.31.0"
+solana-sdk-ids = "=2.2.1"
+dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9b0aa89275e04efe58a10f254d0b6"}
+zerocopy = { version = "0.7.34" }
+automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = ["cpi"] }
+serde_json   	= { version = "1.0.125", features = ["raw_value"] }
+hex = { version = "0.4.3" }
