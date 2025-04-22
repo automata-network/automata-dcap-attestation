@@ -12,7 +12,7 @@ use utils::certs::compute_output_digest_from_pem;
 use utils::ecdsa::*;
 use utils::zk::*;
 
-declare_id!("EBV7xychBtcjcDfQbXtTpZE8zyrL8BP9VhG7Fb5zaMab");
+declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {

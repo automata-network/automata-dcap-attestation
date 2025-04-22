@@ -1,5 +1,6 @@
 pub mod ecdsa;
 pub mod pck;
+pub mod zk;
 
 use x509_cert::certificate::TbsCertificateInner;
 
