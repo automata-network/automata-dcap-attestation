@@ -6,7 +6,7 @@ use async_proving::bonsai_prove_non_blocking;
 
 use anyhow::Result;
 use borsh::{BorshDeserialize, BorshSerialize};
-use methods::ECDSA_SEPC256R1_GUEST_ELF;
+use ecdsa_sepc256r1_methods::ECDSA_SEPC256R1_GUEST_ELF;
 use risc0_zkvm::{ExecutorEnv, InnerReceipt, ProverOpts, compute_image_id, default_prover};
 
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -55,7 +55,7 @@ pub fn verify(
     Ok((image_id.into(), output, seal))
 }
 
-pub async fn verify_unblock(
+pub async fn verify_non_blocking(
     input_digest: [u8; 32],
     input_signature: [u8; 64],
     issuer_raw_der: Vec<u8>,
