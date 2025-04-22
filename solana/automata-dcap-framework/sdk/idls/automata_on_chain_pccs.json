@@ -1,5 +1,5 @@
 {
-  "address": "2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj",
+  "address": "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt",
   "metadata": {
     "name": "automata_on_chain_pccs",
     "version": "0.1.0",
@@ -532,6 +532,25 @@
               "The data of the enclave identity"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
           }
         ]
       }
@@ -641,6 +660,25 @@
             }
           },
           {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
+          },
+          {
             "name": "cert_data",
             "docs": [
               "Certificate data"
@@ -718,6 +756,25 @@
               "Certificate data"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
           }
         ]
       }
@@ -787,6 +844,25 @@
               "The data of the TCB"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
           }
         ]
       }

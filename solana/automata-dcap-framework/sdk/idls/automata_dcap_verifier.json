@@ -1,5 +1,5 @@
 {
-  "address": "BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm",
+  "address": "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC",
   "metadata": {
     "name": "automata_dcap_verifier",
     "version": "0.1.0",
@@ -394,38 +394,38 @@
             "program": {
               "kind": "const",
               "value": [
-                154,
-                154,
-                179,
-                37,
-                25,
-                98,
-                45,
-                4,
-                152,
-                100,
-                149,
-                129,
-                119,
-                227,
-                211,
-                232,
-                104,
-                220,
+                221,
+                5,
+                32,
+                160,
+                177,
+                69,
+                180,
+                185,
+                223,
+                151,
                 21,
-                226,
-                78,
+                32,
+                139,
+                75,
+                53,
+                14,
+                26,
+                101,
+                137,
+                147,
+                140,
+                232,
+                241,
                 55,
-                246,
-                155,
-                83,
-                108,
-                193,
-                81,
-                100,
-                9,
-                100,
-                200
+                79,
+                157,
+                85,
+                174,
+                227,
+                234,
+                187,
+                99
               ]
             }
           }
@@ -665,6 +665,25 @@
               "The data of the enclave identity"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
           }
         ]
       }
@@ -743,6 +762,25 @@
               "The data of the TCB"
             ],
             "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Boolean indicating whether it is verified"
+            ],
+            "type": "bool"
           }
         ]
       }
