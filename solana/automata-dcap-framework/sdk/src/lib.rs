@@ -1,47 +1,80 @@
-mod pccs_client;
-mod verifier_client;
 mod models;
+mod pccs_client;
 mod utils;
+mod verifier_client;
 
 use std::ops::Deref;
 
-use anchor_client::solana_sdk::{signature::Signature, signer::Signer};
+use anchor_client::{
+    Client, Cluster,
+    solana_sdk::{commitment_config::CommitmentConfig, signature::Signature, signer::Signer},
+};
 use anchor_lang::prelude::Pubkey;
 use automata_dcap_verifier::types::ZkvmSelector;
-pub use pccs_client::*;
-pub use verifier_client::*;
 pub use models::*;
+pub use pccs_client::*;
 pub use utils::*;
+pub use verifier_client::*;
 
-/// Verify a quote and return the verified output address and the signatures.
-pub async fn verify_quote<S: Clone + Deref<Target = impl Signer>>(
-    zkvm_selector: ZkvmSelector,
-    zkvm_verifier_program: Pubkey,
-    bytes: &[u8],
-    signer:  S
-) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
+pub struct Sdk<S> {
+    provider: Client<S>,
+    verifier_client: VerifierClient<S>,
+    pccs_client: PccsClient<S>,
+    signer: S,
+}
 
-    let verifier_client = VerifierClient::new(signer)?;
+impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
+    pub fn new(signer: S, cluster: Option<Cluster>) -> Self {
+        let cluster = cluster.unwrap_or(Cluster::Localnet);
+        let provider =
+            Client::new_with_options(cluster, signer.clone(), CommitmentConfig::confirmed());
+        let verifier_client = VerifierClient::new(&provider).unwrap();
+        let pccs_client = PccsClient::new(&provider).unwrap();
+        Self {
+            provider,
+            verifier_client,
+            pccs_client,
+            signer,
+        }
+    }
 
-    let quote_buffer_pubkey = verifier_client.init_quote_buffer(
-        bytes.len() as u32,
-    ).await?;
+    pub fn anchor_provider(&self) -> &Client<S> {
+        &self.provider
+    }
 
-    verifier_client.upload_chunks(
-        quote_buffer_pubkey,
-        bytes,
-        512,
-    ).await?;
+    pub fn verifier_client(&self) -> &VerifierClient<S> {
+        &self.verifier_client
+    }
 
-    let signatures = verifier_client.verify_quote(
-        zkvm_selector,
-        zkvm_verifier_program,
-        quote_buffer_pubkey,
-    ).await?;
+    pub fn pccs_client(&self) -> &PccsClient<S> {
+        &self.pccs_client
+    }
 
-    let verified_output_pubkey = verifier_client.get_verified_output_pubkey(
-        quote_buffer_pubkey,
-    ).await?;
+    pub async fn verify_quote(
+        &self,
+        zkvm_selector: ZkvmSelector,
+        zkvm_verifier_program: Pubkey,
+        bytes: &[u8],
+    ) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
+        let quote_buffer_pubkey = self
+            .verifier_client
+            .init_quote_buffer(bytes.len() as u32)
+            .await?;
 
-    Ok((verified_output_pubkey, signatures))
+        self.verifier_client
+            .upload_chunks(quote_buffer_pubkey, bytes, 512)
+            .await?;
+
+        let verified_output_pubkey = self
+            .verifier_client
+            .get_verified_output_pubkey(quote_buffer_pubkey)
+            .await?;
+
+        let signatures = self
+            .verifier_client
+            .verify_quote(quote_buffer_pubkey, zkvm_selector, zkvm_verifier_program)
+            .await?;
+
+        Ok((verified_output_pubkey, signatures))
+    }
 }

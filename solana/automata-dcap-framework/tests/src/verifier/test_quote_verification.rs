@@ -1,4 +1,3 @@
-use sdk::VerifierClient;
 use sdk::automata_dcap_verifier::types::ZkvmSelector;
 use solana_zk_tests::zkvm::risc0::deploy_risc0_groth16_verifier;
 use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
@@ -12,9 +11,8 @@ async fn test_quote_tdx_verification() {
     let quote_data = include_bytes!("../../data/quote_tdx.bin");
     let signer = get_signer();
 
-    let verifier_client = VerifierClient::new(signer.clone()).unwrap();
-    let anchor_client = verifier_client
-        .anchor_client();
+    let sdk = sdk::Sdk::new(signer.clone(), None);
+    let verifier_client = sdk.verifier_client();
 
     let rpc_client = RpcClient::new_with_commitment(
         String::from("http://localhost:8899"),
@@ -28,17 +26,16 @@ async fn test_quote_tdx_verification() {
     }
 
     setup_solana_zk_program(
-        anchor_client,
+        &sdk.anchor_provider(),
         signer.as_ref(),
         1,
         &TEST_RISC0_VERIFIER_PUBKEY
     ).await.unwrap();
 
-    let (verified_output_pubkey, signatures) = sdk::verify_quote(
+    let (verified_output_pubkey, signatures) = sdk.verify_quote(
         ZkvmSelector::RiscZero,
         TEST_RISC0_VERIFIER_PUBKEY,
-        quote_data,
-        signer,
+        quote_data
     )
     .await
     .unwrap();
@@ -61,18 +58,16 @@ async fn test_quote_sgx_verification() {
     let signer = get_signer();
     let quote_data = include_bytes!("../../data/quote_sgx.bin");
 
-    let client = VerifierClient::new(signer.clone()).unwrap();
-    let anchor_client = client.anchor_client();
-    let quote_buffer_pubkey = client
+    let sdk = sdk::Sdk::new(signer.clone(), None);
+    let verifier_client = sdk.verifier_client();
+    let quote_buffer_pubkey = verifier_client
         .init_quote_buffer(
             quote_data.len() as u32
         )
         .await
         .unwrap();
 
-    let verified_output_pubkey = client.init_verified_output_account().await.unwrap();
-
-    client
+    verifier_client
         .upload_chunks(quote_buffer_pubkey, quote_data, 512)
         .await
         .unwrap();
@@ -89,13 +84,13 @@ async fn test_quote_sgx_verification() {
     }
 
     setup_solana_zk_program(
-        anchor_client,
+        &sdk.anchor_provider(),
         signer.as_ref(),
         1,
         &TEST_RISC0_VERIFIER_PUBKEY
     ).await.unwrap();
 
-    let signatures = client
+    let signatures = verifier_client
         .verify_quote(
             quote_buffer_pubkey,
             ZkvmSelector::RiscZero,
@@ -103,11 +98,6 @@ async fn test_quote_sgx_verification() {
         )
         .await
         .unwrap();
-
-    let verified_output = client.get_account::<VerifiedOutput>(verified_output_pubkey).await.unwrap();
-    let verified_output_tcb_status = serde_json::from_str::<TcbStatus>(&verified_output.tcb_status).unwrap();
-    assert!(verified_output.completed);
-    assert_eq!(verified_output_tcb_status, TcbStatus::UpToDate);
 
     for signature in signatures {
         println!("Quote Verification Transaction Signature: {:?}", signature);

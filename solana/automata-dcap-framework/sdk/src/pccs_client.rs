@@ -3,7 +3,7 @@ use std::ops::Deref;
 use anchor_client::{
     Client, Program,
     solana_sdk::{
-        commitment_config::CommitmentConfig, compute_budget::ComputeBudgetInstruction,
+        compute_budget::ComputeBudgetInstruction,
         signature::Keypair, signer::Signer,
     },
 };
@@ -33,33 +33,12 @@ pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
 pub struct PccsClient<S>
 {
     program: Program<S>,
-    anchor_client: Client<S>
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
-    /// Creates a new PCCS client instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `signer` - The signer that will pay for transactions and be used as the authority
-    ///
-    /// # Returns
-    ///
-    /// * `Result<Self>` - A new PCCS client or an error
-    pub fn new(signer: S) -> anyhow::Result<Self> {
-        let client = Client::new_with_options(
-            anchor_client::Cluster::Localnet,
-            signer,
-            CommitmentConfig::confirmed(),
-        );
-
+    pub fn new(client: &Client<S>) -> anyhow::Result<Self> {
         let program = client.program(automata_on_chain_pccs::ID)?;
-
-        Ok(Self { program, anchor_client: client })
-    }
-
-    pub fn anchor_client(&self) -> &Client<S> {
-        &self.anchor_client
+        Ok(Self { program })
     }
 
     /// Initializes a new data buffer account on-chain for storing certificates or other attestation data.
@@ -231,7 +210,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 .account::<automata_on_chain_pccs::accounts::DataBuffer>(data_buffer_pubkey)
                 .await?;
             let root_der = data_buffer_account.data;
-            let (image_id, journal_bytes, mut groth16_seal) =
+            let (_image_id, _journal_bytes, mut groth16_seal) =
                 crate::utils::zk::get_x509_ecdsa_verify_proof(
                     root_der.as_slice(),
                     root_der.as_slice(),
