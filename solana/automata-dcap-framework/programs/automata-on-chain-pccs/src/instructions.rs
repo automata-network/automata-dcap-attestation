@@ -12,7 +12,6 @@ pub const TCB_INFO_MAX_SIZE: usize = 8096;
 #[derive(Accounts)]
 #[instruction(
     total_size: u32,
-    num_chunks: u8,
 )]
 pub struct InitDataBuffer<'info> {
     /// The signer who will own this quote buffer.
@@ -35,7 +34,6 @@ pub struct InitDataBuffer<'info> {
 /// An instruction to add a chunk of data to the data buffer.
 #[derive(Accounts)]
 #[instruction(
-    chunk_index: u8,
     chunk_data: Vec<u8>,
     offset: u32,
 )]

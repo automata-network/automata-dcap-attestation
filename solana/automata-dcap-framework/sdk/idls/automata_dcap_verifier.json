@@ -1,5 +1,5 @@
 {
-  "address": "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC",
+  "address": "BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm",
   "metadata": {
     "name": "automata_dcap_verifier",
     "version": "0.1.0",
@@ -31,10 +31,6 @@
         }
       ],
       "args": [
-        {
-          "name": "chunk_index",
-          "type": "u8"
-        },
         {
           "name": "chunk_data",
           "type": "bytes"
@@ -89,10 +85,6 @@
         {
           "name": "total_size",
           "type": "u32"
-        },
-        {
-          "name": "num_chunks",
-          "type": "u8"
         }
       ]
     },
@@ -394,38 +386,38 @@
             "program": {
               "kind": "const",
               "value": [
-                221,
-                5,
-                32,
-                160,
-                177,
-                69,
-                180,
-                185,
-                223,
-                151,
-                21,
-                32,
-                139,
-                75,
-                53,
-                14,
-                26,
-                101,
-                137,
-                147,
-                140,
-                232,
-                241,
-                55,
-                79,
-                157,
-                85,
-                174,
+                154,
+                154,
+                179,
+                37,
+                25,
+                98,
+                45,
+                4,
+                152,
+                100,
+                149,
+                129,
+                119,
                 227,
-                234,
-                187,
-                99
+                211,
+                232,
+                104,
+                220,
+                21,
+                226,
+                78,
+                55,
+                246,
+                155,
+                83,
+                108,
+                193,
+                81,
+                100,
+                9,
+                100,
+                200
               ]
             }
           }
@@ -620,10 +612,6 @@
           {
             "name": "total_size",
             "type": "u32"
-          },
-          {
-            "name": "num_chunks",
-            "type": "u8"
           },
           {
             "name": "complete",

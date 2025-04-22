@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 pub struct DataBuffer {
     pub owner: Pubkey,
     pub total_size: u32,
-    pub num_chunks: u8,
     pub complete: bool,
     pub data: Vec<u8>,
 }

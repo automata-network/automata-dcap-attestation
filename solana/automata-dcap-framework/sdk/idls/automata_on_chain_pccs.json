@@ -1,5 +1,5 @@
 {
-  "address": "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt",
+  "address": "2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj",
   "metadata": {
     "name": "automata_on_chain_pccs",
     "version": "0.1.0",
@@ -31,10 +31,6 @@
         }
       ],
       "args": [
-        {
-          "name": "chunk_index",
-          "type": "u8"
-        },
         {
           "name": "chunk_data",
           "type": "bytes"
@@ -87,10 +83,6 @@
         {
           "name": "total_size",
           "type": "u32"
-        },
-        {
-          "name": "num_chunks",
-          "type": "u8"
         }
       ]
     },
@@ -486,10 +478,6 @@
           },
           {
             "name": "num_chunks",
-            "type": "u8"
-          },
-          {
-            "name": "chunks_received",
             "type": "u8"
           },
           {

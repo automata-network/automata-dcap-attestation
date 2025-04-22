@@ -77,7 +77,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     pub async fn init_quote_buffer(
         &self,
         total_size: u32,
-        num_chunks: u8,
     ) -> anyhow::Result<Pubkey> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
@@ -92,7 +91,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             })
             .args(args::InitQuoteBuffer {
                 total_size,
-                num_chunks,
             })
             .signer(quote_buffer_keypair)
             .send()
@@ -121,7 +119,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         chunk_size: usize,
     ) -> anyhow::Result<()> {
         for (i, chunk) in data.chunks(chunk_size).enumerate() {
-            let chunk_index = i as u8;
             let offset = i as u32 * chunk_size as u32;
             let chunk_data = chunk.to_vec();
 
@@ -133,7 +130,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                     data_buffer: quote_buffer_pubkey,
                 })
                 .args(args::AddQuoteChunk {
-                    chunk_index,
                     offset,
                     chunk_data,
                 })

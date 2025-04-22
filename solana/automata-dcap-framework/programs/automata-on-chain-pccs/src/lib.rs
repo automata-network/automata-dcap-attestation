@@ -7,7 +7,7 @@ pub mod instructions;
 pub mod state;
 pub mod event;
 
-declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
+declare_id!("2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj");
 
 use errors::*;
 use instructions::*;
@@ -23,21 +23,17 @@ pub mod automata_on_chain_pccs {
     pub fn init_data_buffer(
         ctx: Context<InitDataBuffer>,
         total_size: u32,
-        num_chunks: u8,
     ) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
 
         data_buffer.owner = *ctx.accounts.owner.key;
         data_buffer.total_size = total_size;
-        data_buffer.num_chunks = num_chunks;
-        data_buffer.chunks_received = 0;
         data_buffer.complete = false;
         data_buffer.data = vec![0; total_size as usize];
 
         msg!(
-            "Data buffer initialized with total size: {}, num chunks: {}",
-            total_size,
-            num_chunks
+            "Data buffer initialized with total size: {}",
+            total_size
         );
 
         Ok(())
@@ -45,7 +41,6 @@ pub mod automata_on_chain_pccs {
 
     pub fn add_data_chunk(
         ctx: Context<AddDataChunk>,
-        chunk_index: u8,
         chunk_data: Vec<u8>,
         offset: u32,
     ) -> Result<()> {
@@ -57,10 +52,6 @@ pub mod automata_on_chain_pccs {
         );
         require!(!data_buffer.complete, PccsError::BufferAlreadyComplete);
         require!(
-            chunk_index < data_buffer.num_chunks,
-            PccsError::InvalidChunkIndex
-        );
-        require!(
             (offset as usize + chunk_data.len()) as u32 <= data_buffer.total_size,
             PccsError::ChunkOutOfBounds
         );
@@ -69,13 +60,12 @@ pub mod automata_on_chain_pccs {
         let end_index = start_index + chunk_data.len();
 
         data_buffer.data[start_index..end_index].copy_from_slice(&chunk_data);
-        data_buffer.chunks_received += 1;
-        data_buffer.complete = data_buffer.chunks_received >= data_buffer.num_chunks;
+        data_buffer.complete = offset + chunk_data.len() as u32 == data_buffer.total_size;
 
         msg!(
-            "Data chunk added to buffer at offset: {}, total received: {}",
+            "Data chunk added to buffer at offset: {}, total bytes received until now: {}",
             offset,
-            data_buffer.chunks_received
+            data_buffer.data.len()
         );
 
         Ok(())

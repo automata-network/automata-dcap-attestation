@@ -15,8 +15,7 @@ async fn test_tcb_info_upsert_v3_sgx() {
 
 
     let client = sdk::PccsClient::new(get_signer()).unwrap();
-    let num_chunks = sdk::get_num_chunks(tcb_info_data.len(), 512);
-    let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32, num_chunks).await.unwrap();
+    let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &tcb_info_data, 512).await.unwrap();
 
     let tcb_type = TcbType::Sgx;
@@ -45,8 +44,7 @@ async fn test_tcb_info_upsert_v3_tdx() {
 
 
     let client = sdk::PccsClient::new(get_signer()).unwrap();
-    let num_chunks = sdk::get_num_chunks(tcb_info_data.len(), 512);
-    let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32, num_chunks).await.unwrap();
+    let data_buffer_pubkey = client.init_data_buffer(tcb_info_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &tcb_info_data, 512).await.unwrap();
 
     let tcb_type = TcbType::Tdx;
