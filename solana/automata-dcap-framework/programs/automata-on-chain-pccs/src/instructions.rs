@@ -3,7 +3,7 @@ use crate::state::{
     CertificateAuthority, DataBuffer, EnclaveIdentity, EnclaveIdentityType, PckCertificate,
     PcsCertificate, TcbInfo, TcbType,
 };
-use crate::internal::zk::ZkvmSelector;
+use crate::types::zk::ZkvmSelector;
 
 use anchor_lang::prelude::*;
 use solana_zk::program::SolanaZk;
