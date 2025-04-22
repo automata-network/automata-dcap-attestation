@@ -58,12 +58,11 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// # Arguments
     ///
     /// * `total_size` - The total size in bytes of the data to be stored
-    /// * `num_chunks` - The number of chunks the data will be split into
     ///
     /// # Returns
     ///
     /// * `Result<Pubkey>` - The public key of the created data buffer account
-    pub async fn init_data_buffer(&self, total_size: u32, num_chunks: u8) -> anyhow::Result<Pubkey> {
+    pub async fn init_data_buffer(&self, total_size: u32) -> anyhow::Result<Pubkey> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
 
@@ -77,7 +76,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             })
             .args(args::InitDataBuffer {
                 total_size,
-                num_chunks,
             })
             .signer(quote_buffer_keypair)
             .send()
@@ -108,7 +106,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     ) -> anyhow::Result<()> {
 
         for (i, chunk) in data.chunks(chunk_size).enumerate() {
-            let chunk_index = i as u8;
             let offset = i as u32 * chunk_size as u32;
             let chunk_data = chunk.to_vec();
 
@@ -120,7 +117,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                     data_buffer: quote_buffer_pubkey,
                 })
                 .args(args::AddDataChunk {
-                    chunk_index,
                     offset,
                     chunk_data,
                 })
