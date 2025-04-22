@@ -177,7 +177,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         let mut signatures = Vec::new();
 
         // Verify quote integrity
-        let tx = self.verify_quote_integrity(quote_buffer_pubkey, &quote).await?;
+        let tx = self
+            .verify_quote_integrity(quote_buffer_pubkey, &quote)
+            .await?;
         signatures.push(tx);
 
         // Verify ISV signature
@@ -247,6 +249,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .program
             .request()
             .instruction(secp256r1_instruction_for_qe_report_body)
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
             .accounts(accounts::VerifyDcapQuoteIntegrity {
                 owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,

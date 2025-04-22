@@ -6,8 +6,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-automata-on-chain-pccs = "H2w3Z4HMFws4VswB812AA5RvgaESGHTGWffSPRvcAoJn"
-automata_dcap_verifier = "CfZXhDGoTxezVjEJ5eWr4Wu8GFpzqJsMAyzkevWupTBV"
+automata-on-chain-pccs = "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt"
+automata_dcap_verifier = "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC"
 
 [registry]
 url = "https://api.apr.dev"

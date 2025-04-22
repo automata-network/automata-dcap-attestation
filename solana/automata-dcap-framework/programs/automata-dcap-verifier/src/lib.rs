@@ -11,8 +11,10 @@ use errors::*;
 use instructions::*;
 use utils::*;
 use zerocopy::AsBytes;
+use p256::ecdsa::VerifyingKey;
+use p256::ecdsa::Signature;
 
-declare_id!("BQWbxahJLUPT8TZfK85UQgMmMBadENeCWksEZFsqLxdm");
+declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {
@@ -23,6 +25,7 @@ pub mod automata_dcap_verifier {
     use anchor_lang::solana_program::instruction::Instruction;
     use dcap_rs::types::tcb_info::TcbInfo;
     use dcap_rs::verify_tcb_status;
+    use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
 
     use super::*;
 
@@ -97,8 +100,37 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
+        // Extract the pck certificate pubkey and the qe report signature to verify
+        let pem_chain = quote.signature.cert_data.cert_data;
+        let pck_cert = load_first_cert_from_pem_data(&pem_chain).map_err(|e| {
+            msg!("Error loading pck cert: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
+        let pck_pk_bytes = pck_cert
+            .tbs_certificate
+            .subject_public_key_info
+            .subject_public_key
+            .as_bytes()
+            .unwrap_or_default();
+
+        let pck_pkey = VerifyingKey::from_sec1_bytes(pck_pk_bytes).unwrap();
+        let compressed_pck_pkey = pck_pkey.to_encoded_point(true).to_bytes();
+
+        let signature_bytes = quote.signature.qe_report_signature;
+        let signature = Signature::from_slice(signature_bytes).unwrap();
+
+        let normalized_siganture = match signature.normalize_s() {
+            Some(s) => s.to_bytes(),
+            None => signature.to_bytes()
+        }.to_vec();
+
         let ix: Instruction = load_instruction_at_checked(0, &ctx.accounts.instructions_sysvar)?;
-        verify_secp256r1_program_instruction_fields(&ix, &quote.signature.qe_report_body.as_bytes())?;
+        verify_secp256r1_program_instruction_fields(
+            &ix,
+            &quote.signature.qe_report_body.as_bytes(),
+            &compressed_pck_pkey,
+            &normalized_siganture,
+        )?;
 
         quote.signature.verify_qe_report().map_err(|e| {
             msg!("Error verifying quote's qe report: {}", e);
@@ -120,6 +152,23 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
+        // Extract the quote attestation key and signature to verify
+        let unprefixed_attestation_key = quote.signature.attestation_pub_key;
+        let mut prefixed_attestation_key: Vec<u8> = vec![0x04];
+        prefixed_attestation_key.extend_from_slice(&unprefixed_attestation_key);
+        let attestation_key = VerifyingKey::from_sec1_bytes(&prefixed_attestation_key)
+            .unwrap();
+        let compressed_attestation_key = attestation_key.to_encoded_point(true).to_bytes();
+
+        let signature = Signature::from_slice(
+            &quote.signature.isv_signature
+        ).unwrap();
+
+        let normalized_siganture = match signature.normalize_s() {
+            Some(s) => s.to_bytes(),
+            None => signature.to_bytes()
+        }.to_vec();
+
         let header_bytes = quote.header.as_bytes();
         let body_bytes = quote.body.as_bytes();
         let mut data = Vec::with_capacity(header_bytes.len() + body_bytes.len());
@@ -127,7 +176,12 @@ pub mod automata_dcap_verifier {
         data.extend_from_slice(body_bytes);
 
         let ix: Instruction = load_instruction_at_checked(0, &ctx.accounts.instructions_sysvar)?;
-        verify_secp256r1_program_instruction_fields(&ix, &data)?;
+        verify_secp256r1_program_instruction_fields(
+            &ix,
+            &data,
+            &compressed_attestation_key,
+            &normalized_siganture,
+        )?;
 
         let verified_output = &mut ctx.accounts.verified_output;
         verified_output.isv_signature_verified = true;
