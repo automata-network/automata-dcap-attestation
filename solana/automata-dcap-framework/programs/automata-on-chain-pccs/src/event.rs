@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{CertificateAuthority, EnclaveIdentityType, TcbType};
+use crate::types::{CertificateAuthority, EnclaveIdentityType, TcbType};
 
 
 #[event]
