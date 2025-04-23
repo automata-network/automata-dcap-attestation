@@ -1,5 +1,7 @@
 use crate::pccs::get_signer;
+use crate::TEST_RISC0_VERIFIER_PUBKEY;
 use sdk::EnclaveIdentityType;
+use sdk::automata_on_chain_pccs::types::ZkvmSelector;
 
 #[tokio::test]
 async fn test_enclave_identity_upsert() {
@@ -14,6 +16,8 @@ async fn test_enclave_identity_upsert() {
         EnclaveIdentityType::TdQe,
         2,
         data_buffer_pubkey,
+        ZkvmSelector::RiscZero,
+        TEST_RISC0_VERIFIER_PUBKEY
     ).await.unwrap();
 
     let enclave_identity = client.get_enclave_identity(
