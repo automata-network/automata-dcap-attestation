@@ -37,6 +37,30 @@ pub async fn get_x509_ecdsa_verify_proof(
     ))
 }
 
+/// Call this method for JSON collaterals
+pub async fn get_prehash_ecdsa_verify_proof(
+    prehash: [u8; 32],
+    signature: [u8; 64],
+    issuer_der: &[u8]
+) -> Result<(
+    [u8; 32], // image_id
+    Vec<u8>,  // journal_bytes
+    Vec<u8>,  // Groth16 Seal
+)> {
+
+    let (image_id, journal, seal) = verify_non_blocking(
+        prehash, 
+        signature, 
+        issuer_der.to_vec()
+    ).await?;
+
+    Ok((
+        image_id,
+        journal,
+        seal
+    ))
+}
+
 fn process_sig(der_sig: &[u8]) -> [u8; 64] {
     let decoded = parse_der(der_sig).unwrap().1.content;
     

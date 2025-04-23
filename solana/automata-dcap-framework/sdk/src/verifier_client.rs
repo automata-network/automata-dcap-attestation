@@ -25,7 +25,6 @@ use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use x509_cert::der::Decode;
 use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
 // use x509_verify::VerifyingKey;
-use solana_zk_client::{ID as SOLANA_ZK_PROGRAM_ID, derive_zkvm_verifier_pda};
 use zerocopy::AsBytes;
 
 use crate::{
