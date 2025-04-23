@@ -25,7 +25,8 @@ pub mod automata_on_chain_pccs {
     use std::str::FromStr;
 
     use crate::{
-        instructions::UpsertPckCertificate, internal::certs::get_certificate_tbs_and_digest,
+        instructions::UpsertPckCertificate,
+        internal::certs::{get_certificate_tbs_and_digest, get_cn_from_rdn_sequence},
     };
     use sha2::{Digest, Sha256};
 
@@ -90,14 +91,10 @@ pub mod automata_on_chain_pccs {
 
         // Check ca_type
         // Extract issuer common name from the certificate
-        let pck_issuer_common_name = pck_tbs.issuer.to_string();
-        msg!("PCK Issuer common name: {}", pck_issuer_common_name);
+        let pck_issuer_common_name = get_cn_from_rdn_sequence(&pck_tbs.issuer).unwrap();
         let pck_ca_type = CertificateAuthority::from_str(&pck_issuer_common_name)
             .map_err(|_| PccsError::InvalidSubject)?;
-        require!(
-            pck_ca_type == ca_type,
-            PccsError::InvalidSubject,
-        );
+        require!(pck_ca_type == ca_type, PccsError::InvalidSubject,);
 
         // TODO: Check if the current PCK Certificate is still valid (unexpired and not revoked)
 
@@ -217,22 +214,18 @@ pub mod automata_on_chain_pccs {
         ca_type: CertificateAuthority,
         is_crl: bool,
         zkvm_selector: zk::ZkvmSelector,
-        proof: Vec<u8>
+        proof: Vec<u8>,
     ) -> Result<()> {
         let pcs_certificate = &mut ctx.accounts.pcs_certificate;
         let cert_data = ctx.accounts.data_buffer.data.clone();
 
         let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(&cert_data);
-        
+
         // check subject common name matches with ca_type
-        let subject_common_name = subject_tbs.subject.to_string();
-        msg!("Subject common name: {}", subject_common_name);
+        let subject_common_name = get_cn_from_rdn_sequence(&subject_tbs.subject).unwrap();
         let subject_ca_type = CertificateAuthority::from_str(&subject_common_name)
             .map_err(|_| PccsError::InvalidSubject)?;
-        require!(
-            subject_ca_type == ca_type,
-            PccsError::InvalidSubject,
-        );
+        require!(subject_ca_type == ca_type, PccsError::InvalidSubject,);
 
         // TODO: check if the CA or CRL is unexpired (CA certificates are not revoked)
 
@@ -284,7 +277,7 @@ pub mod automata_on_chain_pccs {
         id: EnclaveIdentityType,
         version: u8,
         zkvm_selector: zk::ZkvmSelector,
-        proof: Vec<u8>
+        proof: Vec<u8>,
     ) -> Result<()> {
         let enclave_identity = &mut ctx.accounts.enclave_identity;
         let data_buffer = &ctx.accounts.data_buffer;
@@ -345,7 +338,7 @@ pub mod automata_on_chain_pccs {
         version: u8,
         fmspc: [u8; 6],
         zkvm_selector: zk::ZkvmSelector,
-        proof: Vec<u8>
+        proof: Vec<u8>,
     ) -> Result<()> {
         let tcb_info = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
@@ -355,7 +348,7 @@ pub mod automata_on_chain_pccs {
         // let tcb_info_digest: [u8; 32] = Sha256::digest(tcb_info_str.as_bytes()).into();
 
         // // TODO: Check the given TCB Info is unexpired
-        
+
         // let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
         // let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 

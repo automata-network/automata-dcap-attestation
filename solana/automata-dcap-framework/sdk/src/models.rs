@@ -15,8 +15,8 @@ impl FromStr for CertificateAuthority {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Intel SGX Root CA" => Ok(CertificateAuthority::ROOT),
-            "Intel SGX Platform CA" => Ok(CertificateAuthority::PLATFORM),
-            "Intel SGX Processor CA" => Ok(CertificateAuthority::PROCESSOR),
+            "Intel SGX PCK Platform CA" => Ok(CertificateAuthority::PLATFORM),
+            "Intel SGX PCK Processor CA" => Ok(CertificateAuthority::PROCESSOR),
             "Intel SGX TCB Signing" => Ok(CertificateAuthority::SIGNING),
             _ => Err(String::from("Unknown Issuer CA")),
         }
@@ -27,8 +27,8 @@ impl CertificateAuthority {
     pub fn common_name(&self) -> &'static str {
         match self {
             CertificateAuthority::ROOT => "Intel SGX Root CA",
-            CertificateAuthority::PLATFORM => "Intel SGX Platform CA",
-            CertificateAuthority::PROCESSOR => "Intel SGX Processor CA",
+            CertificateAuthority::PLATFORM => "Intel SGX PCK Platform CA",
+            CertificateAuthority::PROCESSOR => "Intel SGX PCK Processor CA",
             CertificateAuthority::SIGNING => "Intel SGX TCB Signing",
         }
     }

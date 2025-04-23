@@ -3,10 +3,7 @@ use std::str::FromStr;
 
 use anchor_client::{
     Client, Program,
-    solana_sdk::{
-        compute_budget::ComputeBudgetInstruction,
-        signature::Keypair, signer::Signer,
-    },
+    solana_sdk::{compute_budget::ComputeBudgetInstruction, signature::Keypair, signer::Signer},
 };
 use anchor_lang::{declare_program, prelude::Pubkey};
 
@@ -14,7 +11,7 @@ declare_program!(automata_on_chain_pccs);
 use automata_on_chain_pccs::types::ZkvmSelector;
 use automata_on_chain_pccs::{client::accounts, client::args};
 
-use crate::{get_certificate_tbs_and_digest, CertificateAuthority, EnclaveIdentityType, TcbType};
+use crate::{CertificateAuthority, EnclaveIdentityType, TcbType, get_certificate_tbs_and_digest};
 
 /// The Solana program ID for the PCCS (Provisioning Certificate Caching Service) on-chain program.
 pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
@@ -68,9 +65,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 data_buffer: quote_buffer_pubkey,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
-            .args(args::InitDataBuffer {
-                total_size,
-            })
+            .args(args::InitDataBuffer { total_size })
             .signer(quote_buffer_keypair)
             .send()
             .await?;
@@ -109,16 +104,12 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                     owner: self.program.payer(),
                     data_buffer: quote_buffer_pubkey,
                 })
-                .args(args::AddDataChunk {
-                    offset,
-                    chunk_data,
-                })
+                .args(args::AddDataChunk { offset, chunk_data })
                 .send()
                 .await?;
         }
         Ok(())
     }
-
 
     /// Creates or updates a PCK (Provisioning Certification Key) certificate on-chain.
     ///
@@ -143,7 +134,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         tcbm: String,
         data_buffer_pubkey: Pubkey,
         zkvm_selector: ZkvmSelector,
-        zkvm_verifier_program: Pubkey
+        zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<()> {
         let pck_certificate_pda = Pubkey::find_program_address(
             &[
@@ -165,15 +156,19 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         let pck_tbs_issuer_common_name = pck_tbs.issuer.to_string();
         println!("PCK Issuer Common Name: {}", pck_tbs_issuer_common_name);
 
-        let (issuer_pubkey, issuer_account) = self.get_pcs_certificate(
-            CertificateAuthority::from_str(&pck_tbs_issuer_common_name).unwrap(), 
-            false
-        ).await?;
-        
-        let (_image_id, _journal_bytes, mut groth16_seal) = crate::utils::zk::get_x509_ecdsa_verify_proof(
-            pck_data.as_slice(),
-            issuer_account.cert_data.as_slice(),
-        ).await?;
+        let (issuer_pubkey, issuer_account) = self
+            .get_pcs_certificate(
+                CertificateAuthority::from_str(&pck_tbs_issuer_common_name).unwrap(),
+                false,
+            )
+            .await?;
+
+        let (_image_id, _journal_bytes, mut groth16_seal) =
+            crate::utils::zk::get_x509_ecdsa_verify_proof(
+                pck_data.as_slice(),
+                issuer_account.cert_data.as_slice(),
+            )
+            .await?;
 
         // negate risczero pi_a
         let mut pi_a: [u8; 64] = [0; 64];
@@ -193,8 +188,11 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
             .args(args::UpsertPckCertificate {
-                ca_type: CertificateAuthority::from_str(&pck_tbs_issuer_common_name).unwrap().into(),
+                ca_type: CertificateAuthority::from_str(&pck_tbs_issuer_common_name)
+                    .unwrap()
+                    .into(),
                 qe_id,
                 pce_id,
                 tcbm,
@@ -248,10 +246,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 
         let (issuer_pubkey, issuer_der) = if ca_type == CertificateAuthority::ROOT && !is_crl {
             // if upserting the root, the issuer is itself
-            (
-                pcs_certificate_pda.0,
-                pcs_der.clone(),
-            )
+            (pcs_certificate_pda.0, pcs_der.clone())
         } else {
             let issuer_ca = if !is_crl {
                 CertificateAuthority::ROOT
@@ -259,15 +254,10 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 ca_type
             };
 
-            let (issuer_pubkey, issuer_account) = self.get_pcs_certificate(
-                issuer_ca,
-                false,
-            ).await?;
+            let (issuer_pubkey, issuer_account) =
+                self.get_pcs_certificate(issuer_ca, false).await?;
 
-            (
-                issuer_pubkey,
-                issuer_account.cert_data,
-            )
+            (issuer_pubkey, issuer_account.cert_data)
         };
 
         let (_image_id, _journal_bytes, mut groth16_seal) =
@@ -314,6 +304,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                     issuer_ca: issuer_pubkey,
                     system_program: anchor_client::solana_sdk::system_program::ID,
                 })
+                .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
                 .args(args::UpsertPcsCertificate {
                     ca_type: ca_type.into(),
                     is_crl,
@@ -348,7 +339,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         version: u8,
         data_buffer_pubkey: Pubkey,
         zkvm_selector: ZkvmSelector,
-        zkvm_verifier_program: Pubkey
+        zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<()> {
         let enclave_identity_pda = Pubkey::find_program_address(
             &[
@@ -359,10 +350,9 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             &self.program.id(),
         );
 
-        let (issuer_pubkey, _) = self.get_pcs_certificate(
-            CertificateAuthority::SIGNING,
-            false,
-        ).await?;
+        let (issuer_pubkey, _) = self
+            .get_pcs_certificate(CertificateAuthority::SIGNING, false)
+            .await?;
 
         // TODO: ECDSA ZK Verification for Enclave Identity
 
@@ -377,6 +367,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
             .args(args::UpsertEnclaveIdentity {
                 id: id.into(),
                 version,
@@ -410,22 +401,21 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         fmspc: [u8; 6],
         data_buffer_pubkey: Pubkey,
         zkvm_selector: ZkvmSelector,
-        zkvm_verifier_program: Pubkey
+        zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<()> {
         let tcb_info_pda = Pubkey::find_program_address(
             &[
                 b"tcb_info",
                 tcb_type.common_name().as_bytes(),
                 &version.to_le_bytes()[..1],
-                &fmspc.as_bytes(),
+                &fmspc,
             ],
             &self.program.id(),
         );
 
-        let (issuer_pubkey, _) = self.get_pcs_certificate(
-            CertificateAuthority::SIGNING,
-            false,
-        ).await?;
+        let (issuer_pubkey, _) = self
+            .get_pcs_certificate(CertificateAuthority::SIGNING, false)
+            .await?;
 
         // TODO: ECDSA ZK Verification for Enclave Identity
 
@@ -440,6 +430,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
             .args(args::UpsertTcbInfo {
                 tcb_type: tcb_type.into(),
                 version,
@@ -451,7 +442,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             .await?;
         Ok(())
     }
-
 
     /// Retrieves enclave identity information from the blockchain.
     ///
@@ -505,10 +495,11 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 b"tcb_info",
                 tcb_type.common_name().as_bytes(),
                 &version.to_le_bytes()[..1],
-                &fmspc.as_bytes(),
+                &fmspc,
             ],
             &self.program.id(),
         );
+        println!("tcb_info_pda: {}", tcb_info_pda.0);
         let account = self
             .program
             .account::<automata_on_chain_pccs::accounts::TcbInfo>(tcb_info_pda.0)
@@ -563,10 +554,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         &self,
         ca_type: CertificateAuthority,
         is_crl: bool,
-    ) -> anyhow::Result<(
-        Pubkey,
-        automata_on_chain_pccs::accounts::PcsCertificate
-    )> {
+    ) -> anyhow::Result<(Pubkey, automata_on_chain_pccs::accounts::PcsCertificate)> {
         let pcs_certificate_pda = Pubkey::find_program_address(
             &[
                 b"pcs_cert",
@@ -575,8 +563,10 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             ],
             &self.program.id(),
         );
-        let account = self.program
-            .account::<automata_on_chain_pccs::accounts::PcsCertificate>(pcs_certificate_pda.0).await?;
+        let account = self
+            .program
+            .account::<automata_on_chain_pccs::accounts::PcsCertificate>(pcs_certificate_pda.0)
+            .await?;
         Ok((pcs_certificate_pda.0, account))
     }
 
