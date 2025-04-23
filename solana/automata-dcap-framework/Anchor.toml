@@ -18,8 +18,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "cargo test -- --nocapture"
-
-[[test.genesis]]
-address = "3rp28FnaSDUsrwDHiggLFY12dVKvRovNbSs8iAKEFKmv"
-program = "tests/test-programs/solana_zk.so"
-upgradeable = true

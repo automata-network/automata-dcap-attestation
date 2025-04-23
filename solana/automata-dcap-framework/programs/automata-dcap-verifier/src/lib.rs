@@ -17,11 +17,10 @@ declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 #[program]
 pub mod automata_dcap_verifier {
 
-    use anchor_lang::solana_program::instruction::Instruction;
-    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
-    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
-    use dcap_rs::types::quote::Quote;
-    use solana_zk::cpi::accounts::VerifyZkProof;
+    use anchor_lang::solana_program::{
+        instruction::Instruction,
+        program::invoke
+    };
     use solana_zk_client::verify::{
         risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
     };
@@ -345,29 +344,21 @@ pub mod automata_dcap_verifier {
         //     DcapVerifierError::InvalidZkvmProgram
         // );
 
-        // Next, we generate the context for the CPI call
-        let verifier_config_pda = &ctx.accounts.zkvm_verifier_config_pda;
-
-        // Prepare for CPI
-        let verify_cpi_accounts = VerifyZkProof {
-            zkvm_verifier_account: verifier_config_pda.to_account_info(),
-            zkvm_verifier_program: zkvm_verifier_program.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-        };
-        let verify_cpi_ctx = CpiContext::new(
-            ctx.accounts.solana_zk_program.to_account_info(),
-            verify_cpi_accounts,
+        // Create the context for the CPI call
+        let verify_cpi_context = CpiContext::new(
+            zkvm_verifier_program.to_account_info(),
+            vec![ctx.accounts.system_program.to_account_info()],
         );
 
-        // Invoke CPI
-        let cpi_result = solana_zk::cpi::verify_zkvm_proof(
-            verify_cpi_ctx,
-            zkvm_selector.to_u64(),
-            zk_verify_instruction_data,
-        );
-        if cpi_result.is_err() {
-            return Err(DcapVerifierError::InvalidZkProof.try_into().unwrap());
-        }
+        // Invoke CPI to the zkvm verifier program
+        invoke(
+            &Instruction {
+                program_id: zkvm_verifier_program.key().clone(),
+                accounts: verify_cpi_context.to_account_metas(None),
+                data: zk_verify_instruction_data
+            },
+            &[ctx.accounts.system_program.to_account_info()]
+        )?;
 
         Ok(())
     }

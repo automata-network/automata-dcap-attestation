@@ -3,7 +3,7 @@ use solana_zk_tests::zkvm::risc0::deploy_risc0_groth16_verifier;
 use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
 use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
 use crate::pccs::get_signer;
-use crate::{setup_solana_zk_program, TEST_RISC0_VERIFIER_PUBKEY};
+use crate::TEST_RISC0_VERIFIER_PUBKEY;
 
 #[tokio::test]
 
@@ -12,7 +12,7 @@ async fn test_quote_tdx_verification() {
     let signer = get_signer();
 
     let sdk = sdk::Sdk::new(signer.clone(), None);
-    let verifier_client = sdk.verifier_client();
+    let _verifier_client = sdk.verifier_client();
 
     let rpc_client = RpcClient::new_with_commitment(
         String::from("http://localhost:8899"),
@@ -24,13 +24,6 @@ async fn test_quote_tdx_verification() {
             &rpc_client
         ).await.unwrap();
     }
-
-    setup_solana_zk_program(
-        &sdk.anchor_provider(),
-        signer.as_ref(),
-        1,
-        &TEST_RISC0_VERIFIER_PUBKEY
-    ).await.unwrap();
 
     let (verified_output_pubkey, signatures) = sdk.verify_quote(
         ZkvmSelector::RiscZero,
@@ -82,13 +75,6 @@ async fn test_quote_sgx_verification() {
             &rpc_client
         ).await.unwrap();
     }
-
-    setup_solana_zk_program(
-        &sdk.anchor_provider(),
-        signer.as_ref(),
-        1,
-        &TEST_RISC0_VERIFIER_PUBKEY
-    ).await.unwrap();
 
     let signatures = verifier_client
         .verify_quote(

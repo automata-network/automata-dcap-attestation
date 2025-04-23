@@ -3,7 +3,7 @@ use sdk::automata_on_chain_pccs::types::ZkvmSelector;
 use solana_zk_tests::zkvm::risc0::deploy_risc0_groth16_verifier;
 use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
 use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
-use crate::{setup_solana_zk_program, TEST_RISC0_VERIFIER_PUBKEY};
+use crate::TEST_RISC0_VERIFIER_PUBKEY;
 
 #[tokio::test]
 pub async fn test_pcs_root_ca_upsert() {
@@ -33,15 +33,6 @@ pub async fn test_pcs_root_ca_upsert() {
             &rpc_client
         ).await.unwrap();
     }
-
-    setup_solana_zk_program(
-        sdk.anchor_provider(),
-        signer.as_ref(),
-        1,
-        &TEST_RISC0_VERIFIER_PUBKEY
-    )
-    .await
-    .unwrap();
 
     let ca_type = CertificateAuthority::ROOT;
     let _tx = client
