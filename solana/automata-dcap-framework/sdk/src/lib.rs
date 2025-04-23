@@ -42,6 +42,10 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
         &self.provider
     }
 
+    pub fn signer(&self) -> &S {
+        &self.signer
+    }
+
     pub fn verifier_client(&self) -> &VerifierClient<S> {
         &self.verifier_client
     }
