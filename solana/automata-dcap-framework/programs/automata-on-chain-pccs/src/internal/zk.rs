@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
-use solana_zk::program::SolanaZk;
-use solana_zk::state::ZkvmVerifier;
-use solana_zk::cpi::accounts::VerifyZkProof;
+use anchor_lang::solana_program::{
+    instruction::Instruction,
+    program::invoke
+};
 use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, verify::risc0::risc0_verify_instruction_data};
 
 use crate::types::zk::ZkvmSelector;
@@ -12,8 +13,6 @@ pub fn digest_ecdsa_zk_verify<'a>(
     proof: &[u8],
     zkvm_selector: ZkvmSelector,
     zkvm_verifier_account_info: &AccountInfo<'a>,
-    solana_zk_program: &Program<'a, SolanaZk>,
-    verifier_config_account: &Account<'a, ZkvmVerifier>,
     system_program: &Program<'a, System>,
 ) -> Result<()> {
     let ecdsa_program_vkey = zkvm_selector.get_ecdsa_program_vkey().unwrap();
@@ -39,21 +38,21 @@ pub fn digest_ecdsa_zk_verify<'a>(
     //     DcapVerifierError::InvalidZkvmProgram
     // );
 
-    // Prepare for CPI
-    let verify_cpi_accounts = VerifyZkProof {
-        zkvm_verifier_account: verifier_config_account.to_account_info(),
-        zkvm_verifier_program: zkvm_verifier_account_info.to_account_info(),
-        system_program: system_program.to_account_info(),
-    };
-    let verify_cpi_ctx = CpiContext::new(
-        solana_zk_program.to_account_info(),
-        verify_cpi_accounts,
+    // Create the context for the CPI call
+    let verify_cpi_context = CpiContext::new(
+        zkvm_verifier_account_info.clone(),
+        vec![system_program.to_account_info()],
     );
 
-    // Invoke CPI
-    solana_zk::cpi::verify_zkvm_proof(
-        verify_cpi_ctx,
-        zkvm_selector.to_u64(),
-        zk_verify_instruction_data,
-    )
+    // Invoke CPI to the zkvm verifier program
+    invoke(
+        &Instruction {
+            program_id: zkvm_verifier_account_info.key(),
+            accounts: verify_cpi_context.to_account_metas(None),
+            data: zk_verify_instruction_data
+        },
+        &[system_program.to_account_info()]
+    ).unwrap();
+
+    Ok(())
 }

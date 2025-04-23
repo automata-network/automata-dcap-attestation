@@ -227,9 +227,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             let negated_pi_a = crate::utils::negate_g1(&pi_a);
             groth16_seal[0..64].copy_from_slice(&negated_pi_a);
 
-            let (zkvm_verifier_config_pda, _) =
-                derive_zkvm_verifier_pda(1u64, &zkvm_verifier_program);
-
             let _tx = self
                 .program
                 .request()
@@ -237,8 +234,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                     authority: self.program.payer(),
                     root_ca: pcs_certificate_pda.0,
                     data_buffer: data_buffer_pubkey,
-                    solana_zk_program: SOLANA_ZK_PROGRAM_ID,
-                    zkvm_verifier_config_pda,
                     zkvm_verifier_program,
                     system_program: anchor_client::solana_sdk::system_program::ID,
                 })

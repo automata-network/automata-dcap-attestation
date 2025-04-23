@@ -149,8 +149,6 @@ pub mod automata_on_chain_pccs {
             &proof,
             zkvm_selector,
             &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.solana_zk_program,
-            &ctx.accounts.zkvm_verifier_config_pda,
             &ctx.accounts.system_program,
         );
 

@@ -486,15 +486,17 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         let negated_pi_a = crate::utils::negate_g1(&pi_a);
         groth16_seal[0..64].copy_from_slice(&negated_pi_a);
 
-        let (zkvm_verifier_config_pda, _) = derive_zkvm_verifier_pda(1u64, &zkvm_verifier_program);
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id(),
+        )
+        .0;
 
         // println!("iamge_id: {:?}", image_id);
         self.program
             .request()
             .accounts(accounts::VerifyPckCertChainZk {
                 quote_data_buffer: quote_buffer_pubkey,
-                solana_zk_program: SOLANA_ZK_PROGRAM_ID,
-                zkvm_verifier_config_pda,
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
