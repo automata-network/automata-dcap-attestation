@@ -1,9 +1,6 @@
 use crate::errors::PccsError;
-use crate::state::{
-    CertificateAuthority, DataBuffer, EnclaveIdentity, EnclaveIdentityType, PckCertificate,
-    PcsCertificate, TcbInfo, TcbType,
-};
-use crate::types::zk::ZkvmSelector;
+use crate::state::{DataBuffer, EnclaveIdentity, PckCertificate, PcsCertificate, TcbInfo};
+use crate::types::{CertificateAuthority, EnclaveIdentityType, TcbType, zk::ZkvmSelector};
 
 use anchor_lang::prelude::*;
 
@@ -49,6 +46,7 @@ pub struct AddDataChunk<'info> {
 
 #[derive(Accounts)]
 #[instruction(
+    ca_type: CertificateAuthority,
     qe_id: String,
     pce_id: String,
     tcbm: String,
@@ -78,6 +76,17 @@ pub struct UpsertPckCertificate<'info> {
         close = authority
     )]
     pub data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        constraint = ca_type == CertificateAuthority::PLATFORM || ca_type == CertificateAuthority::PROCESSOR @ PccsError::InvalidSubject,
+        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub issuer_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -138,6 +147,16 @@ pub struct UpsertPcsCertificate<'info> {
     )]
     pub data_buffer: Account<'info, DataBuffer>,
 
+    #[account(
+        seeds = [b"pcs_cert", ca_type.get_issuer(is_crl).common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub issuer_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -164,6 +183,16 @@ pub struct UpsertEnclaveIdentity<'info> {
     )]
     pub data_buffer: Account<'info, DataBuffer>,
 
+    #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub issuer_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -189,6 +218,16 @@ pub struct UpsertTcbInfo<'info> {
         close = authority
     )]
     pub data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub issuer_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

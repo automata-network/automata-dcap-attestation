@@ -2,33 +2,34 @@
 
 use anchor_lang::prelude::*;
 
-pub mod internal;
-pub mod types;
 pub mod errors;
-pub mod instructions;
-pub mod state;
 pub mod event;
+pub mod instructions;
+pub mod internal;
+pub mod state;
+pub mod types;
 
 declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 
 use errors::*;
-use instructions::*;
-use state::*;
 use event::*;
-use internal::zk::digest_ecdsa_zk_verify;
+use instructions::*;
 use internal::certs::INTEL_ROOT_PUB_KEY;
+use internal::zk::digest_ecdsa_zk_verify;
 use types::*;
 
 #[program]
 pub mod automata_on_chain_pccs {
-    use crate::{instructions::UpsertPckCertificate, internal::certs::get_certificate_tbs_and_digest, state::CertificateAuthority};
     use super::*;
+
+    use std::str::FromStr;
+
+    use crate::{
+        instructions::UpsertPckCertificate, internal::certs::get_certificate_tbs_and_digest,
+    };
     use sha2::{Digest, Sha256};
 
-    pub fn init_data_buffer(
-        ctx: Context<InitDataBuffer>,
-        total_size: u32,
-    ) -> Result<()> {
+    pub fn init_data_buffer(ctx: Context<InitDataBuffer>, total_size: u32) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
 
         data_buffer.owner = *ctx.accounts.owner.key;
@@ -36,10 +37,7 @@ pub mod automata_on_chain_pccs {
         data_buffer.complete = false;
         data_buffer.data = vec![0; total_size as usize];
 
-        msg!(
-            "Data buffer initialized with total size: {}",
-            total_size
-        );
+        msg!("Data buffer initialized with total size: {}", total_size);
 
         Ok(())
     }
@@ -78,12 +76,53 @@ pub mod automata_on_chain_pccs {
 
     pub fn upsert_pck_certificate(
         ctx: Context<UpsertPckCertificate>,
+        ca_type: CertificateAuthority,
         qe_id: String,
         pce_id: String,
         tcbm: String,
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>,
     ) -> Result<()> {
         let pck_certificate = &mut ctx.accounts.pck_certificate;
         let cert_data = ctx.accounts.data_buffer.data.clone();
+
+        let (pck_tbs_digest, pck_tbs) = get_certificate_tbs_and_digest(&cert_data);
+
+        // Check ca_type
+        // Extract issuer common name from the certificate
+        let pck_issuer_common_name = pck_tbs.issuer.to_string();
+        msg!("PCK Issuer common name: {}", pck_issuer_common_name);
+        let pck_ca_type = CertificateAuthority::from_str(&pck_issuer_common_name)
+            .map_err(|_| PccsError::InvalidSubject)?;
+        require!(
+            pck_ca_type == ca_type,
+            PccsError::InvalidSubject,
+        );
+
+        // TODO: Check if the current PCK Certificate is still valid (unexpired and not revoked)
+
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+
+        // TODO: Check if the issuer CA is unexpired and not revoked
+
+        // Verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        expected_output.extend_from_slice(&pck_tbs_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        let pck_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+
+        if pck_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         pck_certificate.qe_id = hex::decode(qe_id)
             .map_err(|_| PccsError::InvalidHexString)?
@@ -97,8 +136,9 @@ pub mod automata_on_chain_pccs {
             .map_err(|_| PccsError::InvalidHexString)?
             .try_into()
             .map_err(|_| PccsError::InvalidHexString)?;
-
+        pck_certificate.ca_type = ca_type;
         pck_certificate.cert_data = cert_data;
+        pck_certificate.digest = pck_tbs_digest;
 
         // Emit event
         emit!(PckCertificateUpserted {
@@ -113,14 +153,13 @@ pub mod automata_on_chain_pccs {
             ctx.accounts.pck_certificate.key()
         );
 
-
         Ok(())
     }
 
     pub fn upsert_root_ca(
         ctx: Context<UpsertRootCA>,
-        zkvm_selector: zk::ZkvmSelector, 
-        proof: Vec<u8>
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>,
     ) -> Result<()> {
         let root_ca_pda = &mut ctx.accounts.root_ca;
         let root_ca_data = &ctx.accounts.data_buffer.data;
@@ -135,8 +174,10 @@ pub mod automata_on_chain_pccs {
             .unwrap();
         require!(
             root_ca_pubkey == INTEL_ROOT_PUB_KEY,
-            PccsError::InvalidRootCA
+            PccsError::InvalidSubject
         );
+
+        // TODO: Check if the current Root CA Certificate is unexpired
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(64);
@@ -159,6 +200,7 @@ pub mod automata_on_chain_pccs {
         root_ca_pda.ca_type = CertificateAuthority::ROOT;
         root_ca_pda.cert_data = root_ca_data.clone();
         root_ca_pda.is_crl = false;
+        root_ca_pda.digest = root_tbs_digest;
 
         // Emit event
         emit!(PcsCertificateUpserted {
@@ -174,14 +216,53 @@ pub mod automata_on_chain_pccs {
         ctx: Context<UpsertPcsCertificate>,
         ca_type: CertificateAuthority,
         is_crl: bool,
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>
     ) -> Result<()> {
         let pcs_certificate = &mut ctx.accounts.pcs_certificate;
         let cert_data = ctx.accounts.data_buffer.data.clone();
 
+        let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(&cert_data);
+        
+        // check subject common name matches with ca_type
+        let subject_common_name = subject_tbs.subject.to_string();
+        msg!("Subject common name: {}", subject_common_name);
+        let subject_ca_type = CertificateAuthority::from_str(&subject_common_name)
+            .map_err(|_| PccsError::InvalidSubject)?;
+        require!(
+            subject_ca_type == ca_type,
+            PccsError::InvalidSubject,
+        );
+
+        // TODO: check if the CA or CRL is unexpired (CA certificates are not revoked)
+
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+
+        // TODO: Check if the issuer CA is unexpired and not revoked
+
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        expected_output.extend_from_slice(&subject_tbs_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
+
         pcs_certificate.ca_type = ca_type;
         pcs_certificate.cert_data = cert_data;
         pcs_certificate.is_crl = is_crl;
-
+        pcs_certificate.digest = subject_tbs_digest;
 
         // Emit event
         emit!(PcsCertificateUpserted {
@@ -202,13 +283,45 @@ pub mod automata_on_chain_pccs {
         ctx: Context<UpsertEnclaveIdentity>,
         id: EnclaveIdentityType,
         version: u8,
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>
     ) -> Result<()> {
         let enclave_identity = &mut ctx.accounts.enclave_identity;
         let data_buffer = &ctx.accounts.data_buffer;
 
+        // // TODO: deserializes the data buffer with serde to get Identity and Signature
+        // let identity_str: String = todo!();
+        // let identity_digest: [u8; 32] = Sha256::digest(identity_str.as_bytes()).into();
+
+        // // TODO: Check the given Enclave Identity is unexpired
+
+        // let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        // let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+
+        // // TODO: Check if the issuer CA is unexpired and not revoked
+
+        // // verify the proof
+        // let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        // expected_output.extend_from_slice(&identity_digest);
+        // expected_output.extend_from_slice(&issuer_tbs_digest);
+        // let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        // let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
+        // if enclave_identity_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
+
         enclave_identity.identity_type = id;
         enclave_identity.version = version;
+        // TODO: stores Borsh serialized EnclaveIdentity
         enclave_identity.data = data_buffer.data.clone();
+        // enclave_identity.digest = identity_digest;
 
         msg!(
             "Enclave identity  with id: {}, version: {} upserted to {}",
@@ -231,14 +344,45 @@ pub mod automata_on_chain_pccs {
         tcb_type: TcbType,
         version: u8,
         fmspc: [u8; 6],
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>
     ) -> Result<()> {
         let tcb_info = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
+        // // TODO: deserializes the data buffer with serde to get TcbInfo and Signature
+        // let tcb_info_str: String = todo!();
+        // let tcb_info_digest: [u8; 32] = Sha256::digest(tcb_info_str.as_bytes()).into();
+
+        // // TODO: Check the given TCB Info is unexpired
+        
+        // let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        // let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+
+        // // TODO: Check if the issuer CA is unexpired and not revoked
+
+        // // verify the proof
+        // let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        // expected_output.extend_from_slice(&tcb_info_digest);
+        // expected_output.extend_from_slice(&issuer_tbs_digest);
+        // let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+        // let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
+        // if tcb_info_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
+
         tcb_info.tcb_type = tcb_type;
         tcb_info.version = version;
         tcb_info.fmspc = fmspc;
+        // TODO: stores Borsh serialized TcbInfo
         tcb_info.data = data_buffer.data.clone();
+        // tcb_info.digest = tcb_info_digest;
 
         emit!(TcbInfoUpdated {
             tcb_type: tcb_info.tcb_type,

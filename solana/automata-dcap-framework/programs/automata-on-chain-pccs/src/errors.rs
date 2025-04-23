@@ -23,11 +23,11 @@ pub enum PccsError {
     #[msg("Incomplete Buffer")]
     IncompleteBuffer,
 
-    #[msg("Invalid Root Certificate")]
-    InvalidRootCA,
+    #[msg("Invalid Subject Certificate or CRL")]
+    InvalidSubject,
 
-    #[msg("Missing Issuer")]
-    MissingIssuer,
+    #[msg("Missing or invalid issuer")]
+    InvalidIssuer,
 
     #[msg("Unsupported ZKVM Selector")]
     UnsupportedZkvm,
