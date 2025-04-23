@@ -306,6 +306,8 @@ pub mod automata_dcap_verifier {
         // Step 1: Extract the PCK Certificate Chain from the quote data
         let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
 
+        // TODO: Check all certificates in the chain are unexpired and have not been revoked
+
         // Step 2: Compute the zkVM output data
         // the data consists of ABI-encoded of (bytes32, bytes32, bool) containing these values:
         // - the hash of the abi-encoded bytes array contains the PCK Certificate DER chain
