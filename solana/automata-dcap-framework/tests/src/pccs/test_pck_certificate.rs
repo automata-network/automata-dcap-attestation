@@ -1,4 +1,6 @@
 use crate::pccs::get_signer;
+use crate::TEST_RISC0_VERIFIER_PUBKEY;
+use sdk::automata_on_chain_pccs::types::ZkvmSelector;
 
 #[tokio::test]
 async fn test_pck_certificate_upsert() {
@@ -19,6 +21,8 @@ async fn test_pck_certificate_upsert() {
         pce_id.to_string(),
         tcbm.to_string(),
         data_buffer_pubkey,
+        ZkvmSelector::RiscZero,
+        TEST_RISC0_VERIFIER_PUBKEY
     ).await.unwrap();
 
     let pck_cert = client.get_pck_certificate(

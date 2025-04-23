@@ -46,7 +46,7 @@ pub async fn test_pcs_root_ca_upsert() {
         .await
         .unwrap();
 
-    let pcs_cert = client.get_pcs_certificate(ca_type, false).await.unwrap();
+    let (_, pcs_cert) = client.get_pcs_certificate(ca_type, false).await.unwrap();
     let actual_ca_type: CertificateAuthority = pcs_cert.ca_type.into();
     assert_eq!(actual_ca_type, ca_type);
     assert_eq!(pcs_cert.cert_data, root_cert_data);

@@ -2,10 +2,15 @@ pub mod ecdsa;
 pub mod pck;
 pub mod zk;
 
-use x509_cert::certificate::TbsCertificateInner;
+use x509_cert::certificate::{Certificate, TbsCertificateInner};
+use der::{Decode, Encode};
+use sha2::{Digest, Sha256};
 
-pub fn get_num_chunks(data_len: usize, chunk_size: usize) -> u8 {
-    ((data_len as f64 / chunk_size as f64).ceil()) as u8
+pub fn get_certificate_tbs_and_digest(raw_cert_der: &[u8]) -> ([u8; 32], TbsCertificateInner) {
+    let cert = Certificate::from_der(raw_cert_der).unwrap();
+    let tbs = cert.tbs_certificate;
+    let digest: [u8; 32] = Sha256::digest(tbs.to_der().unwrap().as_slice()).into();
+    (digest, tbs)
 }
 
 pub fn get_issuer_common_name(cert: &TbsCertificateInner) -> Option<String> {
