@@ -1,13 +1,13 @@
-use crate::pccs::get_signer;
+use std::sync::Arc;
+use sdk::Sdk;
+use anchor_client::solana_sdk::signer::keypair::Keypair;
 use crate::TEST_RISC0_VERIFIER_PUBKEY;
 use sdk::EnclaveIdentityType;
 use sdk::automata_on_chain_pccs::types::ZkvmSelector;
 
-#[tokio::test]
-async fn test_enclave_identity_upsert() {
+pub(crate) async fn test_enclave_identity_upsert(sdk: &Sdk<Arc<Keypair>>) {
     let enclave_identity_data = include_bytes!("../../data/qe_identity.json").to_vec();
 
-    let sdk = sdk::Sdk::new(get_signer(), None);
     let client = sdk.pccs_client();
     let data_buffer_pubkey = client.init_data_buffer(enclave_identity_data.len() as u32).await.unwrap();
     client.upload_chunks(data_buffer_pubkey, &enclave_identity_data, 512).await.unwrap();
