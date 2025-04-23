@@ -1,12 +1,13 @@
+use std::sync::Arc;
+use sdk::Sdk;
+use anchor_client::solana_sdk::signer::keypair::Keypair;
 use dcap_rs::types::tcb_info::TcbInfoAndSignature;
 use sdk::TcbType;
 use sdk::automata_on_chain_pccs::types::ZkvmSelector;
 
 use crate::TEST_RISC0_VERIFIER_PUBKEY;
-use crate::pccs::get_signer;
 
-#[tokio::test]
-async fn test_tcb_info_upsert_v3_sgx() {
+pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_sgx.json");
 
     let tcb_info_and_signature: TcbInfoAndSignature =
@@ -15,7 +16,6 @@ async fn test_tcb_info_upsert_v3_sgx() {
     let tcb_info_data = borsh::to_vec(&tcb_info).unwrap();
     println!("tcb info data len: {}", tcb_info_data.len());
 
-    let sdk = sdk::Sdk::new(get_signer(), None);
     let client = sdk.pccs_client();
     let data_buffer_pubkey = client
         .init_data_buffer(tcb_info_data.len() as u32)
@@ -51,8 +51,7 @@ async fn test_tcb_info_upsert_v3_sgx() {
     assert_eq!(tcb_info.data, tcb_info_data);
 }
 
-#[tokio::test]
-async fn test_tcb_info_upsert_v3_tdx() {
+pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_with_tdx_module.json");
     let tcb_info_and_signature: TcbInfoAndSignature =
         serde_json::from_slice(tcb_info_data).unwrap();
@@ -60,7 +59,6 @@ async fn test_tcb_info_upsert_v3_tdx() {
     let tcb_info_data = borsh::to_vec(&tcb_info).unwrap();
     println!("tcb info data len: {}", tcb_info_data.len());
 
-    let sdk = sdk::Sdk::new(get_signer(), None);
     let client = sdk.pccs_client();
     let data_buffer_pubkey = client
         .init_data_buffer(tcb_info_data.len() as u32)

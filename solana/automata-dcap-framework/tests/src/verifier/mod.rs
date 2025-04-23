@@ -1,2 +1,1 @@
-#[cfg(test)]
-mod test_quote_verification;
+pub(crate) mod test_quote_verification;

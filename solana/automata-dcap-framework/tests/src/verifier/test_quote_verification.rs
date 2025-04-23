@@ -1,30 +1,12 @@
+use std::sync::Arc;
+use sdk::Sdk;
+use anchor_client::solana_sdk::signer::keypair::Keypair;
 use sdk::automata_dcap_verifier::types::ZkvmSelector;
-use solana_zk_tests::zkvm::risc0::deploy_risc0_groth16_verifier;
-use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
-use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
-use crate::pccs::get_signer;
 use crate::TEST_RISC0_VERIFIER_PUBKEY;
 
-#[tokio::test]
-
-async fn test_quote_tdx_verification() {
+pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let quote_data = include_bytes!("../../data/quote_tdx.bin");
-    let signer = get_signer();
-
-    let sdk = sdk::Sdk::new(signer.clone(), None);
     let _verifier_client = sdk.verifier_client();
-
-    let rpc_client = RpcClient::new_with_commitment(
-        String::from("http://localhost:8899"),
-        CommitmentConfig::confirmed(),
-    );
-    if rpc_client.get_account(&TEST_RISC0_VERIFIER_PUBKEY).await.is_err() {
-        deploy_risc0_groth16_verifier(
-            signer.as_ref(), 
-            &rpc_client
-        ).await.unwrap();
-    }
-
     let (verified_output_pubkey, signatures) = sdk.verify_quote(
         ZkvmSelector::RiscZero,
         TEST_RISC0_VERIFIER_PUBKEY,
@@ -45,13 +27,9 @@ async fn test_quote_tdx_verification() {
     }
 }
 
-#[tokio::test]
-#[ignore]
-async fn test_quote_sgx_verification() {
-    let signer = get_signer();
+pub(crate) async fn test_quote_sgx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let quote_data = include_bytes!("../../data/quote_sgx.bin");
 
-    let sdk = sdk::Sdk::new(signer.clone(), None);
     let verifier_client = sdk.verifier_client();
     let quote_buffer_pubkey = verifier_client
         .init_quote_buffer(
@@ -64,17 +42,6 @@ async fn test_quote_sgx_verification() {
         .upload_chunks(quote_buffer_pubkey, quote_data, 512)
         .await
         .unwrap();
-
-    let rpc_client = RpcClient::new_with_commitment(
-        String::from("http://localhost:8899"),
-        CommitmentConfig::confirmed(),
-    );
-    if rpc_client.get_account(&TEST_RISC0_VERIFIER_PUBKEY).await.is_err() {
-        deploy_risc0_groth16_verifier(
-            signer.as_ref(), 
-            &rpc_client
-        ).await.unwrap();
-    }
 
     let signatures = verifier_client
         .verify_quote(
