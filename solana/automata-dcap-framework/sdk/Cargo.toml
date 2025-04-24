@@ -24,7 +24,7 @@ serde_json = { version = "1.0.100" }
 pem = { version = "3.0.5" }
 zk-x509-client = { path = "/Users/prestonong/Desktop/work/zk-x509/apps" }
 ecdsa_secp256r1_host = { path = "../zk/risc0/ecdsa_secp256r1/host" }
-solana-zk-client = { path = "/Users/prestonong/Desktop/work/solana-zk/apps/solana-zk-client" }
+solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git" }
 
 [dependencies.x509-verify]
 version = "0.4.6"

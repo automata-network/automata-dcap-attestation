@@ -218,6 +218,7 @@ pub mod automata_dcap_verifier {
                 DcapVerifierError::InvalidQuote
             })?;
 
+        // TODO: We might need to change this once we atored the data in Borsh serialized form
         let qe_identity = enclave_identity.get_enclave_identity_bytes();
         let qe_identity: EnclaveIdentity = serde_json::from_slice(&qe_identity).map_err(|e| {
             msg!("Error deserializing enclave identity: {}", e);
