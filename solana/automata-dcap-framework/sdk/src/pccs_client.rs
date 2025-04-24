@@ -51,8 +51,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// * `Result<Pubkey>` - The public key of the created data buffer account
     pub async fn init_data_buffer(
         &self,
-        total_size: u32,
-        num_chunks: u8,
+        total_size: u32
     ) -> anyhow::Result<Pubkey> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();

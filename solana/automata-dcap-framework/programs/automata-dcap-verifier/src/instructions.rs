@@ -5,6 +5,8 @@ use crate::errors::DcapVerifierError;
 use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
 use crate::utils::zk::ZkvmSelector;
 
+use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
+
 /// Accounts required for initializing a quote buffer.
 ///
 /// This instruction creates a new on-chain account that will store DCAP
@@ -177,6 +179,9 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     proof_bytes: Vec<u8>,
 )]
 pub struct VerifyPckCertChainZk<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    
     #[account(
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
@@ -202,8 +207,8 @@ pub struct VerifyPckCertChainZk<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tcb_status: String, advisory_ids: Vec<String>, fmspc: [u8; 6])]
-pub struct UpdateVerifiedOutput<'info> {
+#[instruction(tcb_type: String , version: u8, fmspc: [u8; 6])]
+pub struct VerifyDcapQuoteTcbStatus<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
