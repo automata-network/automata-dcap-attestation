@@ -8,9 +8,8 @@ use crate::TEST_RISC0_VERIFIER_PUBKEY;
 pub(crate) async fn test_pcs_root_ca_upsert(sdk: &Sdk<Arc<Keypair>>) {
     let client = sdk.pccs_client();
     let root_cert_data = include_bytes!("../../data/root.der").to_vec();
-    let num_chunks = sdk::get_num_chunks(root_cert_data.len(), 512);
     let data_buffer_pubkey = client
-        .init_data_buffer(root_cert_data.len() as u32, num_chunks)
+        .init_data_buffer(root_cert_data.len() as u32)
         .await
         .unwrap();
     client

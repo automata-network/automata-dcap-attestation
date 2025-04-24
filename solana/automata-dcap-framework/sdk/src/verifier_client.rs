@@ -13,14 +13,7 @@ use anchor_lang::{AccountDeserialize, declare_program, prelude::Pubkey};
 declare_program!(automata_dcap_verifier);
 use automata_dcap_verifier::types::ZkvmSelector;
 use automata_dcap_verifier::{client::accounts, client::args};
-use dcap_rs::{
-    types::{
-        enclave_identity::QeTcbStatus,
-        quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE},
-        tcb_info::{TcbInfo, TcbInfoAndSignature, TcbStatus},
-    },
-    verify_tcb_status,
-};
+use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use x509_cert::der::Decode;
 use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
@@ -29,7 +22,7 @@ use zerocopy::AsBytes;
 
 use crate::{
     CertificateAuthority, PCCS_PROGRAM_ID, PccsClient, TcbType, get_issuer_common_name,
-    utils::ecdsa::get_secp256r1_instruction,
+    utils::ecdsa::get_secp256r1_instruction, zk,
 };
 
 const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
@@ -101,26 +94,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     ///
     /// # Returns
     /// - `anyhow::Result<()>`: Success or an error if upload fails
-    pub async fn init_verified_output_account(&self) -> anyhow::Result<Pubkey> {
-        let verified_output_keypair = Keypair::new();
-        let verified_output_pubkey = verified_output_keypair.pubkey();
-
-        let _tx = self
-            .program
-            .request()
-            .accounts(accounts::InitVerifiedOutputAccount {
-                owner: self.program.payer(),
-                verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
-            })
-            .args(args::InitVerifiedOutputAccount {})
-            .signer(verified_output_keypair)
-            .send()
-            .await?;
-
-        Ok(verified_output_pubkey)
-    }
-
     pub async fn upload_chunks(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -171,42 +144,42 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     ///   or an error if any verification step fails
     pub async fn verify_quote(
         &self,
+        quote_buffer_pubkey: Pubkey,
         zkvm_selector: ZkvmSelector,
         zkvm_verifier_program: Pubkey,
-        quote_buffer_pubkey: Pubkey,
     ) -> anyhow::Result<Vec<Signature>> {
-        // Parse Quote
-        let quote_data = self
-            .get_account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
-            .await?;
+         // Parse Quote
+         let quote_data = self
+         .get_account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
+         .await?;
         let mut quote_data_bytes = quote_data.data.as_slice();
         let quote = Quote::read(&mut quote_data_bytes)?;
 
         let mut signatures = Vec::new();
 
-        // // Verify quote integrity
-        // let tx = self
-        //     .verify_quote_integrity(quote_buffer_pubkey, &quote)
-        //     .await?;
-        // signatures.push(tx);
+        // Verify quote integrity
+        let tx = self
+            .verify_quote_integrity(quote_buffer_pubkey, &quote)
+            .await?;
+        signatures.push(tx);
 
-        // // Verify ISV signature
-        // let tx = self
-        //     .verify_quote_isv_signature(quote_buffer_pubkey, &quote)
-        //     .await?;
-        // signatures.push(tx);
+        // Verify ISV signature
+        let tx = self
+            .verify_quote_isv_signature(quote_buffer_pubkey, &quote)
+            .await?;
+        signatures.push(tx);
 
-        // // Verify enclave source
-        // let tx = self
-        //     .verify_quote_enclave_source(quote_buffer_pubkey, &quote)
-        //     .await?;
-        // signatures.push(tx);
+        // Verify enclave source
+        let tx = self
+            .verify_quote_enclave_source(quote_buffer_pubkey, &quote)
+            .await?;
+        signatures.push(tx);
 
         // Verify PCK cert chain. Please note that the verification of the signature is done off-chain here
         // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
         // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
         // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
-        let fmspc = self
+        self
             .verify_pck_cert_chain(
                 quote_buffer_pubkey,
                 &quote,
@@ -215,21 +188,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             )
             .await?;
 
-        // // Verify TCB status. This is done off-chain as well. Mainly due to the fact that parsing the TCB info
-        // // is a heavy computation and we go out of memory in solana.
-        // let (tcb_status, advisory_ids) = self.verify_tcb_status(&quote).await?;
-
-        // // Update the verified output account
-        // let tx = self
-        //     .update_verified_output_account(
-        //         quote_buffer_pubkey,
-        //         verified_output_pubkey,
-        //         tcb_status,
-        //         advisory_ids,
-        //         fmspc,
-        //     )
-        //     .await?;
-        // signatures.push(tx);
+        // Verify TCB status
+        let tx = self.verify_tcb_status(&quote, quote_buffer_pubkey).await?;
+        signatures.push(tx);
 
         Ok(signatures)
     }
@@ -475,7 +436,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // }
 
         let pem_chain = quote.signature.cert_data.cert_data;
-        let (image_id, journal_bytes, mut groth16_seal) =
+        let (_image_id, _journal_bytes, mut groth16_seal) =
             crate::utils::pck::verify_pck_chain_zk(&pem_chain).await?;
 
         // negate risczero pi_a
@@ -495,8 +456,10 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         self.program
             .request()
             .accounts(accounts::VerifyPckCertChainZk {
+                owner: self.program.payer(),
                 quote_data_buffer: quote_buffer_pubkey,
                 zkvm_verifier_program,
+                verified_output: verified_output_pda,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
@@ -527,51 +490,43 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     async fn verify_tcb_status(
         &self,
         quote: &Quote<'_>,
-    ) -> anyhow::Result<(TcbStatus, Vec<String>)> {
-        let pck_extension = quote.signature.get_pck_extension()?;
-        let fmspc = hex::encode(pck_extension.fmspc);
+        quote_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<Signature> {
         let version = 3 as u8;
         let tcb_type = if quote.header.tee_type == SGX_TEE_TYPE {
             TcbType::Sgx
         } else {
             TcbType::Tdx
         };
-        let tcb_info_data = self
-            .pccs_client
-            .get_tcb_info_data(tcb_type, fmspc, version)
-            .await?;
-        let tcb_info: TcbInfoAndSignature = serde_json::from_slice(&tcb_info_data)?;
-        let tcb_info = tcb_info.get_tcb_info()?;
+        let fmspc = quote.signature.get_pck_extension()?.fmspc;
+        let tcb_info_pda = Pubkey::find_program_address(
+            &[
+                b"tcb_info",
+                tcb_type.common_name().as_bytes(),
+                &version.to_le_bytes()[..1],
+                &fmspc,
+            ],
+            &PCCS_PROGRAM_ID,
+        )
+        .0;
 
-        let (mut tcb_status, advisory_ids) = verify_tcb_status(&tcb_info, &pck_extension)?;
-        if quote.header.tee_type == TDX_TEE_TYPE {
-            let tdx_module_status =
-                tcb_info.verify_tdx_module(quote.body.as_tdx_report_body().unwrap())?;
-            tcb_status =
-                TcbInfo::converge_tcb_status_with_tdx_module(tcb_status, tdx_module_status);
-        }
+        let verified_output_pda = Pubkey::find_program_address(
+            &[b"verified_output", quote_buffer_pubkey.as_ref()],
+            &self.program.id(),
+        )
+        .0;
 
-        Ok((tcb_status, advisory_ids))
-    }
-
-    async fn update_verified_output_account(
-        &self,
-        quote_buffer_pubkey: Pubkey,
-        verified_output_pubkey: Pubkey,
-        mut tcb_status: TcbStatus,
-        advisory_ids: Vec<String>,
-        fmspc: [u8; 6],
-    ) -> anyhow::Result<Signature> {
-        let qe_tcb_status = self.get_qe_tcb_status(quote_buffer_pubkey).await?;
-        let qe_tcb_status = QeTcbStatus::from_str(&qe_tcb_status.status)
-            .map_err(|e| anyhow::anyhow!("failed to parse qe tcb status: {}", e))?;
-
-        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status.into());
+        let qe_tcb_status_pda = Pubkey::find_program_address(
+            &[b"qe_tcb_status", quote_buffer_pubkey.as_ref()],
+            &self.program.id(),
+        )
+        .0;
 
         let tx = self
             .program
             .request()
-            .accounts(accounts::UpdateVerifiedOutputAccount {
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(5000000))
+            .accounts(accounts::VerifyDcapQuoteTcbStatus {
                 owner: self.program.payer(),
                 tcb_info_pda: tcb_info_pda,
                 quote_data_buffer: quote_buffer_pubkey,
