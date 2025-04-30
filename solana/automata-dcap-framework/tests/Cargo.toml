@@ -21,6 +21,6 @@ solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-veri
 solana-zk-tests = { git = "https://github.com/automata-network/solana-zkvm-verifier.git" }
 serde_json = { version = "1.0.100" }
 borsh = { version = "1.5.7" }
-dcap-rs = { git = "https://github.com/udsamani/dcap-rs.git", rev = "1e083b3df1e9b0aa89275e04efe58a10f254d0b6"}
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
 sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
