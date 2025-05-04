@@ -1,70 +1,61 @@
-use der::{Encode, Decode};
-use der_parser::{ber::BerObjectContent, der::parse_der};
-use x509_cert::Certificate;
-use sha2::{Sha256, Digest};
+use super::*;
+use ecdsa_sepc256r1_methods::ECDSA_SEPC256R1_GUEST_ELF;
+use risc0_zkvm::{ExecutorEnv, SessionInfo, compute_image_id, default_executor};
 
 #[test]
-pub fn test_verify_sample() {
-    use super::*;
+pub fn test_image_id() {
+    let image_id: [u8; 32] = compute_image_id(ECDSA_SEPC256R1_GUEST_ELF).unwrap().into();
+    println!("image id: {:?}", image_id);
+}
 
+#[test]
+pub fn test_verify_root_x509() {
     let root_der_bytes = include_bytes!("../sample/root.der");
-    let root_cert = Certificate::from_der(root_der_bytes).unwrap();
 
-    let root_tbs = root_cert.tbs_certificate.to_der().unwrap();
-    let root_tbs_digest: [u8; 32] = Sha256::digest(root_tbs.as_slice()).into();
-    let root_sig_der = root_cert.signature.as_bytes().unwrap();
+    let serialized_input = serialize_input(
+        InputType::X509,
+        root_der_bytes.to_vec(),
+        root_der_bytes.to_vec(),
+    )
+    .unwrap();
 
-    // decode signature into (r, s)
-    let root_sig = process_sig(root_sig_der);
-
-    // println!("root tbs: {:x?}", root_tbs);
-    // println!("sig: {:x?}", root_sig);
-
-    // get proof
-    let (image_id, _output, seal) = verify(
-        root_tbs_digest,
-        root_sig,
-        root_der_bytes.to_vec()
-    ).unwrap();
-
-    println!("image_id: {:?}", image_id);
-    println!("seal: {:?}", seal);
+    get_execution_session_info(serialized_input.as_slice());
 }
 
-fn process_sig(der_sig: &[u8]) -> [u8; 64] {
-    let decoded = parse_der(der_sig).unwrap().1.content;
-    
-    let mut ret = [0u8; 64];
+#[test]
+pub fn test_verify_tcb_info() {
+    let tcb_bytes = include_bytes!("../sample/tcb_info_v3_sgx.json");
+    let issuer_bytes = include_bytes!("../sample/signing.der");
 
-    match decoded {
-        BerObjectContent::Sequence(sig_sequence) => {
-            // ECDSA
-            for (i, v) in sig_sequence.iter().enumerate() {
-                let extracted = v.as_slice().unwrap();
-                let processed = pad_or_trim_to_length(extracted, 32);
-                ret[i * 32..(i + 1) * 32].copy_from_slice(&processed);
-            }
-        },
-        _ => {
-            panic!("Must be a sequence");
-        }
-    }
-
-    ret
+    let serialized_input = serialize_input(
+        InputType::TcbInfo,
+        tcb_bytes.to_vec(),
+        issuer_bytes.to_vec(),
+    )
+    .unwrap();
+    get_execution_session_info(serialized_input.as_slice());
 }
 
-fn pad_or_trim_to_length(input: &[u8], expected_length: usize) -> Vec<u8> {
-    let n = input.len();
-    let mut ret: Vec<u8> = vec![];
-    if n < expected_length {
-        ret.extend_from_slice(input);
-        ret.resize(expected_length, 0);
-        ret
-    } else if n > expected_length {
-        let offset = n - expected_length;
-        let trimmed = &input[offset..];
-        trimmed.to_vec()
-    } else {
-        input.to_vec()
-    }
+#[test]
+pub fn test_verify_qe_identity() {
+    let qe_identity_bytes = include_bytes!("../sample/qe_identity.json");
+    let issuer_bytes = include_bytes!("../sample/signing.der");
+
+    let serialized_input = serialize_input(
+        InputType::Identity,
+        qe_identity_bytes.to_vec(),
+        issuer_bytes.to_vec(),
+    )
+    .unwrap();
+    get_execution_session_info(serialized_input.as_slice());
+}
+
+// For the simplicity of unit tests, we only test for the guest code to
+// execute as expected, since we will be doing proof verification directly on-chain
+fn get_execution_session_info(input: &[u8]) -> SessionInfo {
+    let env = ExecutorEnv::builder().write_slice(input).build().unwrap();
+
+    default_executor()
+        .execute(env, ECDSA_SEPC256R1_GUEST_ELF)
+        .unwrap()
 }
