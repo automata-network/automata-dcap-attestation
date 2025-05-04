@@ -10,9 +10,18 @@ use ecdsa_sepc256r1_methods::ECDSA_SEPC256R1_GUEST_ELF;
 use risc0_zkvm::{ExecutorEnv, InnerReceipt, ProverOpts, compute_image_id, default_prover};
 
 #[derive(BorshDeserialize, BorshSerialize)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+pub enum InputType {
+    X509 = 0,
+    TcbInfo = 1,
+    Identity = 2,
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct Input {
-    pub input_digest: [u8; 32],
-    pub input_signature: [u8; 64],
+    pub input_type: InputType,
+    pub input_data: Vec<u8>,
     pub issuer_raw_der: Vec<u8>,
 }
 
@@ -22,8 +31,8 @@ pub fn get_image_id() -> Result<String> {
 }
 
 pub fn verify(
-    input_digest: [u8; 32],
-    input_signature: [u8; 64],
+    input_type: InputType,
+    input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
 ) -> Result<(
     [u8; 32], // image_id
@@ -31,7 +40,11 @@ pub fn verify(
     Vec<u8>,  // Groth16 Seal
 )> {
     let image_id = compute_image_id(ECDSA_SEPC256R1_GUEST_ELF)?;
-    let serialized_input = serialize_input(input_digest, input_signature, issuer_raw_der)?;
+    let serialized_input = serialize_input(
+        input_type,
+        input_data,
+        issuer_raw_der,
+    )?;
 
     // Set RISC0_PROVER env to bonsai if using Groth16
     // I am asssuming that most people can't afford to run Groth16 prover locally
@@ -56,8 +69,8 @@ pub fn verify(
 }
 
 pub async fn verify_non_blocking(
-    input_digest: [u8; 32],
-    input_signature: [u8; 64],
+    input_type: InputType,
+    input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
 ) -> Result<(
     [u8; 32], // image_id
@@ -65,7 +78,11 @@ pub async fn verify_non_blocking(
     Vec<u8>,  // Groth16 Seal
 )> {
     let image_id = compute_image_id(ECDSA_SEPC256R1_GUEST_ELF)?;
-    let serialized_input = serialize_input(input_digest, input_signature, issuer_raw_der)?;
+    let serialized_input = serialize_input(
+        input_type,
+        input_data,
+        issuer_raw_der,
+    )?;
 
     let snark_receipt = bonsai_prove_non_blocking(
         ECDSA_SEPC256R1_GUEST_ELF, 
@@ -84,14 +101,14 @@ pub async fn verify_non_blocking(
     Ok((image_id.into(), output, seal))
 }
 
-fn serialize_input(
-    input_digest: [u8; 32],
-    input_signature: [u8; 64],
+pub fn serialize_input(
+    input_type: InputType,
+    input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
 ) -> Result<Vec<u8>> {
     let input = Input {
-        input_digest,
-        input_signature,
+        input_type,
+        input_data,
         issuer_raw_der,
     };
     let mut input_bytes = vec![];

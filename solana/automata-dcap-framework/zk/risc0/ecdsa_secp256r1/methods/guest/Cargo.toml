@@ -12,6 +12,9 @@ p256 = { version = "=0.13.2" }
 borsh = { version = "1.5.7", features = ["derive"] }
 der = { version = "0.7.9", default-features = false, features = ["derive", "oid"] }
 x509-cert = { version = "0.2.5" }
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
+serde_json = { version = "1.0.125", features = ["raw_value"] }
+risc0-bigint2 = { version = "=1.2.1" }
 
 [patch.crates-io]
 sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.8-risczero.0" }
