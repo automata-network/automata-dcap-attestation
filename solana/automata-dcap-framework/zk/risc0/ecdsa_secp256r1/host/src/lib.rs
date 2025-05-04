@@ -9,7 +9,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use ecdsa_sepc256r1_methods::ECDSA_SEPC256R1_GUEST_ELF;
 use risc0_zkvm::{ExecutorEnv, InnerReceipt, ProverOpts, compute_image_id, default_prover};
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PartialEq)]
 #[borsh(use_discriminant = true)]
 #[repr(u8)]
 pub enum InputType {

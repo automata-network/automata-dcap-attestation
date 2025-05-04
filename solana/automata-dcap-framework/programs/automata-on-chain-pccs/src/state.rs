@@ -77,4 +77,5 @@ pub struct DataBuffer {
     pub num_chunks: u8,
     pub complete: bool,
     pub data: Vec<u8>,
+    pub signed_digest: [u8; 32]
 }

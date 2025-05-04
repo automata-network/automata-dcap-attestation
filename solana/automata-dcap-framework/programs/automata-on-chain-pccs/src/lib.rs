@@ -30,13 +30,14 @@ pub mod automata_on_chain_pccs {
     };
     use sha2::{Digest, Sha256};
 
-    pub fn init_data_buffer(ctx: Context<InitDataBuffer>, total_size: u32) -> Result<()> {
+    pub fn init_data_buffer(ctx: Context<InitDataBuffer>, total_size: u32, signed_digest: [u8; 32]) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
 
         data_buffer.owner = *ctx.accounts.owner.key;
         data_buffer.total_size = total_size;
         data_buffer.complete = false;
         data_buffer.data = vec![0; total_size as usize];
+        data_buffer.signed_digest = signed_digest;
 
         msg!("Data buffer initialized with total size: {}", total_size);
 
@@ -89,6 +90,12 @@ pub mod automata_on_chain_pccs {
 
         let (pck_tbs_digest, pck_tbs) = get_certificate_tbs_and_digest(&cert_data);
 
+        // We can match digest here for X509 Certificates here as an additional check
+        require!(
+            pck_tbs_digest == ctx.accounts.data_buffer.signed_digest,
+            PccsError::InvalidDigest
+        );
+
         // Check ca_type
         // Extract issuer common name from the certificate
         let pck_issuer_common_name = get_cn_from_rdn_sequence(&pck_tbs.issuer).unwrap();
@@ -104,7 +111,9 @@ pub mod automata_on_chain_pccs {
         // TODO: Check if the issuer CA is unexpired and not revoked
 
         // Verify the proof
-        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
+        expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&pck_tbs_digest);
         expected_output.extend_from_slice(&issuer_tbs_digest);
         let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
@@ -163,6 +172,12 @@ pub mod automata_on_chain_pccs {
 
         let (root_tbs_digest, root_tbs) = get_certificate_tbs_and_digest(&root_ca_data);
 
+        // We can match digest here for X509 Certificates here as an additional check
+        require!(
+            root_tbs_digest == ctx.accounts.data_buffer.signed_digest,
+            PccsError::InvalidDigest
+        );
+
         // check root ca pubkey matches with hardcoded value
         let root_ca_pubkey = root_tbs
             .subject_public_key_info
@@ -171,13 +186,15 @@ pub mod automata_on_chain_pccs {
             .unwrap();
         require!(
             root_ca_pubkey == INTEL_ROOT_PUB_KEY,
-            PccsError::InvalidSubject
+            PccsError::InvalidRoot
         );
 
         // TODO: Check if the current Root CA Certificate is unexpired
 
         // verify the proof
-        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&root_ca_data).into();
+        expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&root_tbs_digest);
         expected_output.extend_from_slice(&root_tbs_digest);
         let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
@@ -221,6 +238,12 @@ pub mod automata_on_chain_pccs {
 
         let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(&cert_data);
 
+        // We can match digest here for X509 Certificates here as an additional check
+        require!(
+            subject_tbs_digest == ctx.accounts.data_buffer.signed_digest,
+            PccsError::InvalidDigest
+        );
+
         // check subject common name matches with ca_type
         let subject_common_name = get_cn_from_rdn_sequence(&subject_tbs.subject).unwrap();
         let subject_ca_type = CertificateAuthority::from_str(&subject_common_name)
@@ -235,7 +258,9 @@ pub mod automata_on_chain_pccs {
         // TODO: Check if the issuer CA is unexpired and not revoked
 
         // verify the proof
-        let mut expected_output: Vec<u8> = Vec::with_capacity(64);
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
+        expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&subject_tbs_digest);
         expected_output.extend_from_slice(&issuer_tbs_digest);
         let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
