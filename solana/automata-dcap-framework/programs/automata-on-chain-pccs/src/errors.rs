@@ -14,6 +14,9 @@ pub enum PccsError {
     #[msg("Chunk out of bounds")]
     ChunkOutOfBounds,
 
+    #[msg("Invalid digest")]
+    InvalidDigest,
+
     #[msg("Invalid Hex String")]
     InvalidHexString,
 
@@ -26,8 +29,8 @@ pub enum PccsError {
     #[msg("Invalid Subject Certificate or CRL")]
     InvalidSubject,
 
-    #[msg("Missing or invalid issuer")]
-    InvalidIssuer,
+    #[msg("Invalid Root Certificate")]
+    InvalidRoot,
 
     #[msg("Unsupported ZKVM Selector")]
     UnsupportedZkvm,
