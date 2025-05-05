@@ -15,6 +15,7 @@ use errors::*;
 use event::*;
 use instructions::*;
 use internal::certs::INTEL_ROOT_PUB_KEY;
+use internal::clock::*;
 use internal::zk::digest_ecdsa_zk_verify;
 use types::*;
 
@@ -22,14 +23,18 @@ use types::*;
 pub mod automata_on_chain_pccs {
     use super::*;
 
-    use std::str::FromStr;
     use crate::{
         instructions::UpsertPckCertificate,
         internal::certs::{get_certificate_tbs_and_digest, get_cn_from_rdn_sequence},
     };
     use sha2::{Digest, Sha256};
+    use std::str::FromStr;
 
-    pub fn init_data_buffer(ctx: Context<InitDataBuffer>, total_size: u32, signed_digest: [u8; 32]) -> Result<()> {
+    pub fn init_data_buffer(
+        ctx: Context<InitDataBuffer>,
+        total_size: u32,
+        signed_digest: [u8; 32],
+    ) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
 
         data_buffer.owner = *ctx.accounts.owner.key;
@@ -102,12 +107,20 @@ pub mod automata_on_chain_pccs {
             .map_err(|_| PccsError::InvalidSubject)?;
         require!(pck_ca_type == ca_type, PccsError::InvalidSubject,);
 
-        // TODO: Check if the current PCK Certificate is still valid (unexpired and not revoked)
+        // Check if the current PCK Certificate is still valid (unexpired and not revoked)
+        let pck_is_valid = is_certificate_valid(&cert_data);
+        if !pck_is_valid {
+            return Err(PccsError::InvalidCollateral.into());
+        }
 
         let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 
-        // TODO: Check if the issuer CA is unexpired and not revoked
+        // Check if the issuer CA is unexpired and not revoked
+        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
 
         // Verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
@@ -183,12 +196,13 @@ pub mod automata_on_chain_pccs {
             .subject_public_key
             .as_bytes()
             .unwrap();
-        require!(
-            root_ca_pubkey == INTEL_ROOT_PUB_KEY,
-            PccsError::InvalidRoot
-        );
+        require!(root_ca_pubkey == INTEL_ROOT_PUB_KEY, PccsError::InvalidRoot);
 
-        // TODO: Check if the current Root CA Certificate is unexpired
+        // Check if the current Root CA Certificate is unexpired
+        let root_ca_is_valid = is_certificate_valid(&root_ca_data);
+        if !root_ca_is_valid {
+            return Err(PccsError::InvalidCollateral.into());
+        }
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
@@ -308,15 +322,26 @@ pub mod automata_on_chain_pccs {
 
         let identity_digest = data_buffer.signed_digest;
 
-        // TODO: Check the given Enclave Identity is unexpired
-        // use dcap_rs::types::enclave_identity::EnclaveIdentity;
-        // let identity = EnclaveIdentity::from_borsh_bytes(data_buffer.data.as_slice())
-        //     .map_err(|_| PccsError::FailedDeserialization)?;
+        // Check the given Enclave Identity is unexpired
+        use dcap_rs::types::enclave_identity::EnclaveIdentity;
+        let identity = EnclaveIdentity::from_borsh_bytes(data_buffer.data.as_slice())
+            .map_err(|_| PccsError::FailedDeserialization)?;
+        let identity_is_valid = is_collateral_valid(
+            identity.issue_date.timestamp(), 
+            identity.next_update.timestamp(),
+        );
+        if !identity_is_valid {
+            return Err(PccsError::InvalidCollateral.into());
+        }
 
         let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 
-        // TODO: Check if the issuer CA is unexpired and not revoked
+        // Check if the issuer CA is unexpired and not revoked
+        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
@@ -371,14 +396,25 @@ pub mod automata_on_chain_pccs {
 
         let tcb_info_digest = data_buffer.signed_digest;
 
-        // TODO: Check the given TCB Info is unexpired
-        // use dcap_rs::types::tcb_info::TcbInfo;
-        // let tcb_info = TcbInfo::from_borsh_bytes(data_buffer.data.as_slice()).map_err(|_| PccsError::FailedDeserialization)?;
+        // Check the given TCB Info is unexpired
+        use dcap_rs::types::tcb_info::TcbInfo;
+        let tcb_info = TcbInfo::from_borsh_bytes(data_buffer.data.as_slice()).map_err(|_| PccsError::FailedDeserialization)?;
+        let tcb_info_is_valid = is_collateral_valid(
+            tcb_info.issue_date.timestamp(), 
+            tcb_info.next_update.timestamp(),
+        );
+        if !tcb_info_is_valid {
+            return Err(PccsError::InvalidCollateral.into());
+        }
 
         let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 
-        // TODO: Check if the issuer CA is unexpired and not revoked
+        // Check if the issuer CA is unexpired and not revoked
+        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
