@@ -22,7 +22,7 @@ pub struct InitDataBuffer<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 + 32 + 4 + 1 + 1 + 1 + 4 + total_size as usize,
+        space = 8 + 32 + 4 + 1 + 1 + 4 + total_size as usize + 32,
     )]
     pub data_buffer: Account<'info, DataBuffer>,
 
@@ -58,7 +58,7 @@ pub struct UpsertPckCertificate<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + 16 + 2 + 18 + MAX_CERT_DATA_SIZE,
+        space = 8 + 1 + 16 + 2 + 18 + MAX_CERT_DATA_SIZE + 32,
         seeds = [
             b"pck_cert",
             &qe_id.as_bytes()[..8],
@@ -85,7 +85,6 @@ pub struct UpsertPckCertificate<'info> {
     pub issuer_ca: Account<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -103,7 +102,7 @@ pub struct UpsertRootCA<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + MAX_CERT_DATA_SIZE,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
         bump,
     )]
@@ -118,7 +117,6 @@ pub struct UpsertRootCA<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -133,7 +131,7 @@ pub struct UpsertPcsCertificate<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + MAX_CERT_DATA_SIZE,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[is_crl as u8]],
         bump,
     )]
@@ -154,7 +152,6 @@ pub struct UpsertPcsCertificate<'info> {
     pub issuer_ca: Account<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -169,7 +166,7 @@ pub struct UpsertEnclaveIdentity<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + 16 + 1 + 1 + MAX_CERT_DATA_SIZE,
+        space = 8 + 1 + MAX_CERT_DATA_SIZE + 32,
         seeds = [b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
         bump,
     )]
@@ -190,7 +187,6 @@ pub struct UpsertEnclaveIdentity<'info> {
     pub issuer_ca: Account<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -205,7 +201,7 @@ pub struct UpsertTcbInfo<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 32 + 1 + 16 + 1 + 1 + TCB_INFO_MAX_SIZE,
+        space = 8 + 1 + 1 + 6 + TCB_INFO_MAX_SIZE + 32,
         seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
         bump,
     )]
@@ -226,7 +222,6 @@ pub struct UpsertTcbInfo<'info> {
     pub issuer_ca: Account<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program. 
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,

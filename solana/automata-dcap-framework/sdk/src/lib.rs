@@ -1,7 +1,12 @@
-mod models;
-mod pccs_client;
-mod utils;
-mod verifier_client;
+pub mod models;
+pub mod shared;
+pub mod pccs;
+pub mod verifier;
+
+use models::*;
+use pccs::*;
+use shared::*;
+use verifier::*;
 
 use std::ops::Deref;
 
@@ -11,10 +16,6 @@ use anchor_client::{
 };
 use anchor_lang::prelude::Pubkey;
 use automata_dcap_verifier::types::ZkvmSelector;
-pub use models::*;
-pub use pccs_client::*;
-pub use utils::*;
-pub use verifier_client::*;
 
 pub struct Sdk<S> {
     provider: Client<S>,

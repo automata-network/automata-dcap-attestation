@@ -21,8 +21,9 @@ use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
 use zerocopy::AsBytes;
 
 use crate::{
-    CertificateAuthority, PCCS_PROGRAM_ID, PccsClient, TcbType, get_issuer_common_name,
-    utils::ecdsa::get_secp256r1_instruction, zk,
+    CertificateAuthority, TcbType, get_issuer_common_name,
+    pccs::{PCCS_PROGRAM_ID, PccsClient},
+    shared::ecdsa::get_secp256r1_instruction,
 };
 
 const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
@@ -44,22 +45,17 @@ const ROOT_ISSUER_NAME: &str = "Intel SGX Root CA";
 /// - Verifying the PCK (Provisioning Certification Key) certificate chain
 /// - Verifying the TCB (Trusted Computing Base) status
 pub struct VerifierClient<S> {
-    program: Program<S>
+    program: Program<S>,
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     pub fn new(client: &Client<S>) -> anyhow::Result<Self> {
         let program = client.program(automata_dcap_verifier::ID)?;
 
-        Ok(Self {
-            program,
-        })
+        Ok(Self { program })
     }
 
-    pub async fn init_quote_buffer(
-        &self,
-        total_size: u32,
-    ) -> anyhow::Result<Pubkey> {
+    pub async fn init_quote_buffer(&self, total_size: u32) -> anyhow::Result<Pubkey> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
 
@@ -71,9 +67,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 data_buffer: quote_buffer_pubkey,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })
-            .args(args::InitQuoteBuffer {
-                total_size,
-            })
+            .args(args::InitQuoteBuffer { total_size })
             .signer(quote_buffer_keypair)
             .send()
             .await?;
@@ -111,10 +105,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                     owner: self.program.payer(),
                     data_buffer: quote_buffer_pubkey,
                 })
-                .args(args::AddQuoteChunk {
-                    offset,
-                    chunk_data,
-                })
+                .args(args::AddQuoteChunk { offset, chunk_data })
                 .send()
                 .await?;
 
@@ -148,10 +139,10 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         zkvm_selector: ZkvmSelector,
         zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<Vec<Signature>> {
-         // Parse Quote
-         let quote_data = self
-         .get_account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
-         .await?;
+        // Parse Quote
+        let quote_data = self
+            .get_account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
+            .await?;
         let mut quote_data_bytes = quote_data.data.as_slice();
         let quote = Quote::read(&mut quote_data_bytes)?;
 
@@ -179,14 +170,13 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
         // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
         // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
-        self
-            .verify_pck_cert_chain(
-                quote_buffer_pubkey,
-                &quote,
-                zkvm_selector,
-                zkvm_verifier_program,
-            )
-            .await?;
+        self.verify_pck_cert_chain(
+            quote_buffer_pubkey,
+            &quote,
+            zkvm_selector,
+            zkvm_verifier_program,
+        )
+        .await?;
 
         // Verify TCB status
         let tx = self.verify_tcb_status(&quote, quote_buffer_pubkey).await?;
@@ -239,8 +229,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
-            &self.program.id()
-        ).0;
+            &self.program.id(),
+        )
+        .0;
 
         let tx = self
             .program
@@ -302,8 +293,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
-            &self.program.id()
-        ).0;
+            &self.program.id(),
+        )
+        .0;
 
         let tx = self
             .program
@@ -367,8 +359,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
-            &self.program.id()
-        ).0;
+            &self.program.id(),
+        )
+        .0;
 
         let tx = self
             .program
@@ -437,13 +430,13 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let pem_chain = quote.signature.cert_data.cert_data;
         let (_image_id, _journal_bytes, mut groth16_seal) =
-            crate::utils::pck::verify_pck_chain_zk(&pem_chain).await?;
+            crate::shared::pck::verify_pck_chain_zk(&pem_chain).await?;
 
         // negate risczero pi_a
         let mut pi_a: [u8; 64] = [0; 64];
         pi_a.copy_from_slice(&groth16_seal[0..64]);
 
-        let negated_pi_a = crate::utils::negate_g1(&pi_a);
+        let negated_pi_a = crate::shared::negate_g1(&pi_a);
         groth16_seal[0..64].copy_from_slice(&negated_pi_a);
 
         let verified_output_pda = Pubkey::find_program_address(
@@ -564,9 +557,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         serial_number: &SerialNumber,
         ca_type: CertificateAuthority,
     ) -> anyhow::Result<()> {
-        let pcs_cert_data = pccs_client
-            .get_pcs_certificate_data(ca_type, true)
-            .await?;
+        let (_, pcs_cert_data) = pccs_client.get_pcs_certificate(ca_type, true).await?;
         let certificate_list = CertificateList::from_der(&pcs_cert_data)?;
 
         if let Some(crl) = certificate_list.tbs_cert_list.revoked_certificates {
@@ -599,11 +590,15 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// # Returns
     /// - `anyhow::Result<Pubkey>`: The public key of the verified output account,
     ///   or an error if the calculation fails
-    pub async fn get_verified_output_pubkey(&self, quote_buffer_pubkey: Pubkey) -> anyhow::Result<Pubkey> {
+    pub async fn get_verified_output_pubkey(
+        &self,
+        quote_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<Pubkey> {
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
-            &self.program.id()
-        ).0;
+            &self.program.id(),
+        )
+        .0;
         Ok(verified_output_pda)
     }
 

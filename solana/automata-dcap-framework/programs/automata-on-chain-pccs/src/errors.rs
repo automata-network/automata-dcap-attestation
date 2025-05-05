@@ -36,5 +36,8 @@ pub enum PccsError {
     UnsupportedZkvm,
 
     #[msg("Invalid Proof")]
-    InvalidProof
+    InvalidProof,
+
+    #[msg("Failed to deserialize data")]
+    FailedDeserialization,
 }

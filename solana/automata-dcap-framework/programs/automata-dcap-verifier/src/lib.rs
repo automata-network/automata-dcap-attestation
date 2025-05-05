@@ -28,7 +28,7 @@ pub mod automata_dcap_verifier {
     };
     use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
     use zerocopy::AsBytes;
-    use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
+    use dcap_rs::types::enclave_identity::EnclaveIdentity;
     use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
     use dcap_rs::types::tcb_info::TcbInfo;
@@ -195,16 +195,8 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
-        let enclave_identity = &ctx.accounts.qe_identity_pda.data;
-        let enclave_identity: QuotingEnclaveIdentityAndSignature =
-            serde_json::from_slice(enclave_identity).map_err(|e| {
-                msg!("Error deserializing enclave identity: {}", e);
-                DcapVerifierError::InvalidQuote
-            })?;
-
-        // TODO: We might need to change this once we atored the data in Borsh serialized form
-        let qe_identity = enclave_identity.get_enclave_identity_bytes();
-        let qe_identity: EnclaveIdentity = serde_json::from_slice(&qe_identity).map_err(|e| {
+        let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
+        let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
             msg!("Error deserializing enclave identity: {}", e);
             DcapVerifierError::InvalidQuote
         })?;
@@ -368,8 +360,7 @@ pub mod automata_dcap_verifier {
         })?;
 
         let tcb_info = &ctx.accounts.tcb_info_pda;
-        msg!("tcb info len: {}", tcb_info.data.len());
-        let _tcb_info = TcbInfo::from_bytes(tcb_info.data.as_slice()).map_err(|e| {
+        let _tcb_info = TcbInfo::from_borsh_bytes(tcb_info.data.as_slice()).map_err(|e| {
             msg!("Error deserializing tcb info: {}", e);
             DcapVerifierError::SerializationError
         })?;

@@ -23,7 +23,6 @@ pub mod automata_on_chain_pccs {
     use super::*;
 
     use std::str::FromStr;
-
     use crate::{
         instructions::UpsertPckCertificate,
         internal::certs::{get_certificate_tbs_and_digest, get_cn_from_rdn_sequence},
@@ -304,54 +303,56 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let enclave_identity = &mut ctx.accounts.enclave_identity;
+        let enclave_identity_account = &mut ctx.accounts.enclave_identity;
         let data_buffer = &ctx.accounts.data_buffer;
 
-        // // TODO: deserializes the data buffer with serde to get Identity and Signature
-        // let identity_str: String = todo!();
-        // let identity_digest: [u8; 32] = Sha256::digest(identity_str.as_bytes()).into();
+        let identity_digest = data_buffer.signed_digest;
 
-        // // TODO: Check the given Enclave Identity is unexpired
+        // TODO: Check the given Enclave Identity is unexpired
+        // use dcap_rs::types::enclave_identity::EnclaveIdentity;
+        // let identity = EnclaveIdentity::from_borsh_bytes(data_buffer.data.as_slice())
+        //     .map_err(|_| PccsError::FailedDeserialization)?;
 
-        // let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        // let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 
-        // // TODO: Check if the issuer CA is unexpired and not revoked
+        // TODO: Check if the issuer CA is unexpired and not revoked
 
-        // // verify the proof
-        // let mut expected_output: Vec<u8> = Vec::with_capacity(64);
-        // expected_output.extend_from_slice(&identity_digest);
-        // expected_output.extend_from_slice(&issuer_tbs_digest);
-        // let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&data_buffer.data).into();
+        expected_output.extend_from_slice(&fingerprint);
+        expected_output.extend_from_slice(&identity_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
 
-        // let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-        // if enclave_identity_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+        if enclave_identity_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
-        enclave_identity.identity_type = id;
-        enclave_identity.version = version;
-        // TODO: stores Borsh serialized EnclaveIdentity
-        enclave_identity.data = data_buffer.data.clone();
-        // enclave_identity.digest = identity_digest;
+        enclave_identity_account.identity_type = id;
+        enclave_identity_account.version = version;
+        enclave_identity_account.data = data_buffer.data.clone();
+        enclave_identity_account.digest = identity_digest;
 
         msg!(
             "Enclave identity  with id: {}, version: {} upserted to {}",
             id.common_name(),
             version,
-            enclave_identity.key()
+            enclave_identity_account.key()
         );
 
         emit!(EnclaveIdentityUpserted {
-            id: enclave_identity.identity_type,
-            version: enclave_identity.version,
-            pda: enclave_identity.key(),
+            id: enclave_identity_account.identity_type,
+            version: enclave_identity_account.version,
+            pda: enclave_identity_account.key(),
         });
 
         Ok(())
@@ -365,48 +366,49 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let tcb_info = &mut ctx.accounts.tcb_info;
+        let tcb_info_account = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
-        // // TODO: deserializes the data buffer with serde to get TcbInfo and Signature
-        // let tcb_info_str: String = todo!();
-        // let tcb_info_digest: [u8; 32] = Sha256::digest(tcb_info_str.as_bytes()).into();
+        let tcb_info_digest = data_buffer.signed_digest;
 
-        // // TODO: Check the given TCB Info is unexpired
+        // TODO: Check the given TCB Info is unexpired
+        // use dcap_rs::types::tcb_info::TcbInfo;
+        // let tcb_info = TcbInfo::from_borsh_bytes(data_buffer.data.as_slice()).map_err(|_| PccsError::FailedDeserialization)?;
 
-        // let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        // let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
 
-        // // TODO: Check if the issuer CA is unexpired and not revoked
+        // TODO: Check if the issuer CA is unexpired and not revoked
 
-        // // verify the proof
-        // let mut expected_output: Vec<u8> = Vec::with_capacity(64);
-        // expected_output.extend_from_slice(&tcb_info_digest);
-        // expected_output.extend_from_slice(&issuer_tbs_digest);
-        // let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
-        // let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-        // if tcb_info_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&data_buffer.data).into();
+        expected_output.extend_from_slice(&fingerprint);
+        expected_output.extend_from_slice(&tcb_info_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+        let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+        if tcb_info_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
-        tcb_info.tcb_type = tcb_type;
-        tcb_info.version = version;
-        tcb_info.fmspc = fmspc;
-        // TODO: stores Borsh serialized TcbInfo
-        tcb_info.data = data_buffer.data.clone();
-        // tcb_info.digest = tcb_info_digest;
+        tcb_info_account.tcb_type = tcb_type;
+        tcb_info_account.version = version;
+        tcb_info_account.fmspc = fmspc;
+        tcb_info_account.data = data_buffer.data.clone();
+        tcb_info_account.digest = tcb_info_digest;
 
         emit!(TcbInfoUpdated {
-            tcb_type: tcb_info.tcb_type,
-            version: tcb_info.version,
-            fmspc: tcb_info.fmspc,
-            pda: tcb_info.key(),
+            tcb_type: tcb_info_account.tcb_type,
+            version: tcb_info_account.version,
+            fmspc: tcb_info_account.fmspc,
+            pda: tcb_info_account.key(),
         });
 
         msg!(
