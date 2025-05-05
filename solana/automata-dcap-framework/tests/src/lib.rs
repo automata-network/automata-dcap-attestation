@@ -21,6 +21,9 @@ mod tests {
     use anchor_client::solana_client::nonblocking::rpc_client::RpcClient;
     use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
 
+    /// NOTE: Currently I can't specify a timestamp for the local validator to start at.
+    /// Tests may fail due to expired collaterals
+
     #[tokio::test]
     pub async fn test_suite() {
         println!("=== SETTING UP TEST ENVIRONMENT ===");
