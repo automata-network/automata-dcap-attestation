@@ -63,7 +63,7 @@ fn main() {
             let tcb_info_json: TcbInfoAndSignature =
                 serde_json::from_slice(&input.input_data).expect("Failed to parse TCBInfo");
             let tcb_info = tcb_info_json.get_tcb_info().expect("Failed to get TCBInfo");
-            let tcb_info_serialized = borsh::to_vec(&tcb_info).unwrap();
+            let tcb_info_serialized = tcb_info.to_borsh_bytes().expect("Failed to serialize TCBInfo");
             let fingerprint: [u8; 32] = Sha256::digest(&tcb_info_serialized).into();
             let sig = Signature::from_slice(tcb_info_json.signature.as_slice())
                 .expect("Failed to parse TCBInfo signature");
@@ -80,7 +80,7 @@ fn main() {
             let identity = identity_json
                 .get_enclave_identity()
                 .expect("Failed to get Identity");
-            let identity_serialized = borsh::to_vec(&identity).unwrap();
+            let identity_serialized = identity.to_borsh_bytes().expect("Failed to serialize Identity");
             let fingerprint: [u8; 32] = Sha256::digest(&identity_serialized).into();
             let sig = Signature::from_slice(identity_json.signature.as_slice())
                 .expect("Failed to parse Identity signature");
