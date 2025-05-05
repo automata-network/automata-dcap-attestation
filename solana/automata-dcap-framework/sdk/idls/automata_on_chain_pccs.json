@@ -604,6 +604,16 @@
       "code": 6012,
       "name": "FailedDeserialization",
       "msg": "Failed to deserialize data"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidCollateral",
+      "msg": "Collateral has expired or revoked"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidIssuer",
+      "msg": "Issuer has expired or revoked"
     }
   ],
   "types": [

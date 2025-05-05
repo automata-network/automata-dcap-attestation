@@ -40,4 +40,10 @@ pub enum PccsError {
 
     #[msg("Failed to deserialize data")]
     FailedDeserialization,
+
+    #[msg("Collateral has expired or revoked")]
+    InvalidCollateral,
+
+    #[msg("Issuer has expired or revoked")]
+    InvalidIssuer,
 }
