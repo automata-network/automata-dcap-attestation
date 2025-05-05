@@ -83,6 +83,15 @@
         {
           "name": "total_size",
           "type": "u32"
+        },
+        {
+          "name": "signed_digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -116,10 +125,7 @@
           "name": "issuer_ca"
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "system_program",
@@ -183,10 +189,7 @@
           "name": "issuer_ca"
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "system_program",
@@ -258,10 +261,7 @@
           "name": "issuer_ca"
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "system_program",
@@ -322,10 +322,7 @@
           "writable": true
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "system_program",
@@ -377,10 +374,7 @@
           "name": "issuer_ca"
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "system_program",
@@ -568,38 +562,48 @@
     },
     {
       "code": 6004,
+      "name": "InvalidDigest",
+      "msg": "Invalid digest"
+    },
+    {
+      "code": 6005,
       "name": "InvalidHexString",
       "msg": "Invalid Hex String"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "Unauthorized",
       "msg": "Unauthorized"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "IncompleteBuffer",
       "msg": "Incomplete Buffer"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "InvalidSubject",
       "msg": "Invalid Subject Certificate or CRL"
     },
     {
-      "code": 6008,
-      "name": "InvalidIssuer",
-      "msg": "Missing or invalid issuer"
+      "code": 6009,
+      "name": "InvalidRoot",
+      "msg": "Invalid Root Certificate"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "UnsupportedZkvm",
       "msg": "Unsupported ZKVM Selector"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "InvalidProof",
       "msg": "Invalid Proof"
+    },
+    {
+      "code": 6012,
+      "name": "FailedDeserialization",
+      "msg": "Failed to deserialize data"
     }
   ],
   "types": [
@@ -651,6 +655,15 @@
           {
             "name": "data",
             "type": "bytes"
+          },
+          {
+            "name": "signed_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }

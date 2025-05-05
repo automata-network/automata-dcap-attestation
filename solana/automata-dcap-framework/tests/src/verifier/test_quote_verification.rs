@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use sdk::Sdk;
 use anchor_client::solana_sdk::signer::keypair::Keypair;
-use sdk::automata_dcap_verifier::types::ZkvmSelector;
+use sdk::verifier::automata_dcap_verifier::types::ZkvmSelector;
 use crate::TEST_RISC0_VERIFIER_PUBKEY;
 
 pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {

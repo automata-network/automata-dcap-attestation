@@ -76,3 +76,15 @@ impl TcbType {
         }
     }
 }
+
+impl FromStr for TcbType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SGX" => Ok(TcbType::Sgx),
+            "TDX" => Ok(TcbType::Tdx),
+            _ => Err(String::from("Unknown TCB Type")),
+        }
+    }
+}
