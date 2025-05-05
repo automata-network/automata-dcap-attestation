@@ -12,10 +12,9 @@ use crate::TEST_RISC0_VERIFIER_PUBKEY;
 pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_sgx.json");
 
-    // let tcb_info_and_signature: TcbInfoAndSignature =
-    //     serde_json::from_slice(tcb_info_data).unwrap();
-    // let tcb_info = tcb_info_and_signature.get_tcb_info().unwrap();
-    // let tcb_info_borsh_data = borsh::to_vec(&tcb_info).unwrap();
+    let tcb_info_and_signature: TcbInfoAndSignature =
+        serde_json::from_slice(tcb_info_data).unwrap();
+    let tcb_info_parsed = tcb_info_and_signature.get_tcb_info().unwrap();
 
     let client = sdk.pccs_client();
     let data_buffer_pubkey = client
@@ -53,6 +52,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
         .unwrap();
 
     let (_, tcb_info) = client.get_tcb_info(tcb_type, fmspc_bytes, 3).await.unwrap();
+    assert_eq!(&tcb_info_parsed, &tcb_info);
 
     let tcb_type_string = tcb_info.id.unwrap_or_else(|| "SGX".to_string());
     let actual_tcb_type: TcbType = TcbType::from_str(&tcb_type_string).unwrap();
@@ -60,16 +60,14 @@ pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
     assert_eq!(tcb_info.version, TcbInfoVersion::V3);
     assert_eq!(actual_tcb_type, tcb_type);
     assert_eq!(tcb_info.fmspc, fmspc_bytes);
-    // assert_eq!(tcb_info.data, tcb_info_data);
 }
 
 pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_with_tdx_module.json");
 
-    // let tcb_info_and_signature: TcbInfoAndSignature =
-    //     serde_json::from_slice(tcb_info_data).unwrap();
-    // let tcb_info = tcb_info_and_signature.get_tcb_info().unwrap();
-    // let tcb_info_borsh_data = borsh::to_vec(&tcb_info).unwrap();
+    let tcb_info_and_signature: TcbInfoAndSignature =
+        serde_json::from_slice(tcb_info_data).unwrap();
+    let tcb_info_parsed = tcb_info_and_signature.get_tcb_info().unwrap();
 
     let client = sdk.pccs_client();
     let data_buffer_pubkey = client
@@ -107,6 +105,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
         .unwrap();
 
     let (_, tcb_info) = client.get_tcb_info(tcb_type, fmspc_bytes, 3).await.unwrap();
+    assert_eq!(&tcb_info_parsed, &tcb_info);
 
     let tcb_type_string = tcb_info.id.unwrap_or_else(|| "SGX".to_string());
     let actual_tcb_type: TcbType = TcbType::from_str(&tcb_type_string).unwrap();
@@ -114,5 +113,4 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
     assert_eq!(tcb_info.version, TcbInfoVersion::V3);
     assert_eq!(actual_tcb_type, tcb_type);
     assert_eq!(tcb_info.fmspc, fmspc_bytes);
-    // assert_eq!(tcb_info.data, tcb_info_data);
 }
