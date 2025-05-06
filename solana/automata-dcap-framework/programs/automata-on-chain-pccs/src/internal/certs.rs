@@ -1,6 +1,6 @@
 use der::{Decode, Encode};
 use sha2::{Digest, Sha256};
-use x509_cert::{Certificate, certificate::TbsCertificateInner, name::RdnSequence};
+use x509_cert::{Certificate, certificate::TbsCertificateInner};
 
 pub fn get_certificate_tbs_and_digest(raw_cert_der: &[u8]) -> ([u8; 32], TbsCertificateInner) {
     let cert = Certificate::from_der(raw_cert_der).unwrap();
@@ -17,15 +17,3 @@ pub const INTEL_ROOT_PUB_KEY: [u8; 65] = [
     0xac, 0xc9, 0x88, 0xe5, 0x05, 0xa9, 0x53, 0x55, 0x8c, 0x45, 0x3f, 0x6b, 0x09, 0x04, 0xae, 0x73,
     0x94,
 ];
-
-pub fn get_cn_from_rdn_sequence(rdn_seq: &RdnSequence) -> Option<String> {
-    rdn_seq
-        .0
-        .iter()
-        .find(|attr| attr.to_string().starts_with("CN="))
-        .map(|attr| {
-            let attr_string = attr.to_string();
-            attr_string.split("CN=").nth(1).map(|s| s.to_string())
-        })
-        .flatten()
-}

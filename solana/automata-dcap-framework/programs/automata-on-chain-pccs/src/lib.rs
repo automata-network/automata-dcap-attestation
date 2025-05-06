@@ -14,8 +14,10 @@ declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 use errors::*;
 use event::*;
 use instructions::*;
-use internal::certs::INTEL_ROOT_PUB_KEY;
+use internal::get_cn_from_rdn_sequence;
+use internal::certs::*;
 use internal::clock::*;
+use internal::crl::*;
 use internal::zk::digest_ecdsa_zk_verify;
 use types::*;
 
@@ -23,10 +25,7 @@ use types::*;
 pub mod automata_on_chain_pccs {
     use super::*;
 
-    use crate::{
-        instructions::UpsertPckCertificate,
-        internal::certs::{get_certificate_tbs_and_digest, get_cn_from_rdn_sequence},
-    };
+    use crate::instructions::UpsertPckCertificate;
     use sha2::{Digest, Sha256};
     use std::str::FromStr;
 
@@ -90,9 +89,9 @@ pub mod automata_on_chain_pccs {
         proof: Vec<u8>,
     ) -> Result<()> {
         let pck_certificate = &mut ctx.accounts.pck_certificate;
-        let cert_data = ctx.accounts.data_buffer.data.clone();
+        let cert_data = ctx.accounts.data_buffer.data.as_slice();
 
-        let (pck_tbs_digest, pck_tbs) = get_certificate_tbs_and_digest(&cert_data);
+        let (pck_tbs_digest, pck_tbs) = get_certificate_tbs_and_digest(cert_data);
 
         // We can match digest here for X509 Certificates here as an additional check
         require!(
@@ -107,19 +106,31 @@ pub mod automata_on_chain_pccs {
             .map_err(|_| PccsError::InvalidSubject)?;
         require!(pck_ca_type == ca_type, PccsError::InvalidSubject,);
 
-        // Check if the current PCK Certificate is still valid (unexpired and not revoked)
-        let pck_is_valid = is_certificate_valid(&cert_data);
+        // Check if the current PCK Certificate is unexpired
+        let pck_is_valid = is_certificate_valid(cert_data);
         if !pck_is_valid {
-            return Err(PccsError::InvalidCollateral.into());
+            return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        // Check if the current PCK Certificate has not been revoked
+        let pck_crl_data = ctx.accounts.pck_crl.cert_data.as_slice();
+        if check_certificate_revocation(cert_data, pck_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
-        // Check if the issuer CA is unexpired and not revoked
-        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
+
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(issuer_data);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
+        }
+
+        // Check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        if check_certificate_revocation(issuer_data, root_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
         }
 
         // Verify the proof
@@ -155,7 +166,7 @@ pub mod automata_on_chain_pccs {
             .try_into()
             .map_err(|_| PccsError::InvalidHexString)?;
         pck_certificate.ca_type = ca_type;
-        pck_certificate.cert_data = cert_data;
+        pck_certificate.cert_data = cert_data.to_vec();
         pck_certificate.digest = pck_tbs_digest;
 
         // Emit event
@@ -180,9 +191,9 @@ pub mod automata_on_chain_pccs {
         proof: Vec<u8>,
     ) -> Result<()> {
         let root_ca_pda = &mut ctx.accounts.root_ca;
-        let root_ca_data = &ctx.accounts.data_buffer.data;
+        let root_ca_data = ctx.accounts.data_buffer.data.as_slice();
 
-        let (root_tbs_digest, root_tbs) = get_certificate_tbs_and_digest(&root_ca_data);
+        let (root_tbs_digest, root_tbs) = get_certificate_tbs_and_digest(root_ca_data);
 
         // We can match digest here for X509 Certificates here as an additional check
         require!(
@@ -199,14 +210,14 @@ pub mod automata_on_chain_pccs {
         require!(root_ca_pubkey == INTEL_ROOT_PUB_KEY, PccsError::InvalidRoot);
 
         // Check if the current Root CA Certificate is unexpired
-        let root_ca_is_valid = is_certificate_valid(&root_ca_data);
+        let root_ca_is_valid = is_certificate_valid(root_ca_data);
         if !root_ca_is_valid {
-            return Err(PccsError::InvalidCollateral.into());
+            return Err(PccsError::ExpiredCollateral.into());
         }
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
-        let fingerprint: [u8; 32] = Sha256::digest(&root_ca_data).into();
+        let fingerprint: [u8; 32] = Sha256::digest(root_ca_data).into();
         expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&root_tbs_digest);
         expected_output.extend_from_slice(&root_tbs_digest);
@@ -225,7 +236,7 @@ pub mod automata_on_chain_pccs {
         }
         // write to root pda data
         root_ca_pda.ca_type = CertificateAuthority::ROOT;
-        root_ca_pda.cert_data = root_ca_data.clone();
+        root_ca_pda.cert_data = root_ca_data.to_vec();
         root_ca_pda.is_crl = false;
         root_ca_pda.digest = root_tbs_digest;
 
@@ -239,17 +250,87 @@ pub mod automata_on_chain_pccs {
         Ok(())
     }
 
+    pub fn upsert_root_crl(
+        ctx: Context<UpsertRootCrl>,
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>,
+    ) -> Result<()> {
+        let root_crl = &mut ctx.accounts.root_crl;
+        let crl_data = ctx.accounts.data_buffer.data.as_slice();
+
+        let (subject_tbs_digest, _) = get_crl_tbs_and_digest(crl_data);
+
+        // We can match digest here for X509 Certificates here as an additional check
+        require!(
+            subject_tbs_digest == ctx.accounts.data_buffer.signed_digest,
+            PccsError::InvalidDigest
+        );
+
+        // check if the CA is unexpired (CA certificates are not revoked)
+        let crl_is_valid = is_crl_valid(&crl_data);
+        if !crl_is_valid {
+            return Err(PccsError::ExpiredCollateral.into());
+        }
+
+        let issuer_data = ctx.accounts.root_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
+
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
+
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
+        expected_output.extend_from_slice(&fingerprint);
+        expected_output.extend_from_slice(&subject_tbs_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
+
+        root_crl.ca_type = CertificateAuthority::ROOT;
+        root_crl.cert_data = crl_data.to_vec();
+        root_crl.is_crl = true;
+        root_crl.digest = subject_tbs_digest;
+
+        // Emit event
+        emit!(PcsCertificateUpserted {
+            ca_type: root_crl.ca_type,
+            is_crl: root_crl.is_crl,
+            pda: root_crl.key(),
+        });
+
+        msg!(
+            "PCS certificate upserted to {}",
+            ctx.accounts.root_crl.key()
+        );
+
+        Ok(())
+    }
+
     pub fn upsert_pcs_certificate(
         ctx: Context<UpsertPcsCertificate>,
         ca_type: CertificateAuthority,
-        is_crl: bool,
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let pcs_certificate = &mut ctx.accounts.pcs_certificate;
-        let cert_data = ctx.accounts.data_buffer.data.clone();
+        let cert_data = ctx.accounts.data_buffer.data.as_slice();
 
-        let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(&cert_data);
+        let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(cert_data);
 
         // We can match digest here for X509 Certificates here as an additional check
         require!(
@@ -261,14 +342,28 @@ pub mod automata_on_chain_pccs {
         let subject_common_name = get_cn_from_rdn_sequence(&subject_tbs.subject).unwrap();
         let subject_ca_type = CertificateAuthority::from_str(&subject_common_name)
             .map_err(|_| PccsError::InvalidSubject)?;
-        require!(subject_ca_type == ca_type, PccsError::InvalidSubject,);
+        require!(subject_ca_type == ca_type, PccsError::InvalidSubject);
 
-        // TODO: check if the CA or CRL is unexpired (CA certificates are not revoked)
+        // check if the CA is unexpired
+        let ca_is_valid = is_certificate_valid(cert_data);
+        if !ca_is_valid {
+            return Err(PccsError::ExpiredCollateral.into());
+        }
 
-        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        // check if the CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        if check_certificate_revocation(cert_data, root_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
-        // TODO: Check if the issuer CA is unexpired and not revoked
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
+
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
 
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
@@ -291,8 +386,8 @@ pub mod automata_on_chain_pccs {
         }
 
         pcs_certificate.ca_type = ca_type;
-        pcs_certificate.cert_data = cert_data;
-        pcs_certificate.is_crl = is_crl;
+        pcs_certificate.cert_data = cert_data.to_vec();
+        pcs_certificate.is_crl = false;
         pcs_certificate.digest = subject_tbs_digest;
 
         // Emit event
@@ -310,6 +405,90 @@ pub mod automata_on_chain_pccs {
         Ok(())
     }
 
+    pub fn upsert_pcs_crl(
+        ctx: Context<UpsertPcsCrl>,
+        ca_type: CertificateAuthority,
+        zkvm_selector: zk::ZkvmSelector,
+        proof: Vec<u8>,
+    ) -> Result<()> {
+        let pcs_crl = &mut ctx.accounts.pcs_crl;
+        let crl_data = ctx.accounts.data_buffer.data.as_slice();
+
+        let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
+
+        // We can match digest here for X509 Certificates here as an additional check
+        require!(
+            subject_tbs_digest == ctx.accounts.data_buffer.signed_digest,
+            PccsError::InvalidDigest
+        );
+
+        // check issuer common name matches with ca_type
+        let common_name_found = get_cn_from_rdn_sequence(&subject_tbs.issuer).unwrap();
+        let expected_ca_type = CertificateAuthority::from_str(&common_name_found)
+            .map_err(|_| PccsError::InvalidSubject)?;
+        require!(expected_ca_type == ca_type, PccsError::InvalidSubject);
+
+        // check if the CA is unexpired (CA certificates are not revoked)
+        let crl_is_valid = is_crl_valid(&crl_data);
+        if !crl_is_valid {
+            return Err(PccsError::ExpiredCollateral.into());
+        }
+
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
+
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
+
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        if check_certificate_revocation(issuer_data, root_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
+        }
+
+        // verify the proof
+        let mut expected_output: Vec<u8> = Vec::with_capacity(96);
+        let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
+        expected_output.extend_from_slice(&fingerprint);
+        expected_output.extend_from_slice(&subject_tbs_digest);
+        expected_output.extend_from_slice(&issuer_tbs_digest);
+        let output_digest: [u8; 32] = Sha256::digest(expected_output.as_slice()).into();
+
+        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
+
+        pcs_crl.ca_type = ca_type;
+        pcs_crl.cert_data = crl_data.to_vec();
+        pcs_crl.is_crl = true;
+        pcs_crl.digest = subject_tbs_digest;
+
+        // Emit event
+        emit!(PcsCertificateUpserted {
+            ca_type: pcs_crl.ca_type,
+            is_crl: pcs_crl.is_crl,
+            pda: pcs_crl.key(),
+        });
+
+        msg!(
+            "PCS certificate upserted to {}",
+            ctx.accounts.pcs_crl.key()
+        );
+
+        Ok(())
+    }
+
     pub fn upsert_enclave_identity(
         ctx: Context<UpsertEnclaveIdentity>,
         id: EnclaveIdentityType,
@@ -321,31 +500,38 @@ pub mod automata_on_chain_pccs {
         let data_buffer = &ctx.accounts.data_buffer;
 
         let identity_digest = data_buffer.signed_digest;
+        let identity_data = data_buffer.data.as_slice();
 
         // Check the given Enclave Identity is unexpired
         use dcap_rs::types::enclave_identity::EnclaveIdentity;
-        let identity = EnclaveIdentity::from_borsh_bytes(data_buffer.data.as_slice())
+        let identity = EnclaveIdentity::from_borsh_bytes(identity_data)
             .map_err(|_| PccsError::FailedDeserialization)?;
         let identity_is_valid = is_collateral_valid(
             identity.issue_date.timestamp(), 
             identity.next_update.timestamp(),
         );
         if !identity_is_valid {
-            return Err(PccsError::InvalidCollateral.into());
+            return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
-        // Check if the issuer CA is unexpired and not revoked
-        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(issuer_data);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
+        // Check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        if check_certificate_revocation(issuer_data, root_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
+        }
+
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
-        let fingerprint: [u8; 32] = Sha256::digest(&data_buffer.data).into();
+        let fingerprint: [u8; 32] = Sha256::digest(identity_data).into();
         expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&identity_digest);
         expected_output.extend_from_slice(&issuer_tbs_digest);
@@ -364,7 +550,7 @@ pub mod automata_on_chain_pccs {
 
         enclave_identity_account.identity_type = id;
         enclave_identity_account.version = version;
-        enclave_identity_account.data = data_buffer.data.clone();
+        enclave_identity_account.data = identity_data.to_vec();
         enclave_identity_account.digest = identity_digest;
 
         msg!(
@@ -394,31 +580,38 @@ pub mod automata_on_chain_pccs {
         let tcb_info_account = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
+        let tcb_info_data = data_buffer.data.as_slice();
         let tcb_info_digest = data_buffer.signed_digest;
 
         // Check the given TCB Info is unexpired
         use dcap_rs::types::tcb_info::TcbInfo;
-        let tcb_info = TcbInfo::from_borsh_bytes(data_buffer.data.as_slice()).map_err(|_| PccsError::FailedDeserialization)?;
+        let tcb_info = TcbInfo::from_borsh_bytes(tcb_info_data).map_err(|_| PccsError::FailedDeserialization)?;
         let tcb_info_is_valid = is_collateral_valid(
             tcb_info.issue_date.timestamp(), 
             tcb_info.next_update.timestamp(),
         );
         if !tcb_info_is_valid {
-            return Err(PccsError::InvalidCollateral.into());
+            return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_data = ctx.accounts.issuer_ca.cert_data.clone();
-        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(&issuer_data);
+        let issuer_data = ctx.accounts.issuer_ca.cert_data.as_slice();
+        let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
-        // Check if the issuer CA is unexpired and not revoked
-        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = is_certificate_valid(issuer_data);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
+        // Check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        if check_certificate_revocation(issuer_data, root_crl_data).is_err() {
+            return Err(PccsError::RevokedCertificate.into());
+        }
+
         // verify the proof
         let mut expected_output: Vec<u8> = Vec::with_capacity(96);
-        let fingerprint: [u8; 32] = Sha256::digest(&data_buffer.data).into();
+        let fingerprint: [u8; 32] = Sha256::digest(tcb_info_data).into();
         expected_output.extend_from_slice(&fingerprint);
         expected_output.extend_from_slice(&tcb_info_digest);
         expected_output.extend_from_slice(&issuer_tbs_digest);
@@ -437,7 +630,7 @@ pub mod automata_on_chain_pccs {
         tcb_info_account.tcb_type = tcb_type;
         tcb_info_account.version = version;
         tcb_info_account.fmspc = fmspc;
-        tcb_info_account.data = data_buffer.data.clone();
+        tcb_info_account.data = tcb_info_data.to_vec();
         tcb_info_account.digest = tcb_info_digest;
 
         emit!(TcbInfoUpdated {

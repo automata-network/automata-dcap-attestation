@@ -79,12 +79,25 @@ pub struct UpsertPckCertificate<'info> {
 
     #[account(
         constraint = ca_type == CertificateAuthority::PLATFORM || ca_type == CertificateAuthority::PROCESSOR @ PccsError::InvalidSubject,
+        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub pck_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        constraint = ca_type == CertificateAuthority::PLATFORM || ca_type == CertificateAuthority::PROCESSOR @ PccsError::InvalidSubject,
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[0]],
         bump,
     )]
     pub issuer_ca: Account<'info, PcsCertificate>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -116,14 +129,48 @@ pub struct UpsertRootCA<'info> {
     )]
     pub data_buffer: Account<'info, DataBuffer>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-#[instruction(ca_type: CertificateAuthority, is_crl: bool)]
+pub struct UpsertRootCrl<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[true as u8]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == authority.key() @ PccsError::Unauthorized,
+        constraint = data_buffer.complete == true @ PccsError::IncompleteBuffer,
+        close = authority
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub root_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program.
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(ca_type: CertificateAuthority)]
 pub struct UpsertPcsCertificate<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -132,7 +179,7 @@ pub struct UpsertPcsCertificate<'info> {
         init_if_needed,
         payer = authority,
         space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
-        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[is_crl as u8]],
+        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[false as u8]],
         bump,
     )]
     pub pcs_certificate: Account<'info, PcsCertificate>,
@@ -146,12 +193,61 @@ pub struct UpsertPcsCertificate<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 
     #[account(
-        seeds = [b"pcs_cert", ca_type.get_issuer(is_crl).common_name().as_bytes(), &[0]],
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        constraint = ca_type != CertificateAuthority::ROOT @ PccsError::InvalidSubject,
+        seeds = [b"pcs_cert", ca_type.get_issuer(false).common_name().as_bytes(), &[0]],
         bump,
     )]
     pub issuer_ca: Account<'info, PcsCertificate>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(ca_type: CertificateAuthority)]
+pub struct UpsertPcsCrl<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[true as u8]],
+        bump,
+    )]
+    pub pcs_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        mut,
+        constraint = data_buffer.owner == authority.key() @ PccsError::Unauthorized,
+        constraint = data_buffer.complete == true @ PccsError::IncompleteBuffer,
+        close = authority
+    )]
+    pub data_buffer: Account<'info, DataBuffer>,
+
+    #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        constraint = ca_type != CertificateAuthority::ROOT @ PccsError::InvalidSubject,
+        seeds = [b"pcs_cert", ca_type.get_issuer(true).common_name().as_bytes(), &[0]],
+        bump,
+    )]
+    pub issuer_ca: Account<'info, PcsCertificate>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -181,12 +277,18 @@ pub struct UpsertEnclaveIdentity<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 
     #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
         seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
         bump,
     )]
     pub issuer_ca: Account<'info, PcsCertificate>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
@@ -216,12 +318,18 @@ pub struct UpsertTcbInfo<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 
     #[account(
+        seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
+        bump,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
+    #[account(
         seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
         bump,
     )]
     pub issuer_ca: Account<'info, PcsCertificate>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,

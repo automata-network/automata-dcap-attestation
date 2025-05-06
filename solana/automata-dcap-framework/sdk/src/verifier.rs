@@ -15,20 +15,9 @@ use automata_dcap_verifier::types::ZkvmSelector;
 use automata_dcap_verifier::{client::accounts, client::args};
 use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
-use x509_cert::der::Decode;
-use x509_cert::{crl::CertificateList, serial_number::SerialNumber};
-// use x509_verify::VerifyingKey;
 use zerocopy::AsBytes;
 
-use crate::{
-    CertificateAuthority, TcbType, get_issuer_common_name,
-    pccs::{PCCS_PROGRAM_ID, PccsClient},
-    shared::ecdsa::get_secp256r1_instruction,
-};
-
-const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
-const PROCESSOR_ISSUER_NAME: &str = "Intel SGX PCK Processor CA";
-const ROOT_ISSUER_NAME: &str = "Intel SGX Root CA";
+use crate::{TcbType, pccs::PCCS_PROGRAM_ID, shared::ecdsa::get_secp256r1_instruction};
 
 /// A client for the Automata DCAP Verifier program on Solana.
 ///
@@ -391,43 +380,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         zkvm_selector: ZkvmSelector,
         zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<[u8; 6]> {
-        // let cert_chain_size = pck_cert_chain_data.pck_cert_chain.len();
-        // for (index, cert) in pck_cert_chain_data.pck_cert_chain.iter().enumerate() {
-
-        //     let issuer = if index == cert_chain_size - 1 {
-        //         cert
-        //     } else {
-        //         &pck_cert_chain_data.pck_cert_chain[index + 1]
-        //     };
-
-        //     // Need to check if the certificate is not revoked.
-        //     let issuer_common_name = get_issuer_common_name(&cert.tbs_certificate)
-        //         .ok_or_else(|| anyhow::anyhow!("Certificate missing Common Name in issuer field"))?;
-
-        //     match issuer_common_name.as_str() {
-        //         PLATFORM_ISSUER_NAME => {
-        //             // Get the PLATFORM CRL from the PCCS program
-        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PLATFORM).await?;
-        //         },
-        //         PROCESSOR_ISSUER_NAME => {
-        //             // Get the PROCESSOR CRL from the PCCS program
-        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::PROCESSOR).await?;
-        //         },
-        //         ROOT_ISSUER_NAME => {
-        //             // Get the ROOT CRL from the PCCS program
-        //             self.check_certificate_revocation(&cert.tbs_certificate.serial_number, CertificateAuthority::ROOT).await?;
-        //         },
-        //         other => return Err(anyhow::anyhow!("Unsupported issuer common name: {}", other)),
-        //     }
-
-        //     let pk: VerifyingKey= (issuer)
-        //         .try_into()
-        //         .map_err(|e| anyhow::anyhow!("failed to decode key from certificate: {}", e))?;
-
-        //     pk.verify_strict(cert)
-        //         .map_err(|e| anyhow::anyhow!("failed to verify certificate: {}, error: {}", cert.tbs_certificate.subject.to_string(), e))?;
-        // }
-
         let pem_chain = quote.signature.cert_data.cert_data;
         let (_image_id, _journal_bytes, mut groth16_seal) =
             crate::shared::pck::verify_pck_chain_zk(&pem_chain).await?;
@@ -536,39 +488,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .await?;
 
         Ok(tx)
-    }
-
-    /// Checks if a certificate is revoked using Certificate Revocation Lists (CRLs).
-    ///
-    /// This method retrieves the appropriate CRL for the given certificate authority type
-    /// from the PCCS program and checks if the certificate's serial number is in the list
-    /// of revoked certificates.
-    ///
-    /// # Parameters
-    /// - `serial_number`: The serial number of the certificate to check
-    /// - `ca_type`: The type of Certificate Authority (PLATFORM, PROCESSOR, or ROOT)
-    ///
-    /// # Returns
-    /// - `anyhow::Result<()>`: Success if the certificate is not revoked,
-    ///   or an error if the certificate is revoked
-    async fn check_certificate_revocation(
-        &self,
-        pccs_client: &PccsClient<S>,
-        serial_number: &SerialNumber,
-        ca_type: CertificateAuthority,
-    ) -> anyhow::Result<()> {
-        let (_, pcs_cert_data) = pccs_client.get_pcs_certificate(ca_type, true).await?;
-        let certificate_list = CertificateList::from_der(&pcs_cert_data)?;
-
-        if let Some(crl) = certificate_list.tbs_cert_list.revoked_certificates {
-            for revoked_cert in crl {
-                if revoked_cert.serial_number == *serial_number {
-                    return Err(anyhow::anyhow!("Certificate is revoked"));
-                }
-            }
-        }
-
-        Ok(())
     }
 
     /// Returns the payer's public key associated with this client.

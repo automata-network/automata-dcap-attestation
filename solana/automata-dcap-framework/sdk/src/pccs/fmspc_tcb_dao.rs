@@ -112,6 +112,10 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             &self.program.id(),
         );
 
+        let (root_crl_pubkey, _) = self
+            .get_pcs_certificate(CertificateAuthority::ROOT, true)
+            .await?;
+
         let (issuer_pubkey, _) = self
             .get_pcs_certificate(CertificateAuthority::SIGNING, false)
             .await?;
@@ -123,6 +127,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 authority: self.program.payer(),
                 tcb_info: tcb_info_pda.0,
                 data_buffer: data_buffer_pubkey,
+                root_crl: root_crl_pubkey,
                 issuer_ca: issuer_pubkey,
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,
