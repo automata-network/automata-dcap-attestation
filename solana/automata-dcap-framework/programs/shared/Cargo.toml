@@ -1,0 +1,10 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+der = { version = "0.7.9", default-features = false, features = ["derive", "oid"] }
+sha2 = "0.10.8"
+x509-cert = { version = "0.2.5" }
+anyhow = { version = "1.0.93" }

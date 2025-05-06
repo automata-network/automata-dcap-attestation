@@ -5,21 +5,21 @@ use anchor_lang::prelude::*;
 pub mod errors;
 pub mod event;
 pub mod instructions;
-pub mod internal;
 pub mod state;
 pub mod types;
+pub mod utils;
 
 declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 
 use errors::*;
 use event::*;
 use instructions::*;
-use internal::get_cn_from_rdn_sequence;
-use internal::certs::*;
-use internal::clock::*;
-use internal::crl::*;
-use internal::zk::digest_ecdsa_zk_verify;
+use shared::certs::*;
+use shared::clock::*;
+use shared::crl::*;
+use shared::get_cn_from_rdn_sequence;
 use types::*;
+use utils::zk::digest_ecdsa_zk_verify;
 
 #[program]
 pub mod automata_on_chain_pccs {
@@ -107,7 +107,7 @@ pub mod automata_on_chain_pccs {
         require!(pck_ca_type == ca_type, PccsError::InvalidSubject,);
 
         // Check if the current PCK Certificate is unexpired
-        let pck_is_valid = is_certificate_valid(cert_data);
+        let pck_is_valid = is_certificate_valid(cert_data, Clock::get().unwrap().unix_timestamp);
         if !pck_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
         }
@@ -122,7 +122,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -210,7 +211,8 @@ pub mod automata_on_chain_pccs {
         require!(root_ca_pubkey == INTEL_ROOT_PUB_KEY, PccsError::InvalidRoot);
 
         // Check if the current Root CA Certificate is unexpired
-        let root_ca_is_valid = is_certificate_valid(root_ca_data);
+        let root_ca_is_valid =
+            is_certificate_valid(root_ca_data, Clock::get().unwrap().unix_timestamp);
         if !root_ca_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
         }
@@ -267,7 +269,7 @@ pub mod automata_on_chain_pccs {
         );
 
         // check if the CA is unexpired (CA certificates are not revoked)
-        let crl_is_valid = is_crl_valid(&crl_data);
+        let crl_is_valid = is_crl_valid(&crl_data, Clock::get().unwrap().unix_timestamp);
         if !crl_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
         }
@@ -276,7 +278,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(&issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -345,7 +348,7 @@ pub mod automata_on_chain_pccs {
         require!(subject_ca_type == ca_type, PccsError::InvalidSubject);
 
         // check if the CA is unexpired
-        let ca_is_valid = is_certificate_valid(cert_data);
+        let ca_is_valid = is_certificate_valid(cert_data, Clock::get().unwrap().unix_timestamp);
         if !ca_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
         }
@@ -360,7 +363,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -429,7 +433,7 @@ pub mod automata_on_chain_pccs {
         require!(expected_ca_type == ca_type, PccsError::InvalidSubject);
 
         // check if the CA is unexpired (CA certificates are not revoked)
-        let crl_is_valid = is_crl_valid(&crl_data);
+        let crl_is_valid = is_crl_valid(&crl_data, Clock::get().unwrap().unix_timestamp);
         if !crl_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
         }
@@ -438,7 +442,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(&issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(&issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -481,10 +486,7 @@ pub mod automata_on_chain_pccs {
             pda: pcs_crl.key(),
         });
 
-        msg!(
-            "PCS certificate upserted to {}",
-            ctx.accounts.pcs_crl.key()
-        );
+        msg!("PCS certificate upserted to {}", ctx.accounts.pcs_crl.key());
 
         Ok(())
     }
@@ -507,8 +509,9 @@ pub mod automata_on_chain_pccs {
         let identity = EnclaveIdentity::from_borsh_bytes(identity_data)
             .map_err(|_| PccsError::FailedDeserialization)?;
         let identity_is_valid = is_collateral_valid(
-            identity.issue_date.timestamp(), 
+            identity.issue_date.timestamp(),
             identity.next_update.timestamp(),
+            Clock::get().unwrap().unix_timestamp,
         );
         if !identity_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
@@ -518,7 +521,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -585,10 +589,12 @@ pub mod automata_on_chain_pccs {
 
         // Check the given TCB Info is unexpired
         use dcap_rs::types::tcb_info::TcbInfo;
-        let tcb_info = TcbInfo::from_borsh_bytes(tcb_info_data).map_err(|_| PccsError::FailedDeserialization)?;
+        let tcb_info = TcbInfo::from_borsh_bytes(tcb_info_data)
+            .map_err(|_| PccsError::FailedDeserialization)?;
         let tcb_info_is_valid = is_collateral_valid(
-            tcb_info.issue_date.timestamp(), 
+            tcb_info.issue_date.timestamp(),
             tcb_info.next_update.timestamp(),
+            Clock::get().unwrap().unix_timestamp,
         );
         if !tcb_info_is_valid {
             return Err(PccsError::ExpiredCollateral.into());
@@ -598,7 +604,8 @@ pub mod automata_on_chain_pccs {
         let (issuer_tbs_digest, _) = get_certificate_tbs_and_digest(issuer_data);
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = is_certificate_valid(issuer_data);
+        let issuer_is_valid =
+            is_certificate_valid(issuer_data, Clock::get().unwrap().unix_timestamp);
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
