@@ -20,19 +20,17 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     ) -> Result<Pubkey> {
         let data_buffer_keypair = data_buffer_keypair.unwrap_or_else(|| Keypair::new());
         let data_buffer_pubkey = data_buffer_keypair.pubkey();
-    
+
         let (digest, _) = get_certificate_tbs_and_digest(data);
-    
+
         // Step 1: initialize the data buffer account
-        self
-            .init_data_buffer(data_buffer_keypair, digest, data.len() as u32)
+        self.init_data_buffer(data_buffer_keypair, digest, data.len() as u32)
             .await?;
-    
+
         // Step 2: Upload the data to the data buffer account
-        self
-            .upload_chunks(data_buffer_pubkey, data, 512usize)
+        self.upload_chunks(data_buffer_pubkey, data, 512usize)
             .await?;
-    
+
         Ok(data_buffer_pubkey)
     }
 
@@ -70,7 +68,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok((pcs_certificate_pda.0, pcs_certificate_data))
     }
 
-     /// Creates or updates a PCS (Provisioning Certification Service) certificate on-chain.
+    /// Creates or updates a PCS (Provisioning Certification Service) certificate on-chain.
     ///
     /// PCS certificates are part of the Intel certificate hierarchy used in attestation.
     /// This includes root CA certificates, platform certificates, processor certificates,
@@ -79,7 +77,6 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// # Arguments
     ///
     /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
-    /// * `is_crl` - Whether this is a Certificate Revocation List
     /// * `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
     ///
     /// # Returns
@@ -91,35 +88,19 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         data_buffer_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         ca_type: CertificateAuthority,
-        is_crl: bool,
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let pcs_certificate_pda = Pubkey::find_program_address(
             &[
                 b"pcs_cert",
                 ca_type.common_name().as_bytes(),
-                &[is_crl as u8],
+                &[false as u8],
             ],
             &PCCS_PROGRAM_ID,
         );
-    
-        let issuer_pubkey = if ca_type == CertificateAuthority::ROOT && !is_crl {
-            // if upserting the root, the issuer is itself
-            pcs_certificate_pda.0
-        } else {
-            let issuer_ca = if !is_crl {
-                CertificateAuthority::ROOT
-            } else {
-                ca_type
-            };
-    
-            let (issuer_pubkey, _) = self.get_pcs_certificate( issuer_ca, false).await?;
-    
-            issuer_pubkey
-        };
-    
-        if ca_type == CertificateAuthority::ROOT && !is_crl {
+
+        if ca_type == CertificateAuthority::ROOT {
             let _tx = self
                 .program
                 .request()
@@ -138,6 +119,14 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 .send()
                 .await?;
         } else {
+            let (issuer_pubkey, _) = self
+                .get_pcs_certificate(CertificateAuthority::ROOT, false)
+                .await?;
+
+            let (root_crl_pubkey, _) = self
+                .get_pcs_certificate(CertificateAuthority::ROOT, true)
+                .await?;
+
             let _tx = self
                 .program
                 .request()
@@ -146,23 +135,91 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                     pcs_certificate: pcs_certificate_pda.0,
                     data_buffer: data_buffer_pubkey,
                     zkvm_verifier_program,
+                    root_crl: root_crl_pubkey,
                     issuer_ca: issuer_pubkey,
                     system_program: anchor_client::solana_sdk::system_program::ID,
                 })
                 .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
                 .args(args::UpsertPcsCertificate {
                     ca_type: ca_type.into(),
-                    is_crl,
                     zkvm_selector,
                     proof: proof,
                 })
                 .send()
                 .await?;
         }
-    
+
         Ok(())
     }
 
+    pub async fn upsert_pcs_crl(
+        &self,
+        data_buffer_pubkey: Pubkey,
+        zkvm_verifier_program: Pubkey,
+        ca_type: CertificateAuthority,
+        zkvm_selector: ZkvmSelector,
+        proof: Vec<u8>,
+    ) -> Result<()> {
+        assert!(
+            ca_type != CertificateAuthority::SIGNING,
+            "Intel TCB Signing CA does not issue CRLs"
+        );
+
+        let pcs_crl_pda = Pubkey::find_program_address(
+            &[b"pcs_cert", ca_type.common_name().as_bytes(), &[true as u8]],
+            &PCCS_PROGRAM_ID,
+        );
+
+        let (issuer_pubkey, _) = self.get_pcs_certificate(ca_type, false).await?;
+
+        if ca_type == CertificateAuthority::ROOT {
+            let _tx = self
+                .program
+                .request()
+                .accounts(accounts::UpsertRootCrl {
+                    authority: self.program.payer(),
+                    root_crl: pcs_crl_pda.0,
+                    root_ca: issuer_pubkey,
+                    data_buffer: data_buffer_pubkey,
+                    zkvm_verifier_program,
+                    system_program: anchor_client::solana_sdk::system_program::ID,
+                })
+                .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
+                .args(args::UpsertRootCrl {
+                    zkvm_selector,
+                    proof: proof,
+                })
+                .send()
+                .await?;
+        } else {
+            let (root_crl_pubkey, _) = self
+                .get_pcs_certificate(CertificateAuthority::ROOT, true)
+                .await?;
+
+            let _tx = self
+                .program
+                .request()
+                .accounts(accounts::UpsertPcsCrl {
+                    authority: self.program.payer(),
+                    pcs_crl: pcs_crl_pda.0,
+                    data_buffer: data_buffer_pubkey,
+                    zkvm_verifier_program,
+                    root_crl: root_crl_pubkey,
+                    issuer_ca: issuer_pubkey,
+                    system_program: anchor_client::solana_sdk::system_program::ID,
+                })
+                .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
+                .args(args::UpsertPcsCrl {
+                    ca_type: ca_type.into(),
+                    zkvm_selector,
+                    proof: proof,
+                })
+                .send()
+                .await?;
+        }
+
+        Ok(())
+    }
 }
 
 impl From<CertificateAuthority> for automata_on_chain_pccs::types::CertificateAuthority {

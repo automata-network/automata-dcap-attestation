@@ -119,8 +119,18 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         let pck_tbs_issuer_common_name =
             get_issuer_common_name(&pck_tbs).expect("Failed to get PCK issuer common name");
     
+        let pck_cert_type = CertificateAuthority::from_str(&pck_tbs_issuer_common_name).unwrap();
+
+        let (pck_crl_pubkey, _) = self
+            .get_pcs_certificate(pck_cert_type, true)
+            .await?;
+
+        let (root_crl_pubkey, _) = self
+            .get_pcs_certificate(CertificateAuthority::ROOT, true)
+            .await?;
+
         let (issuer_pubkey, _) = self.get_pcs_certificate(
-            CertificateAuthority::from_str(&pck_tbs_issuer_common_name).unwrap(),
+            pck_cert_type,
             false,
         )
         .await?;
@@ -132,6 +142,8 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
                 authority: self.program.payer(),
                 pck_certificate: pck_certificate_pda.0,
                 data_buffer: data_buffer_pubkey,
+                pck_crl: pck_crl_pubkey,
+                root_crl: root_crl_pubkey,
                 issuer_ca: issuer_pubkey,
                 zkvm_verifier_program,
                 system_program: anchor_client::solana_sdk::system_program::ID,

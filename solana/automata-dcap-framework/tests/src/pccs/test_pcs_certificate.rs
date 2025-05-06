@@ -28,7 +28,6 @@ pub(crate) async fn test_pcs_root_ca_upsert(sdk: &Sdk<Arc<Keypair>>) {
             data_buffer_pubkey,
             TEST_RISC0_VERIFIER_PUBKEY,
             ca_type,
-            false,
             ZkvmSelector::RiscZero,
             proof,
         )
@@ -67,7 +66,6 @@ pub(crate) async fn test_pcs_signing_certificate_upsert(sdk: &Sdk<Arc<Keypair>>)
             data_buffer_pubkey,
             TEST_RISC0_VERIFIER_PUBKEY,
             ca_type,
-            false,
             ZkvmSelector::RiscZero,
             proof,
         )
@@ -106,7 +104,6 @@ pub(crate) async fn test_pcs_platform_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
             data_buffer_pubkey,
             TEST_RISC0_VERIFIER_PUBKEY,
             ca_type,
-            false,
             ZkvmSelector::RiscZero,
             proof,
         )

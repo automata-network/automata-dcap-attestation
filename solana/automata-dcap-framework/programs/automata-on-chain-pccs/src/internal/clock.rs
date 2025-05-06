@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use der::Decode;
-use x509_cert::Certificate;
+use x509_cert::{Certificate, crl::CertificateList};
 use x509_cert::time::Time;
 
 /// Gets the current Unix timestamp from the Solana runtime.
@@ -27,6 +27,19 @@ pub fn is_certificate_valid(cert_data: &[u8]) -> bool {
     msg!("Certificate validity: {} - {}", not_before, not_after);
 
     current_timestamp >= not_before && current_timestamp <= not_after
+}
+
+/// Checks if the current timestamp falls within the validity range of a given X.509 CRL.
+/// Returns true if valid, false if not valid.
+pub fn is_crl_valid(crl: &[u8]) -> bool {
+    let crl = CertificateList::from_der(crl).unwrap();
+    
+    let current_timestamp = get_current_timestamp();
+    
+    // Convert the ASN.1 time to Unix timestamp
+    let this_update = der_time_to_unix_timestamp(&crl.tbs_cert_list.this_update);
+
+    current_timestamp >= this_update
 }
 
 /// Checks if a JSON collateral (EnclaveIdentity or TcbInfo) with explicit validity dates is valid.

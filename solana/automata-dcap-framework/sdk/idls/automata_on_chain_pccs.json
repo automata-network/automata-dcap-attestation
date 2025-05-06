@@ -122,6 +122,9 @@
           "writable": true
         },
         {
+          "name": "root_crl"
+        },
+        {
           "name": "issuer_ca"
         },
         {
@@ -184,6 +187,12 @@
         {
           "name": "data_buffer",
           "writable": true
+        },
+        {
+          "name": "pck_crl"
+        },
+        {
+          "name": "root_crl"
         },
         {
           "name": "issuer_ca"
@@ -258,6 +267,9 @@
           "writable": true
         },
         {
+          "name": "root_crl"
+        },
+        {
           "name": "issuer_ca"
         },
         {
@@ -278,8 +290,67 @@
           }
         },
         {
-          "name": "is_crl",
-          "type": "bool"
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_pcs_crl",
+      "discriminator": [
+        79,
+        221,
+        14,
+        84,
+        207,
+        40,
+        230,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pcs_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
         },
         {
           "name": "zkvm_selector",
@@ -345,6 +416,58 @@
       ]
     },
     {
+      "name": "upsert_root_crl",
+      "discriminator": [
+        240,
+        56,
+        34,
+        178,
+        75,
+        96,
+        143,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "upsert_tcb_info",
       "discriminator": [
         190,
@@ -369,6 +492,9 @@
         {
           "name": "data_buffer",
           "writable": true
+        },
+        {
+          "name": "root_crl"
         },
         {
           "name": "issuer_ca"
@@ -607,11 +733,16 @@
     },
     {
       "code": 6013,
-      "name": "InvalidCollateral",
-      "msg": "Collateral has expired or revoked"
+      "name": "ExpiredCollateral",
+      "msg": "Collateral has expired"
     },
     {
       "code": 6014,
+      "name": "RevokedCertificate",
+      "msg": "Certificate has been revoked"
+    },
+    {
+      "code": 6015,
       "name": "InvalidIssuer",
       "msg": "Issuer has expired or revoked"
     }
