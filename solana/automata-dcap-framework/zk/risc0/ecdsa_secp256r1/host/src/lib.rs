@@ -14,8 +14,9 @@ use risc0_zkvm::{ExecutorEnv, InnerReceipt, ProverOpts, compute_image_id, defaul
 #[repr(u8)]
 pub enum InputType {
     X509 = 0,
-    TcbInfo = 1,
-    Identity = 2,
+    CRL = 1,
+    TcbInfo = 2,
+    Identity = 3,
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]

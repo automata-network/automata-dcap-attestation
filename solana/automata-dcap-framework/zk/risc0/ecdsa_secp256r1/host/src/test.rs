@@ -23,6 +23,21 @@ pub fn test_verify_root_x509() {
 }
 
 #[test]
+pub fn test_verify_root_crl() {
+    let root_crl_bytes = include_bytes!("../sample/root_crl.der");
+    let issuer_bytes = include_bytes!("../sample/root.der");
+
+    let serialized_input = serialize_input(
+        InputType::CRL,
+        root_crl_bytes.to_vec(),
+        issuer_bytes.to_vec(),
+    )
+    .unwrap();
+
+    get_execution_session_info(serialized_input.as_slice());
+}
+
+#[test]
 pub fn test_verify_tcb_info() {
     let tcb_bytes = include_bytes!("../sample/tcb_info_v3_sgx.json");
     let issuer_bytes = include_bytes!("../sample/signing.der");

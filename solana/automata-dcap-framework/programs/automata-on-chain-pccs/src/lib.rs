@@ -14,10 +14,10 @@ declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 use errors::*;
 use event::*;
 use instructions::*;
-use shared::certs::*;
-use shared::clock::*;
-use shared::crl::*;
-use shared::get_cn_from_rdn_sequence;
+use programs_shared::certs::*;
+use programs_shared::clock::*;
+use programs_shared::crl::*;
+use programs_shared::get_cn_from_rdn_sequence;
 use types::*;
 use utils::zk::digest_ecdsa_zk_verify;
 

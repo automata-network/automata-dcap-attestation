@@ -10,7 +10,7 @@ pub(crate) async fn test_pcs_root_ca_upsert(sdk: &Sdk<Arc<Keypair>>) {
     let client = sdk.pccs_client();
     let root_cert_data = include_bytes!("../../data/root.der").to_vec();
     let data_buffer_pubkey = client
-        .upload_pcs_data(root_cert_data.as_slice(), None)
+        .upload_pcs_data(false, root_cert_data.as_slice(), None)
         .await
         .unwrap();
 
@@ -42,7 +42,7 @@ pub(crate) async fn test_pcs_root_crl_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
     let client = sdk.pccs_client();
     let pcs_crl_data = include_bytes!("../../data/intel_root_ca_crl.der").to_vec();
     let data_buffer_pubkey = client
-        .upload_pcs_data(pcs_crl_data.as_slice(), None)
+        .upload_pcs_data(true, pcs_crl_data.as_slice(), None)
         .await
         .unwrap();
 
@@ -54,7 +54,7 @@ pub(crate) async fn test_pcs_root_crl_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
         .unwrap();
 
     let (_image_id, _journal, proof) = request_ecdsa_verify_proof(
-        EcdsaZkVerifyInputType::X509,
+        EcdsaZkVerifyInputType::CRL,
         pcs_crl_data.as_slice(),
         issuer_der.as_slice(),
     )
@@ -80,7 +80,7 @@ pub(crate) async fn test_pcs_signing_certificate_upsert(sdk: &Sdk<Arc<Keypair>>)
     let client = sdk.pccs_client();
     let pcs_cert_data = include_bytes!("../../data/signing.der").to_vec();
     let data_buffer_pubkey = client
-        .upload_pcs_data(pcs_cert_data.as_slice(), None)
+        .upload_pcs_data(false, pcs_cert_data.as_slice(), None)
         .await
         .unwrap();
 
@@ -118,7 +118,7 @@ pub(crate) async fn test_pcs_platform_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
     let client = sdk.pccs_client();
     let pcs_cert_data = include_bytes!("../../data/platform.der").to_vec();
     let data_buffer_pubkey = client
-        .upload_pcs_data(pcs_cert_data.as_slice(), None)
+        .upload_pcs_data(false, pcs_cert_data.as_slice(), None)
         .await
         .unwrap();
 
@@ -156,7 +156,7 @@ pub(crate) async fn test_pcs_platform_crl_certificate_upsert(sdk: &Sdk<Arc<Keypa
     let client = sdk.pccs_client();
     let pcs_crl_data = include_bytes!("../../data/pck_platform_crl.der").to_vec();
     let data_buffer_pubkey = client
-        .upload_pcs_data(pcs_crl_data.as_slice(), None)
+        .upload_pcs_data(true, pcs_crl_data.as_slice(), None)
         .await
         .unwrap();
 
@@ -168,7 +168,7 @@ pub(crate) async fn test_pcs_platform_crl_certificate_upsert(sdk: &Sdk<Arc<Keypa
         .unwrap();
 
     let (_image_id, _journal, proof) = request_ecdsa_verify_proof(
-        EcdsaZkVerifyInputType::X509,
+        EcdsaZkVerifyInputType::CRL,
         pcs_crl_data.as_slice(),
         issuer_der.as_slice(),
     )

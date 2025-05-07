@@ -128,10 +128,8 @@ pub async fn request_ecdsa_verify_proof(
     Vec<u8>,  // journal_bytes
     Vec<u8>,  // Groth16 Seal
 )> {
-    let (image_id, journal, mut seal) = match input_type {
-        EcdsaZkVerifyInputType::X509 => get_x509_ecdsa_verify_proof(input_data, issuer_der).await?,
-        _ => get_json_ecdsa_verify_proof(input_type, input_data, issuer_der).await?,
-    };
+    let (image_id, journal, mut seal) =
+        get_ecdsa_verify_proof(input_type, input_data, issuer_der).await?;
 
     // negate risczero pi_a
     let mut pi_a: [u8; 64] = [0; 64];

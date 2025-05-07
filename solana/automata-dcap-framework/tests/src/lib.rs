@@ -49,6 +49,10 @@ mod tests {
         pccs::test_pcs_certificate::test_pcs_root_ca_upsert(&sdk).await;
         println!("=== BEGIN UPSERTING INTEL ROOT CA... DONE ===");
 
+        println!("=== BEGIN UPSERTING INTEL ROOT CA CRL ===");
+        pccs::test_pcs_certificate::test_pcs_root_crl_certificate_upsert(&sdk).await;
+        println!("=== BEGIN UPSERTING INTEL ROOT CA CRL... DONE ===");
+
         println!("=== BEGIN UPSERTING INTEL TCB SIGNING CA ===");
         pccs::test_pcs_certificate::test_pcs_signing_certificate_upsert(&sdk).await;
         println!("=== BEGIN UPSERTING INTEL TCB SIGNING CA... DONE ===");
@@ -56,6 +60,10 @@ mod tests {
         println!("=== BEGIN UPSERTING INTEL PCK PLATFORM CA ===");
         pccs::test_pcs_certificate::test_pcs_platform_certificate_upsert(&sdk).await;
         println!("=== BEGIN UPSERTING INTEL PCK PLATFORM CA... DONE ===");
+
+        println!("=== BEGIN UPSERTING INTEL PCK PLATFORM CA CRL ===");
+        pccs::test_pcs_certificate::test_pcs_platform_crl_certificate_upsert(&sdk).await;
+        println!("=== BEGIN UPSERTING INTEL PCK PLATFORM CA CRL... DONE ===");
 
         println!("=== BEGIN UPSERTING QE IDENTITY ===");
         pccs::test_enclave_identity::test_enclave_identity_upsert(&sdk).await;

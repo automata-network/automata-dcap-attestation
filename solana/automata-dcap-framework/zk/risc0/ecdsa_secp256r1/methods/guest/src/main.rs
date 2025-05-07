@@ -8,14 +8,16 @@ use risc0_zkvm::guest::env;
 use sha2::{Digest, Sha256};
 use std::io::Read;
 use x509_cert::Certificate;
+use x509_cert::crl::CertificateList;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PartialEq)]
 #[borsh(use_discriminant = true)]
 #[repr(u8)]
-enum InputType {
+pub enum InputType {
     X509 = 0,
-    TcbInfo = 1,
-    Identity = 2,
+    CRL = 1,
+    TcbInfo = 2,
+    Identity = 3,
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -58,6 +60,19 @@ fn main() {
             let sig = Signature::from_der(cert_sig).expect("Failed to parse X509 signature");
             (fingerprint, tbs_der, sig)
         },
+        InputType::CRL => {
+            // parse the CRL
+            let crl = CertificateList::from_der(&input.input_data)
+                .expect("Failed to parse CRL");
+            let tbs_der = crl
+                .tbs_cert_list
+                .to_der()
+                .expect("Failed to get CRL TBS");
+            let fingerprint: [u8; 32] = Sha256::digest(&input.input_data).into();
+            let crl_sig = crl.signature.as_bytes().unwrap();
+            let sig = Signature::from_der(crl_sig).expect("Failed to parse CRL signature");
+            (fingerprint, tbs_der, sig)
+        }
         InputType::TcbInfo => {
             // parse the TCBInfo
             let tcb_info_json: TcbInfoAndSignature =
