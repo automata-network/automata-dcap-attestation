@@ -23,4 +23,4 @@ hex = "0.4.3"
 sha2 = "0.10.8"
 dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
-shared = { path = "../shared" }
+programs_shared = { path = "../../programs-shared" }

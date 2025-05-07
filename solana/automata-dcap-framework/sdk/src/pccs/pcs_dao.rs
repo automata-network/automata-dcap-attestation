@@ -10,18 +10,23 @@ use automata_on_chain_pccs::{client::accounts, client::args};
 use std::ops::Deref;
 
 use crate::CertificateAuthority;
-use crate::shared::get_certificate_tbs_and_digest;
+use crate::shared::{get_certificate_tbs_and_digest, get_crl_tbs_and_digest};
 
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     pub async fn upload_pcs_data(
         &self,
+        is_crl: bool,
         data: &[u8],
         data_buffer_keypair: Option<Keypair>,
     ) -> Result<Pubkey> {
         let data_buffer_keypair = data_buffer_keypair.unwrap_or_else(|| Keypair::new());
         let data_buffer_pubkey = data_buffer_keypair.pubkey();
 
-        let (digest, _) = get_certificate_tbs_and_digest(data);
+        let digest = if is_crl {
+            get_crl_tbs_and_digest(data).0
+        } else {
+            get_certificate_tbs_and_digest(data).0
+        };
 
         // Step 1: initialize the data buffer account
         self.init_data_buffer(data_buffer_keypair, digest, data.len() as u32)
