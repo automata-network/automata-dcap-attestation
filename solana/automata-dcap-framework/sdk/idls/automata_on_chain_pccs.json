@@ -850,6 +850,20 @@
                 32
               ]
             }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -969,6 +983,32 @@
                 32
               ]
             }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
           }
         ]
       }
@@ -1053,6 +1093,35 @@
                 32
               ]
             }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate",
+              "This field is optional for CRLs"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  20
+                ]
+              }
+            }
           }
         ]
       }
@@ -1134,6 +1203,20 @@
                 32
               ]
             }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }

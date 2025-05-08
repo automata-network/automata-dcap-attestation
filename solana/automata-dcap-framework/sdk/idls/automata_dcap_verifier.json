@@ -759,6 +759,20 @@
                 32
               ]
             }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -849,6 +863,20 @@
                 32
               ]
             }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }
