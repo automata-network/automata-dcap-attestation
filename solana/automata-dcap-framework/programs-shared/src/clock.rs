@@ -2,9 +2,8 @@ use der::Decode;
 use x509_cert::{Certificate, crl::CertificateList};
 use x509_cert::time::Time;
 
-/// Checks if the current timestamp falls within the validity range of a given X.509 certificate.
-/// Returns true if valid, false if not valid.
-pub fn is_certificate_valid(cert_data: &[u8], current_timestamp: i64) -> bool {
+/// Get the validity period of a given X.509 certificate.
+pub fn get_certificate_validity(cert_data: &[u8]) -> (i64, i64) {
     let cert = Certificate::from_der(cert_data).unwrap();
     
     let validity = &cert.tbs_certificate.validity;
@@ -13,24 +12,24 @@ pub fn is_certificate_valid(cert_data: &[u8], current_timestamp: i64) -> bool {
     let not_before = der_time_to_unix_timestamp(&validity.not_before);
     let not_after = der_time_to_unix_timestamp(&validity.not_after);
 
-    current_timestamp >= not_before && current_timestamp <= not_after
+    (not_before, not_after)
 }
 
-/// Checks if the current timestamp falls within the validity range of a given X.509 CRL.
-/// Returns true if valid, false if not valid.
-pub fn is_crl_valid(crl: &[u8], current_timestamp: i64) -> bool {
+/// Get the validity period of a given CRL.
+pub fn get_crl_validity(crl: &[u8]) -> (i64, i64) {
     let crl = CertificateList::from_der(crl).unwrap();
     
     // Convert the ASN.1 time to Unix timestamp
     let this_update = der_time_to_unix_timestamp(&crl.tbs_cert_list.this_update);
 
-    current_timestamp >= this_update
-}
+    let next_update = if let Some(next_update) = &crl.tbs_cert_list.next_update {
+        der_time_to_unix_timestamp(next_update)
+    } else {
+        // If nextUpdate is not present, we assume it is valid indefinitely
+        i64::MAX
+    };
 
-/// Checks if a JSON collateral (EnclaveIdentity or TcbInfo) with explicit validity dates is valid.
-/// Returns true if valid, false if not valid.
-pub fn is_collateral_valid(issue_timestamp: i64, next_update: i64, current_timestamp: i64) -> bool {
-    current_timestamp >= issue_timestamp && current_timestamp <= next_update
+    (this_update, next_update)
 }
 
 /// Helper function to convert ASN.1 Time to Unix timestamp.

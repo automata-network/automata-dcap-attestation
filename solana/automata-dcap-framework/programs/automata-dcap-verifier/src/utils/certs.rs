@@ -20,9 +20,6 @@ pub fn compute_output_digest_from_pem(pck_cert_chain_pem: &[u8]) -> [u8; 32] {
     let encoded_hash = Sha256::digest(&encoded_chain);
     let root_hash = Sha256::digest(&cert_chain[cert_chain.len() - 1]);
 
-    // free the memory allocated for the cert_chain
-    drop(cert_chain);
-
     // make copies of encoded_hash and root_hash
     let output: OutputType = (
         FixedBytes::<32>::from_slice(encoded_hash.as_slice()),
@@ -30,7 +27,6 @@ pub fn compute_output_digest_from_pem(pck_cert_chain_pem: &[u8]) -> [u8; 32] {
         true,
     );
 
-    drop(encoded_chain);
     let _ = encoded_hash;
     let _ = root_hash;
 
