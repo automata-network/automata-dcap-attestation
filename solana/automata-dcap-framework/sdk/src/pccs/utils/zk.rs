@@ -8,7 +8,8 @@ use ecdsa_secp256r1_host::{InputType, verify_non_blocking};
 pub async fn get_ecdsa_verify_proof(
     input_type: InputType,
     input_data: &[u8],
-    issuer_der: &[u8]
+    issuer_der: &[u8],
+    issuer_crl: Option<&[u8]>
 ) -> Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
@@ -17,7 +18,8 @@ pub async fn get_ecdsa_verify_proof(
     let (image_id, journal, seal) = verify_non_blocking(
         input_type,
         input_data.to_vec(),
-        issuer_der.to_vec()
+        issuer_der.to_vec(),
+        issuer_crl.map(|crl| crl.to_vec()),
     ).await?;
 
     Ok((

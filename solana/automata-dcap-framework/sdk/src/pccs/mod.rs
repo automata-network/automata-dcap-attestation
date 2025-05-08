@@ -123,13 +123,14 @@ pub async fn request_ecdsa_verify_proof(
     input_type: EcdsaZkVerifyInputType,
     input_data: &[u8],
     issuer_der: &[u8],
+    crl_der: Option<&[u8]>,
 ) -> anyhow::Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
     Vec<u8>,  // Groth16 Seal
 )> {
     let (image_id, journal, mut seal) =
-        get_ecdsa_verify_proof(input_type, input_data, issuer_der).await?;
+        get_ecdsa_verify_proof(input_type, input_data, issuer_der, crl_der).await?;
 
     // negate risczero pi_a
     let mut pi_a: [u8; 64] = [0; 64];

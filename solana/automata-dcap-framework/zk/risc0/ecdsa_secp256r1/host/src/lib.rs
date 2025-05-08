@@ -24,6 +24,7 @@ pub struct Input {
     pub input_type: InputType,
     pub input_data: Vec<u8>,
     pub issuer_raw_der: Vec<u8>,
+    pub crl_raw_der: Option<Vec<u8>>
 }
 
 pub fn get_image_id() -> Result<String> {
@@ -35,6 +36,7 @@ pub fn verify(
     input_type: InputType,
     input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
+    crl_raw_der: Option<Vec<u8>>,
 ) -> Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
@@ -45,6 +47,7 @@ pub fn verify(
         input_type,
         input_data,
         issuer_raw_der,
+        crl_raw_der,
     )?;
 
     // Set RISC0_PROVER env to bonsai if using Groth16
@@ -73,6 +76,7 @@ pub async fn verify_non_blocking(
     input_type: InputType,
     input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
+    crl_raw_der: Option<Vec<u8>>,
 ) -> Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
@@ -83,6 +87,7 @@ pub async fn verify_non_blocking(
         input_type,
         input_data,
         issuer_raw_der,
+        crl_raw_der
     )?;
 
     let snark_receipt = bonsai_prove_non_blocking(
@@ -106,11 +111,13 @@ pub fn serialize_input(
     input_type: InputType,
     input_data: Vec<u8>,
     issuer_raw_der: Vec<u8>,
+    crl_raw_der: Option<Vec<u8>>,
 ) -> Result<Vec<u8>> {
     let input = Input {
         input_type,
         input_data,
         issuer_raw_der,
+        crl_raw_der
     };
     let mut input_bytes = vec![];
     input.serialize(&mut input_bytes)?;

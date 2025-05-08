@@ -2,6 +2,8 @@ use super::*;
 use ecdsa_sepc256r1_methods::ECDSA_SEPC256R1_GUEST_ELF;
 use risc0_zkvm::{ExecutorEnv, SessionInfo, compute_image_id, default_executor};
 
+pub const ROOT_CRL_BYTES: &'static [u8] = include_bytes!("../sample/root_crl.der");
+
 #[test]
 pub fn test_image_id() {
     let image_id: [u8; 32] = compute_image_id(ECDSA_SEPC256R1_GUEST_ELF).unwrap().into();
@@ -16,6 +18,7 @@ pub fn test_verify_root_x509() {
         InputType::X509,
         root_der_bytes.to_vec(),
         root_der_bytes.to_vec(),
+        None
     )
     .unwrap();
 
@@ -24,13 +27,13 @@ pub fn test_verify_root_x509() {
 
 #[test]
 pub fn test_verify_root_crl() {
-    let root_crl_bytes = include_bytes!("../sample/root_crl.der");
     let issuer_bytes = include_bytes!("../sample/root.der");
 
     let serialized_input = serialize_input(
         InputType::CRL,
-        root_crl_bytes.to_vec(),
+        ROOT_CRL_BYTES.to_vec(),
         issuer_bytes.to_vec(),
+        None
     )
     .unwrap();
 
@@ -46,6 +49,7 @@ pub fn test_verify_tcb_info() {
         InputType::TcbInfo,
         tcb_bytes.to_vec(),
         issuer_bytes.to_vec(),
+        Some(ROOT_CRL_BYTES.to_vec()),
     )
     .unwrap();
     get_execution_session_info(serialized_input.as_slice());
@@ -60,6 +64,7 @@ pub fn test_verify_qe_identity() {
         InputType::Identity,
         qe_identity_bytes.to_vec(),
         issuer_bytes.to_vec(),
+        Some(ROOT_CRL_BYTES.to_vec()),
     )
     .unwrap();
     get_execution_session_info(serialized_input.as_slice());
