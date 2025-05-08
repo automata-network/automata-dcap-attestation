@@ -4,7 +4,7 @@ use sdk::models::{EnclaveIdentityType, CertificateAuthority};
 use sdk::pccs::automata_on_chain_pccs::types::ZkvmSelector;
 use sdk::pccs::{EcdsaZkVerifyInputType, request_ecdsa_verify_proof};
 use anchor_client::solana_sdk::signer::keypair::Keypair;
-use crate::TEST_RISC0_VERIFIER_PUBKEY;
+use crate::{ROOT_CRL_BYTES, TEST_RISC0_VERIFIER_PUBKEY};
 use dcap_rs::types::enclave_identity::{EnclaveType, QuotingEnclaveIdentityAndSignature};
 
 pub(crate) async fn test_enclave_identity_upsert(sdk: &Sdk<Arc<Keypair>>) {
@@ -28,6 +28,7 @@ pub(crate) async fn test_enclave_identity_upsert(sdk: &Sdk<Arc<Keypair>>) {
         EcdsaZkVerifyInputType::Identity,
         enclave_identity_data.as_slice(),
         issuer_der.as_slice(),
+        Some(ROOT_CRL_BYTES)
     )
     .await
     .unwrap();

@@ -7,7 +7,7 @@ use sdk::pccs::{EcdsaZkVerifyInputType, request_ecdsa_verify_proof};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::TEST_RISC0_VERIFIER_PUBKEY;
+use crate::{ROOT_CRL_BYTES, TEST_RISC0_VERIFIER_PUBKEY};
 
 pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_sgx.json");
@@ -31,6 +31,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
         EcdsaZkVerifyInputType::TcbInfo,
         tcb_info_data.as_slice(),
         issuer_der.as_slice(),
+        Some(ROOT_CRL_BYTES)
     )
     .await
     .unwrap();
@@ -84,6 +85,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
         EcdsaZkVerifyInputType::TcbInfo,
         tcb_info_data.as_slice(),
         issuer_der.as_slice(),
+        Some(ROOT_CRL_BYTES)
     )
     .await
     .unwrap();
