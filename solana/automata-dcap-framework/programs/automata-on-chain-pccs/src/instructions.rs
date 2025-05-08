@@ -58,7 +58,7 @@ pub struct UpsertPckCertificate<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 16 + 2 + 18 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + 16 + 2 + 18 + MAX_CERT_DATA_SIZE + 32 + 16 + 20,
         seeds = [
             b"pck_cert",
             &qe_id.as_bytes()[..8],
@@ -115,7 +115,7 @@ pub struct UpsertRootCA<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32 + 16 + 20,
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
         bump,
     )]
@@ -143,7 +143,7 @@ pub struct UpsertRootCrl<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32 + 16,
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[true as u8]],
         bump,
     )]
@@ -178,7 +178,7 @@ pub struct UpsertPcsCertificate<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32 + 16 + 20,
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[false as u8]],
         bump,
     )]
@@ -220,7 +220,7 @@ pub struct UpsertPcsCrl<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + 1 + MAX_CERT_DATA_SIZE + 32 + 16,
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[true as u8]],
         bump,
     )]
@@ -262,7 +262,7 @@ pub struct UpsertEnclaveIdentity<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + MAX_CERT_DATA_SIZE + 32,
+        space = 8 + 1 + MAX_CERT_DATA_SIZE + 32 + 16,
         seeds = [b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
         bump,
     )]
@@ -303,7 +303,7 @@ pub struct UpsertTcbInfo<'info> {
     #[account(
         init_if_needed,
         payer = authority,
-        space = 8 + 1 + 1 + 6 + TCB_INFO_MAX_SIZE + 32,
+        space = 8 + 1 + 1 + 6 + TCB_INFO_MAX_SIZE + 32 + 16,
         seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
         bump,
     )]

@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 use crate::types::*;
 
+// https://docs.rs/x509-cert/latest/src/x509_cert/serial_number.rs.html#37
+pub const SERIAL_NUMBER_MAX_LENGTH: usize = 20;
+
 #[account]
 pub struct PckCertificate {
     /// The type of certificate authority that signed this certificate
@@ -20,6 +23,15 @@ pub struct PckCertificate {
 
     /// The digest of the certificate
     pub digest: [u8; 32],
+
+    /// The ValidtyNotBefore timestamp of the certificate
+    pub validity_not_before: i64,
+
+    /// The ValidtyNotAfter timestamp of the certificate
+    pub validity_not_after: i64,
+
+    /// Serial number of the certificate
+    pub serial_number: [u8; SERIAL_NUMBER_MAX_LENGTH],
 }
 
 #[account]
@@ -35,6 +47,16 @@ pub struct PcsCertificate {
 
     /// The digest of the certificate
     pub digest: [u8; 32],
+
+    /// The ValidtyNotBefore timestamp of the certificate
+    pub validity_not_before: i64,
+
+    /// The ValidtyNotAfter timestamp of the certificate
+    /// This field is optional for CRLs
+    pub validity_not_after: i64,
+
+    /// Serial number of the certificate
+    pub serial_number: Option<[u8; SERIAL_NUMBER_MAX_LENGTH]>,
 }
 
 #[account]
@@ -50,6 +72,12 @@ pub struct EnclaveIdentity {
 
     /// The digest of the certificate
     pub digest: [u8; 32],
+
+    /// The issuance timestamp of the collateral
+    pub issue_timestamp: i64,
+
+    /// The timestamp when the collateral expects to be updated
+    pub next_update_timestamp: i64,
 }
 
 #[account]
@@ -68,6 +96,12 @@ pub struct TcbInfo {
 
     /// The digest of the certificate
     pub digest: [u8; 32],
+
+    /// The issuance timestamp of the collateral
+    pub issue_timestamp: i64,
+
+    /// The timestamp when the collateral expects to be updated
+    pub next_update_timestamp: i64,
 }
 
 #[account]
