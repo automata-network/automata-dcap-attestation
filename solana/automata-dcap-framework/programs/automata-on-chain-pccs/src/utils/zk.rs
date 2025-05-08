@@ -4,9 +4,25 @@ use anchor_lang::solana_program::{
     program::invoke
 };
 use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, verify::risc0::risc0_verify_instruction_data};
+use sha2::{Sha256, Digest};
 
 use crate::types::zk::ZkvmSelector;
 use crate::errors::PccsError;
+
+pub fn compute_output_digest(
+    fingerprint: &[u8],
+    subject_tbs_digest: &[u8],
+    issuer_tbs_digest: &[u8],
+    isuuer_crl_tbs_digest: &[u8],
+) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(fingerprint);
+    hasher.update(subject_tbs_digest);
+    hasher.update(issuer_tbs_digest);
+    hasher.update(isuuer_crl_tbs_digest);
+    let result: [u8; 32] = hasher.finalize().try_into().unwrap();
+    result
+}
 
 pub fn digest_ecdsa_zk_verify<'a>(
     output_digest: [u8; 32],
