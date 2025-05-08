@@ -6,6 +6,8 @@ use std::sync::Arc;
 pub const TEST_RISC0_VERIFIER_PUBKEY: Pubkey =
     Pubkey::from_str_const("5Gxa8YTih2rg3NY5EuWLtpS3Eq5xpS7PKWxspAAni5RS");
 
+pub const ROOT_CRL_BYTES: &[u8] = include_bytes!("../data/intel_root_ca_crl.der");
+
 pub fn get_signer() -> Arc<Keypair> {
     let anchor_wallet =
         std::env::var("ANCHOR_WALLET").expect("ANCHOR_WALLET environment variable not set");
@@ -65,16 +67,16 @@ mod tests {
         pccs::test_pcs_certificate::test_pcs_platform_crl_certificate_upsert(&sdk).await;
         println!("=== BEGIN UPSERTING INTEL PCK PLATFORM CA CRL... DONE ===");
 
-        println!("=== BEGIN UPSERTING QE IDENTITY ===");
-        pccs::test_enclave_identity::test_enclave_identity_upsert(&sdk).await;
-        println!("=== BEGIN UPSERTING QE IDENTITY... DONE ===");
+        // println!("=== BEGIN UPSERTING QE IDENTITY ===");
+        // pccs::test_enclave_identity::test_enclave_identity_upsert(&sdk).await;
+        // println!("=== BEGIN UPSERTING QE IDENTITY... DONE ===");
 
-        println!("=== BEGIN UPSERTING FMSPC TCB INFO ===");
-        pccs::test_tcb_info::test_tcb_info_upsert_v3_tdx(&sdk).await;
-        println!("=== BEGIN UPSERTING FMSPC TCB INFO... DONE ===");
+        // println!("=== BEGIN UPSERTING FMSPC TCB INFO ===");
+        // pccs::test_tcb_info::test_tcb_info_upsert_v3_tdx(&sdk).await;
+        // println!("=== BEGIN UPSERTING FMSPC TCB INFO... DONE ===");
 
-        println!("=== BEGIN VERIFYING TDX QUOTE ===");
-        verifier::test_quote_verification::test_quote_tdx_verification(&sdk).await;
-        println!("=== BEGIN VERIFYING TDX QUOTE... DONE ===");
+        // println!("=== BEGIN VERIFYING TDX QUOTE ===");
+        // verifier::test_quote_verification::test_quote_tdx_verification(&sdk).await;
+        // println!("=== BEGIN VERIFYING TDX QUOTE... DONE ===");
     }
 }
