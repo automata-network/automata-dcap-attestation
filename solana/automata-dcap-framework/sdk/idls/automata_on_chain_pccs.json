@@ -1,5 +1,5 @@
 {
-  "address": "2o2QVuj7qjEe2FtDZABFaG6gHRK22aLaSFWmJFfWh5Zj",
+  "address": "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt",
   "metadata": {
     "name": "automata_on_chain_pccs",
     "version": "0.1.0",
@@ -83,6 +83,15 @@
         {
           "name": "total_size",
           "type": "u32"
+        },
+        {
+          "name": "signed_digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -113,6 +122,15 @@
           "writable": true
         },
         {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -129,6 +147,18 @@
         {
           "name": "version",
           "type": "u8"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -159,11 +189,31 @@
           "writable": true
         },
         {
+          "name": "pck_crl"
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
         {
           "name": "qe_id",
           "type": "string"
@@ -175,6 +225,18 @@
         {
           "name": "tcbm",
           "type": "string"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -205,6 +267,15 @@
           "writable": true
         },
         {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -219,8 +290,180 @@
           }
         },
         {
-          "name": "is_crl",
-          "type": "bool"
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_pcs_crl",
+      "discriminator": [
+        79,
+        221,
+        14,
+        84,
+        207,
+        40,
+        230,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pcs_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_root_ca",
+      "discriminator": [
+        115,
+        57,
+        70,
+        77,
+        149,
+        211,
+        45,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_ca",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_root_crl",
+      "discriminator": [
+        240,
+        56,
+        34,
+        178,
+        75,
+        96,
+        143,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     },
@@ -251,6 +494,15 @@
           "writable": true
         },
         {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -276,6 +528,18 @@
               6
             ]
           }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
         }
       ]
     }
@@ -424,18 +688,63 @@
     },
     {
       "code": 6004,
+      "name": "InvalidDigest",
+      "msg": "Invalid digest"
+    },
+    {
+      "code": 6005,
       "name": "InvalidHexString",
       "msg": "Invalid Hex String"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "Unauthorized",
       "msg": "Unauthorized"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "IncompleteBuffer",
       "msg": "Incomplete Buffer"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidSubject",
+      "msg": "Invalid Subject Certificate or CRL"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRoot",
+      "msg": "Invalid Root Certificate"
+    },
+    {
+      "code": 6010,
+      "name": "UnsupportedZkvm",
+      "msg": "Unsupported ZKVM Selector"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidProof",
+      "msg": "Invalid Proof"
+    },
+    {
+      "code": 6012,
+      "name": "FailedDeserialization",
+      "msg": "Failed to deserialize data"
+    },
+    {
+      "code": 6013,
+      "name": "ExpiredCollateral",
+      "msg": "Collateral has expired"
+    },
+    {
+      "code": 6014,
+      "name": "RevokedCertificate",
+      "msg": "Certificate has been revoked"
+    },
+    {
+      "code": 6015,
+      "name": "InvalidIssuer",
+      "msg": "Issuer has expired or revoked"
     }
   ],
   "types": [
@@ -487,6 +796,15 @@
           {
             "name": "data",
             "type": "bytes"
+          },
+          {
+            "name": "signed_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -534,11 +852,18 @@
             }
           },
           {
-            "name": "verified",
+            "name": "issue_timestamp",
             "docs": [
-              "Boolean indicating whether it is verified"
+              "The issuance timestamp of the collateral"
             ],
-            "type": "bool"
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -594,13 +919,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "docs": [
-              "The owner that has permission to modify data in this account."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "ca_type",
             "docs": [
               "The type of certificate authority that signed this certificate"
@@ -648,6 +966,13 @@
             }
           },
           {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": "bytes"
+          },
+          {
             "name": "digest",
             "docs": [
               "The digest of the certificate"
@@ -660,18 +985,30 @@
             }
           },
           {
-            "name": "verified",
+            "name": "validity_not_before",
             "docs": [
-              "Boolean indicating whether it is verified"
+              "The ValidtyNotBefore timestamp of the certificate"
             ],
-            "type": "bool"
+            "type": "i64"
           },
           {
-            "name": "cert_data",
+            "name": "validity_not_after",
             "docs": [
-              "Certificate data"
+              "The ValidtyNotAfter timestamp of the certificate"
             ],
-            "type": "bytes"
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
           }
         ]
       }
@@ -758,11 +1095,33 @@
             }
           },
           {
-            "name": "verified",
+            "name": "validity_not_before",
             "docs": [
-              "Boolean indicating whether it is verified"
+              "The ValidtyNotBefore timestamp of the certificate"
             ],
-            "type": "bool"
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate",
+              "This field is optional for CRLs"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  20
+                ]
+              }
+            }
           }
         ]
       }
@@ -846,11 +1205,18 @@
             }
           },
           {
-            "name": "verified",
+            "name": "issue_timestamp",
             "docs": [
-              "Boolean indicating whether it is verified"
+              "The issuance timestamp of the collateral"
             ],
-            "type": "bool"
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -901,6 +1267,26 @@
           },
           {
             "name": "Tdx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkvmSelector",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Invalid"
+          },
+          {
+            "name": "RiscZero"
+          },
+          {
+            "name": "Succinct"
           }
         ]
       }

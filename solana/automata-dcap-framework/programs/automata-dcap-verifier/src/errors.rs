@@ -20,6 +20,15 @@ pub enum DcapVerifierError {
     #[msg("Invalid quote")]
     InvalidQuote,
 
+    #[msg("Invalid zkVM selector")]
+    InvalidZkvmSelector,
+
+    #[msg("Invalid zkVM program")]
+    InvalidZkvmProgram,
+
+    #[msg("Invalid zk proof")]
+    InvalidZkProof,
+    
     #[msg("Serialization error")]
     SerializationError,
 

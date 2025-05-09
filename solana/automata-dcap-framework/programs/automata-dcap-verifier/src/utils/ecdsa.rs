@@ -4,7 +4,6 @@ use solana_sdk_ids::secp256r1_program::ID as SEC256R1_PROGRAM_ID;
 
 use crate::errors::DcapVerifierError;
 
-
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct Secp256r1SignatureOffsets {
     signature_offset: u16,
