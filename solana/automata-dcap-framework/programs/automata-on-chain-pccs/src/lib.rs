@@ -435,8 +435,10 @@ pub mod automata_on_chain_pccs {
         let pcs_crl = &mut ctx.accounts.pcs_crl;
         let crl_data = ctx.accounts.data_buffer.data.as_slice();
 
+        msg!("1");
         let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
 
+        msg!("2");
         // check if the CA is unexpired (CA certificates are not revoked)
         let (crl_validity_not_before, crl_validity_not_after) = get_crl_validity(&subject_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
@@ -445,6 +447,7 @@ pub mod automata_on_chain_pccs {
         //     return Err(PccsError::ExpiredCollateral.into());
         // }
 
+        msg!("3");
         let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
