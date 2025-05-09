@@ -1,46 +1,34 @@
 use anyhow::{Result, anyhow};
-use der::{Decode, Encode};
 use sha2::{Digest, Sha256};
-use x509_cert::{
-    crl::{CertificateList, TbsCertList},
-    serial_number::SerialNumber,
-};
+use x509_parser::revocation_list::TbsCertList;
 
-pub fn get_crl_tbs_and_digest(crl_data: &[u8]) -> ([u8; 32], TbsCertList) {
-    let crl = CertificateList::from_der(crl_data).unwrap();
+pub fn get_crl_tbs_and_digest<'a>(crl_data: &'a [u8]) -> ([u8; 32], TbsCertList<'a>) {
+    let crl = x509_parser::parse_x509_crl(crl_data).unwrap().1;
     let tbs = crl.tbs_cert_list;
-    let digest: [u8; 32] = Sha256::digest(tbs.to_der().unwrap().as_slice()).into();
+    let digest: [u8; 32] = Sha256::digest(tbs.as_ref()).into();
     (digest, tbs)
 }
 
-pub fn check_certificate_revocation(serial_number: &[u8], crl_data: &[u8]) -> Result<()> {
-    let crl = CertificateList::from_der(&crl_data).unwrap();
+pub fn get_crl_validity<'a>(tbs: &'a TbsCertList<'a>) -> (i64, i64) {
+    let this_update = tbs.this_update.timestamp();
+    let next_update = match tbs.next_update {
+        Some(next_update) => next_update.timestamp(),
+        None => i64::MAX
+    };
+    (this_update, next_update)
+}
 
-    if let Some(revoked_list) = crl.tbs_cert_list.revoked_certificates {
-        for revoked_cert in revoked_list {
-            let revoked_serial_number_bytes = revoked_cert.serial_number.as_bytes();
-            if revoked_serial_number_bytes == serial_number {
-                return Err(anyhow!("Certificate has been revoked: {:?}", serial_number));
+pub fn check_certificate_revocation(serial_number: &[u8], crl_data: &[u8]) -> Result<()> {
+    let crl = x509_parser::parse_x509_crl(crl_data).unwrap().1;
+    let revoked_certificates = crl.tbs_cert_list.revoked_certificates;
+
+    if !revoked_certificates.is_empty() {
+        for revoked in revoked_certificates {
+            if serial_number == revoked.raw_serial() {
+                return Err(anyhow!("Certificate is revoked"));
             }
         }
     }
 
     Ok(())
-}
-
-pub fn convert_serial_number_to_raw(serial_number: &SerialNumber) -> [u8; 20] {
-    let mut result = [0u8; 20];
-    let bytes = serial_number.as_bytes();
-
-    let len = bytes.len();
-
-    if len > 20 {
-        // we may receive a serial number that is 21 bytes long
-        // this is ok if and only if the first byte is 0
-        assert!(bytes[0] == 0, "Serial number must be 20 bytes or less");
-    }
-
-    result.copy_from_slice(&bytes[len - 20..]);
-
-    result
 }

@@ -15,9 +15,8 @@ use errors::*;
 use event::*;
 use instructions::*;
 use programs_shared::certs::*;
-use programs_shared::clock::*;
 use programs_shared::crl::*;
-use programs_shared::get_cn_from_rdn_sequence;
+use programs_shared::get_cn_from_x509_name;
 use types::*;
 use utils::zk::digest_ecdsa_zk_verify;
 
@@ -101,13 +100,13 @@ pub mod automata_on_chain_pccs {
 
         // Check ca_type
         // Extract issuer common name from the certificate
-        let pck_issuer_common_name = get_cn_from_rdn_sequence(&pck_tbs.issuer).unwrap();
+        let pck_issuer_common_name = get_cn_from_x509_name(&pck_tbs.issuer).unwrap();
         let pck_ca_type = CertificateAuthority::from_str(&pck_issuer_common_name)
             .map_err(|_| PccsError::InvalidSubject)?;
         require!(pck_ca_type == ca_type, PccsError::InvalidSubject,);
 
         // Check if the current PCK Certificate is unexpired
-        let (pck_validity_not_before, pck_validity_not_after) = get_certificate_validity(cert_data);
+        let (pck_validity_not_before, pck_validity_not_after) = get_certificate_validity(&pck_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
         let pck_is_valid = now >= pck_validity_not_before && now <= pck_validity_not_after;
         if !pck_is_valid {
@@ -116,7 +115,7 @@ pub mod automata_on_chain_pccs {
 
         // Check if the current PCK Certificate has not been revoked
         let pck_crl_data = ctx.accounts.pck_crl.cert_data.as_slice();
-        let pck_serial_number = convert_serial_number_to_raw(&pck_tbs.serial_number);
+        let pck_serial_number = get_certificate_serial(&pck_tbs);
         if check_certificate_revocation(&pck_serial_number, pck_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -206,16 +205,12 @@ pub mod automata_on_chain_pccs {
         );
 
         // check root ca pubkey matches with hardcoded value
-        let root_ca_pubkey = root_tbs
-            .subject_public_key_info
-            .subject_public_key
-            .as_bytes()
-            .unwrap();
+        let root_ca_pubkey = root_tbs.public_key().subject_public_key.as_ref();
         require!(root_ca_pubkey == INTEL_ROOT_PUB_KEY, PccsError::InvalidRoot);
 
         // Check if the current Root CA Certificate is unexpired
         let (root_ca_validity_not_before, root_ca_validity_not_after) =
-            get_certificate_validity(root_ca_data);
+            get_certificate_validity(&root_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
         let root_ca_is_valid =
             now >= root_ca_validity_not_before && now <= root_ca_validity_not_after;
@@ -251,7 +246,7 @@ pub mod automata_on_chain_pccs {
         root_ca_pda.digest = root_tbs_digest;
         root_ca_pda.validity_not_before = root_ca_validity_not_before;
         root_ca_pda.validity_not_after = root_ca_validity_not_after;
-        root_ca_pda.serial_number = Some(convert_serial_number_to_raw(&root_tbs.serial_number));
+        root_ca_pda.serial_number = Some(get_certificate_serial(&root_tbs));
 
         // Emit event
         emit!(PcsCertificateUpserted {
@@ -271,7 +266,7 @@ pub mod automata_on_chain_pccs {
         let root_crl = &mut ctx.accounts.root_crl;
         let crl_data = ctx.accounts.data_buffer.data.as_slice();
 
-        let (subject_tbs_digest, _) = get_crl_tbs_and_digest(crl_data);
+        let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
 
         // We can match digest here for X509 Certificates here as an additional check
         require!(
@@ -280,7 +275,7 @@ pub mod automata_on_chain_pccs {
         );
 
         // check if the CA is unexpired (CA certificates are not revoked)
-        let (crl_validity_not_before, crl_validity_not_after) = get_crl_validity(crl_data);
+        let (crl_validity_not_before, crl_validity_not_after) = get_crl_validity(&subject_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
         let crl_is_valid = now >= crl_validity_not_before && now <= crl_validity_not_after;
         if !crl_is_valid {
@@ -357,14 +352,13 @@ pub mod automata_on_chain_pccs {
         );
 
         // check subject common name matches with ca_type
-        let subject_common_name = get_cn_from_rdn_sequence(&subject_tbs.subject).unwrap();
+        let subject_common_name = get_cn_from_x509_name(&subject_tbs.subject).unwrap();
         let subject_ca_type = CertificateAuthority::from_str(&subject_common_name)
             .map_err(|_| PccsError::InvalidSubject)?;
         require!(subject_ca_type == ca_type, PccsError::InvalidSubject);
-        let subject_serial_number = convert_serial_number_to_raw(&subject_tbs.serial_number);
 
         // check if the CA is unexpired
-        let (validity_not_before, validity_not_after) = get_certificate_validity(cert_data);
+        let (validity_not_before, validity_not_after) = get_certificate_validity(&subject_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
         let ca_is_valid = now >= validity_not_before && now <= validity_not_after;
         if !ca_is_valid {
@@ -373,6 +367,7 @@ pub mod automata_on_chain_pccs {
 
         // check if the CA has been revoked
         let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let subject_serial_number = get_certificate_serial(&subject_tbs);
         if check_certificate_revocation(&subject_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -440,10 +435,10 @@ pub mod automata_on_chain_pccs {
         let pcs_crl = &mut ctx.accounts.pcs_crl;
         let crl_data = ctx.accounts.data_buffer.data.as_slice();
 
-        let subject_tbs_digest = ctx.accounts.data_buffer.signed_digest;
+        let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
 
         // check if the CA is unexpired (CA certificates are not revoked)
-        let (crl_validity_not_before, crl_validity_not_after) = get_crl_validity(crl_data);
+        let (crl_validity_not_before, crl_validity_not_after) = get_crl_validity(&subject_tbs);
         let now = Clock::get().unwrap().unix_timestamp;
         // let crl_is_valid = now >= crl_validity_not_before && now <= crl_validity_not_after;
         // if !crl_is_valid {
