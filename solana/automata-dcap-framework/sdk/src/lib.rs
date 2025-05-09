@@ -1,11 +1,10 @@
 pub mod models;
-pub mod shared;
 pub mod pccs;
+pub mod shared;
 pub mod verifier;
 
 use models::*;
 use pccs::*;
-use shared::*;
 use verifier::*;
 
 use std::ops::Deref;
@@ -57,17 +56,18 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
 
     pub async fn verify_quote(
         &self,
-        zkvm_selector: ZkvmSelector,
         zkvm_verifier_program: Pubkey,
-        bytes: &[u8],
+        zkvm_selector: ZkvmSelector,
+        raw_quote_bytes: &[u8],
+        pck_cert_chain_verify_proof: Vec<u8>,
     ) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
         let quote_buffer_pubkey = self
             .verifier_client
-            .init_quote_buffer(bytes.len() as u32)
+            .init_quote_buffer(raw_quote_bytes.len() as u32)
             .await?;
 
         self.verifier_client
-            .upload_chunks(quote_buffer_pubkey, bytes, 512)
+            .upload_chunks(quote_buffer_pubkey, raw_quote_bytes, 512)
             .await?;
 
         let verified_output_pubkey = self
@@ -77,7 +77,12 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
 
         let signatures = self
             .verifier_client
-            .verify_quote(quote_buffer_pubkey, zkvm_selector, zkvm_verifier_program)
+            .verify_quote(
+                quote_buffer_pubkey,
+                zkvm_verifier_program,
+                zkvm_selector,
+                pck_cert_chain_verify_proof,
+            )
             .await?;
 
         Ok((verified_output_pubkey, signatures))

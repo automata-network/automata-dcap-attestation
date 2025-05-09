@@ -125,8 +125,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     pub async fn verify_quote(
         &self,
         quote_buffer_pubkey: Pubkey,
-        zkvm_selector: ZkvmSelector,
         zkvm_verifier_program: Pubkey,
+        zkvm_selector: ZkvmSelector,
+        pck_cert_chain_verify_proof_bytes: Vec<u8>
     ) -> anyhow::Result<Vec<Signature>> {
         // Parse Quote
         let quote_data = self
@@ -155,15 +156,12 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .await?;
         signatures.push(tx);
 
-        // Verify PCK cert chain. Please note that the verification of the signature is done off-chain here
-        // as the certificate bytes are really large and we hit 1232 bytes limit of solana in general, when
-        // we create a secp256r1 program instruction. We go and fetch the CRL certificates from the PCCS program
-        // and do off-chain validation to make sure that the certificate in PCK chain is not revoked.
         self.verify_pck_cert_chain(
             quote_buffer_pubkey,
+            zkvm_verifier_program,
             &quote,
             zkvm_selector,
-            zkvm_verifier_program,
+            pck_cert_chain_verify_proof_bytes,
         )
         .await?;
 
@@ -376,14 +374,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     async fn verify_pck_cert_chain(
         &self,
         quote_buffer_pubkey: Pubkey,
+        zkvm_verifier_program: Pubkey,
         quote: &Quote<'_>,
         zkvm_selector: ZkvmSelector,
-        zkvm_verifier_program: Pubkey,
+        proof_bytes: Vec<u8>
     ) -> anyhow::Result<[u8; 6]> {
-        let pem_chain = quote.signature.cert_data.cert_data;
-        let (_image_id, _journal_bytes, groth16_seal) =
-            crate::shared::pck::verify_pck_chain_zk(&pem_chain).await?;
-
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
             &self.program.id(),
@@ -403,7 +398,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
             .args(args::VerifyPckCertChainZk {
                 zkvm_selector,
-                proof_bytes: groth16_seal,
+                proof_bytes,
             })
             .send()
             .await?;
