@@ -1,12 +1,40 @@
-use der::{Decode, Encode};
 use sha2::{Digest, Sha256};
-use x509_cert::{Certificate, certificate::TbsCertificateInner};
 
-pub fn get_certificate_tbs_and_digest(raw_cert_der: &[u8]) -> ([u8; 32], TbsCertificateInner) {
-    let cert = Certificate::from_der(raw_cert_der).unwrap();
+use x509_parser::certificate::TbsCertificate;
+
+pub fn get_certificate_tbs_and_digest<'a>(
+    raw_cert_der: &'a [u8],
+) -> ([u8; 32], TbsCertificate<'a>) {
+    let cert = x509_parser::parse_x509_certificate(raw_cert_der).unwrap().1;
     let tbs = cert.tbs_certificate;
-    let digest: [u8; 32] = Sha256::digest(tbs.to_der().unwrap().as_slice()).into();
+    let digest: [u8; 32] = Sha256::digest(tbs.as_ref()).into();
     (digest, tbs)
+}
+
+pub fn get_certificate_validity<'a>(tbs: &'a TbsCertificate<'a>) -> (i64, i64) {
+    let not_before = tbs.validity().not_before.timestamp();
+    let not_after = tbs.validity().not_after.timestamp();
+    (not_before, not_after)
+}
+
+pub fn get_certificate_serial<'a>(tbs: &'a TbsCertificate<'a>) -> [u8; 20] {
+    let mut result = [0u8; 20];
+
+    let serial_number_raw = tbs.raw_serial();
+    let len = serial_number_raw.len();
+
+    if len > 20 {
+        // we may receive a serial number that is 21 bytes long
+        // this is ok if and only if the first byte is 0
+        assert!(
+            serial_number_raw[0] == 0,
+            "Serial number must be 20 bytes or less"
+        );
+    }
+
+    result.copy_from_slice(&serial_number_raw[len - 20..]);
+
+    result
 }
 
 // https://github.com/intel/SGXDataCenterAttestationPrimitives/blob/39989a42bbbb0c968153a47254b6de79a27eb603/QuoteVerification/QvE/Enclave/qve.cpp#L92-L100
