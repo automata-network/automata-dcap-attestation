@@ -381,15 +381,8 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         zkvm_verifier_program: Pubkey,
     ) -> anyhow::Result<[u8; 6]> {
         let pem_chain = quote.signature.cert_data.cert_data;
-        let (_image_id, _journal_bytes, mut groth16_seal) =
+        let (_image_id, _journal_bytes, groth16_seal) =
             crate::shared::pck::verify_pck_chain_zk(&pem_chain).await?;
-
-        // negate risczero pi_a
-        let mut pi_a: [u8; 64] = [0; 64];
-        pi_a.copy_from_slice(&groth16_seal[0..64]);
-
-        let negated_pi_a = crate::shared::negate_g1(&pi_a);
-        groth16_seal[0..64].copy_from_slice(&negated_pi_a);
 
         let verified_output_pda = Pubkey::find_program_address(
             &[b"verified_output", quote_buffer_pubkey.as_ref()],
