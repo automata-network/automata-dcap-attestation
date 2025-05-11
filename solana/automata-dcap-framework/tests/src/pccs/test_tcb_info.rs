@@ -30,8 +30,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
     let (_image_id, _journal, proof) = request_ecdsa_verify_proof(
         EcdsaZkVerifyInputType::TcbInfo,
         tcb_info_data.as_slice(),
-        issuer_der.as_slice(),
-        Some(ROOT_CRL_BYTES)
+        issuer_der.as_slice()
     )
     .await
     .unwrap();
@@ -85,12 +84,11 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
     //     EcdsaZkVerifyInputType::TcbInfo,
     //     tcb_info_data.as_slice(),
     //     issuer_der.as_slice(),
-    //     Some(ROOT_CRL_BYTES)
     // )
     // .await
     // .unwrap();
 
-    let proof = hex::decode("12a6042636c73fee509f9bab6f84169a05e9eb745c0b90cc99534149cb4059822632c0d19acc24a78b833d6be6233e3db8980faa8db7a3534d0525961c51887324091bbf89c40c811a1fe431f2a79d3085e107c3a28c2173ae513b9c71c1785605077833db546afb9740a3f963b51bdbfdcbbc8773e56a2bd887e9af01c182a82e9321bc11728685e27aacf17b9343f667f5bc0f33f5c02ba7cb61b5e50842aa12bcfe8d3e83e263599e5a0e9ec832a1a76e81137141c3a022473d3c5c68d8252de768f46756b6596acc6edeff5de8764b2280622443014f733b97e4a2ba02711ccfed130d45a70add098f70f3016a083505529af59ec88183be21c9e2c0b535").unwrap();
+    let proof = hex::decode("1a08a2ad0d73fe85f63853171ec62a9604f47c9470f769e2abfec21f09ae2bae0606254c072488a8ae36c6663b7df52fc5d9a59887e83e0c91985b15579fc0202166177583db12c1b34be6078b7e91a0715e41322a638a17b66c7b6dbd82e68b1de93d413e96571dfd2622c9f26c09e259f24b674fa356bb265a4c50fdb3fb7014546e7a8451c0c454b45106ffb0aa989b47f2e42bda8debbf544ad4eb2c872e195f2172191496e563c763651b8fec4aabb1f4033e8b9fa5676903bf8ce2fc4b1b593226fbbf025745da2a999a5d6d0ab84d4fead1a6830935d63bce36a21a92092f579139870d0dfcd750b43339e46b28927c3e159e0047fe9c95cd45b5dc93").unwrap();
 
     let tcb_type = TcbType::Tdx;
     let fmspc = "00806f050000";

@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 
 // CHANGE ACCORDINGLY
 pub const ECDSA_RISCZERO_DCAP_IMAGE_ID: [u8; 32] = [
-    165, 2, 89, 201, 182, 242, 184, 70, 57, 99, 36, 21, 203, 248, 148, 205, 110, 230, 42, 229, 216,
-    1, 250, 117, 2, 9, 180, 117, 204, 205, 140, 172,
+    110, 182, 254, 70, 32, 14, 87, 112, 23, 19, 0, 233, 3, 198, 40, 9, 51, 39, 194, 255, 165, 195,
+    3, 213, 168, 204, 179, 168, 148, 60, 75, 19,
 ];
 
 #[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize)]

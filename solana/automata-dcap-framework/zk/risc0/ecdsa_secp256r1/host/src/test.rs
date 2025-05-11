@@ -17,8 +17,7 @@ pub fn test_verify_root_x509() {
     let serialized_input = serialize_input(
         InputType::X509,
         root_der_bytes.to_vec(),
-        root_der_bytes.to_vec(),
-        None
+        root_der_bytes.to_vec()
     )
     .unwrap();
 
@@ -32,8 +31,7 @@ pub fn test_verify_root_crl() {
     let serialized_input = serialize_input(
         InputType::CRL,
         ROOT_CRL_BYTES.to_vec(),
-        issuer_bytes.to_vec(),
-        None
+        issuer_bytes.to_vec()
     )
     .unwrap();
 
@@ -48,8 +46,7 @@ pub fn test_verify_tcb_info() {
     let serialized_input = serialize_input(
         InputType::TcbInfo,
         tcb_bytes.to_vec(),
-        issuer_bytes.to_vec(),
-        Some(ROOT_CRL_BYTES.to_vec()),
+        issuer_bytes.to_vec()
     )
     .unwrap();
     get_execution_session_info(serialized_input.as_slice());
@@ -64,7 +61,6 @@ pub fn test_verify_qe_identity() {
         InputType::Identity,
         qe_identity_bytes.to_vec(),
         issuer_bytes.to_vec(),
-        Some(ROOT_CRL_BYTES.to_vec()),
     )
     .unwrap();
     get_execution_session_info(serialized_input.as_slice());
