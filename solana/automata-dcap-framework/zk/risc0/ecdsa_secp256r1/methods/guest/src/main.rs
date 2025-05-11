@@ -25,9 +25,6 @@ struct Input {
     pub input_type: InputType,
     pub input_data: Vec<u8>,
     pub issuer_raw_der: Vec<u8>,
-    /// This CRL is used to verify the revocation status of the issuer certificate
-    /// It is optional because the RootCA certificate is irrevocable
-    pub crl_raw_der: Option<Vec<u8>>
 }
 
 fn main() {
@@ -38,25 +35,6 @@ fn main() {
     // Deserialize the input
     let input = Input::try_from_slice(&input_bytes).unwrap();
     let issuer_cert = Certificate::from_der(&input.issuer_raw_der).unwrap();
-
-    // First, we can check whether the issuer certificate has been revoked
-    let crl_tbs_digest = if let Some(crl) = input.crl_raw_der {
-        let issuer_serial_number = issuer_cert.tbs_certificate.serial_number.as_bytes();
-        let crl_data = CertificateList::from_der(&crl).expect("Failed to parse CRL");
-        let issuer_is_valid = check_certificate_revocation(
-            issuer_serial_number, 
-            &crl_data
-        );
-        assert!(issuer_is_valid, "Issuer certificate has been revoked");
-
-        let crl_tbs = crl_data
-            .tbs_cert_list
-            .to_der()
-            .expect("Failed to get CRL TBS");
-        Sha256::digest(&crl_tbs).into()
-    } else {
-        [0u8; 32]
-    };
 
     // extract pubkey from the issuer certificate
     let issuer_cert_pubkey_bytes = issuer_cert
@@ -147,25 +125,11 @@ fn main() {
     let issuer_tbs_hash: [u8; 32] =
         Sha256::digest(&issuer_cert.tbs_certificate.to_der().unwrap()).into();
 
-    let mut output = [0u8; 128];
+    let mut output = [0u8; 96];
     output[0..32].copy_from_slice(&fingerprint);
     output[32..64].copy_from_slice(&subject_tbs_hash);
     output[64..96].copy_from_slice(&issuer_tbs_hash);
-    output[96..128].copy_from_slice(&crl_tbs_digest);
 
     // commit the output
     env::commit_slice(output.as_slice());
-}
-
-pub fn check_certificate_revocation(serial_number: &[u8], crl: &CertificateList) -> bool {
-    if let Some(revoked_list) = crl.tbs_cert_list.revoked_certificates.as_ref() {
-        for revoked_cert in revoked_list {
-            let revoked_serial_number_bytes = revoked_cert.serial_number.as_bytes();
-            if revoked_serial_number_bytes == serial_number {
-                return false;
-            }
-        }
-    }
-
-    true
 }

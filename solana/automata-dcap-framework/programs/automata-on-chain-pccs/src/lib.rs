@@ -129,8 +129,14 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidIssuer.into());
         }
 
-        // Get the Root CRL digest that was used to check the issuer's revocation status
-        let root_crl_digest = ctx.accounts.root_crl.digest;
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
+            .is_err()
+        {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
         // Verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
@@ -138,7 +144,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &pck_tbs_digest,
             &issuer_tbs_digest,
-            &root_crl_digest,
         );
 
         let pck_verified_with_zk = digest_ecdsa_zk_verify(
@@ -224,7 +229,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &root_tbs_digest,
             &root_tbs_digest,
-            &[0u8; 32], // RootCA does not get revoked by a CRL
         );
 
         let root_ca_verified_with_zk = digest_ecdsa_zk_verify(
@@ -296,7 +300,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &subject_tbs_digest,
             &issuer_tbs_digest,
-            &[0u8; 32], // RootCA does not get revoked by a CRL
         );
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
@@ -386,7 +389,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &subject_tbs_digest,
             &issuer_tbs_digest,
-            &[0u8; 32], // RootCA does not get revoked by a CRL
         );
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
@@ -459,18 +461,14 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidIssuer.into());
         }
 
-        // // check if the issuer CA has not been revoked
-        // let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        // let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        // if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-        //     .is_err()
-        // {
-        //     return Err(PccsError::RevokedCertificate.into());
-        // }
-
-        // check if the CA has not been revoked
-        // Get the Root CRL digest that was used to check the issuer's revocation status
-        let root_crl_digest = ctx.accounts.root_crl.digest;
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
+            .is_err()
+        {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
@@ -478,7 +476,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint, 
             &subject_tbs_digest, 
             &issuer_tbs_digest, 
-            &root_crl_digest
         );
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
@@ -547,9 +544,14 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidIssuer.into());
         }
 
-        // check if the CA has not been revoked
-        // Get the Root CRL digest that was used to check the issuer's revocation status
-        let root_crl_digest = ctx.accounts.root_crl.digest;
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
+            .is_err()
+        {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(identity_data).into();
@@ -557,7 +559,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &identity_digest,
             &issuer_tbs_digest,
-            &root_crl_digest,
         );
 
         let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
@@ -630,9 +631,14 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidIssuer.into());
         }
 
-        // check if the CA has not been revoked
-        // Get the Root CRL digest that was used to check the issuer's revocation status
-        let root_crl_digest = ctx.accounts.root_crl.digest;
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
+            .is_err()
+        {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(tcb_info_data).into();
@@ -640,7 +646,6 @@ pub mod automata_on_chain_pccs {
             &fingerprint,
             &tcb_info_digest,
             &issuer_tbs_digest,
-            &root_crl_digest,
         );
         let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,

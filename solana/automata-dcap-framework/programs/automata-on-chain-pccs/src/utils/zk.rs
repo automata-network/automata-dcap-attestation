@@ -13,13 +13,11 @@ pub fn compute_output_digest(
     fingerprint: &[u8],
     subject_tbs_digest: &[u8],
     issuer_tbs_digest: &[u8],
-    isuuer_crl_tbs_digest: &[u8],
 ) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(fingerprint);
     hasher.update(subject_tbs_digest);
     hasher.update(issuer_tbs_digest);
-    hasher.update(isuuer_crl_tbs_digest);
     let result: [u8; 32] = hasher.finalize().try_into().unwrap();
     result
 }

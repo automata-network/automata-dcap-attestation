@@ -122,15 +122,14 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 pub async fn request_ecdsa_verify_proof(
     input_type: EcdsaZkVerifyInputType,
     input_data: &[u8],
-    issuer_der: &[u8],
-    issuer_crl_der: Option<&[u8]>,
+    issuer_der: &[u8]
 ) -> anyhow::Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
     Vec<u8>,  // Groth16 Seal
 )> {
     let (image_id, journal, mut seal) =
-        get_ecdsa_verify_proof(input_type, input_data, issuer_der, issuer_crl_der).await?;
+        get_ecdsa_verify_proof(input_type, input_data, issuer_der).await?;
 
     // negate risczero pi_a
     let mut pi_a: [u8; 64] = [0; 64];
@@ -138,8 +137,6 @@ pub async fn request_ecdsa_verify_proof(
 
     let negated_pi_a = negate_g1(&pi_a);
     seal[0..64].copy_from_slice(&negated_pi_a);
-
-    println!("seal: {}", hex::encode(&seal));
-
+    
     Ok((image_id, journal, seal))
 }
