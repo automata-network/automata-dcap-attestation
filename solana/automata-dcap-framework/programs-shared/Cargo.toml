@@ -5,6 +5,5 @@ edition = "2021"
 
 [dependencies]
 sha2 = "0.10.8"
-# x509-parser = { path = "/Users/prestonong/Desktop/work/x509-parser" }
 x509-parser = { git = "https://github.com/automata-network/x509-parser.git", branch = "solana-patch" }
 anyhow = { version = "1.0.93" }

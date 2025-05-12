@@ -195,6 +195,14 @@ pub mod automata_dcap_verifier {
             DcapVerifierError::InvalidQuote
         })?;
 
+        let now = Clock::get().unwrap().unix_timestamp;
+        let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
+            && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
+        if !qe_identity_validity {
+            msg!("QE Identity has expired");
+            return Err(DcapVerifierError::ExpiredCollateral.into());
+        }
+
         let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
         let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
             msg!("Error deserializing enclave identity: {}", e);
@@ -358,6 +366,14 @@ pub mod automata_dcap_verifier {
             msg!("Error getting pck extension: {}", e);
             DcapVerifierError::InvalidSgxPckExtension
         })?;
+
+        let now = Clock::get().unwrap().unix_timestamp;
+        let tcb_info_is_valid = now >= ctx.accounts.tcb_info_pda.issue_timestamp
+            && now <= ctx.accounts.tcb_info_pda.next_update_timestamp;
+        if !tcb_info_is_valid {
+            msg!("TCB Info has expired");
+            return Err(DcapVerifierError::ExpiredCollateral.into());
+        }
 
         let tcb_info = &ctx.accounts.tcb_info_pda;
         let _tcb_info = TcbInfo::from_borsh_bytes(tcb_info.data.as_slice()).map_err(|e| {

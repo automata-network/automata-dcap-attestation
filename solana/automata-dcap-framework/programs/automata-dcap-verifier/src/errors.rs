@@ -40,4 +40,10 @@ pub enum DcapVerifierError {
 
     #[msg("Invalid Secp256r1 instruction")]
     InvalidSecp256r1Instruction,
+
+    #[msg("The collateral has expired")]
+    ExpiredCollateral,
+
+    #[msg("Certificate has been revoked")]
+    RevokedCertificate,
 }
