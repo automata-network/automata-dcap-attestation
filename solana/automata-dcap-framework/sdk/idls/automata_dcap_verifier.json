@@ -691,6 +691,16 @@
       "code": 6012,
       "name": "InvalidSecp256r1Instruction",
       "msg": "Invalid Secp256r1 instruction"
+    },
+    {
+      "code": 6013,
+      "name": "ExpiredCollateral",
+      "msg": "The collateral has expired"
+    },
+    {
+      "code": 6014,
+      "name": "RevokedCertificate",
+      "msg": "Certificate has been revoked"
     }
   ],
   "types": [
