@@ -17,7 +17,8 @@ hex = { version = "0.4.3" }
 der = { version = "0.7.9", default-features = false, features = ["derive", "oid"] }
 der-parser = { version = "10.0.0" }
 x509-cert    	= { version = "0.2.5" }
-dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
+# dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "zero-copy", default-features = true }
 p256 = { version = "0.13.2" }
 zerocopy = { version = "0.7.34", features = ["derive"] }
 serde_json = { version = "1.0.100" }
