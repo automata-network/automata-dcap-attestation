@@ -14,6 +14,9 @@ pub enum PccsError {
     #[msg("Chunk out of bounds")]
     ChunkOutOfBounds,
 
+    #[msg("Invalid digest")]
+    InvalidDigest,
+
     #[msg("Invalid Hex String")]
     InvalidHexString,
 
@@ -22,4 +25,28 @@ pub enum PccsError {
 
     #[msg("Incomplete Buffer")]
     IncompleteBuffer,
+
+    #[msg("Invalid Subject Certificate or CRL")]
+    InvalidSubject,
+
+    #[msg("Invalid Root Certificate")]
+    InvalidRoot,
+
+    #[msg("Unsupported ZKVM Selector")]
+    UnsupportedZkvm,
+
+    #[msg("Invalid Proof")]
+    InvalidProof,
+
+    #[msg("Failed to deserialize data")]
+    FailedDeserialization,
+
+    #[msg("Collateral has expired")]
+    ExpiredCollateral,
+
+    #[msg("Certificate has been revoked")]
+    RevokedCertificate,
+
+    #[msg("Issuer has expired or revoked")]
+    InvalidIssuer,
 }

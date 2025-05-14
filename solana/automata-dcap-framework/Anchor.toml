@@ -1,5 +1,5 @@
 [toolchain]
-anchor_version = "0.31.0"
+anchor_version = "0.31.1"
 
 [features]
 resolution = true
@@ -18,3 +18,8 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "cargo test -- --nocapture"
+
+[[test.genesis]]
+address = "5Gxa8YTih2rg3NY5EuWLtpS3Eq5xpS7PKWxspAAni5RS"
+program = "tests/zkvm/risc0/so/groth_16_verifier.so"
+upgradable = true

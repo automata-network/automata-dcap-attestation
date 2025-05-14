@@ -20,6 +20,15 @@ pub enum DcapVerifierError {
     #[msg("Invalid quote")]
     InvalidQuote,
 
+    #[msg("Invalid zkVM selector")]
+    InvalidZkvmSelector,
+
+    #[msg("Invalid zkVM program")]
+    InvalidZkvmProgram,
+
+    #[msg("Invalid zk proof")]
+    InvalidZkProof,
+    
     #[msg("Serialization error")]
     SerializationError,
 
@@ -31,4 +40,10 @@ pub enum DcapVerifierError {
 
     #[msg("Invalid Secp256r1 instruction")]
     InvalidSecp256r1Instruction,
+
+    #[msg("The collateral has expired")]
+    ExpiredCollateral,
+
+    #[msg("Certificate has been revoked")]
+    RevokedCertificate,
 }

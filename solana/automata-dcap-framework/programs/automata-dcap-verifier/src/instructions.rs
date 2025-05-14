@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
-use crate::errors::DcapVerifierError;
-use crate::state::{DataBuffer, QeTcbStatus, VerifiedOutput};
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
-use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
 
+use crate::errors::DcapVerifierError;
+use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
+use crate::utils::zk::ZkvmSelector;
+
+use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
 
 /// Accounts required for initializing a quote buffer.
 ///
@@ -167,6 +169,39 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
 
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(
+    zkvm_selector: ZkvmSelector,
+    proof_bytes: Vec<u8>,
+)]
+pub struct VerifyPckCertChainZk<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    
+    #[account(
+        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// we need to read from the zkvm_verifier_config_pda account data
+    pub zkvm_verifier_program: AccountInfo<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
 
     pub system_program: Program<'info, System>,
 }
