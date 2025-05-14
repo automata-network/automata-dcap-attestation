@@ -1,7 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use dcap_rs::types::{
-    enclave_identity::QuotingEnclaveIdentityAndSignature, tcb_info::TcbInfoAndSignature,
-};
+use dcap_rs::types::pod::tcb_info::serialize::parse_tcb_pod_bytes;
 use der::{Decode, Encode};
 use p256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use risc0_zkvm::guest::env;
@@ -46,7 +44,9 @@ fn main() {
     let issuer_cert_verifying_key =
         VerifyingKey::from_sec1_bytes(issuer_cert_pubkey_bytes).unwrap();
 
-    let (fingerprint, tbs, sig) = match input.input_type {
+    let fingerprint: [u8; 32] = Sha256::digest(&input.input_data).into();
+
+    let (tbs, sig) = match input.input_type {
         InputType::X509 => {
             // parse the X509 certificate
             let x509_cert =
@@ -55,55 +55,47 @@ fn main() {
                 .tbs_certificate
                 .to_der()
                 .expect("Failed to get X509 TBS");
-            let fingerprint: [u8; 32] = Sha256::digest(&input.input_data).into();
             let cert_sig = x509_cert.signature.as_bytes().unwrap();
             let sig = Signature::from_der(cert_sig).expect("Failed to parse X509 signature");
-            (fingerprint, tbs_der, sig)
+            (tbs_der, sig)
         },
         InputType::CRL => {
             // parse the CRL
-            let crl = CertificateList::from_der(&input.input_data)
-                .expect("Failed to parse CRL");
-            let tbs_der = crl
-                .tbs_cert_list
-                .to_der()
-                .expect("Failed to get CRL TBS");
-            let fingerprint: [u8; 32] = Sha256::digest(&input.input_data).into();
+            let crl = CertificateList::from_der(&input.input_data).expect("Failed to parse CRL");
+            let tbs_der = crl.tbs_cert_list.to_der().expect("Failed to get CRL TBS");
             let crl_sig = crl.signature.as_bytes().unwrap();
             let sig = Signature::from_der(crl_sig).expect("Failed to parse CRL signature");
-            (fingerprint, tbs_der, sig)
-        }
+            (tbs_der, sig)
+        },
         InputType::TcbInfo => {
             // parse the TCBInfo
-            let tcb_info_json: TcbInfoAndSignature =
-                serde_json::from_slice(&input.input_data).expect("Failed to parse TCBInfo");
-            let tcb_info = tcb_info_json.get_tcb_info().expect("Failed to get TCBInfo");
-            let tcb_info_serialized = tcb_info.to_borsh_bytes().expect("Failed to serialize TCBInfo");
-            let fingerprint: [u8; 32] = Sha256::digest(&tcb_info_serialized).into();
-            let sig = Signature::from_slice(tcb_info_json.signature.as_slice())
-                .expect("Failed to parse TCBInfo signature");
-            (
-                fingerprint,
-                tcb_info_json.tcb_info_raw.to_string().into_bytes(),
-                sig,
-            )
+            let (tcb_info, sig) =
+                parse_tcb_pod_bytes(&input.input_data).expect("Failed to parse TCB info");
+
+            let tcb_info_tbs = serde_json::to_string(&tcb_info)
+                .expect("Failed to serialize TCB info into JSON string")
+                .as_bytes()
+                .to_vec();
+
+            let sig = Signature::from_slice(&sig).expect("Failed to parse TCBInfo signature");
+
+            (tcb_info_tbs, sig)
         },
         InputType::Identity => {
             // parse the Identity
-            let identity_json: QuotingEnclaveIdentityAndSignature =
-                serde_json::from_slice(&input.input_data).expect("Failed to parse Identity");
-            let identity = identity_json
-                .get_enclave_identity()
-                .expect("Failed to get Identity");
-            let identity_serialized = identity.to_borsh_bytes().expect("Failed to serialize Identity");
-            let fingerprint: [u8; 32] = Sha256::digest(&identity_serialized).into();
-            let sig = Signature::from_slice(identity_json.signature.as_slice())
-                .expect("Failed to parse Identity signature");
-            (
-                fingerprint,
-                identity_json.enclave_identity_raw.to_string().into_bytes(),
-                sig,
-            )
+            // let identity_json: QuotingEnclaveIdentityAndSignature =
+            //     serde_json::from_slice(&input.input_data).expect("Failed to parse Identity");
+            // let identity = identity_json
+            //     .get_enclave_identity()
+            //     .expect("Failed to get Identity");
+            // let identity_serialized = identity.to_borsh_bytes().expect("Failed to serialize Identity");
+            // let sig = Signature::from_slice(identity_json.signature.as_slice())
+            //     .expect("Failed to parse Identity signature");
+            // (
+            //     identity_json.enclave_identity_raw.to_string().into_bytes(),
+            //     sig,
+            // )
+            panic!("Identity parsing is not implemented");
         },
     };
 
