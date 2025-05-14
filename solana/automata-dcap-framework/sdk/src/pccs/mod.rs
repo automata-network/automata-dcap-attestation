@@ -18,6 +18,7 @@ pub use ecdsa_secp256r1_host::InputType as EcdsaZkVerifyInputType;
 
 declare_program!(automata_on_chain_pccs);
 use automata_on_chain_pccs::{client::accounts, client::args};
+use automata_on_chain_pccs::accounts::DataBuffer;
 
 /// The Solana program ID for the PCCS (Provisioning Certificate Caching Service) on-chain program.
 pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
@@ -54,7 +55,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// # Returns
     ///
     /// * `Result<Pubkey>` - The public key of the created data buffer account
-    pub(crate) async fn init_data_buffer(
+    pub async fn init_data_buffer(
         &self,
         data_buffer_keypair: Keypair,
         digest: [u8; 32],
@@ -94,7 +95,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// # Returns
     ///
     /// * `Result<()>` - Success or error
-    pub(crate) async fn upload_chunks(
+    pub async fn upload_chunks(
         &self,
         data_buffer_pubkey: Pubkey,
         data: &[u8],
@@ -117,6 +118,19 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         }
         Ok(())
     }
+
+    pub async fn load_buffer_data(
+        &self,
+        data_buffer_pubkey: Pubkey,
+    ) -> anyhow::Result<Vec<u8>> {
+        let data_buffer = self
+            .program
+            .account::<DataBuffer>(data_buffer_pubkey)
+            .await?;
+
+        Ok(data_buffer.data)
+    }
+
 }
 
 pub async fn request_ecdsa_verify_proof(
@@ -138,5 +152,7 @@ pub async fn request_ecdsa_verify_proof(
     let negated_pi_a = negate_g1(&pi_a);
     seal[0..64].copy_from_slice(&negated_pi_a);
     
+    println!("seal: {}", hex::encode(&seal));
+
     Ok((image_id, journal, seal))
 }
