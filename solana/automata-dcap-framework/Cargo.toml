@@ -16,5 +16,4 @@ incremental = false
 codegen-units = 1
 
 [workspace.dependencies]
-# dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "zero-copy", default-features = false }
-dcap-rs = { path = "/Users/prestonong/Desktop/work/dcap-rs", default-features = false }
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "zero-copy", default-features = false }
