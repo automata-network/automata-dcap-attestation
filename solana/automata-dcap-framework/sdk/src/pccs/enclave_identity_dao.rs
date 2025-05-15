@@ -23,19 +23,20 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         let data_buffer_keypair = data_buffer_keypair.unwrap_or_else(|| Keypair::new());
         let data_buffer_pubkey = data_buffer_keypair.pubkey();
 
+        // TODO: We need to change this
         // let identity_json: QuotingEnclaveIdentityAndSignature = serde_json::from_slice(data)?;
         // let identity_body = identity_json.get_enclave_identity()?;
-        // let identity_data = identity_body.to_borsh_bytes()?;
-
         // let digest: [u8; 32] = Sha256::digest(identity_json.enclave_identity_raw.get().as_bytes()).into();
+        let identity_data = data.to_vec();
+        let digest = [0u8; 32];
 
-        // // Step 1: initialize the data buffer account
-        // self.init_data_buffer(data_buffer_keypair, digest, identity_data.len() as u32)
-        //     .await?;
+        // Step 1: initialize the data buffer account
+        self.init_data_buffer(data_buffer_keypair, digest, identity_data.len() as u32)
+            .await?;
 
-        // // Step 2: Upload the data to the data buffer account
-        // self.upload_chunks(data_buffer_pubkey, identity_data.as_slice(), 512usize)
-        //     .await?;
+        // Step 2: Upload the data to the data buffer account
+        self.upload_chunks(data_buffer_pubkey, identity_data.as_slice(), 512usize)
+            .await?;
 
         Ok(data_buffer_pubkey)
     }

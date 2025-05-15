@@ -71,6 +71,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             ],
             &PCCS_PROGRAM_ID,
         );
+
         let account = self
             .program
             .account::<automata_on_chain_pccs::accounts::TcbInfo>(tcb_info_pda.0)

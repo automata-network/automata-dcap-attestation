@@ -35,7 +35,7 @@ pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
 /// This client abstracts the complexity of interacting with the on-chain program by providing
 /// methods to initialize data buffers, upload data in chunks, and manage various certificate types.
 pub struct PccsClient<S> {
-    program: Program<S>,
+    pub program: Program<S>,
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {

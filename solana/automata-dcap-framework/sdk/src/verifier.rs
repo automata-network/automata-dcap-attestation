@@ -34,7 +34,7 @@ use crate::{TcbType, pccs::PCCS_PROGRAM_ID, shared::ecdsa::get_secp256r1_instruc
 /// - Verifying the PCK (Provisioning Certification Key) certificate chain
 /// - Verifying the TCB (Trusted Computing Base) status
 pub struct VerifierClient<S> {
-    program: Program<S>,
+    pub program: Program<S>,
 }
 
 impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {

@@ -54,14 +54,14 @@ pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
         .unwrap();
 
     let (_, tcb_info) = client.get_tcb_info(tcb_type, fmspc_bytes, 3).await.unwrap();
-    // assert_eq!(&tcb_info_parsed, &tcb_info);
+    assert_eq!(&tcb_info_parsed, &tcb_info);
 
     let tcb_type_string = tcb_info.id.unwrap_or_else(|| "SGX".to_string());
     let actual_tcb_type: TcbType = TcbType::from_str(&tcb_type_string).unwrap();
 
-    // assert_eq!(tcb_info.version, TcbInfoVersion::V3);
+    assert_eq!(tcb_info.version, TcbInfoVersion::V3);
     assert_eq!(actual_tcb_type, tcb_type);
-    // assert_eq!(tcb_info.fmspc, fmspc_bytes);
+    assert_eq!(tcb_info.fmspc, fmspc);
 }
 
 pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
@@ -111,12 +111,12 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
         .unwrap();
 
     let (_, tcb_info) = client.get_tcb_info(tcb_type, fmspc_bytes, 3).await.unwrap();
-    // assert_eq!(&tcb_info_parsed, &tcb_info);
+    assert_eq!(&tcb_info_parsed, &tcb_info);
 
     let tcb_type_string = tcb_info.id.unwrap_or_else(|| "SGX".to_string());
     let actual_tcb_type: TcbType = TcbType::from_str(&tcb_type_string).unwrap();
 
-    // assert_eq!(tcb_info.version, TcbInfoVersion::V3);
+    assert_eq!(tcb_info.version, TcbInfoVersion::V3);
     assert_eq!(actual_tcb_type, tcb_type);
-    // assert_eq!(tcb_info.fmspc, fmspc_bytes);
+    assert_eq!(tcb_info.fmspc, fmspc);
 }
