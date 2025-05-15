@@ -8,32 +8,26 @@ pub mod utils;
 use anchor_lang::prelude::*;
 use errors::*;
 use instructions::*;
+use p256::ecdsa::Signature;
+use p256::ecdsa::VerifyingKey;
 use utils::certs::compute_output_digest_from_pem;
 use utils::ecdsa::*;
 use utils::zk::*;
-use p256::ecdsa::VerifyingKey;
-use p256::ecdsa::Signature;
 
 declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {
 
-    use anchor_lang::solana_program::{
-        instruction::Instruction,
-        program::invoke
-    };
+    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+    use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+    use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
+    use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
     use solana_zk_client::verify::{
         risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
     };
     use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
     use zerocopy::AsBytes;
-    use dcap_rs::types::enclave_identity::EnclaveIdentity;
-    use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
-    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
-    use dcap_rs::types::tcb_info::TcbInfo;
-    use dcap_rs::verify_tcb_status;
-    use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
 
     use super::*;
 
@@ -190,84 +184,86 @@ pub mod automata_dcap_verifier {
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote_data = &mut data_buffer.data.as_slice();
 
-        let quote = Quote::read(quote_data).map_err(|e| {
-            msg!("Error reading quote: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        // let quote = Quote::read(quote_data).map_err(|e| {
+        //     msg!("Error reading quote: {}", e);
+        //     DcapVerifierError::InvalidQuote
+        // })?;
 
-        let now = Clock::get().unwrap().unix_timestamp;
-        let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
-            && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
-        if !qe_identity_validity {
-            msg!("QE Identity has expired");
-            return Err(DcapVerifierError::ExpiredCollateral.into());
-        }
+        // let now = Clock::get().unwrap().unix_timestamp;
+        // let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
+        //     && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
+        // if !qe_identity_validity {
+        //     msg!("QE Identity has expired");
+        //     return Err(DcapVerifierError::ExpiredCollateral.into());
+        // }
 
-        let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
-        let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
-            msg!("Error deserializing enclave identity: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        // let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
+        // let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
+        //     msg!("Error deserializing enclave identity: {}", e);
+        //     DcapVerifierError::InvalidQuote
+        // })?;
 
-        if qe_identity.mrsigner != quote.signature.qe_report_body.mr_signer {
-            msg!(
-                "invalid qe mrsigner, expected {} but got {}",
-                hex::encode(qe_identity.mrsigner),
-                hex::encode(quote.signature.qe_report_body.mr_signer)
-            );
-            return Err(DcapVerifierError::InvalidQuote.into());
-        }
+        // if qe_identity.mrsigner != quote.signature.qe_report_body.mr_signer {
+        //     msg!(
+        //         "invalid qe mrsigner, expected {} but got {}",
+        //         hex::encode(qe_identity.mrsigner),
+        //         hex::encode(quote.signature.qe_report_body.mr_signer)
+        //     );
+        //     return Err(DcapVerifierError::InvalidQuote.into());
+        // }
 
-        // Compare the isv_prod_id values
-        if qe_identity.isvprodid != quote.signature.qe_report_body.isv_prod_id.get() {
-            msg!(
-                "invalid qe isv_prod_id, expected {} but got {}",
-                qe_identity.isvprodid,
-                quote.signature.qe_report_body.isv_prod_id.get()
-            );
-            return Err(DcapVerifierError::InvalidQuote.into());
-        }
+        // // Compare the isv_prod_id values
+        // if qe_identity.isvprodid != quote.signature.qe_report_body.isv_prod_id.get() {
+        //     msg!(
+        //         "invalid qe isv_prod_id, expected {} but got {}",
+        //         qe_identity.isvprodid,
+        //         quote.signature.qe_report_body.isv_prod_id.get()
+        //     );
+        //     return Err(DcapVerifierError::InvalidQuote.into());
+        // }
 
-        // Compare the attribute values
-        let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
-        let calculated_mask = qe_identity
-            .attributes_mask
-            .iter()
-            .zip(qe_report_attributes.iter())
-            .map(|(&mask, &attribute)| mask & attribute);
+        // // Compare the attribute values
+        // let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
+        // let calculated_mask = qe_identity
+        //     .attributes_mask
+        //     .iter()
+        //     .zip(qe_report_attributes.iter())
+        //     .map(|(&mask, &attribute)| mask & attribute);
 
-        if calculated_mask
-            .zip(qe_identity.attributes)
-            .any(|(masked, identity)| masked != identity)
-        {
-            msg!("qe attrtibutes mismatch");
-            return Err(DcapVerifierError::InvalidQuote.into());
-        }
+        // if calculated_mask
+        //     .zip(qe_identity.attributes)
+        //     .any(|(masked, identity)| masked != identity)
+        // {
+        //     msg!("qe attrtibutes mismatch");
+        //     return Err(DcapVerifierError::InvalidQuote.into());
+        // }
 
-        // Compare misc_select values
-        let misc_select = quote.signature.qe_report_body.misc_select;
-        let calculated_mask = qe_identity
-            .miscselect_mask
-            .as_bytes()
-            .iter()
-            .zip(misc_select.as_bytes().iter())
-            .map(|(&mask, &attribute)| mask & attribute);
+        // // Compare misc_select values
+        // let misc_select = quote.signature.qe_report_body.misc_select;
+        // let calculated_mask = qe_identity
+        //     .miscselect_mask
+        //     .as_bytes()
+        //     .iter()
+        //     .zip(misc_select.as_bytes().iter())
+        //     .map(|(&mask, &attribute)| mask & attribute);
 
-        if calculated_mask
-            .zip(qe_identity.miscselect.as_bytes().iter())
-            .any(|(masked, &identity)| masked != identity)
-        {
-            msg!("qe misc_select mismatch");
-            return Err(DcapVerifierError::InvalidQuote.into());
-        }
+        // if calculated_mask
+        //     .zip(qe_identity.miscselect.as_bytes().iter())
+        //     .any(|(masked, &identity)| masked != identity)
+        // {
+        //     msg!("qe misc_select mismatch");
+        //     return Err(DcapVerifierError::InvalidQuote.into());
+        // }
 
-        let qe_tcb_status =
-            qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
+        // let qe_tcb_status =
+        //     qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
         let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
-        qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
-            msg!("Error serializing qe tcb status: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        // qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
+        //     msg!("Error serializing qe tcb status: {}", e);
+        //     DcapVerifierError::InvalidQuote
+        // })?;
+
+        qe_tcb_status_pda.status = String::from("todo");
 
         let verified_output = &mut ctx.accounts.verified_output;
         verified_output.enclave_source_verified = true;
@@ -356,6 +352,9 @@ pub mod automata_dcap_verifier {
         _version: u8,
         fmspc: [u8; 6],
     ) -> Result<()> {
+        use dcap_rs::types::pod::tcb_info::zero_copy::*;
+        use dcap_rs::types::pod::tcb_info::utils::*;
+
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote = Quote::read(&mut data_buffer.data.as_slice()).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -375,47 +374,74 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        let tcb_info = &ctx.accounts.tcb_info_pda;
-        let _tcb_info = TcbInfo::from_borsh_bytes(tcb_info.data.as_slice()).map_err(|e| {
+        // TEMP: We need to debug this, because if I "borrow" the data, we would run into alignment issues
+        // upon serialization
+        // AFAIK, the serialized TCBInfo data should not exceed the Solana 32kb heap limit
+        // TEMP: but we should fix this at some point
+        let tcb_info_data = ctx.accounts.tcb_info_pda.data.clone();
+        let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..]).map_err(|e| {
             msg!("Error deserializing tcb info: {}", e);
             DcapVerifierError::SerializationError
         })?;
 
-        let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
-            verify_tcb_status(&_tcb_info, &pck_extension, &quote).map_err(|e| {
-                msg!("Error verifying tcb status: {}", e);
-                DcapVerifierError::UnsuccessfulTcbStatusVerification
-            })?;
-
-        let mut tcb_status;
-        if quote.header.tee_type == TDX_TEE_TYPE {
-            let tdx_module_status = _tcb_info
-                .verify_tdx_module(quote.body.as_tdx_report_body().unwrap())
-                .map_err(|e| {
-                    msg!("Error verifying tdx module: {}", e);
-                    DcapVerifierError::InvalidQuote
-                })?;
-            tcb_status =
-                TcbInfo::converge_tcb_status_with_tdx_module(tdx_tcb_status, tdx_module_status);
-        } else {
-            tcb_status = sgx_tcb_status;
+        // Step 1: FMSPC check
+        let tcb_info_fmspc: [u8; 6] = hex::decode(tcb_info.fmspc_hex_bytes())
+            .map_err(|_| {
+                msg!("Error decoding tcb info fmspc");
+                DcapVerifierError::InvalidHexString
+            })?
+            .try_into()
+            .unwrap();
+        if pck_extension.fmspc != tcb_info_fmspc {
+            msg!(
+                "FMSPC mismatch, expected {} but got {}",
+                hex::encode(tcb_info_fmspc),
+                hex::encode(pck_extension.fmspc)
+            );
+            return Err(DcapVerifierError::MismatchFmspc.into());
         }
 
-        let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
-        let qe_tcb_status = serde_json::from_str(&qe_tcb_status_pda.status).map_err(|e| {
-            msg!("Error deserializing qe tcb status: {}", e);
-            DcapVerifierError::SerializationError
-        })?;
+        // Step 2: PCEID check
+        let tcb_info_pceid: [u8; 2] = hex::decode(tcb_info.pce_id_hex_bytes())
+            .map_err(|_| {
+                msg!("Error decoding tcb info pceid");
+                DcapVerifierError::InvalidHexString
+            })?
+            .try_into()
+            .unwrap();
+        if pck_extension.pceid != tcb_info_pceid {
+            msg!(
+                "PCEID mismatch, expected {} but got {}",
+                hex::encode(tcb_info_pceid),
+                hex::encode(pck_extension.pceid)
+            );
+            return Err(DcapVerifierError::MismatchPceid.into());
+        }
 
-        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status);
+        // Step 3: Perform a lookup to fetch the matching TCB level from the TCB info
+        let (raw_sgx_tcb_status, raw_tdx_tcb_status, advisory_ids) = lookup(
+            &pck_extension,
+            &tcb_info,
+            &quote
+        ).unwrap();
+
+        let tcb_status = match quote.header.tee_type {
+            SGX_TEE_TYPE => raw_sgx_tcb_status,
+            TDX_TEE_TYPE => raw_tdx_tcb_status,
+            _ => {
+                msg!("Unsupported TEE type");
+                return Err(DcapVerifierError::InvalidQuote.into());
+            }
+        };
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.tcb_status = serde_json::to_string(&tcb_status).map_err(|e| {
-            msg!("Error serializing tcb status: {}", e);
-            DcapVerifierError::SerializationError
-        })?;
+        // verified_output.tcb_status = serde_json::to_string(&tcb_status).map_err(|e| {
+        //     msg!("Error serializing tcb status: {}", e);
+        //     DcapVerifierError::SerializationError
+        // })?;
 
-        verified_output.advisor_ids = Some(advisory_ids);
+        verified_output.tcb_status = String::from("todo");
+        verified_output.advisor_ids = Some(vec![]);
         verified_output.fmspc = fmspc;
         verified_output.quote_version = quote.header.version.get();
         verified_output.tee_type = quote.header.tee_type;

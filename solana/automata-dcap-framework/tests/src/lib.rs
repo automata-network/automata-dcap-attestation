@@ -54,16 +54,16 @@ mod tests {
         pccs::test_pck_certificate::test_pck_certificate_upsert(&sdk).await;
         println!("=== BEGIN UPSERTING INTEL PCK CERTIFICATE... DONE ===");
 
-        // println!("=== BEGIN UPSERTING QE IDENTITY ===");
-        // pccs::test_enclave_identity::test_enclave_identity_upsert(&sdk).await;
-        // println!("=== BEGIN UPSERTING QE IDENTITY... DONE ===");
+        println!("=== BEGIN UPSERTING QE IDENTITY ===");
+        pccs::test_enclave_identity::test_enclave_identity_upsert(&sdk).await;
+        println!("=== BEGIN UPSERTING QE IDENTITY... DONE ===");
 
         println!("=== BEGIN UPSERTING FMSPC TCB INFO ===");
         pccs::test_tcb_info::test_tcb_info_upsert_v3_tdx(&sdk).await;
         println!("=== BEGIN UPSERTING FMSPC TCB INFO... DONE ===");
 
-        // println!("=== BEGIN VERIFYING TDX QUOTE ===");
-        // verifier::test_quote_verification::test_quote_tdx_verification(&sdk).await;
-        // println!("=== BEGIN VERIFYING TDX QUOTE... DONE ===");
+        println!("=== BEGIN VERIFYING TDX QUOTE ===");
+        verifier::test_quote_verification::test_quote_tdx_verification(&sdk).await;
+        println!("=== BEGIN VERIFYING TDX QUOTE... DONE ===");
     }
 }

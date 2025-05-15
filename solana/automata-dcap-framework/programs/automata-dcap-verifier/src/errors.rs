@@ -32,6 +32,9 @@ pub enum DcapVerifierError {
     #[msg("Serialization error")]
     SerializationError,
 
+    #[msg("Invalid hex string")]
+    InvalidHexString,
+
     #[msg("Invalid SgxPckExtension")]
     InvalidSgxPckExtension,
 
@@ -46,4 +49,10 @@ pub enum DcapVerifierError {
 
     #[msg("Certificate has been revoked")]
     RevokedCertificate,
+
+    #[msg("PCK FMSPC does not match")]
+    MismatchFmspc,
+
+    #[msg("PCK PCEID does not match")]
+    MismatchPceid,
 }

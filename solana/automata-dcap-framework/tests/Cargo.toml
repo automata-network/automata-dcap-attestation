@@ -20,7 +20,7 @@ anyhow = "1.0.89"
 solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git" }
 serde_json = { version = "1.0.100" }
 borsh = { version = "1.5.7" }
-dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev"}
+dcap-rs = { workspace = true, features = ["full"] }
 sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
 sha2 = { version = "0.10.8" }
