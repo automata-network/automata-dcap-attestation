@@ -55,4 +55,16 @@ pub enum DcapVerifierError {
 
     #[msg("PCK PCEID does not match")]
     MismatchPceid,
+
+    #[msg("Missing TDX Module")]
+    MissingTdxModule,
+
+    #[msg("Missing TDX Module Identities")]
+    MissingTdxModuleIdentities,
+
+    #[msg("MRSIGNER SEAM Mismatch")]
+    MismatchMrsignerSeam,
+
+    #[msg("SEAM Attribute Mismatch")]
+    MismatchSeamAttribute,
 }

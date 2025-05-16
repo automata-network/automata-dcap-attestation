@@ -2,31 +2,45 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 
 use crate::errors::DcapVerifierError;
-use crate::state::{DataBuffer, VerifiedOutput, QeTcbStatus};
+use crate::state::{DataBuffer, VerifiedOutput};
 use crate::utils::zk::ZkvmSelector;
 
 use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
 
-/// Accounts required for initializing a quote buffer.
-///
 /// This instruction creates a new on-chain account that will store DCAP
 /// attestation quote data. Since DCAP quotes (typically 4-6 KB) exceed
 /// Solana's transaction size limits, the quote is broken into chunks and
 /// stored in this account. Once all chunks are received, the quote can be
 /// verified in a single instruction.
 ///
-/// The space calculation (8 + 32 + 4 + 1 + 1 + 1 + 4 + 1024 * 9) provides ~9KB
+/// The space calculation (8 + 32 + 4 + 1 + 4 + quote_size)
 /// of storage and breaks down as:
 /// - 8 bytes: Account discriminator (Anchor identifier)
 /// - 32 bytes: Pubkey for the owner
 /// - 4 bytes: u32 for total_size
-/// - 1 byte: u8 for num_chunks
-/// - 1 byte: u8 for chunks_received
 /// - 1 byte: bool for complete flag
 /// - 4 bytes: Vec length prefix
-/// - 1024 * 9 bytes: Storage for quote data (~9KB)
+/// - quote_size: The size of the quote data, explicitly provided in the instruction
+///
+/// This instruction also creates the VerifiedOutput account, which is used
+/// to store the result of the DCAP Quote verification.
+///
+/// The space calculation (8 + 2 + 4 + 6 + 4 + 584 (max) + 1 + 1 + 1 + 3 * 64 + 512 bytes)
+/// Breaks down as:
+/// - 8 bytes: Account discriminator (Anchor identifier)
+/// - 2 bytes: u16 for quote_version
+/// - 4 bytes: u32 for tee_type
+/// - 6 bytes: [u8; 6] for fmspc
+/// - 4 bytes: Vec length prefix
+/// - 584 bytes: ISV or TD10 Report Body (max size)
+/// - 1 byte: bool for integrity_verified
+/// - 1 byte: bool for isv_signature_verified
+/// - 1 byte: bool for pck_cert_chain_verified
+/// - 3 * 64 bytes: Strings for fmspc_tcb_status, tdx_module_tcb_status, and qe_tcb_status
+/// - 512 bytes: Optional advisory_ids (tentative size)
 #[derive(Accounts)]
-pub struct InitQuoteBuffer<'info> {
+#[instruction(quote_size: u32)]
+pub struct Create<'info> {
     /// The signer who will own this quote buffer.
     /// Must sign the transaction and pay for account creation.
     #[account(mut)]
@@ -38,29 +52,44 @@ pub struct InitQuoteBuffer<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 + 32 + 4 + 1 + 1 + 1 + 4 + 1024 * 9,
+        space = 8 + 32 + 4 + 1 + 4 + quote_size as usize,
     )]
-    pub data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    /// The account that will store the result of the DCAP quote verification
+    #[account(
+        init,
+        payer = owner,
+        space = 8 + 2 + 4 + 6 + 4 + 584 + 1 + 1 + 1 + 3 * 64 + 512,
+        seeds = [
+            b"verified_output",
+            quote_data_buffer.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub verified_output: Account<'info, VerifiedOutput>,
 
     /// Required by the system program for account creation.
     pub system_program: Program<'info, System>,
 }
 
-
 #[derive(Accounts)]
+#[instruction(chunk_data: Vec<u8>, offset: u32)]
 pub struct AddQuoteChunk<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = data_buffer.owner == owner.key() @ DcapVerifierError::InvalidOwner,
+        constraint = data_buffer.complete == false @ DcapVerifierError::BufferAlreadyComplete,
+        constraint = (offset as usize + chunk_data.len()) as u32 <= data_buffer.total_size @ DcapVerifierError::ChunkOutOfBounds
+    )]
     pub data_buffer: Account<'info, DataBuffer>,
 }
 
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIntegrity<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-
     #[account(
         mut,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
@@ -68,9 +97,6 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -91,9 +117,6 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
 
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIsvSignature<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-
     #[account(
         mut,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
@@ -101,9 +124,6 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -125,9 +145,6 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
 #[derive(Accounts)]
 #[instruction(qe_type: String,  version: u8)]
 pub struct VerifyDcapQuoteEnclaveSource<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-
     #[account(
         mut,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
@@ -146,21 +163,6 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     pub qe_identity_pda: Account<'info, EnclaveIdentity>,
 
     #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 64 + 1,
-        seeds = [
-            b"qe_tcb_status",
-            quote_data_buffer.key().as_ref(),
-        ],
-        bump,
-    )]
-    pub qe_tcb_status_pda: Account<'info, QeTcbStatus>,
-
-    #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -168,7 +170,6 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
         bump,
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
-
 
     pub system_program: Program<'info, System>,
 }
@@ -179,22 +180,16 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     proof_bytes: Vec<u8>,
 )]
 pub struct VerifyPckCertChainZk<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    
     #[account(
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
-    /// CHECK: This is the address of the ZKVM Verifier Program. 
+    /// CHECK: This is the address of the ZKVM Verifier Program.
     /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
 
     #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -209,9 +204,6 @@ pub struct VerifyPckCertChainZk<'info> {
 #[derive(Accounts)]
 #[instruction(tcb_type: String , version: u8, fmspc: [u8; 6])]
 pub struct VerifyDcapQuoteTcbStatus<'info> {
-    #[account(mut)]
-    pub owner: Signer<'info>,
-
     #[account(
         mut,
         constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
@@ -232,18 +224,36 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
 
     #[account(
         seeds = [
-            b"qe_tcb_status",
+            b"verified_output",
             quote_data_buffer.key().as_ref(),
         ],
         bump,
-        seeds::program = crate::ID,
     )]
-    pub qe_tcb_status_pda: Account<'info, QeTcbStatus>,
+    pub verified_output: Account<'info, VerifiedOutput>,
 
+    pub system_program: Program<'info, System>,
+}
+
+/// This instruction closes both the quote buffer and the verified output accounts
+/// and transfers any remaining lamports back to the owner.
+#[derive(Accounts)]
+pub struct CloseQuoteBuffer<'info> {
+    /// The owner of the quote buffer and verified output accounts.
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    /// The quote buffer account to be closed.
     #[account(
-        init_if_needed,
-        payer = owner,
-        space = 8 + 32 + 2 + 4 + 4 + 50 + 600 + 1024,
+        mut,
+        close = owner,
+        constraint = quote_data_buffer.owner == owner.key() @ DcapVerifierError::InvalidOwner,
+    )]
+    pub quote_data_buffer: Account<'info, DataBuffer>,
+
+    /// The verified output account to be closed.
+    #[account(
+        mut,
+        close = owner,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -252,5 +262,6 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
 
+    /// The system program account, required for closing accounts.
     pub system_program: Program<'info, System>,
 }

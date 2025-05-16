@@ -37,7 +37,7 @@ pub(crate) async fn test_quote_sgx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let quote_data = include_bytes!("../../data/quote_sgx.bin");
 
     let verifier_client = sdk.verifier_client();
-    let quote_buffer_pubkey = verifier_client
+    let (quote_buffer_pubkey, verified_output_pubkey) = verifier_client
         .init_quote_buffer(
             quote_data.len() as u32
         )
@@ -55,6 +55,7 @@ pub(crate) async fn test_quote_sgx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let signatures = verifier_client
         .verify_quote(
             quote_buffer_pubkey,
+            verified_output_pubkey,
             TEST_RISC0_VERIFIER_PUBKEY,
             ZkvmSelector::RiscZero,
             proof
