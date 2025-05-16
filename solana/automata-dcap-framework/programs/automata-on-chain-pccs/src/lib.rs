@@ -582,17 +582,19 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
+        use dcap_rs::types::pod::tcb_info::zero_copy::TcbInfoZeroCopy;
+
         let tcb_info_account = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
         let tcb_info_data = data_buffer.data.as_slice();
         let tcb_info_digest = data_buffer.signed_digest;
 
-        // Check the given TCB Info is unexpired
-        use dcap_rs::types::pod::tcb_info::zero_copy::TcbInfoZeroCopy;
         // the first 64 bytes is the signature
         let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..])
             .map_err(|_| PccsError::FailedDeserialization)?;
+
+        // Check the given TCB Info is unexpired
         let tcb_info_issue_timestamp = tcb_info.issue_date_timestamp();
         let tcb_info_next_update_timestamp = tcb_info.next_update_timestamp();
         let now = Clock::get().unwrap().unix_timestamp;

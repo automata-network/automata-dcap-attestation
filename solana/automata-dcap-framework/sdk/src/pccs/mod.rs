@@ -151,8 +151,6 @@ pub async fn request_ecdsa_verify_proof(
 
     let negated_pi_a = negate_g1(&pi_a);
     seal[0..64].copy_from_slice(&negated_pi_a);
-    
-    println!("seal: {}", hex::encode(&seal));
 
     Ok((image_id, journal, seal))
 }

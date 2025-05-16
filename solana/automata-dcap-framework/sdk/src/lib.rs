@@ -61,7 +61,7 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
         raw_quote_bytes: &[u8],
         pck_cert_chain_verify_proof: Vec<u8>,
     ) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
-        let quote_buffer_pubkey = self
+        let (quote_buffer_pubkey, verified_output_pubkey) = self
             .verifier_client
             .init_quote_buffer(raw_quote_bytes.len() as u32)
             .await?;
@@ -70,15 +70,11 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
             .upload_chunks(quote_buffer_pubkey, raw_quote_bytes, 512)
             .await?;
 
-        let verified_output_pubkey = self
-            .verifier_client
-            .get_verified_output_pubkey(quote_buffer_pubkey)
-            .await?;
-
         let signatures = self
             .verifier_client
             .verify_quote(
                 quote_buffer_pubkey,
+                verified_output_pubkey,
                 zkvm_verifier_program,
                 zkvm_selector,
                 pck_cert_chain_verify_proof,
