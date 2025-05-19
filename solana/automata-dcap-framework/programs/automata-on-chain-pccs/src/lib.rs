@@ -495,81 +495,83 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        // let enclave_identity_account = &mut ctx.accounts.enclave_identity;
-        // let data_buffer = &ctx.accounts.data_buffer;
+        use dcap_rs::types::pod::enclave_identity::zero_copy::*;
 
-        // let identity_digest = data_buffer.signed_digest;
-        // let identity_data = data_buffer.data.as_slice();
+        let enclave_identity_account = &mut ctx.accounts.enclave_identity;
+        let data_buffer = &ctx.accounts.data_buffer;
 
-        // // Check the given Enclave Identity is unexpired
-        // use dcap_rs::types::enclave_identity::EnclaveIdentity;
-        // let identity = EnclaveIdentity::from_borsh_bytes(identity_data)
-        //     .map_err(|_| PccsError::FailedDeserialization)?;
-        // let now = Clock::get().unwrap().unix_timestamp;
-        // let identity_issue_timestamp = identity.issue_date.timestamp();
-        // let identity_next_update_timestamp = identity.next_update.timestamp();
-        // let identity_is_valid =
-        //     now >= identity_issue_timestamp && now <= identity_next_update_timestamp;
-        // if !identity_is_valid {
-        //     return Err(PccsError::ExpiredCollateral.into());
-        // }
+        let identity_digest = data_buffer.signed_digest;
+        let identity_data = data_buffer.data.as_slice();
 
-        // let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let identity = EnclaveIdentityZeroCopy::from_bytes(&identity_data[64..])
+            .map_err(|_| PccsError::FailedDeserialization)?;
 
-        // // Check if the issuer CA is unexpired
-        // let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-        //     && now <= ctx.accounts.issuer_ca.validity_not_after;
-        // if !issuer_is_valid {
-        //     return Err(PccsError::InvalidIssuer.into());
-        // }
+        // Check the given Enclave Identity is unexpired
+        let now = Clock::get().unwrap().unix_timestamp;
+        let identity_issue_timestamp = identity.issue_date_timestamp();
+        let identity_next_update_timestamp = identity.next_update_timestamp();
+        let identity_is_valid =
+            now >= identity_issue_timestamp && now <= identity_next_update_timestamp;
+        if !identity_is_valid {
+            return Err(PccsError::ExpiredCollateral.into());
+        }
 
-        // // check if the issuer CA has not been revoked
-        // let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        // let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        // if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-        //     .is_err()
-        // {
-        //     return Err(PccsError::RevokedCertificate.into());
-        // }
+        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
 
-        // // verify the proof
-        // let fingerprint: [u8; 32] = Sha256::digest(identity_data).into();
-        // let output_digest = compute_output_digest(
-        //     &fingerprint,
-        //     &identity_digest,
-        //     &issuer_tbs_digest,
-        // );
+        // Check if the issuer CA is unexpired
+        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
+            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        if !issuer_is_valid {
+            return Err(PccsError::InvalidIssuer.into());
+        }
 
-        // let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-        // if enclave_identity_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        // check if the issuer CA has not been revoked
+        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
+            .is_err()
+        {
+            return Err(PccsError::RevokedCertificate.into());
+        }
 
-        // enclave_identity_account.identity_type = id;
-        // enclave_identity_account.version = version;
-        // enclave_identity_account.data = identity_data.to_vec();
-        // enclave_identity_account.digest = identity_digest;
-        // enclave_identity_account.issue_timestamp = identity_issue_timestamp;
-        // enclave_identity_account.next_update_timestamp = identity_next_update_timestamp;
+        // verify the proof
+        let fingerprint: [u8; 32] = Sha256::digest(identity_data).into();
+        let output_digest = compute_output_digest(
+            &fingerprint,
+            &identity_digest,
+            &issuer_tbs_digest,
+        );
 
-        // msg!(
-        //     "Enclave identity  with id: {}, version: {} upserted to {}",
-        //     id.common_name(),
-        //     version,
-        //     enclave_identity_account.key()
-        // );
+        let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
+            output_digest,
+            &proof,
+            zkvm_selector,
+            &ctx.accounts.zkvm_verifier_program.to_account_info(),
+            &ctx.accounts.system_program,
+        );
+        if enclave_identity_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
-        // emit!(EnclaveIdentityUpserted {
-        //     id: enclave_identity_account.identity_type,
-        //     version: enclave_identity_account.version,
-        //     pda: enclave_identity_account.key(),
-        // });
+        enclave_identity_account.identity_type = id;
+        enclave_identity_account.version = version;
+        enclave_identity_account.data = identity_data.to_vec();
+        enclave_identity_account.digest = identity_digest;
+        enclave_identity_account.issue_timestamp = identity_issue_timestamp;
+        enclave_identity_account.next_update_timestamp = identity_next_update_timestamp;
+
+        msg!(
+            "Enclave identity  with id: {}, version: {} upserted to {}",
+            id.common_name(),
+            version,
+            enclave_identity_account.key()
+        );
+
+        emit!(EnclaveIdentityUpserted {
+            id: enclave_identity_account.identity_type,
+            version: enclave_identity_account.version,
+            pda: enclave_identity_account.key(),
+        });
 
         Ok(())
     }
