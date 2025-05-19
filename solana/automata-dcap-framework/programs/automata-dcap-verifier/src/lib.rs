@@ -177,89 +177,93 @@ pub mod automata_dcap_verifier {
         _qe_type: String,
         _version: u8,
     ) -> Result<()> {
+        use dcap_rs::types::pod::enclave_identity::zero_copy::*;
+
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote_data = &mut data_buffer.data.as_slice();
 
-        // let quote = Quote::read(quote_data).map_err(|e| {
-        //     msg!("Error reading quote: {}", e);
-        //     DcapVerifierError::InvalidQuote
-        // })?;
+        let quote = Quote::read(quote_data).map_err(|e| {
+            msg!("Error reading quote: {}", e);
+            DcapVerifierError::InvalidQuote
+        })?;
 
-        // let now = Clock::get().unwrap().unix_timestamp;
-        // let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
-        //     && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
-        // if !qe_identity_validity {
-        //     msg!("QE Identity has expired");
-        //     return Err(DcapVerifierError::ExpiredCollateral.into());
-        // }
+        let now = Clock::get().unwrap().unix_timestamp;
+        let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
+            && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
+        if !qe_identity_validity {
+            msg!("QE Identity has expired");
+            return Err(DcapVerifierError::ExpiredCollateral.into());
+        }
 
-        // let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
-        // let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
-        //     msg!("Error deserializing enclave identity: {}", e);
-        //     DcapVerifierError::InvalidQuote
-        // })?;
+        // TEMP: We need to fix this, because if I "borrow" the data, we would run into alignment issues
+        // upon de-serialization
+        // AFAIK, the serialized QEIdentity data should not exceed the Solana 32kb heap limit
+        let qe_identity_data = ctx.accounts.qe_identity_pda.data.clone();
+        let qe_identity = EnclaveIdentityZeroCopy::from_bytes(&qe_identity_data[64..]).map_err(|e| {
+            msg!("Error deserializing qe identity: {}", e);
+            DcapVerifierError::SerializationError
+        })?;
 
-        // if qe_identity.mrsigner != quote.signature.qe_report_body.mr_signer {
-        //     msg!(
-        //         "invalid qe mrsigner, expected {} but got {}",
-        //         hex::encode(qe_identity.mrsigner),
-        //         hex::encode(quote.signature.qe_report_body.mr_signer)
-        //     );
-        //     return Err(DcapVerifierError::InvalidQuote.into());
-        // }
+        if qe_identity.mrsigner_bytes() != quote.signature.qe_report_body.mr_signer {
+            msg!(
+                "invalid qe mrsigner, expected {} but got {}",
+                hex::encode(qe_identity.mrsigner_bytes()),
+                hex::encode(quote.signature.qe_report_body.mr_signer)
+            );
+            return Err(DcapVerifierError::InvalidQuote.into());
+        }
 
-        // // Compare the isv_prod_id values
-        // if qe_identity.isvprodid != quote.signature.qe_report_body.isv_prod_id.get() {
-        //     msg!(
-        //         "invalid qe isv_prod_id, expected {} but got {}",
-        //         qe_identity.isvprodid,
-        //         quote.signature.qe_report_body.isv_prod_id.get()
-        //     );
-        //     return Err(DcapVerifierError::InvalidQuote.into());
-        // }
+        // Compare the isv_prod_id values
+        if qe_identity.isvprodid() != quote.signature.qe_report_body.isv_prod_id.get() {
+            msg!(
+                "invalid qe isv_prod_id, expected {} but got {}",
+                qe_identity.isvprodid(),
+                quote.signature.qe_report_body.isv_prod_id.get()
+            );
+            return Err(DcapVerifierError::InvalidQuote.into());
+        }
 
-        // // Compare the attribute values
-        // let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
-        // let calculated_mask = qe_identity
-        //     .attributes_mask
-        //     .iter()
-        //     .zip(qe_report_attributes.iter())
-        //     .map(|(&mask, &attribute)| mask & attribute);
+        // Compare the attribute values
+        let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
+        let qe_identity_attributes_mask = qe_identity.attributes_mask_bytes();
+        let calculated_mask = qe_identity_attributes_mask
+            .iter()
+            .zip(qe_report_attributes.iter())
+            .map(|(&mask, &attribute)| mask & attribute);
 
-        // if calculated_mask
-        //     .zip(qe_identity.attributes)
-        //     .any(|(masked, identity)| masked != identity)
-        // {
-        //     msg!("qe attrtibutes mismatch");
-        //     return Err(DcapVerifierError::InvalidQuote.into());
-        // }
+        if calculated_mask
+            .zip(qe_identity.attributes_bytes())
+            .any(|(masked, identity)| masked != identity)
+        {
+            msg!("qe attrtibutes mismatch");
+            return Err(DcapVerifierError::InvalidQuote.into());
+        }
 
-        // // Compare misc_select values
-        // let misc_select = quote.signature.qe_report_body.misc_select;
-        // let calculated_mask = qe_identity
-        //     .miscselect_mask
-        //     .as_bytes()
-        //     .iter()
-        //     .zip(misc_select.as_bytes().iter())
-        //     .map(|(&mask, &attribute)| mask & attribute);
+        // Compare misc_select values
+        let misc_select = quote.signature.qe_report_body.misc_select;
+        let qe_identity_miscselect_mask = qe_identity.miscselect_mask_bytes();
+        let calculated_mask = qe_identity_miscselect_mask
+            .iter()
+            .zip(misc_select.as_bytes().iter())
+            .map(|(&mask, &attribute)| mask & attribute);
 
-        // if calculated_mask
-        //     .zip(qe_identity.miscselect.as_bytes().iter())
-        //     .any(|(masked, &identity)| masked != identity)
-        // {
-        //     msg!("qe misc_select mismatch");
-        //     return Err(DcapVerifierError::InvalidQuote.into());
-        // }
+        if calculated_mask
+            .zip(qe_identity.miscselect_bytes().iter())
+            .any(|(masked, &identity)| masked != identity)
+        {
+            msg!("qe misc_select mismatch");
+            return Err(DcapVerifierError::InvalidQuote.into());
+        }
 
-        // let qe_tcb_status =
-        //     qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
-        // qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
-        //     msg!("Error serializing qe tcb status: {}", e);
-        //     DcapVerifierError::InvalidQuote
-        // })?;
+        let quote_isvsvn = quote.signature.qe_report_body.isv_svn.get();
+        let qe_tcb_status = qe_identity.tcb_levels()
+            .filter_map(|qe_tcb| qe_tcb.ok())
+            .find(|qe_tcb| quote_isvsvn >= qe_tcb.isvsvn())
+            .map(|qe_tcb| qe_tcb.tcb_status_byte())
+            .unwrap_or(7); // Default "Unspecified" status value if no matching TCB level found
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.qe_tcb_status = String::from("todo");
+        verified_output.qe_tcb_status = qe_tcb_status_to_string(qe_tcb_status);
 
         Ok(())
     }
@@ -390,13 +394,7 @@ pub mod automata_dcap_verifier {
         }
 
         // Step 2: PCEID check
-        let tcb_info_pceid: [u8; 2] = hex::decode(tcb_info.pce_id_hex_bytes())
-            .map_err(|_| {
-                msg!("Error decoding tcb info pceid");
-                DcapVerifierError::InvalidHexString
-            })?
-            .try_into()
-            .unwrap();
+        let tcb_info_pceid: [u8; 2] = tcb_info.pce_id();
         if pck_extension.pceid != tcb_info_pceid {
             msg!(
                 "PCEID mismatch, expected {} but got {}",
@@ -440,14 +438,8 @@ pub mod automata_dcap_verifier {
             };
 
             let raw_tdx_module_tcb = if tdx_module_version == 0 {
-                let tdx_module_mrsigner: [u8; 48] = hex::decode(tdx_module.mrsigner_hex_bytes())
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
-                let tdx_module_attributes: [u8; 8] = hex::decode(tdx_module.attributes_hex_bytes())
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
+                let tdx_module_mrsigner: [u8; 48] = tdx_module.mrsigner();
+                let tdx_module_attributes: [u8; 8] = tdx_module.attributes();
                 if mrsigner_seam != tdx_module_mrsigner {
                     msg!("Mismatch mrsigner seam");
                     return Err(DcapVerifierError::MismatchMrsignerSeam.into());
@@ -475,16 +467,9 @@ pub mod automata_dcap_verifier {
                         for tdx_tcb_level in tdx_tcb_levels_iter {
                             let tdx_tcb_level = tdx_tcb_level.unwrap();
                             if tdx_module_isv_svn >= tdx_tcb_level.tcb_isvsvn() {
-                                let tdx_module_mrsigner: [u8; 48] =
-                                    hex::decode(tdx_module_identity.mrsigner_hex_bytes())
-                                        .unwrap()
-                                        .try_into()
-                                        .unwrap();
+                                let tdx_module_mrsigner: [u8; 48] = tdx_module_identity.mrsigner();
                                 let tdx_module_attributes: [u8; 8] =
-                                    hex::decode(tdx_module_identity.attributes_hex_bytes())
-                                        .unwrap()
-                                        .try_into()
-                                        .unwrap();
+                                    tdx_module_identity.attributes();
                                 if mrsigner_seam != tdx_module_mrsigner {
                                     msg!("Mismatch mrsigner seam");
                                     return Err(DcapVerifierError::MismatchMrsignerSeam.into());
@@ -519,8 +504,14 @@ pub mod automata_dcap_verifier {
     }
 
     pub fn close_quote_accounts(ctx: Context<CloseQuoteBuffer>) -> Result<()> {
-        msg!("Closed quote buffer account: {}", ctx.accounts.quote_data_buffer.key());
-        msg!("Closed verified output account: {}", ctx.accounts.verified_output.key());
+        msg!(
+            "Closed quote buffer account: {}",
+            ctx.accounts.quote_data_buffer.key()
+        );
+        msg!(
+            "Closed verified output account: {}",
+            ctx.accounts.verified_output.key()
+        );
         Ok(())
     }
 }

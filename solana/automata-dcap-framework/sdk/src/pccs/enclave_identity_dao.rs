@@ -6,9 +6,13 @@ use anchor_client::solana_sdk::{
     signer::{Signer, keypair::Keypair},
 };
 use anyhow::Result;
+use automata_on_chain_pccs::accounts::EnclaveIdentity as EnclaveIdentityAccount;
 use automata_on_chain_pccs::types::ZkvmSelector;
 use automata_on_chain_pccs::{client::accounts, client::args};
-use dcap_rs::types::enclave_identity::{EnclaveIdentity, QuotingEnclaveIdentityAndSignature};
+use dcap_rs::types::enclave_identity::{
+    EnclaveIdentity as EnclaveIdentityObject, QuotingEnclaveIdentityAndSignature,
+};
+use dcap_rs::types::pod::enclave_identity::serialize::*;
 use sha2::{Digest, Sha256};
 use std::ops::Deref;
 
@@ -23,12 +27,17 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         let data_buffer_keypair = data_buffer_keypair.unwrap_or_else(|| Keypair::new());
         let data_buffer_pubkey = data_buffer_keypair.pubkey();
 
-        // TODO: We need to change this
-        // let identity_json: QuotingEnclaveIdentityAndSignature = serde_json::from_slice(data)?;
-        // let identity_body = identity_json.get_enclave_identity()?;
-        // let digest: [u8; 32] = Sha256::digest(identity_json.enclave_identity_raw.get().as_bytes()).into();
-        let identity_data = data.to_vec();
-        let digest = [0u8; 32];
+        let identity_json: QuotingEnclaveIdentityAndSignature = serde_json::from_slice(data)?;
+        let identity_body = identity_json.get_enclave_identity()?;
+        let mut signature: [u8; 64] = [0; 64];
+        signature.copy_from_slice(identity_json.signature.as_slice());
+
+        let digest: [u8; 32] =
+            Sha256::digest(identity_json.enclave_identity_raw.get().as_bytes()).into();
+
+        let serialized_identity =
+            SerializedEnclaveIdentity::from_rust_enclave_identity(&identity_body).unwrap();
+        let identity_data = serialize_enclave_identity_pod(&serialized_identity, &signature);
 
         // Step 1: initialize the data buffer account
         self.init_data_buffer(data_buffer_keypair, digest, identity_data.len() as u32)
@@ -106,40 +115,41 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
-    // /// Retrieves enclave identity information from the blockchain.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `id` - Enclave identity type (TdQe, QE, QVE)
-    // /// * `version` - Version number of the enclave identity
-    // ///
-    // /// # Returns
-    // ///
-    // /// * `Result<EnclaveIdentity>` - The enclave identity account data
-    // pub async fn get_enclave_identity(
-    //     &self,
-    //     id: EnclaveIdentityType,
-    //     version: u8,
-    // ) -> Result<(Pubkey, EnclaveIdentity)> {
-    //     let enclave_identity_pda = Pubkey::find_program_address(
-    //         &[
-    //             b"enclave_identity",
-    //             id.common_name().as_bytes(),
-    //             &version.to_le_bytes()[..1],
-    //         ],
-    //         &PCCS_PROGRAM_ID,
-    //     );
-    //     let account = self
-    //         .program
-    //         .account::<automata_on_chain_pccs::accounts::EnclaveIdentity>(enclave_identity_pda.0)
-    //         .await?;
-    //     Ok((
-    //         enclave_identity_pda.0,
-    //         EnclaveIdentity::from_borsh_bytes(account.data.as_slice())?,
-    //     ))
-    // }
-}
+    /// Retrieves enclave identity information from the blockchain.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Enclave identity type (TdQe, QE, QVE)
+    /// * `version` - Version number of the enclave identity
+    ///
+    /// # Returns
+    ///
+    /// * `Result<EnclaveIdentity>` - The enclave identity account data
+    pub async fn get_enclave_identity(
+        &self,
+        id: EnclaveIdentityType,
+        version: u8,
+    ) -> Result<(Pubkey, EnclaveIdentityObject)> {
+        let (enclave_identity_pda_pubkey, _) = Pubkey::find_program_address(
+            &[
+                b"enclave_identity",
+                id.common_name().as_bytes(),
+                &version.to_le_bytes()[..1],
+            ],
+            &PCCS_PROGRAM_ID,
+        );
 
+        let enclave_identity_data = self
+            .program
+            .account::<EnclaveIdentityAccount>(enclave_identity_pda_pubkey)
+            .await?;
+
+        let (enclave_identity, _sig) =
+            parse_enclave_identity_pod_bytes(enclave_identity_data.data.as_slice()).unwrap();
+
+        Ok((enclave_identity_pda_pubkey, enclave_identity))
+    }
+}
 
 impl From<EnclaveIdentityType> for automata_on_chain_pccs::types::EnclaveIdentityType {
     fn from(id: EnclaveIdentityType) -> Self {
