@@ -1,5 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use dcap_rs::types::pod::tcb_info::serialize::parse_tcb_pod_bytes;
+use dcap_rs::types::pod::enclave_identity::serialize::parse_enclave_identity_pod_bytes;
 use der::{Decode, Encode};
 use p256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use risc0_zkvm::guest::env;
@@ -83,19 +84,17 @@ fn main() {
         },
         InputType::Identity => {
             // parse the Identity
-            // let identity_json: QuotingEnclaveIdentityAndSignature =
-            //     serde_json::from_slice(&input.input_data).expect("Failed to parse Identity");
-            // let identity = identity_json
-            //     .get_enclave_identity()
-            //     .expect("Failed to get Identity");
-            // let identity_serialized = identity.to_borsh_bytes().expect("Failed to serialize Identity");
-            // let sig = Signature::from_slice(identity_json.signature.as_slice())
-            //     .expect("Failed to parse Identity signature");
-            // (
-            //     identity_json.enclave_identity_raw.to_string().into_bytes(),
-            //     sig,
-            // )
-            panic!("Identity parsing is not implemented");
+            let (identity, sig) =
+                parse_enclave_identity_pod_bytes(&input.input_data).expect("Failed to parse Identity");
+            
+            let identity_tbs = serde_json::to_string(&identity)
+                .expect("Failed to serialize Identity into JSON string")
+                .as_bytes()
+                .to_vec();
+
+            let sig = Signature::from_slice(&sig).expect("Failed to parse Identity signature");
+
+            (identity_tbs, sig)
         },
     };
 
