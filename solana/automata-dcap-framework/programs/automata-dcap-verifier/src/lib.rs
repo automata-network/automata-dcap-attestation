@@ -5,6 +5,7 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
+use aligned_vec::AVec;
 use anchor_lang::prelude::*;
 use errors::*;
 use instructions::*;
@@ -195,14 +196,29 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        // TEMP: We need to fix this, because if I "borrow" the data, we would run into alignment issues
-        // upon de-serialization
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
         // AFAIK, the serialized QEIdentity data should not exceed the Solana 32kb heap limit
-        let qe_identity_data = ctx.accounts.qe_identity_pda.data.clone();
-        let qe_identity = EnclaveIdentityZeroCopy::from_bytes(&qe_identity_data[64..]).map_err(|e| {
-            msg!("Error deserializing qe identity: {}", e);
-            DcapVerifierError::SerializationError
-        })?;
+        let qe_identity_data_may_be_unaligned = &ctx.accounts.qe_identity_pda.data;
+
+        let qe_identity_data_owned: Option<AVec<u8>>;
+        let qe_identity_data = if qe_identity_data_may_be_unaligned.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            qe_identity_data_may_be_unaligned.as_slice()
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> =
+                AVec::with_capacity(8, qe_identity_data_may_be_unaligned.len());
+            buff.extend_from_slice(qe_identity_data_may_be_unaligned);
+            qe_identity_data_owned = Some(buff);
+            qe_identity_data_owned.as_ref().unwrap().as_slice()
+        };
+
+        let qe_identity =
+            EnclaveIdentityZeroCopy::from_bytes(&qe_identity_data[64..]).map_err(|e| {
+                msg!("Error deserializing qe identity: {}", e);
+                DcapVerifierError::SerializationError
+            })?;
 
         if qe_identity.mrsigner_bytes() != quote.signature.qe_report_body.mr_signer {
             msg!(
@@ -256,7 +272,8 @@ pub mod automata_dcap_verifier {
         }
 
         let quote_isvsvn = quote.signature.qe_report_body.isv_svn.get();
-        let qe_tcb_status = qe_identity.tcb_levels()
+        let qe_tcb_status = qe_identity
+            .tcb_levels()
             .filter_map(|qe_tcb| qe_tcb.ok())
             .find(|qe_tcb| quote_isvsvn >= qe_tcb.isvsvn())
             .map(|qe_tcb| qe_tcb.tcb_status_byte())
@@ -374,10 +391,23 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        // TEMP: We need to fix this, because if I "borrow" the data, we would run into alignment issues
-        // upon de-serialization
+        let tcb_info_data_may_be_unaligned = &ctx.accounts.tcb_info_pda.data;
+
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
         // AFAIK, the serialized TCBInfo data should not exceed the Solana 32kb heap limit
-        let tcb_info_data = ctx.accounts.tcb_info_pda.data.clone();
+        let tcb_info_data_owned: Option<AVec<u8>>;
+        let tcb_info_data = if tcb_info_data_may_be_unaligned.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            tcb_info_data_may_be_unaligned.as_slice()
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> = AVec::with_capacity(8, tcb_info_data_may_be_unaligned.len());
+            buff.extend_from_slice(tcb_info_data_may_be_unaligned);
+            tcb_info_data_owned = Some(buff);
+            tcb_info_data_owned.as_ref().unwrap().as_slice()
+        };
+
         let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..]).map_err(|e| {
             msg!("Error deserializing tcb info: {}", e);
             DcapVerifierError::SerializationError
