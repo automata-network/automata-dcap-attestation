@@ -11,9 +11,12 @@ use anchor_client::{
 use anchor_lang::{AccountDeserialize, declare_program, prelude::Pubkey};
 
 declare_program!(automata_dcap_verifier);
+use automata_dcap_verifier::accounts::VerifiedOutput as VerifiedOutputAccount;
 use automata_dcap_verifier::types::ZkvmSelector;
 use automata_dcap_verifier::{client::accounts, client::args};
-use dcap_rs::types::quote::{Quote, SGX_TEE_TYPE, TDX_TEE_TYPE};
+use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
+use dcap_rs::types::report::{EnclaveReportBody, Td10ReportBody};
+use dcap_rs::types::{VerifiedOutput, tcb_info::*};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use zerocopy::AsBytes;
 
@@ -44,10 +47,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(Self { program })
     }
 
-    pub async fn init_quote_buffer(
-        &self,
-        quote_size: u32,
-    ) -> anyhow::Result<(Pubkey, Pubkey)> {
+    pub async fn init_quote_buffer(&self, quote_size: u32) -> anyhow::Result<(Pubkey, Pubkey)> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
 
@@ -112,7 +112,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     pub async fn delete_quote_buffer(
         &self,
         quote_buffer_pubkey: Pubkey,
-        verified_output_pubkey: Pubkey
+        verified_output_pubkey: Pubkey,
     ) -> anyhow::Result<()> {
         let _tx = self
             .program
@@ -493,6 +493,72 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         )
         .0;
         Ok(verified_output_pda)
+    }
+
+    pub async fn get_verified_output(
+        &self,
+        verified_output_pubkey: Pubkey,
+    ) -> anyhow::Result<VerifiedOutput> {
+        let verified_output_account = self
+            .program
+            .account::<VerifiedOutputAccount>(verified_output_pubkey)
+            .await?;
+
+        let verified = verified_output_account.integrity_verified
+            && verified_output_account.isv_signature_verified
+            && verified_output_account.pck_cert_chain_verified;
+
+        if !verified {
+            return Err(anyhow::anyhow!("The output has not been fully verified"));
+        }
+
+        let fmspc_tcb_status =
+            TcbStatus::try_from(verified_output_account.fmspc_tcb_status).unwrap();
+        let tdx_module_tcb_status =
+            TcbStatus::try_from(verified_output_account.tdx_module_tcb_status).unwrap();
+        let qe_tcb_status = TcbStatus::try_from(verified_output_account.qe_tcb_status).unwrap();
+
+        let quote_body = match verified_output_account.tee_type {
+            SGX_TEE_TYPE => QuoteBody::SgxQuoteBody(
+                EnclaveReportBody::try_from(
+                    TryInto::<[u8; std::mem::size_of::<EnclaveReportBody>()]>::try_into(
+                        verified_output_account.quote_body.clone(),
+                    )
+                    .unwrap(),
+                )
+                .unwrap(),
+            ),
+            TDX_TEE_TYPE => QuoteBody::Td10QuoteBody(
+                Td10ReportBody::try_from(
+                    TryInto::<[u8; std::mem::size_of::<Td10ReportBody>()]>::try_into(
+                        verified_output_account.quote_body.clone(),
+                    )
+                    .unwrap(),
+                )
+                .unwrap(),
+            ),
+            _ => return Err(anyhow::anyhow!("unsupported tee type")),
+        };
+
+        let mut converged_tcb_status: TcbStatus = fmspc_tcb_status;
+        if verified_output_account.tee_type == TDX_TEE_TYPE {
+            converged_tcb_status = TcbInfo::converge_tcb_status_with_tdx_module(
+                fmspc_tcb_status,
+                tdx_module_tcb_status,
+            );
+        };
+
+        converged_tcb_status =
+            TcbInfo::converge_tcb_status_with_qe_tcb(converged_tcb_status, qe_tcb_status);
+
+        Ok(VerifiedOutput {
+            quote_version: verified_output_account.quote_version,
+            tee_type: verified_output_account.tee_type.to_le(),
+            tcb_status: converged_tcb_status as u8,
+            fmspc: verified_output_account.fmspc,
+            quote_body: quote_body,
+            advisory_ids: verified_output_account.advisory_ids,
+        })
     }
 
     /// Gets an account of the specified type from the Solana blockchain.
