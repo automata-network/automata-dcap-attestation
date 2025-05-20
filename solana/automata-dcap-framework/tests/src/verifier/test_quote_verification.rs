@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use dcap_rs::types::tcb_info::TcbStatus;
 use sdk::Sdk;
 use sdk::shared::pck::verify_pck_chain_zk;
 use anchor_client::solana_sdk::signer::keypair::Keypair;
@@ -7,7 +8,7 @@ use crate::TEST_RISC0_VERIFIER_PUBKEY;
 
 pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let quote_data = include_bytes!("../../data/quote_tdx.bin");
-    let _verifier_client = sdk.verifier_client();
+    let verifier_client = sdk.verifier_client();
 
     // let pem_chain = get_cert_chain_from_quote_data(quote_data);
     // let (_,_,proof) = verify_pck_chain_zk(pem_chain.as_slice()).await.unwrap();
@@ -21,12 +22,14 @@ pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
     .await
     .unwrap();
 
-    // let verified_output = verifier_client
-    //     .get_account::<VerifiedOutput>(verified_output_pubkey)
-    //     .await
-    //     .unwrap();
+    let verified_output = verifier_client
+        .get_verified_output(verified_output_pubkey)
+        .await
+        .unwrap();
 
-    // assert_eq!(verified_output.tcb_status, "UpToDate");
+    assert_eq!(verified_output.quote_version, 4);
+    assert_eq!(verified_output.tee_type, TDX_TEE_TYPE.to_le());
+    assert_eq!(verified_output.tcb_status, TcbStatus::OutOfDate as u8);
 
     for signature in signatures {
         println!("Quote Verification Transaction Signature: {:?}", signature);
@@ -68,7 +71,7 @@ pub(crate) async fn test_quote_sgx_verification(sdk: &Sdk<Arc<Keypair>>) {
     }
 }
 
-use dcap_rs::types::quote::Quote;
+use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
 fn get_cert_chain_from_quote_data(quote_data: &[u8]) -> Vec<u8> {
     let mut quote_data_ref = quote_data;
     let quote = Quote::read(&mut quote_data_ref).unwrap();

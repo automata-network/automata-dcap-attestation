@@ -97,6 +97,7 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     #[account(
+        mut,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -124,6 +125,7 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     #[account(
+        mut,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -163,6 +165,7 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     pub qe_identity_pda: Account<'info, EnclaveIdentity>,
 
     #[account(
+        mut,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -188,8 +191,9 @@ pub struct VerifyPckCertChainZk<'info> {
     /// CHECK: This is the address of the ZKVM Verifier Program.
     /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
-
+    
     #[account(
+        mut,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),
@@ -223,6 +227,7 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
     pub tcb_info_pda: Account<'info, TcbInfo>,
 
     #[account(
+        mut,
         seeds = [
             b"verified_output",
             quote_data_buffer.key().as_ref(),

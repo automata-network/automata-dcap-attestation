@@ -522,6 +522,8 @@ pub mod automata_dcap_verifier {
             };
 
             verified_output.tdx_module_tcb_status = raw_tdx_module_tcb;
+        } else {
+            verified_output.tdx_module_tcb_status = 7u8;
         }
 
         // Return the advisory IDs if any
