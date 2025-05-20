@@ -13,7 +13,6 @@ use p256::ecdsa::Signature;
 use p256::ecdsa::VerifyingKey;
 use utils::certs::compute_output_digest_from_pem;
 use utils::ecdsa::*;
-use utils::tcb::*;
 use utils::zk::*;
 
 declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
@@ -280,7 +279,7 @@ pub mod automata_dcap_verifier {
             .unwrap_or(7); // Default "Unspecified" status value if no matching TCB level found
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.qe_tcb_status = qe_tcb_status_to_string(qe_tcb_status);
+        verified_output.qe_tcb_status = qe_tcb_status;
 
         Ok(())
     }
@@ -450,7 +449,7 @@ pub mod automata_dcap_verifier {
                 return Err(DcapVerifierError::InvalidQuote.into());
             },
         };
-        verified_output.fmspc_tcb_status = tcb_status_to_string(fmspc_tcb_status);
+        verified_output.fmspc_tcb_status = fmspc_tcb_status;
 
         // If a TDX quote is provided, we need to look up the TDX module TCB status as well
         if let QuoteBody::Td10QuoteBody(quote_body) = quote.body {
@@ -522,7 +521,7 @@ pub mod automata_dcap_verifier {
                 tcb_status
             };
 
-            verified_output.tdx_module_tcb_status = tcb_status_to_string(raw_tdx_module_tcb);
+            verified_output.tdx_module_tcb_status = raw_tdx_module_tcb;
         }
 
         // Return the advisory IDs if any

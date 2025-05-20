@@ -940,15 +940,15 @@
           },
           {
             "name": "fmspc_tcb_status",
-            "type": "string"
+            "type": "u8"
           },
           {
             "name": "tdx_module_tcb_status",
-            "type": "string"
+            "type": "u8"
           },
           {
             "name": "qe_tcb_status",
-            "type": "string"
+            "type": "u8"
           },
           {
             "name": "advisory_ids",

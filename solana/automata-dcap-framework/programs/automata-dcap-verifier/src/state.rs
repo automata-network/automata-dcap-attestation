@@ -17,8 +17,8 @@ pub struct VerifiedOutput {
     pub integrity_verified: bool,
     pub isv_signature_verified: bool,
     pub pck_cert_chain_verified: bool,
-    pub fmspc_tcb_status: String,
-    pub tdx_module_tcb_status: String,
-    pub qe_tcb_status: String,
+    pub fmspc_tcb_status: u8,
+    pub tdx_module_tcb_status: u8,
+    pub qe_tcb_status: u8,
     pub advisory_ids: Option<Vec<String>>,
 }
