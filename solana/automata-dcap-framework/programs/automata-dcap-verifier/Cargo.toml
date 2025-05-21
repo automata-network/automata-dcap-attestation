@@ -24,7 +24,6 @@ zerocopy = { version = "0.7.34" }
 automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = ["cpi"] }
 serde_json   	= { version = "1.0.125", features = ["raw_value"] }
 hex = { version = "0.4.3" }
-pem = { version = "3.0.5" }
 solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git", default-features = false }
 alloy-primitives = { version = "^0.6.1" }
 alloy-sol-types = { version = "^0.6.1" }

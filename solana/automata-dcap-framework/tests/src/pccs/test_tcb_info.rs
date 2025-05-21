@@ -77,7 +77,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
         .await
         .unwrap();
 
-    let data_buffer_account_data = client.load_buffer_data(data_buffer_pubkey).await.unwrap();
+    // let data_buffer_account_data = client.load_buffer_data(data_buffer_pubkey).await.unwrap();
 
     // let (_, issuer_der) = client
     //     .get_pcs_certificate(CertificateAuthority::SIGNING, false)
@@ -92,7 +92,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
     // .await
     // .unwrap();
 
-    let proof = hex::decode("1af2c7a271632660b897ce915bf0a7ad30c94c18afa3ada2ca9f84fabc4fe14d1cf236af908303fd69e79c101042c1edb9c16955a4e0d48f1f13a616b873c90f07a15c8481fbc45e544b7e05051597db140e3912e8b1ded402775f163c8622f01c2c618eeee1f4bc58f31ddeb5e8ea3a729b234f390802d2f8f841fe1428e48a0a3ec1308944893885025565a9efa2d3725bc76e42f6b01327da703fd9d5a531204eed453b3cfe032ae4f20fe7fd78398f960cdb06d6ccb8f668cba1642aee4c01cca7bd8740dfaa4e6d6d7a9925fdea8ac2039d75b1944ba9da741f5f1d0e161e351efe9b40440d4172d0b5d017799cdc78dd0addc1ebf1c046c6e0050ad683").unwrap();
+    let proof = hex::decode("259659e72b79a5882d32e18644f417e0066350d21f9651c46d39ec51db75daea04fc5ebb356e37f2a5650aeaecc3cb985dc0446977c8f3180e1b7db9e064da412f9b9fc319ea66e16b0768b2a3d36635b2d7e34a534a94e8f2114ac017d640ca17f472a2fd4cadf9463c7ad42d4f745eb2f403077e3c9419bdcbd76136a9f6112867d9b26705719bac41c7647046c00e2f6a7b707b6db2aa98c20b59e98f1ff01b1319b7da34bf87784266bc7811646650440149cbe4ea054dcf75a06b0141df041c168c6e9e1133c87f9a3be33ecc0234f2ba11c34f07182f1132c75d24e4541c2a449825d5f2e7d06f37667ff013f5ed5ec556967342e8177e49a13b40f17f").unwrap();
 
     let tcb_type = TcbType::Tdx;
     let fmspc = "00806f050000";
