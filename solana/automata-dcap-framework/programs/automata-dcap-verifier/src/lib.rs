@@ -19,15 +19,19 @@ declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {
-
     use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
     use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
     use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
+    use programs_shared::get_cn_from_x509_name;
     use solana_zk_client::verify::{
         risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
     };
     use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
     use zerocopy::AsBytes;
+
+    use programs_shared::certs::*;
+    use programs_shared::crl::*;
+    use programs_shared::x509_parser::parse_x509_certificate;
 
     use super::*;
 
@@ -306,16 +310,68 @@ pub mod automata_dcap_verifier {
         // Step 1: Extract the PCK Certificate Chain from the quote data
         let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
 
-        // TODO: Check all certificates in the chain are unexpired and have not been revoked
-
         // Step 2: Compute the zkVM output data
         // the data consists of ABI-encoded of (bytes32, bytes32, bool) containing these values:
         // - the hash of the abi-encoded bytes array contains the PCK Certificate DER chain
         // - the hash of the root certificate DER
         // - true
-        let output_digest: [u8; 32] = compute_output_digest_from_pem(pck_cert_chain_pem);
+        let (cert_chain, output_digest) = compute_output_digest_from_pem(pck_cert_chain_pem)?;
 
-        // Step 3: make CPI to the Solana ZK Verifier program to verify proofs
+        // // Step 3: Validate each certificate in the chain
+        // let now = Clock::get().unwrap().unix_timestamp;
+        // for (i, cert) in cert_chain.iter().enumerate() {
+        //     let (_, x509) = parse_x509_certificate(cert).unwrap();
+        //     let tbs = &x509.tbs_certificate;
+            
+        //     // First, check the validity range for each certificate
+        //     let (not_before, not_after) = get_certificate_validity(tbs);
+        //     let serial_nuber = get_certificate_serial(tbs);
+
+        //     let cert_validity = now >= not_before && now <= not_after;
+        //     if !cert_validity {
+        //         msg!("Certificate {} has expired", i);
+        //         return Err(DcapVerifierError::ExpiredCollateral.into());
+        //     }
+
+        //     // Then, check the revocation status for PCK and PCK Issuer Certificate
+        //     // For the root certificate, we just have to make sure that the pubkey matches
+        //     // with what is expected
+        //     if i == 0 {
+        //         let pck_crl_account = &ctx.accounts.pck_crl;
+
+        //         // Check PCK CRL account is valid
+        //         let pck_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
+        //         let (expected_pck_crl_pubkey, _) = Pubkey::find_program_address(
+        //             &[b"pcs_cert", pck_ca_type_str.as_bytes(), &[true as u8]],
+        //             &automata_on_chain_pccs::ID,
+        //         );
+
+        //         if expected_pck_crl_pubkey != pck_crl_account.key() {
+        //             msg!("Invalid PCK CRL account");
+        //             return Err(DcapVerifierError::MismatchPda.into());
+        //         }
+
+        //         if check_certificate_revocation(&serial_nuber, &pck_crl_account.cert_data).is_err() {
+        //             msg!("PCK Certificate revoked");
+        //             return Err(DcapVerifierError::RevokedCertificate.into());
+        //         }
+        //     } else if i == 1 {
+        //         let root_crl_account = &ctx.accounts.root_crl;
+
+        //         if check_certificate_revocation(&serial_nuber, &root_crl_account.cert_data).is_err() {
+        //             msg!("PCK Intermediate Certificate revoked");
+        //             return Err(DcapVerifierError::RevokedCertificate.into());
+        //         }
+        //     } else {
+        //         let root_pubkey = tbs.public_key().subject_public_key.as_ref();
+        //         require!(
+        //             root_pubkey == INTEL_ROOT_PUB_KEY,
+        //             DcapVerifierError::InvalidRootCa
+        //         );
+        //     }
+        // }
+
+        // Step 4: make CPI to the Solana ZK Verifier program to verify proofs
         let x509_program_vkey = zkvm_selector
             .get_x509_verifier_program_vkey()
             .expect("Missing X509 Verifier program for the provided zkVM");

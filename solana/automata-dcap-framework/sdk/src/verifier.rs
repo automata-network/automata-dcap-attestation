@@ -20,7 +20,9 @@ use dcap_rs::types::{VerifiedOutput, tcb_info::*};
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use zerocopy::AsBytes;
 
+use crate::pccs::compute_pcs_pda_pubkey;
 use crate::{TcbType, pccs::PCCS_PROGRAM_ID, shared::ecdsa::get_secp256r1_instruction};
+use crate::CertificateAuthority;
 
 /// A client for the Automata DCAP Verifier program on Solana.
 ///
@@ -391,6 +393,8 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .accounts(accounts::VerifyPckCertChainZk {
                 quote_data_buffer: quote_buffer_pubkey,
                 zkvm_verifier_program,
+                pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
+                root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
                 verified_output: verified_output_pubkey,
                 system_program: anchor_client::solana_sdk::system_program::ID,
             })

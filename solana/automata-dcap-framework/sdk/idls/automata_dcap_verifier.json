@@ -488,10 +488,13 @@
           "name": "quote_data_buffer"
         },
         {
-          "name": "zkvm_verifier_program",
-          "docs": [
-            "we need to read from the zkvm_verifier_config_pda account data"
-          ]
+          "name": "pck_crl"
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "zkvm_verifier_program"
         },
         {
           "name": "verified_output",
@@ -571,6 +574,19 @@
         103,
         129,
         177
+      ]
+    },
+    {
+      "name": "PcsCertificate",
+      "discriminator": [
+        206,
+        13,
+        94,
+        39,
+        155,
+        246,
+        124,
+        143
       ]
     },
     {
@@ -710,9 +726,43 @@
       "code": 6021,
       "name": "MismatchSeamAttribute",
       "msg": "SEAM Attribute Mismatch"
+    },
+    {
+      "code": 6022,
+      "name": "MismatchPda",
+      "msg": "Mismatch PDA"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidRootCa",
+      "msg": "Invalid Root CA"
     }
   ],
   "types": [
+    {
+      "name": "CertificateAuthority",
+      "docs": [
+        "Represents the different types of Certificate Authorities in the Intel SGX",
+        "attestation."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ROOT"
+          },
+          {
+            "name": "PLATFORM"
+          },
+          {
+            "name": "PROCESSOR"
+          },
+          {
+            "name": "SIGNING"
+          }
+        ]
+      }
+    },
     {
       "name": "DataBuffer",
       "type": {
@@ -813,6 +863,80 @@
           },
           {
             "name": "TdQe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PcsCertificate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ca_type",
+            "docs": [
+              "The type of certificate authority that signed this certificate"
+            ],
+            "type": {
+              "defined": {
+                "name": "CertificateAuthority"
+              }
+            }
+          },
+          {
+            "name": "is_crl",
+            "docs": [
+              "Whether this is a CRL"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate",
+              "This field is optional for CRLs"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  20
+                ]
+              }
+            }
           }
         ]
       }

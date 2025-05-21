@@ -1,6 +1,8 @@
 pub mod certs;
 pub mod crl;
 
+pub use x509_parser;
+
 use x509_parser::x509::X509Name;
 
 pub fn get_cn_from_x509_name<'a>(name: &'a X509Name<'_>) -> Option<&'a str> {

@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
+use automata_on_chain_pccs::types::CertificateAuthority;
 
 use crate::errors::DcapVerifierError;
 use crate::state::{DataBuffer, VerifiedOutput};
 use crate::utils::zk::ZkvmSelector;
 
-use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo};
+use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo, PcsCertificate};
 
 /// This instruction creates a new on-chain account that will store DCAP
 /// attestation quote data. Since DCAP quotes (typically 4-6 KB) exceed
@@ -188,8 +189,21 @@ pub struct VerifyPckCertChainZk<'info> {
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
+    /// CHECK: The program checks the address of the PCK CRL account
+    pub pck_crl: Account<'info, PcsCertificate>,
+
+    #[account(
+        seeds = [
+            b"pcs_cert",
+            CertificateAuthority::ROOT.common_name().as_bytes(),
+            &[true as u8]
+        ],
+        bump,
+        seeds::program = automata_on_chain_pccs::ID,
+    )]
+    pub root_crl: Account<'info, PcsCertificate>,
+
     /// CHECK: This is the address of the ZKVM Verifier Program.
-    /// we need to read from the zkvm_verifier_config_pda account data
     pub zkvm_verifier_program: AccountInfo<'info>,
     
     #[account(

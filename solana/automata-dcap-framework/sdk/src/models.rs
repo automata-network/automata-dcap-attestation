@@ -4,8 +4,8 @@ use std::str::FromStr;
 #[repr(u8)]
 pub enum CertificateAuthority {
     ROOT,
-    PLATFORM,
     PROCESSOR,
+    PLATFORM,
     SIGNING,
 }
 
@@ -45,9 +45,9 @@ impl CertificateAuthority {
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 #[repr(u8)]
 pub enum EnclaveIdentityType {
-    TdQe,
     QE,
     QVE,
+    TdQe,
 }
 
 impl EnclaveIdentityType {

@@ -67,4 +67,10 @@ pub enum DcapVerifierError {
 
     #[msg("SEAM Attribute Mismatch")]
     MismatchSeamAttribute,
+
+    #[msg("Mismatch PDA")]
+    MismatchPda,
+
+    #[msg("Invalid Root CA")]
+    InvalidRootCa,
 }

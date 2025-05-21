@@ -4,9 +4,12 @@ pub mod pck_dao;
 pub mod pcs_dao;
 pub mod utils;
 
-use std::ops::Deref;
+pub use ecdsa_secp256r1_host::InputType as EcdsaZkVerifyInputType;
 
 use crate::shared::negate_g1;
+use crate::models::*;
+
+use std::ops::Deref;
 use anchor_client::{
     Client, Program,
     solana_sdk::signer::{Signer, keypair::Keypair},
@@ -14,11 +17,9 @@ use anchor_client::{
 use anchor_lang::{declare_program, prelude::Pubkey};
 use utils::zk::*;
 
-pub use ecdsa_secp256r1_host::InputType as EcdsaZkVerifyInputType;
-
 declare_program!(automata_on_chain_pccs);
-use automata_on_chain_pccs::{client::accounts, client::args};
 use automata_on_chain_pccs::accounts::DataBuffer;
+use automata_on_chain_pccs::{client::accounts, client::args};
 
 /// The Solana program ID for the PCCS (Provisioning Certificate Caching Service) on-chain program.
 pub const PCCS_PROGRAM_ID: Pubkey = automata_on_chain_pccs::ID;
@@ -119,10 +120,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
-    pub async fn load_buffer_data(
-        &self,
-        data_buffer_pubkey: Pubkey,
-    ) -> anyhow::Result<Vec<u8>> {
+    pub async fn load_buffer_data(&self, data_buffer_pubkey: Pubkey) -> anyhow::Result<Vec<u8>> {
         let data_buffer = self
             .program
             .account::<DataBuffer>(data_buffer_pubkey)
@@ -130,13 +128,12 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 
         Ok(data_buffer.data)
     }
-
 }
 
 pub async fn request_ecdsa_verify_proof(
     input_type: EcdsaZkVerifyInputType,
     input_data: &[u8],
-    issuer_der: &[u8]
+    issuer_der: &[u8],
 ) -> anyhow::Result<(
     [u8; 32], // image_id
     Vec<u8>,  // journal_bytes
@@ -155,4 +152,13 @@ pub async fn request_ecdsa_verify_proof(
     println!("seal: {}", hex::encode(&seal));
 
     Ok((image_id, journal, seal))
+}
+
+pub fn compute_pcs_pda_pubkey(ca: CertificateAuthority, is_crl: bool) -> Pubkey {
+    let (ret, _) = Pubkey::find_program_address(
+        &[b"pcs_cert", ca.common_name().as_bytes(), &[is_crl as u8]],
+        &PCCS_PROGRAM_ID,
+    );
+
+    ret
 }
