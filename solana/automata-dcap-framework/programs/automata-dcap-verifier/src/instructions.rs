@@ -163,7 +163,7 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
         bump,
         seeds::program = automata_on_chain_pccs::ID,
     )]
-    pub qe_identity_pda: Account<'info, EnclaveIdentity>,
+    pub qe_identity_pda: AccountLoader<'info, EnclaveIdentity>,
 
     #[account(
         mut,
@@ -190,7 +190,7 @@ pub struct VerifyPckCertChainZk<'info> {
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
     /// CHECK: The program checks the address of the PCK CRL account
-    pub pck_crl: Account<'info, PcsCertificate>,
+    pub pck_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         seeds = [
@@ -201,7 +201,7 @@ pub struct VerifyPckCertChainZk<'info> {
         bump,
         seeds::program = automata_on_chain_pccs::ID,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -238,7 +238,7 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
         bump,
         seeds::program = automata_on_chain_pccs::ID,
     )]
-    pub tcb_info_pda: Account<'info, TcbInfo>,
+    pub tcb_info_pda: AccountLoader<'info, TcbInfo>,
 
     #[account(
         mut,

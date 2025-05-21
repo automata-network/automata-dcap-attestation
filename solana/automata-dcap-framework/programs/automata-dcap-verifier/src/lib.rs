@@ -198,8 +198,8 @@ pub mod automata_dcap_verifier {
         })?;
 
         let now = Clock::get().unwrap().unix_timestamp;
-        let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.issue_timestamp
-            && now <= ctx.accounts.qe_identity_pda.next_update_timestamp;
+        let qe_identity_validity = now >= ctx.accounts.qe_identity_pda.load()?.issue_timestamp
+            && now <= ctx.accounts.qe_identity_pda.load()?.next_update_timestamp;
         if !qe_identity_validity {
             msg!("QE Identity has expired");
             return Err(DcapVerifierError::ExpiredCollateral.into());
@@ -208,7 +208,7 @@ pub mod automata_dcap_verifier {
         // TEMP: Using **owned** data for now by copying and aligned the data into heap,
         // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
         // AFAIK, the serialized QEIdentity data should not exceed the Solana 32kb heap limit
-        let qe_identity_data_may_be_unaligned = &ctx.accounts.qe_identity_pda.data;
+        let qe_identity_data_may_be_unaligned = &ctx.accounts.qe_identity_pda.load()?.data;
 
         let qe_identity_data_owned: Option<AVec<u8>>;
         let qe_identity_data = if qe_identity_data_may_be_unaligned.as_ptr().align_offset(8) == 0 {
@@ -317,59 +317,63 @@ pub mod automata_dcap_verifier {
         // - true
         let (cert_chain, output_digest) = compute_output_digest_from_pem(pck_cert_chain_pem)?;
 
-        // // Step 3: Validate each certificate in the chain
-        // let now = Clock::get().unwrap().unix_timestamp;
-        // for (i, cert) in cert_chain.iter().enumerate() {
-        //     let (_, x509) = parse_x509_certificate(cert).unwrap();
-        //     let tbs = &x509.tbs_certificate;
-            
-        //     // First, check the validity range for each certificate
-        //     let (not_before, not_after) = get_certificate_validity(tbs);
-        //     let serial_nuber = get_certificate_serial(tbs);
+        // Step 3: Validate each certificate in the chain
+        let now = Clock::get().unwrap().unix_timestamp;
+        for (i, cert) in cert_chain.iter().enumerate() {
+            let (_, x509) = parse_x509_certificate(cert).unwrap();
+            let tbs = &x509.tbs_certificate;
 
-        //     let cert_validity = now >= not_before && now <= not_after;
-        //     if !cert_validity {
-        //         msg!("Certificate {} has expired", i);
-        //         return Err(DcapVerifierError::ExpiredCollateral.into());
-        //     }
+            // First, check the validity range for each certificate
+            let (not_before, not_after) = get_certificate_validity(tbs);
+            let serial_nuber = get_certificate_serial(tbs);
 
-        //     // Then, check the revocation status for PCK and PCK Issuer Certificate
-        //     // For the root certificate, we just have to make sure that the pubkey matches
-        //     // with what is expected
-        //     if i == 0 {
-        //         let pck_crl_account = &ctx.accounts.pck_crl;
+            let cert_validity = now >= not_before && now <= not_after;
+            if !cert_validity {
+                msg!("Certificate {} has expired", i);
+                return Err(DcapVerifierError::ExpiredCollateral.into());
+            }
 
-        //         // Check PCK CRL account is valid
-        //         let pck_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
-        //         let (expected_pck_crl_pubkey, _) = Pubkey::find_program_address(
-        //             &[b"pcs_cert", pck_ca_type_str.as_bytes(), &[true as u8]],
-        //             &automata_on_chain_pccs::ID,
-        //         );
+            // Then, check the revocation status for PCK and PCK Issuer Certificate
+            // For the root certificate, we just have to make sure that the pubkey matches
+            // with what is expected
+            if i == 0 {
+                let pck_crl_account = &ctx.accounts.pck_crl;
 
-        //         if expected_pck_crl_pubkey != pck_crl_account.key() {
-        //             msg!("Invalid PCK CRL account");
-        //             return Err(DcapVerifierError::MismatchPda.into());
-        //         }
+                // Check PCK CRL account is valid
+                let pck_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
+                let (expected_pck_crl_pubkey, _) = Pubkey::find_program_address(
+                    &[b"pcs_cert", pck_ca_type_str.as_bytes(), &[true as u8]],
+                    &automata_on_chain_pccs::ID,
+                );
 
-        //         if check_certificate_revocation(&serial_nuber, &pck_crl_account.cert_data).is_err() {
-        //             msg!("PCK Certificate revoked");
-        //             return Err(DcapVerifierError::RevokedCertificate.into());
-        //         }
-        //     } else if i == 1 {
-        //         let root_crl_account = &ctx.accounts.root_crl;
+                if expected_pck_crl_pubkey != pck_crl_account.key() {
+                    msg!("Invalid PCK CRL account");
+                    return Err(DcapVerifierError::MismatchPda.into());
+                }
 
-        //         if check_certificate_revocation(&serial_nuber, &root_crl_account.cert_data).is_err() {
-        //             msg!("PCK Intermediate Certificate revoked");
-        //             return Err(DcapVerifierError::RevokedCertificate.into());
-        //         }
-        //     } else {
-        //         let root_pubkey = tbs.public_key().subject_public_key.as_ref();
-        //         require!(
-        //             root_pubkey == INTEL_ROOT_PUB_KEY,
-        //             DcapVerifierError::InvalidRootCa
-        //         );
-        //     }
-        // }
+                if check_certificate_revocation(&serial_nuber, &pck_crl_account.load()?.cert_data)
+                    .is_err()
+                {
+                    msg!("PCK Certificate revoked");
+                    return Err(DcapVerifierError::RevokedCertificate.into());
+                }
+            } else if i == 1 {
+                let root_crl_account = &ctx.accounts.root_crl;
+
+                if check_certificate_revocation(&serial_nuber, &root_crl_account.load()?.cert_data)
+                    .is_err()
+                {
+                    msg!("PCK Intermediate Certificate revoked");
+                    return Err(DcapVerifierError::RevokedCertificate.into());
+                }
+            } else {
+                let root_pubkey = tbs.public_key().subject_public_key.as_ref();
+                require!(
+                    root_pubkey == INTEL_ROOT_PUB_KEY,
+                    DcapVerifierError::InvalidRootCa
+                );
+            }
+        }
 
         // Step 4: make CPI to the Solana ZK Verifier program to verify proofs
         let x509_program_vkey = zkvm_selector
@@ -445,14 +449,14 @@ pub mod automata_dcap_verifier {
         })?;
 
         let now = Clock::get().unwrap().unix_timestamp;
-        let tcb_info_is_valid = now >= ctx.accounts.tcb_info_pda.issue_timestamp
-            && now <= ctx.accounts.tcb_info_pda.next_update_timestamp;
+        let tcb_info_is_valid = now >= ctx.accounts.tcb_info_pda.load()?.issue_timestamp
+            && now <= ctx.accounts.tcb_info_pda.load()?.next_update_timestamp;
         if !tcb_info_is_valid {
             msg!("TCB Info has expired");
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        let tcb_info_data_may_be_unaligned = &ctx.accounts.tcb_info_pda.data;
+        let tcb_info_data_may_be_unaligned = &ctx.accounts.tcb_info_pda.load()?.data;
 
         // TEMP: Using **owned** data for now by copying and aligned the data into heap,
         // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization

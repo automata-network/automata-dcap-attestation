@@ -6,7 +6,7 @@ use crate::types::{CertificateAuthority, EnclaveIdentityType, TcbType};
 #[event]
 pub struct TcbInfoUpdated {
     pub tcb_type: TcbType,
-    pub version: u8,
+    pub version: u32,
     pub fmspc: [u8; 6],
     pub pda: Pubkey,
 }
@@ -14,7 +14,7 @@ pub struct TcbInfoUpdated {
 #[event]
 pub struct EnclaveIdentityUpserted {
     pub id: EnclaveIdentityType,
-    pub version: u8,
+    pub version: u32,
     pub pda: Pubkey,
 }
 

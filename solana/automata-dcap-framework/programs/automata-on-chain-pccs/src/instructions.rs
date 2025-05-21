@@ -67,7 +67,7 @@ pub struct UpsertPckCertificate<'info> {
         ],
         bump,
     )]
-    pub pck_certificate: Account<'info, PckCertificate>,
+    pub pck_certificate: AccountLoader<'info, PckCertificate>,
 
     #[account(
         mut,
@@ -82,20 +82,20 @@ pub struct UpsertPckCertificate<'info> {
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub pck_crl: Account<'info, PcsCertificate>,
+    pub pck_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         constraint = ca_type == CertificateAuthority::PLATFORM || ca_type == CertificateAuthority::PROCESSOR @ PccsError::InvalidSubject,
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub issuer_ca: Account<'info, PcsCertificate>,
+    pub issuer_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -119,7 +119,7 @@ pub struct UpsertRootCA<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub root_ca: Account<'info, PcsCertificate>,
+    pub root_ca: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         mut,
@@ -147,7 +147,7 @@ pub struct UpsertRootCrl<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[true as u8]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         mut,
@@ -161,7 +161,7 @@ pub struct UpsertRootCrl<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub root_ca: Account<'info, PcsCertificate>,
+    pub root_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -182,7 +182,7 @@ pub struct UpsertPcsCertificate<'info> {
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[false as u8]],
         bump,
     )]
-    pub pcs_certificate: Account<'info, PcsCertificate>,
+    pub pcs_certificate: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         mut,
@@ -196,14 +196,14 @@ pub struct UpsertPcsCertificate<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         constraint = ca_type != CertificateAuthority::ROOT @ PccsError::InvalidSubject,
         seeds = [b"pcs_cert", ca_type.get_issuer(false).common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub issuer_ca: Account<'info, PcsCertificate>,
+    pub issuer_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -224,7 +224,7 @@ pub struct UpsertPcsCrl<'info> {
         seeds = [b"pcs_cert", ca_type.common_name().as_bytes(), &[true as u8]],
         bump,
     )]
-    pub pcs_crl: Account<'info, PcsCertificate>,
+    pub pcs_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         mut,
@@ -238,14 +238,14 @@ pub struct UpsertPcsCrl<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         constraint = ca_type != CertificateAuthority::ROOT @ PccsError::InvalidSubject,
         seeds = [b"pcs_cert", ca_type.get_issuer(true).common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub issuer_ca: Account<'info, PcsCertificate>,
+    pub issuer_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -254,7 +254,7 @@ pub struct UpsertPcsCrl<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(id: EnclaveIdentityType, version: u8)]
+#[instruction(id: EnclaveIdentityType, version: u32)]
 pub struct UpsertEnclaveIdentity<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -266,7 +266,7 @@ pub struct UpsertEnclaveIdentity<'info> {
         seeds = [b"enclave_identity", id.common_name().as_bytes(), &version.to_le_bytes()[..1]],
         bump,
     )]
-    pub enclave_identity: Account<'info, EnclaveIdentity>,
+    pub enclave_identity: AccountLoader<'info, EnclaveIdentity>,
 
     #[account(
         mut,
@@ -280,13 +280,13 @@ pub struct UpsertEnclaveIdentity<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub issuer_ca: Account<'info, PcsCertificate>,
+    pub issuer_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
@@ -295,7 +295,7 @@ pub struct UpsertEnclaveIdentity<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tcb_type: TcbType, version: u8, fmspc: [u8; 6])]
+#[instruction(tcb_type: TcbType, version: u32, fmspc: [u8; 6])]
 pub struct UpsertTcbInfo<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -307,7 +307,7 @@ pub struct UpsertTcbInfo<'info> {
         seeds = [b"tcb_info", tcb_type.common_name().as_bytes(), &version.to_le_bytes()[..1], &fmspc],
         bump,
     )]
-    pub tcb_info: Account<'info, TcbInfo>,
+    pub tcb_info: AccountLoader<'info, TcbInfo>,
 
     #[account(
         mut,
@@ -321,13 +321,13 @@ pub struct UpsertTcbInfo<'info> {
         seeds = [b"pcs_cert", CertificateAuthority::ROOT.common_name().as_bytes(), &[1]],
         bump,
     )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    pub root_crl: AccountLoader<'info, PcsCertificate>,
 
     #[account(
         seeds = [b"pcs_cert", CertificateAuthority::SIGNING.common_name().as_bytes(), &[0]],
         bump,
     )]
-    pub issuer_ca: Account<'info, PcsCertificate>,
+    pub issuer_ca: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,

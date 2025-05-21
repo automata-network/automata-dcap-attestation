@@ -70,7 +70,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         data_buffer_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         id: EnclaveIdentityType,
-        version: u8,
+        version: u32,
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> anyhow::Result<()> {

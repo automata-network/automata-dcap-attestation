@@ -103,7 +103,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         data_buffer_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         tcb_type: TcbType,
-        version: u8,
+        version: u32,
         fmspc: [u8; 6],
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,

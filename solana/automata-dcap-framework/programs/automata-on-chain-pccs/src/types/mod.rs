@@ -9,15 +9,16 @@ use std::{
 /// Represents the different types of Certificate Authorities in the Intel SGX
 /// attestation.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum CertificateAuthority {
     /// Intel SGX Root CA
     ROOT = 0,
 
-    /// Intel SGX Platform CA
-    PLATFORM = 1,
-
     /// Intel SGX Processor CA
-    PROCESSOR = 2,
+    PROCESSOR = 1,
+
+    /// Intel SGX Platform CA
+    PLATFORM = 2,
 
     /// Intel SGX TCB Signing CA
     SIGNING = 3,
@@ -52,11 +53,15 @@ impl CertificateAuthority {
     pub fn from_u8(value: u8) -> Option<Self> {
         match value {
             0 => Some(CertificateAuthority::ROOT),
-            1 => Some(CertificateAuthority::PLATFORM),
-            2 => Some(CertificateAuthority::PROCESSOR),
+            1 => Some(CertificateAuthority::PROCESSOR),
+            2 => Some(CertificateAuthority::PLATFORM),
             3 => Some(CertificateAuthority::SIGNING),
             _ => None,
         }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
     }
 
     /// Returns the issuer of the certificate or CRL based on the CA type.
@@ -72,6 +77,7 @@ impl CertificateAuthority {
 /// Represents the different types of Enclave Identities in the Intel SGX
 /// attestation.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum EnclaveIdentityType {
     QE = 0,
     QVE = 1,
@@ -95,10 +101,15 @@ impl EnclaveIdentityType {
             _ => None,
         }
     }
+
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
+    }
 }
 
 /// Represents different types of TCB
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum TcbType {
     Sgx = 0,
     Tdx = 1,
@@ -118,5 +129,9 @@ impl TcbType {
             1 => Some(TcbType::Tdx),
             _ => None,
         }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
     }
 }
