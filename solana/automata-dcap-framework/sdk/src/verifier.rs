@@ -506,7 +506,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let verified = verified_output_account.integrity_verified
             && verified_output_account.isv_signature_verified
-            && verified_output_account.pck_cert_chain_verified;
+            && verified_output_account.pck_cert_chain_verified
+            && verified_output_account.fmspc_tcb_status != TcbStatus::Unspecified as u8
+            && verified_output_account.qe_tcb_status != TcbStatus::Unspecified as u8;
 
         if !verified {
             return Err(anyhow::anyhow!("The output has not been fully verified"));
