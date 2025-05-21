@@ -39,6 +39,12 @@ pub mod automata_dcap_verifier {
         quote_buffer_account.total_size = quote_size;
         quote_buffer_account.data = vec![0u8; quote_size as usize];
 
+        // Set all tcb statuses to 7 (Unspecified)
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.fmspc_tcb_status = 7u8;
+        verified_output.tdx_module_tcb_status = 7u8;
+        verified_output.qe_tcb_status = 7u8;
+
         msg!(
             "Created quote buffer account with size {} bytes",
             quote_size
@@ -485,7 +491,7 @@ pub mod automata_dcap_verifier {
                 }
 
                 let id_string = format!("TDX_{:02x}", tdx_module_version);
-                let mut tcb_status = 7u8;
+                let mut tcb_status = verified_output.tdx_module_tcb_status;
 
                 let tdx_module_identities_iter = tcb_info.tdx_module_identities();
                 for tdx_module_identity in tdx_module_identities_iter {
@@ -522,8 +528,6 @@ pub mod automata_dcap_verifier {
             };
 
             verified_output.tdx_module_tcb_status = raw_tdx_module_tcb;
-        } else {
-            verified_output.tdx_module_tcb_status = 7u8;
         }
 
         // Return the advisory IDs if any
