@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [ 
-    "solana/automata-dcap-client",
-    "solana/programs/*"
+    "automata-dcap-client",
+    "programs/*"
 ]
 
 [workspace.package]

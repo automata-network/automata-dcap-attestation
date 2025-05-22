@@ -5,47 +5,55 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
+use aligned_vec::AVec;
 use anchor_lang::prelude::*;
 use errors::*;
 use instructions::*;
+use p256::ecdsa::Signature;
+use p256::ecdsa::VerifyingKey;
 use utils::certs::compute_output_digest_from_pem;
 use utils::ecdsa::*;
 use utils::zk::*;
-use p256::ecdsa::VerifyingKey;
-use p256::ecdsa::Signature;
 
 declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {
-
-    use anchor_lang::solana_program::{
-        instruction::Instruction,
-        program::invoke
-    };
+    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+    use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+    use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
+    use programs_shared::get_cn_from_x509_name;
     use solana_zk_client::verify::{
         risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
     };
     use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
     use zerocopy::AsBytes;
-    use dcap_rs::types::enclave_identity::EnclaveIdentity;
-    use dcap_rs::types::quote::{Quote, TDX_TEE_TYPE};
-    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
-    use dcap_rs::types::tcb_info::TcbInfo;
-    use dcap_rs::verify_tcb_status;
-    use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
+
+    use programs_shared::certs::*;
+    use programs_shared::crl::*;
+    use programs_shared::x509_parser::parse_x509_certificate;
 
     use super::*;
 
-    pub fn init_quote_buffer(ctx: Context<InitQuoteBuffer>, total_size: u32) -> Result<()> {
-        let data_buffer = &mut ctx.accounts.data_buffer;
+    pub fn create_quote_accounts(ctx: Context<Create>, quote_size: u32) -> Result<()> {
+        let quote_buffer_account = &mut ctx.accounts.quote_data_buffer;
 
-        data_buffer.owner = *ctx.accounts.owner.key;
-        data_buffer.total_size = total_size;
-        data_buffer.complete = false;
-        data_buffer.data = vec![0; total_size as usize];
+        // Initialize the quote buffer account
+        quote_buffer_account.owner = *ctx.accounts.owner.key;
+        quote_buffer_account.total_size = quote_size;
+        quote_buffer_account.data = vec![0u8; quote_size as usize];
 
-        msg!("Quote buffer initialized with total size: {}", total_size);
+        // Set all tcb statuses to 7 (Unspecified)
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.fmspc_tcb_status = 7u8;
+        verified_output.tdx_module_tcb_status = 7u8;
+        verified_output.qe_tcb_status = 7u8;
+
+        msg!(
+            "Created quote buffer account with size {} bytes",
+            quote_size
+        );
+
         Ok(())
     }
 
@@ -55,19 +63,6 @@ pub mod automata_dcap_verifier {
         offset: u32,
     ) -> Result<()> {
         let data_buffer = &mut ctx.accounts.data_buffer;
-
-        require!(
-            data_buffer.owner == *ctx.accounts.owner.key,
-            DcapVerifierError::InvalidOwner
-        );
-        require!(
-            !data_buffer.complete,
-            DcapVerifierError::BufferAlreadyComplete
-        );
-        require!(
-            (offset as usize + chunk_data.len()) as u32 <= data_buffer.total_size,
-            DcapVerifierError::ChunkOutOfBounds
-        );
 
         let start_index = offset as usize;
         let end_index = start_index + chunk_data.len();
@@ -84,6 +79,8 @@ pub mod automata_dcap_verifier {
     }
 
     pub fn verify_dcap_quote_integrity(ctx: Context<VerifyDcapQuoteIntegrity>) -> Result<()> {
+        use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
+
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote_data = &mut data_buffer.data.as_slice();
 
@@ -131,6 +128,9 @@ pub mod automata_dcap_verifier {
         })?;
 
         let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.quote_version = quote.header.version.get();
+        verified_output.tee_type = quote.header.tee_type;
+        verified_output.quote_body = quote.body.as_bytes().to_vec();
         verified_output.integrity_verified = true;
 
         Ok(())
@@ -187,6 +187,8 @@ pub mod automata_dcap_verifier {
         _qe_type: String,
         _version: u8,
     ) -> Result<()> {
+        use dcap_rs::types::pod::enclave_identity::zero_copy::*;
+
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote_data = &mut data_buffer.data.as_slice();
 
@@ -203,26 +205,44 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        let qe_identity_data = &ctx.accounts.qe_identity_pda.data;
-        let qe_identity = EnclaveIdentity::from_borsh_bytes(qe_identity_data).map_err(|e| {
-            msg!("Error deserializing enclave identity: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
+        // AFAIK, the serialized QEIdentity data should not exceed the Solana 32kb heap limit
+        let qe_identity_data_may_be_unaligned = &ctx.accounts.qe_identity_pda.data;
 
-        if qe_identity.mrsigner != quote.signature.qe_report_body.mr_signer {
+        let qe_identity_data_owned: Option<AVec<u8>>;
+        let qe_identity_data = if qe_identity_data_may_be_unaligned.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            qe_identity_data_may_be_unaligned.as_slice()
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> =
+                AVec::with_capacity(8, qe_identity_data_may_be_unaligned.len());
+            buff.extend_from_slice(qe_identity_data_may_be_unaligned);
+            qe_identity_data_owned = Some(buff);
+            qe_identity_data_owned.as_ref().unwrap().as_slice()
+        };
+
+        let qe_identity =
+            EnclaveIdentityZeroCopy::from_bytes(&qe_identity_data[64..]).map_err(|e| {
+                msg!("Error deserializing qe identity: {}", e);
+                DcapVerifierError::SerializationError
+            })?;
+
+        if qe_identity.mrsigner_bytes() != quote.signature.qe_report_body.mr_signer {
             msg!(
                 "invalid qe mrsigner, expected {} but got {}",
-                hex::encode(qe_identity.mrsigner),
+                hex::encode(qe_identity.mrsigner_bytes()),
                 hex::encode(quote.signature.qe_report_body.mr_signer)
             );
             return Err(DcapVerifierError::InvalidQuote.into());
         }
 
         // Compare the isv_prod_id values
-        if qe_identity.isvprodid != quote.signature.qe_report_body.isv_prod_id.get() {
+        if qe_identity.isvprodid() != quote.signature.qe_report_body.isv_prod_id.get() {
             msg!(
                 "invalid qe isv_prod_id, expected {} but got {}",
-                qe_identity.isvprodid,
+                qe_identity.isvprodid(),
                 quote.signature.qe_report_body.isv_prod_id.get()
             );
             return Err(DcapVerifierError::InvalidQuote.into());
@@ -230,14 +250,14 @@ pub mod automata_dcap_verifier {
 
         // Compare the attribute values
         let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
-        let calculated_mask = qe_identity
-            .attributes_mask
+        let qe_identity_attributes_mask = qe_identity.attributes_mask_bytes();
+        let calculated_mask = qe_identity_attributes_mask
             .iter()
             .zip(qe_report_attributes.iter())
             .map(|(&mask, &attribute)| mask & attribute);
 
         if calculated_mask
-            .zip(qe_identity.attributes)
+            .zip(qe_identity.attributes_bytes())
             .any(|(masked, identity)| masked != identity)
         {
             msg!("qe attrtibutes mismatch");
@@ -246,31 +266,30 @@ pub mod automata_dcap_verifier {
 
         // Compare misc_select values
         let misc_select = quote.signature.qe_report_body.misc_select;
-        let calculated_mask = qe_identity
-            .miscselect_mask
-            .as_bytes()
+        let qe_identity_miscselect_mask = qe_identity.miscselect_mask_bytes();
+        let calculated_mask = qe_identity_miscselect_mask
             .iter()
             .zip(misc_select.as_bytes().iter())
             .map(|(&mask, &attribute)| mask & attribute);
 
         if calculated_mask
-            .zip(qe_identity.miscselect.as_bytes().iter())
+            .zip(qe_identity.miscselect_bytes().iter())
             .any(|(masked, &identity)| masked != identity)
         {
             msg!("qe misc_select mismatch");
             return Err(DcapVerifierError::InvalidQuote.into());
         }
 
-        let qe_tcb_status =
-            qe_identity.get_qe_tcb_status(quote.signature.qe_report_body.isv_svn.get());
-        let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
-        qe_tcb_status_pda.status = serde_json::to_string(&qe_tcb_status).map_err(|e| {
-            msg!("Error serializing qe tcb status: {}", e);
-            DcapVerifierError::InvalidQuote
-        })?;
+        let quote_isvsvn = quote.signature.qe_report_body.isv_svn.get();
+        let qe_tcb_status = qe_identity
+            .tcb_levels()
+            .filter_map(|qe_tcb| qe_tcb.ok())
+            .find(|qe_tcb| quote_isvsvn >= qe_tcb.isvsvn())
+            .map(|qe_tcb| qe_tcb.tcb_status_byte())
+            .unwrap_or(7); // Default "Unspecified" status value if no matching TCB level found
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.enclave_source_verified = true;
+        verified_output.qe_tcb_status = qe_tcb_status;
 
         Ok(())
     }
@@ -291,16 +310,68 @@ pub mod automata_dcap_verifier {
         // Step 1: Extract the PCK Certificate Chain from the quote data
         let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
 
-        // TODO: Check all certificates in the chain are unexpired and have not been revoked
-
         // Step 2: Compute the zkVM output data
         // the data consists of ABI-encoded of (bytes32, bytes32, bool) containing these values:
         // - the hash of the abi-encoded bytes array contains the PCK Certificate DER chain
         // - the hash of the root certificate DER
         // - true
-        let output_digest: [u8; 32] = compute_output_digest_from_pem(pck_cert_chain_pem);
+        let (cert_chain, output_digest) = compute_output_digest_from_pem(pck_cert_chain_pem)?;
 
-        // Step 3: make CPI to the Solana ZK Verifier program to verify proofs
+        // // Step 3: Validate each certificate in the chain
+        // let now = Clock::get().unwrap().unix_timestamp;
+        // for (i, cert) in cert_chain.iter().enumerate() {
+        //     let (_, x509) = parse_x509_certificate(cert).unwrap();
+        //     let tbs = &x509.tbs_certificate;
+            
+        //     // First, check the validity range for each certificate
+        //     let (not_before, not_after) = get_certificate_validity(tbs);
+        //     let serial_nuber = get_certificate_serial(tbs);
+
+        //     let cert_validity = now >= not_before && now <= not_after;
+        //     if !cert_validity {
+        //         msg!("Certificate {} has expired", i);
+        //         return Err(DcapVerifierError::ExpiredCollateral.into());
+        //     }
+
+        //     // Then, check the revocation status for PCK and PCK Issuer Certificate
+        //     // For the root certificate, we just have to make sure that the pubkey matches
+        //     // with what is expected
+        //     if i == 0 {
+        //         let pck_crl_account = &ctx.accounts.pck_crl;
+
+        //         // Check PCK CRL account is valid
+        //         let pck_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
+        //         let (expected_pck_crl_pubkey, _) = Pubkey::find_program_address(
+        //             &[b"pcs_cert", pck_ca_type_str.as_bytes(), &[true as u8]],
+        //             &automata_on_chain_pccs::ID,
+        //         );
+
+        //         if expected_pck_crl_pubkey != pck_crl_account.key() {
+        //             msg!("Invalid PCK CRL account");
+        //             return Err(DcapVerifierError::MismatchPda.into());
+        //         }
+
+        //         if check_certificate_revocation(&serial_nuber, &pck_crl_account.cert_data).is_err() {
+        //             msg!("PCK Certificate revoked");
+        //             return Err(DcapVerifierError::RevokedCertificate.into());
+        //         }
+        //     } else if i == 1 {
+        //         let root_crl_account = &ctx.accounts.root_crl;
+
+        //         if check_certificate_revocation(&serial_nuber, &root_crl_account.cert_data).is_err() {
+        //             msg!("PCK Intermediate Certificate revoked");
+        //             return Err(DcapVerifierError::RevokedCertificate.into());
+        //         }
+        //     } else {
+        //         let root_pubkey = tbs.public_key().subject_public_key.as_ref();
+        //         require!(
+        //             root_pubkey == INTEL_ROOT_PUB_KEY,
+        //             DcapVerifierError::InvalidRootCa
+        //         );
+        //     }
+        // }
+
+        // Step 4: make CPI to the Solana ZK Verifier program to verify proofs
         let x509_program_vkey = zkvm_selector
             .get_x509_verifier_program_vkey()
             .expect("Missing X509 Verifier program for the provided zkVM");
@@ -347,6 +418,9 @@ pub mod automata_dcap_verifier {
             &[ctx.accounts.system_program.to_account_info()],
         )?;
 
+        let verified_output = &mut ctx.accounts.verified_output;
+        verified_output.pck_cert_chain_verified = true;
+
         Ok(())
     }
 
@@ -356,6 +430,9 @@ pub mod automata_dcap_verifier {
         _version: u8,
         fmspc: [u8; 6],
     ) -> Result<()> {
+        use dcap_rs::types::pod::tcb_info::zero_copy::utils::*;
+        use dcap_rs::types::pod::tcb_info::zero_copy::*;
+
         let data_buffer = &ctx.accounts.quote_data_buffer;
         let quote = Quote::read(&mut data_buffer.data.as_slice()).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -375,57 +452,157 @@ pub mod automata_dcap_verifier {
             return Err(DcapVerifierError::ExpiredCollateral.into());
         }
 
-        let tcb_info = &ctx.accounts.tcb_info_pda;
-        let _tcb_info = TcbInfo::from_borsh_bytes(tcb_info.data.as_slice()).map_err(|e| {
+        let tcb_info_data_may_be_unaligned = &ctx.accounts.tcb_info_pda.data;
+
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
+        // AFAIK, the serialized TCBInfo data should not exceed the Solana 32kb heap limit
+        let tcb_info_data_owned: Option<AVec<u8>>;
+        let tcb_info_data = if tcb_info_data_may_be_unaligned.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            tcb_info_data_may_be_unaligned.as_slice()
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> = AVec::with_capacity(8, tcb_info_data_may_be_unaligned.len());
+            buff.extend_from_slice(tcb_info_data_may_be_unaligned);
+            tcb_info_data_owned = Some(buff);
+            tcb_info_data_owned.as_ref().unwrap().as_slice()
+        };
+
+        let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..]).map_err(|e| {
             msg!("Error deserializing tcb info: {}", e);
             DcapVerifierError::SerializationError
         })?;
 
-        let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
-            verify_tcb_status(&_tcb_info, &pck_extension, &quote).map_err(|e| {
-                msg!("Error verifying tcb status: {}", e);
-                DcapVerifierError::UnsuccessfulTcbStatusVerification
-            })?;
-
-        let mut tcb_status;
-        if quote.header.tee_type == TDX_TEE_TYPE {
-            let tdx_module_status = _tcb_info
-                .verify_tdx_module(quote.body.as_tdx_report_body().unwrap())
-                .map_err(|e| {
-                    msg!("Error verifying tdx module: {}", e);
-                    DcapVerifierError::InvalidQuote
-                })?;
-            tcb_status =
-                TcbInfo::converge_tcb_status_with_tdx_module(tdx_tcb_status, tdx_module_status);
-        } else {
-            tcb_status = sgx_tcb_status;
+        // Step 1: FMSPC check
+        if pck_extension.fmspc != fmspc {
+            msg!(
+                "FMSPC mismatch, expected {} but got {}",
+                hex::encode(fmspc),
+                hex::encode(pck_extension.fmspc)
+            );
+            return Err(DcapVerifierError::MismatchFmspc.into());
         }
 
-        let qe_tcb_status_pda = &mut ctx.accounts.qe_tcb_status_pda;
-        let qe_tcb_status = serde_json::from_str(&qe_tcb_status_pda.status).map_err(|e| {
-            msg!("Error deserializing qe tcb status: {}", e);
-            DcapVerifierError::SerializationError
-        })?;
+        // Step 2: PCEID check
+        let tcb_info_pceid: [u8; 2] = tcb_info.pce_id();
+        if pck_extension.pceid != tcb_info_pceid {
+            msg!(
+                "PCEID mismatch, expected {} but got {}",
+                hex::encode(tcb_info_pceid),
+                hex::encode(pck_extension.pceid)
+            );
+            return Err(DcapVerifierError::MismatchPceid.into());
+        }
 
-        tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status);
+        // Step 3: Perform a lookup to fetch the matching TCB level from the TCB info
+        let (raw_sgx_tcb_status, raw_tdx_tcb_status, advisory_ids) =
+            lookup(&pck_extension, &tcb_info, &quote).unwrap();
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.tcb_status = serde_json::to_string(&tcb_status).map_err(|e| {
-            msg!("Error serializing tcb status: {}", e);
-            DcapVerifierError::SerializationError
-        })?;
 
-        verified_output.advisor_ids = Some(advisory_ids);
         verified_output.fmspc = fmspc;
-        verified_output.quote_version = quote.header.version.get();
-        verified_output.tee_type = quote.header.tee_type;
-        verified_output.quote_body = quote.body.as_bytes().to_vec();
-        verified_output.completed = verified_output.integrity_verified
-            && verified_output.isv_signature_verified
-            && verified_output.enclave_source_verified
-            && verified_output.tcb_check_verified
-            && verified_output.pck_cert_chain_verified;
 
+        let fmspc_tcb_status = match quote.header.tee_type {
+            SGX_TEE_TYPE => raw_sgx_tcb_status,
+            TDX_TEE_TYPE => raw_tdx_tcb_status,
+            _ => {
+                msg!("Unsupported TEE type");
+                return Err(DcapVerifierError::InvalidQuote.into());
+            },
+        };
+        verified_output.fmspc_tcb_status = fmspc_tcb_status;
+
+        // If a TDX quote is provided, we need to look up the TDX module TCB status as well
+        if let QuoteBody::Td10QuoteBody(quote_body) = quote.body {
+            let (tdx_module_isv_svn, tdx_module_version) =
+                (quote_body.tee_tcb_svn[0], quote_body.tee_tcb_svn[1]);
+
+            let mrsigner_seam = quote_body.mr_signer_seam;
+            let seam_attributes = quote_body.seam_attributes;
+
+            let tdx_module = if let Some(tdx_module) = tcb_info.tdx_module() {
+                tdx_module
+            } else {
+                msg!("Missing TDX module");
+                return Err(DcapVerifierError::MissingTdxModule.into());
+            };
+
+            let raw_tdx_module_tcb = if tdx_module_version == 0 {
+                let tdx_module_mrsigner: [u8; 48] = tdx_module.mrsigner();
+                let tdx_module_attributes: [u8; 8] = tdx_module.attributes();
+                if mrsigner_seam != tdx_module_mrsigner {
+                    msg!("Mismatch mrsigner seam");
+                    return Err(DcapVerifierError::MismatchMrsignerSeam.into());
+                }
+                if seam_attributes != tdx_module_attributes {
+                    msg!("Mismatch seam attributes");
+                    return Err(DcapVerifierError::MismatchSeamAttribute.into());
+                }
+                0u8
+            } else {
+                if tcb_info.tdx_module_identities_count() == 0 {
+                    msg!("Missing TDX module identities");
+                    return Err(DcapVerifierError::MissingTdxModuleIdentities.into());
+                }
+
+                let id_string = format!("TDX_{:02x}", tdx_module_version);
+                let mut tcb_status = verified_output.tdx_module_tcb_status;
+
+                let tdx_module_identities_iter = tcb_info.tdx_module_identities();
+                for tdx_module_identity in tdx_module_identities_iter {
+                    let tdx_module_identity = tdx_module_identity.unwrap();
+                    if tdx_module_identity.id_str().unwrap() == id_string.as_str() {
+                        let mut tcb_matched = false;
+                        let tdx_tcb_levels_iter = tdx_module_identity.tcb_levels();
+                        for tdx_tcb_level in tdx_tcb_levels_iter {
+                            let tdx_tcb_level = tdx_tcb_level.unwrap();
+                            if tdx_module_isv_svn >= tdx_tcb_level.tcb_isvsvn() {
+                                let tdx_module_mrsigner: [u8; 48] = tdx_module_identity.mrsigner();
+                                let tdx_module_attributes: [u8; 8] =
+                                    tdx_module_identity.attributes();
+                                if mrsigner_seam != tdx_module_mrsigner {
+                                    msg!("Mismatch mrsigner seam");
+                                    return Err(DcapVerifierError::MismatchMrsignerSeam.into());
+                                }
+                                if seam_attributes != tdx_module_attributes {
+                                    msg!("Mismatch seam attributes");
+                                    return Err(DcapVerifierError::MismatchSeamAttribute.into());
+                                }
+                                tcb_status = tdx_tcb_level.tcb_status();
+                                tcb_matched = true;
+                                break;
+                            }
+                        }
+                        if tcb_matched {
+                            break;
+                        }
+                    }
+                }
+
+                tcb_status
+            };
+
+            verified_output.tdx_module_tcb_status = raw_tdx_module_tcb;
+        }
+
+        // Return the advisory IDs if any
+        if !advisory_ids.is_empty() {
+            verified_output.advisory_ids = Some(advisory_ids);
+        }
+
+        Ok(())
+    }
+
+    pub fn close_quote_accounts(ctx: Context<CloseQuoteBuffer>) -> Result<()> {
+        msg!(
+            "Closed quote buffer account: {}",
+            ctx.accounts.quote_data_buffer.key()
+        );
+        msg!(
+            "Closed verified output account: {}",
+            ctx.accounts.verified_output.key()
+        );
         Ok(())
     }
 }

@@ -132,19 +132,14 @@ pub mod automata_on_chain_pccs {
         // check if the issuer CA has not been revoked
         let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
         let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-            .is_err()
-        {
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
         // Verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &pck_tbs_digest,
-            &issuer_tbs_digest,
-        );
+        let output_digest =
+            compute_output_digest(&fingerprint, &pck_tbs_digest, &issuer_tbs_digest);
 
         let pck_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
@@ -225,11 +220,7 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&root_ca_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &root_tbs_digest,
-            &root_tbs_digest,
-        );
+        let output_digest = compute_output_digest(&fingerprint, &root_tbs_digest, &root_tbs_digest);
 
         let root_ca_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
@@ -296,11 +287,8 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &subject_tbs_digest,
-            &issuer_tbs_digest,
-        );
+        let output_digest =
+            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
@@ -385,11 +373,8 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &subject_tbs_digest,
-            &issuer_tbs_digest,
-        );
+        let output_digest =
+            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
@@ -409,8 +394,7 @@ pub mod automata_on_chain_pccs {
         pcs_certificate.digest = subject_tbs_digest;
         pcs_certificate.validity_not_before = validity_not_before;
         pcs_certificate.validity_not_after = validity_not_after;
-        pcs_certificate.serial_number =
-            Some(subject_serial_number);
+        pcs_certificate.serial_number = Some(subject_serial_number);
 
         // Emit event
         emit!(PcsCertificateUpserted {
@@ -464,19 +448,14 @@ pub mod automata_on_chain_pccs {
         // check if the issuer CA has not been revoked
         let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
         let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-            .is_err()
-        {
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint, 
-            &subject_tbs_digest, 
-            &issuer_tbs_digest, 
-        );
+        let output_digest =
+            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
         let pcs_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
@@ -516,19 +495,21 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
+        use dcap_rs::types::pod::enclave_identity::zero_copy::*;
+
         let enclave_identity_account = &mut ctx.accounts.enclave_identity;
         let data_buffer = &ctx.accounts.data_buffer;
 
         let identity_digest = data_buffer.signed_digest;
         let identity_data = data_buffer.data.as_slice();
 
-        // Check the given Enclave Identity is unexpired
-        use dcap_rs::types::enclave_identity::EnclaveIdentity;
-        let identity = EnclaveIdentity::from_borsh_bytes(identity_data)
+        let identity = EnclaveIdentityZeroCopy::from_bytes(&identity_data[64..])
             .map_err(|_| PccsError::FailedDeserialization)?;
+
+        // Check the given Enclave Identity is unexpired
         let now = Clock::get().unwrap().unix_timestamp;
-        let identity_issue_timestamp = identity.issue_date.timestamp();
-        let identity_next_update_timestamp = identity.next_update.timestamp();
+        let identity_issue_timestamp = identity.issue_date_timestamp();
+        let identity_next_update_timestamp = identity.next_update_timestamp();
         let identity_is_valid =
             now >= identity_issue_timestamp && now <= identity_next_update_timestamp;
         if !identity_is_valid {
@@ -603,18 +584,21 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: zk::ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
+        use dcap_rs::types::pod::tcb_info::zero_copy::TcbInfoZeroCopy;
+
         let tcb_info_account = &mut ctx.accounts.tcb_info;
         let data_buffer = &ctx.accounts.data_buffer;
 
         let tcb_info_data = data_buffer.data.as_slice();
         let tcb_info_digest = data_buffer.signed_digest;
 
-        // Check the given TCB Info is unexpired
-        use dcap_rs::types::tcb_info::TcbInfo;
-        let tcb_info = TcbInfo::from_borsh_bytes(tcb_info_data)
+        // the first 64 bytes is the signature
+        let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..])
             .map_err(|_| PccsError::FailedDeserialization)?;
-        let tcb_info_issue_timestamp = tcb_info.issue_date.timestamp();
-        let tcb_info_next_update_timestamp = tcb_info.next_update.timestamp();
+
+        // Check the given TCB Info is unexpired
+        let tcb_info_issue_timestamp = tcb_info.issue_date_timestamp();
+        let tcb_info_next_update_timestamp = tcb_info.next_update_timestamp();
         let now = Clock::get().unwrap().unix_timestamp;
         let tcb_info_is_valid =
             now >= tcb_info_issue_timestamp && now <= tcb_info_next_update_timestamp;
@@ -634,19 +618,14 @@ pub mod automata_on_chain_pccs {
         // check if the issuer CA has not been revoked
         let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
         let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-            .is_err()
-        {
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(tcb_info_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &tcb_info_digest,
-            &issuer_tbs_digest,
-        );
+        let output_digest =
+            compute_output_digest(&fingerprint, &tcb_info_digest, &issuer_tbs_digest);
         let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
             output_digest,
             &proof,

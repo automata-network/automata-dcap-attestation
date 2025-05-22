@@ -8,13 +8,33 @@ use anchor_client::solana_sdk::{
 use anyhow::Result;
 use automata_on_chain_pccs::types::ZkvmSelector;
 use automata_on_chain_pccs::{client::accounts, client::args};
+use dcap_rs::types::pod::tcb_info::serialize::*;
 use dcap_rs::types::tcb_info::{TcbInfo, TcbInfoAndSignature};
 use sha2::{Digest, Sha256};
 use std::ops::Deref;
 
 use crate::CertificateAuthority;
 
+/// Intel FMSPC TCB Data Access Object Module
+/// This module provides methods to upload and retrieve TCBInfo data from the Onchain PCCS program.
+
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
+    /// Uploads TcbInfo data and its tbs digest to the buffer
+    ///
+    /// This method must first pre-process the TcbInfo data by converting from JSON
+    /// to a custom serialization format that is compatible with Bytemuck type casting.
+    ///
+    /// By utilizing the custom serialization format, the data can be efficiently deserialized
+    /// onchain into TcbInfoZeroCopy struct, which significantly reduces memory usage
+    ///
+    /// # Parameters
+    ///
+    /// - `data` - The data to be uploaded
+    /// - `data_buffer_keypair` - Optional: keypair for the data buffer account. If none is provided,
+    /// a new keypair will be generated.
+    ///
+    /// # Returns
+    /// - `Result<Pubkey>` - The public key of the data buffer account
     pub async fn upload_tcb_data(
         &self,
         data: &[u8],
@@ -25,7 +45,11 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 
         let tcb_info_json: TcbInfoAndSignature = serde_json::from_slice(data)?;
         let tcb_info_body = tcb_info_json.get_tcb_info()?;
-        let tcb_info_data = tcb_info_body.to_borsh_bytes()?;
+        let serialized_tcb_info = SerializedTcbInfo::from_rust_tcb_info(&tcb_info_body)
+            .expect("Failed to serialize TCB info");
+        let mut signature = [0u8; 64];
+        signature.copy_from_slice(&tcb_info_json.signature);
+        let tcb_info_data = serialize_tcb_pod(&serialized_tcb_info, &signature);
 
         let digest: [u8; 32] = Sha256::digest(tcb_info_json.tcb_info_raw.get().as_bytes()).into();
 
@@ -40,9 +64,9 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(data_buffer_pubkey)
     }
 
-    /// Retrieves TCB information from the blockchain.
+    /// Retrieves TCBInfo and its public key from the blockchain.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
     /// * `tcb_type` - TCB type (Sgx or Tdx)
     /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value
@@ -50,7 +74,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     ///
     /// # Returns
     ///
-    /// * `Result<TcbInfo>` - The TCB info account data
+    /// * `Result<(Pubkey, TcbInfo)>` - A tuple containing the public key of the TCB info and the TCB info data
     pub async fn get_tcb_info(
         &self,
         tcb_type: TcbType,
@@ -66,28 +90,37 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             ],
             &PCCS_PROGRAM_ID,
         );
+
         let account = self
             .program
             .account::<automata_on_chain_pccs::accounts::TcbInfo>(tcb_info_pda.0)
             .await?;
 
-        Ok((
-            tcb_info_pda.0,
-            TcbInfo::from_borsh_bytes(account.data.as_slice())?,
-        ))
+        let (tcb_info, _signature) = parse_tcb_pod_bytes(account.data.as_slice())
+            .expect("Failed to parse TCB info account data");
+
+        Ok((tcb_info_pda.0, tcb_info))
     }
 
-    /// Creates or updates TCB (Trusted Computing Base) information on-chain.
+    /// Updates TCB (Trusted Computing Base) information on-chain.
     ///
     /// TCB information describes the security properties and status of Intel SGX or TDX
     /// platforms, including security advisories and patch status.
+    /// 
+    /// This method reads and validates the TcbInfo data from the data buffer
+    /// and then transfers it to the corresponding PDA.
     ///
-    /// # Arguments
+    /// If the PDA already exists, it will overwrite the existing certificate.
     ///
+    /// # Parameters
+    ///
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the TCB info
+    /// * `zkvm_verifier_program` - Public key of the ZKVM verifier program
     /// * `tcb_type` - TCB type (Sgx or Tdx)
     /// * `version` - Version number of the TCB info
     /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value, a 6-byte identifier
-    /// * `data_buffer_pubkey` - Public key of the data buffer containing the TCB info
+    /// * `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// * `proof` - The SNARK proof bytes for proving ECDSA verification
     ///
     /// # Returns
     ///

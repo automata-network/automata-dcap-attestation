@@ -161,11 +161,18 @@ Automata DCAP Attestation contract implements two attestation methods available 
 >
 > The Solana programs are not audited for production use.
 
+> [ℹ️ **NOTE:**]
+>
+> We are currently working on full-fledged DCAP Attestation for the Solana ecosystem, which consists of both the Quote Verifier and PCCS programs. You can learn more about it [here](./solana/automata-dcap-framework/README.md).
+>
+> This section describes the PoC Solana DCAP Quote Verifier that leverages the [DCAP zkVM Verifier](https://github.com/automata-network/tdx-attestation-sdk/tree/main/zk).
+>
+
 ### Overview
 
 The following diagram illustrates an overview of the execution flow of the DCAP Solana Program.
 
-![DCAP Solana Diagram](./solana/docs/images/DCAP%20Solana%20Diagram.jpg)
+![DCAP Solana Diagram](./solana/poc/docs/images/DCAP%20Solana%20Diagram.jpg)
 
 1. Invokes the `CreateDcapOutputAccount` instruction on the DCAP Program.
 2. Reads the current count from DCAP Counter, which is used as seed to derive the address of the `VerifiedOutput` PDA.

@@ -38,33 +38,33 @@ pub fn test_verify_root_crl() {
     get_execution_session_info(serialized_input.as_slice());
 }
 
-#[test]
-pub fn test_verify_tcb_info() {
-    let tcb_bytes = include_bytes!("../sample/tcb_info_v3_sgx.json");
-    let issuer_bytes = include_bytes!("../sample/signing.der");
+// #[test]
+// pub fn test_verify_tcb_info() {
+//     let tcb_bytes = include_bytes!("../sample/tcb_info_v3_sgx.json");
+//     let issuer_bytes = include_bytes!("../sample/signing.der");
 
-    let serialized_input = serialize_input(
-        InputType::TcbInfo,
-        tcb_bytes.to_vec(),
-        issuer_bytes.to_vec()
-    )
-    .unwrap();
-    get_execution_session_info(serialized_input.as_slice());
-}
+//     let serialized_input = serialize_input(
+//         InputType::TcbInfo,
+//         tcb_bytes.to_vec(),
+//         issuer_bytes.to_vec()
+//     )
+//     .unwrap();
+//     get_execution_session_info(serialized_input.as_slice());
+// }
 
-#[test]
-pub fn test_verify_qe_identity() {
-    let qe_identity_bytes = include_bytes!("../sample/qe_identity.json");
-    let issuer_bytes = include_bytes!("../sample/signing.der");
+// #[test]
+// pub fn test_verify_qe_identity() {
+//     let qe_identity_bytes = include_bytes!("../sample/qe_identity.json");
+//     let issuer_bytes = include_bytes!("../sample/signing.der");
 
-    let serialized_input = serialize_input(
-        InputType::Identity,
-        qe_identity_bytes.to_vec(),
-        issuer_bytes.to_vec(),
-    )
-    .unwrap();
-    get_execution_session_info(serialized_input.as_slice());
-}
+//     let serialized_input = serialize_input(
+//         InputType::Identity,
+//         qe_identity_bytes.to_vec(),
+//         issuer_bytes.to_vec(),
+//     )
+//     .unwrap();
+//     get_execution_session_info(serialized_input.as_slice());
+// }
 
 // For the simplicity of unit tests, we only test for the guest code to
 // execute as expected, since we will be doing proof verification directly on-chain

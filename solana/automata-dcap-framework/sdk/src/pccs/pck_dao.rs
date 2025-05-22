@@ -13,8 +13,21 @@ use std::str::FromStr;
 use crate::CertificateAuthority;
 use crate::shared::{get_certificate_tbs_and_digest, get_issuer_common_name};
 
+/// Intel PCK Certificate Data Access Object Module
+/// This method provides methods to upload and retrieve PCK certificates from the Onchain PCCS program.
+
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 
+    /// Uploads PCK Certificate (encoded in DER) data and its tbs digest to the buffer
+    /// 
+    /// # Parameters
+    /// 
+    /// - `data` - The data to be uploaded
+    /// - `data_buffer_keypair` - Optional: keypair for the data buffer account. If none is provided,
+    /// a new keypair will be generated.
+    /// 
+    /// # Returns
+    /// - `Result<Pubkey>` - The public key of the data buffer account
     pub async fn upload_pck_data(
         &self,
         data: &[u8],
@@ -38,17 +51,17 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(data_buffer_pubkey)
     }
     
-    /// Retrieves a PCK certificate from the blockchain.
+    /// Retrieves a PCK certificate and its public key from the blockchain.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
-    /// * `qe_id` - Quoting Enclave ID
-    /// * `pce_id` - Provisioning Certification Enclave ID
-    /// * `tcbm` - Trusted Computing Base Manifest
+    /// - `qe_id` - Quoting Enclave ID
+    /// - `pce_id` - Provisioning Certification Enclave ID
+    /// - `tcbm` - Trusted Computing Base Manifest
     ///
     /// # Returns
     ///
-    /// * `Result<PckCertificate>` - The PCK certificate account data
+    /// - `Result<(Pubkey, Vec<u8>)>` - A tuple containing the public key of the PCK certificate and the raw certificate data.
     pub async fn get_pck_certificate(
         &self,
         qe_id: String,
@@ -72,17 +85,22 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok((pck_certificate_pda.0, account.cert_data))
     }
     
-    /// Creates or updates a PCK (Provisioning Certification Key) certificate on-chain.
+    /// Updates a PCK (Provisioning Certification Key) certificate on-chain.
     ///
-    /// PCK certificates are used in the Intel SGX attestation process to verify
-    /// the authenticity of an enclave.
+    /// This method reads and validates the uploaded certificate data from the data buffer
+    /// and then transfers it to the corresponding PCS certificate PDA.
+    /// 
+    /// If the PDA already exists, it will overwrite the existing certificate.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
-    /// * `qe_id` - Quoting Enclave ID
-    /// * `pce_id` - Provisioning Certification Enclave ID
-    /// * `tcbm` - Trusted Computing Base Manifest
-    /// * `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    /// - `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    /// - `zkvm_verifier_program` - Public key of the ZKVM verifier program
+    /// - `qe_id` - Quoting Enclave ID
+    /// - `pce_id` - Provisioning Certification Enclave ID
+    /// - `tcbm` - Trusted Computing Base Manifest
+    /// - `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// - `proof` - The SNARK proof bytes for proving ECDSA verification
     ///
     /// # Returns
     ///
