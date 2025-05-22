@@ -8,7 +8,7 @@ use crate::utils::zk::ZkvmSelector;
 
 use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo, PcsCertificate};
 
-/// This instruction creates a new on-chain account that will store DCAP
+/// Instruction to create a new on-chain account that will store DCAP
 /// attestation quote data. Since DCAP quotes (typically 4-6 KB) exceed
 /// Solana's transaction size limits, the quote is broken into chunks and
 /// stored in this account. Once all chunks are received, the quote can be
@@ -23,7 +23,7 @@ use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo, PcsCertificate};
 /// - 4 bytes: Vec length prefix
 /// - quote_size: The size of the quote data, explicitly provided in the instruction
 ///
-/// This instruction also creates the VerifiedOutput account, which is used
+/// It also creates the VerifiedOutput account, which is used
 /// to store the result of the DCAP Quote verification.
 ///
 /// The space calculation (8 + 2 + 4 + 6 + 4 + 584 (max) + 1 + 1 + 1 + 3 * 64 + 512 bytes)
@@ -74,6 +74,9 @@ pub struct Create<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to be called multiple times to add chunks of DCAP quote
+/// data to the DataBuffer account.
+/// This instruction reverts once the size of the quote data has reached the expected length
 #[derive(Accounts)]
 #[instruction(chunk_data: Vec<u8>, offset: u32)]
 pub struct AddQuoteChunk<'info> {
@@ -89,6 +92,7 @@ pub struct AddQuoteChunk<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 }
 
+/// Instruction to verify the QE Report and its signature.
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIntegrity<'info> {
     #[account(
@@ -115,6 +119,7 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
     pub instructions_sysvar: AccountInfo<'info>,
 }
 
+/// Instruction to verify the local attestation report and its signature.
 #[derive(Accounts)]
 pub struct VerifyDcapQuoteIsvSignature<'info> {
     #[account(
@@ -141,6 +146,9 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
     pub instructions_sysvar: AccountInfo<'info>,
 }
 
+/// Instruction to verify the Quoting Enclave (QE) Identity
+/// This instruction also determines the TCB Status by checking
+/// against collateral fetched from the EnclaveIdentity account
 #[derive(Accounts)]
 #[instruction(qe_type: String,  version: u8)]
 pub struct VerifyDcapQuoteEnclaveSource<'info> {
@@ -172,6 +180,9 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
     pub verified_output: Account<'info, VerifiedOutput>,
 }
 
+/// Instruction to verify the root of trust of the PCK certificate chain with ZK Proofs
+/// The root of trust verification itself is done in the zkVM Verifier program
+/// This instruction simply verifies the SNARK proof and the public inputs
 #[derive(Accounts)]
 #[instruction(
     zkvm_selector: ZkvmSelector,
@@ -213,6 +224,8 @@ pub struct VerifyPckCertChainZk<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to check the TCB Status of the quote based on the SVNs that the platform is on
+/// Additionally, it also checks the TCB Status for TDX quotes based on the SVNs reported by the TDX Module
 #[derive(Accounts)]
 #[instruction(tcb_type: String , version: u8, fmspc: [u8; 6])]
 pub struct VerifyDcapQuoteTcbStatus<'info> {
@@ -245,7 +258,7 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
     pub verified_output: Account<'info, VerifiedOutput>,
 }
 
-/// This instruction closes both the quote buffer and the verified output accounts
+/// Instruction to close both the quote buffer and the verified output accounts
 /// and transfers any remaining lamports back to the owner.
 #[derive(Accounts)]
 pub struct CloseQuoteBuffer<'info> {

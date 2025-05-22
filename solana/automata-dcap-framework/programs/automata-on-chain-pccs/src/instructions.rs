@@ -8,6 +8,14 @@ use anchor_lang::prelude::*;
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
 pub const TCB_INFO_MAX_SIZE: usize = 8096;
 
+/// All Instructions require the use of zkVM program to verify secp256r1 signatures.
+/// Solana secp256r1 program requires the entirety of the collateral data to be placed in the 
+/// transaction, which is well above the maximum transaction size.
+
+/// Instruction to create a data buffer account
+/// The data buffer account is used temporarily to hold data
+/// for all PCCS Collaerals.
+/// This data is then transferred to its corresponding PDAs upon successful verification.
 #[derive(Accounts)]
 #[instruction(
     total_size: u32,
@@ -30,7 +38,8 @@ pub struct InitDataBuffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// An instruction to add a chunk of data to the data buffer.
+/// Instruction to be called multiple times to add chunks of data to the DataBuffer account.
+/// This instruction reverts once the size of the quote data has reached the expected length
 #[derive(Accounts)]
 #[instruction(
     chunk_data: Vec<u8>,
@@ -44,6 +53,11 @@ pub struct AddDataChunk<'info> {
     pub data_buffer: Account<'info, DataBuffer>,
 }
 
+/// Instruction to verify, and store PCK Certificate to the PCK Certificate PDA.
+/// This instruction also depends on existing collateral data used for verification:
+/// - PCK CRL: to check whether the PCK Certificate is revoked.
+/// - Issuer CA: to check whether the PCK Certificate is signed by a valid CA.
+/// - Root CRL: to check whether the Issuer CA is revoked.
 #[derive(Accounts)]
 #[instruction(
     ca_type: CertificateAuthority,
@@ -103,6 +117,8 @@ pub struct UpsertPckCertificate<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store Root CA Certificate to the Root CA PDA.
+/// This instruction checks the public key of the ROOT CA matches the hardcoded ROOT CA public key.
 #[derive(Accounts)]
 #[instruction(
     zkvm_selector: ZkvmSelector,
@@ -135,6 +151,9 @@ pub struct UpsertRootCA<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store Root CA CRL to the Root CA CRL PDA.
+/// This instruction depends on existing Root CA Certificate loaded from the PDA to check
+/// whether the CRL is signed by the Root CA.
 #[derive(Accounts)]
 pub struct UpsertRootCrl<'info> {
     #[account(mut)]
@@ -169,6 +188,10 @@ pub struct UpsertRootCrl<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store PCS Certificate to the PCS Certificate PDA.
+/// This instruction depends on existing Root CRL and Root CA Certificate loaded from the PDA to check
+/// whether the PCS Certificate is signed by the Root CA.
+/// whether the PCS Certificate is revoked.
 #[derive(Accounts)]
 #[instruction(ca_type: CertificateAuthority)]
 pub struct UpsertPcsCertificate<'info> {
@@ -211,6 +234,10 @@ pub struct UpsertPcsCertificate<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store PCS CRL to the PCS CRL PDA.
+/// This instruction depends on existing issuer CA Certificate and Root CRL loaded from the PDA to check
+/// whether the PCS CRL is signed by the issuer CA.
+/// whether the PCS CRL is revoked.
 #[derive(Accounts)]
 #[instruction(ca_type: CertificateAuthority)]
 pub struct UpsertPcsCrl<'info> {
@@ -253,6 +280,10 @@ pub struct UpsertPcsCrl<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store Enclave Identity to the Enclave Identity PDA.
+/// This instruction depends on existing Root CRL and Intel TCB Signing CA loaded from the PDA to check
+/// whether the Enclave Identity is signed by the Intel TCB Signing CA.
+/// whether the Signing CA is revoked.
 #[derive(Accounts)]
 #[instruction(id: EnclaveIdentityType, version: u8)]
 pub struct UpsertEnclaveIdentity<'info> {
@@ -294,6 +325,10 @@ pub struct UpsertEnclaveIdentity<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Instruction to verify, and store TCB Info to the TCB Info PDA.
+/// This instruction depends on existing Root CRL and Intel TCB Signing CA loaded from the PDA to check
+/// whether the TCB Info is signed by the Intel TCB Signing CA.
+/// whether the Signing CA is revoked.
 #[derive(Accounts)]
 #[instruction(tcb_type: TcbType, version: u8, fmspc: [u8; 6])]
 pub struct UpsertTcbInfo<'info> {
