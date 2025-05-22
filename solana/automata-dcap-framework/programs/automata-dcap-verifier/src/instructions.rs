@@ -107,8 +107,6 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
 
-    pub system_program: Program<'info, System>,
-
     /// CHECK: The address check is needed because otherwise
     /// the supplied Sysvar could be anything else.
     /// The Instruction Sysvar has not been implemented
@@ -141,8 +139,6 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
     /// in the Anchor framework yet, so this is the safe approach.
     #[account(address = INSTRUCTIONS_SYSVAR_ID)]
     pub instructions_sysvar: AccountInfo<'info>,
-
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -174,8 +170,6 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
         bump,
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
-
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -249,8 +243,6 @@ pub struct VerifyDcapQuoteTcbStatus<'info> {
         bump,
     )]
     pub verified_output: Account<'info, VerifiedOutput>,
-
-    pub system_program: Program<'info, System>,
 }
 
 /// This instruction closes both the quote buffer and the verified output accounts
