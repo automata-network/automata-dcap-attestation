@@ -15,7 +15,26 @@ use std::ops::Deref;
 
 use crate::CertificateAuthority;
 
+/// Intel FMSPC TCB Data Access Object Module
+/// This module provides methods to upload and retrieve TCBInfo data from the Onchain PCCS program.
+
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
+    /// Uploads TcbInfo data and its tbs digest to the buffer
+    ///
+    /// This method must first pre-process the TcbInfo data by converting from JSON
+    /// to a custom serialization format that is compatible with Bytemuck type casting.
+    ///
+    /// By utilizing the custom serialization format, the data can be efficiently deserialized
+    /// onchain into TcbInfoZeroCopy struct, which significantly reduces memory usage
+    ///
+    /// # Parameters
+    ///
+    /// - `data` - The data to be uploaded
+    /// - `data_buffer_keypair` - Optional: keypair for the data buffer account. If none is provided,
+    /// a new keypair will be generated.
+    ///
+    /// # Returns
+    /// - `Result<Pubkey>` - The public key of the data buffer account
     pub async fn upload_tcb_data(
         &self,
         data: &[u8],
@@ -45,9 +64,9 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(data_buffer_pubkey)
     }
 
-    /// Retrieves TCB information from the blockchain.
+    /// Retrieves TCBInfo and its public key from the blockchain.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
     /// * `tcb_type` - TCB type (Sgx or Tdx)
     /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value
@@ -55,7 +74,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     ///
     /// # Returns
     ///
-    /// * `Result<TcbInfo>` - The TCB info account data
+    /// * `Result<(Pubkey, TcbInfo)>` - A tuple containing the public key of the TCB info and the TCB info data
     pub async fn get_tcb_info(
         &self,
         tcb_type: TcbType,
@@ -83,17 +102,25 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok((tcb_info_pda.0, tcb_info))
     }
 
-    /// Creates or updates TCB (Trusted Computing Base) information on-chain.
+    /// Updates TCB (Trusted Computing Base) information on-chain.
     ///
     /// TCB information describes the security properties and status of Intel SGX or TDX
     /// platforms, including security advisories and patch status.
+    /// 
+    /// This method reads and validates the TcbInfo data from the data buffer
+    /// and then transfers it to the corresponding PDA.
     ///
-    /// # Arguments
+    /// If the PDA already exists, it will overwrite the existing certificate.
     ///
+    /// # Parameters
+    ///
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the TCB info
+    /// * `zkvm_verifier_program` - Public key of the ZKVM verifier program
     /// * `tcb_type` - TCB type (Sgx or Tdx)
     /// * `version` - Version number of the TCB info
     /// * `fmspc` - Family-Model-Stepping-Platform-CustomSKU (FMSPC) value, a 6-byte identifier
-    /// * `data_buffer_pubkey` - Public key of the data buffer containing the TCB info
+    /// * `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// * `proof` - The SNARK proof bytes for proving ECDSA verification
     ///
     /// # Returns
     ///

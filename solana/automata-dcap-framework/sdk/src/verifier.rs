@@ -8,7 +8,7 @@ use anchor_client::{
         signer::Signer,
     },
 };
-use anchor_lang::{AccountDeserialize, declare_program, prelude::Pubkey};
+use anchor_lang::{declare_program, prelude::Pubkey};
 
 declare_program!(automata_dcap_verifier);
 use automata_dcap_verifier::accounts::VerifiedOutput as VerifiedOutputAccount;
@@ -35,9 +35,11 @@ use crate::CertificateAuthority;
 /// - Uploading quote data in chunks
 /// - Verifying the integrity of the quote
 /// - Verifying the ISV (Independent Software Vendor) signature
-/// - Verifying the enclave source
+/// - Verifying the enclave source, and checking the TCB Status for the Quoting Enclave (QE)
 /// - Verifying the PCK (Provisioning Certification Key) certificate chain
-/// - Verifying the TCB (Trusted Computing Base) status
+/// - Checks the TCB Status for the platform
+/// 
+/// And finally, the client also provides a function that post-processes the verification results.
 pub struct VerifierClient<S> {
     pub program: Program<S>,
 }
@@ -49,6 +51,13 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(Self { program })
     }
 
+    /// Initializes a buffer account for storing quote data, and creates a corresponding VerifiedOutput PDA
+    /// 
+    /// # Parameters
+    /// - `quote_size`: The size of the quote data to be stored in the buffer
+    /// 
+    /// # Returns
+    /// - `Result<(Pubkey, Pubkey)>`: A tuple containing the public key of the buffer account and the verified output PDA
     pub async fn init_quote_buffer(&self, quote_size: u32) -> anyhow::Result<(Pubkey, Pubkey)> {
         let quote_buffer_keypair = Keypair::new();
         let quote_buffer_pubkey = quote_buffer_keypair.pubkey();
@@ -84,7 +93,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// - `chunk_size`: The size of each chunk for upload (in bytes)
     ///
     /// # Returns
-    /// - `anyhow::Result<()>`: Success or an error if upload fails
+    /// - `Result<()>`: Success or an error if upload fails
     pub async fn upload_chunks(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -111,6 +120,14 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(())
     }
 
+    /// Deletes (or more accurately, closes) the quote buffer and VerifiedOutput accounts to claim rent.
+    /// 
+    /// # Parameters
+    /// - `quote_buffer_pubkey`: The public key of the buffer account to be closed
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account to be closed
+    /// 
+    /// # Returns
+    /// - `Result<()>`: Success or an error if the deletion fails
     pub async fn delete_quote_buffer(
         &self,
         quote_buffer_pubkey: Pubkey,
@@ -143,13 +160,17 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// 2. ISV signature verification
     /// 3. Enclave source verification
     /// 4. PCK certificate chain verification (performed off-chain)
-    /// 5. TCB status verification
+    /// 5. TCB status matching
     ///
     /// # Parameters
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
-    ///
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
+    /// - `zkvm_verifier_program`: The public key of the ZKVM verifier program
+    /// - `zkvm_selector`: The ZKVM selector (currently only supports RiscZero)
+    /// - `pck_cert_chain_verify_proof_bytes`: The SNARK proof bytes for the PCK certificate chain verification
+    /// 
     /// # Returns
-    /// - `anyhow::Result<Vec<Signature>>`: A vector of transaction signatures for each verification step,
+    /// - `Result<Vec<Signature>>`: A vector of transaction signatures for each verification step,
     ///   or an error if any verification step fails
     pub async fn verify_quote(
         &self,
@@ -161,7 +182,8 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     ) -> anyhow::Result<Vec<Signature>> {
         // Parse Quote
         let quote_data = self
-            .get_account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
+            .program
+            .account::<automata_dcap_verifier::accounts::DataBuffer>(quote_buffer_pubkey)
             .await?;
         let mut quote_data_bytes = quote_data.data.as_slice();
         let quote = Quote::read(&mut quote_data_bytes)?;
@@ -190,7 +212,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             quote_buffer_pubkey,
             verified_output_pubkey,
             zkvm_verifier_program,
-            &quote,
             zkvm_selector,
             pck_cert_chain_verify_proof_bytes,
         )
@@ -210,13 +231,16 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// This method validates that the quote structure is intact and correctly signed. It extracts
     /// the PCK certificate from the quote, uses the public key to verify the QE (Quoting Enclave) report
     /// signature, and submits a transaction to the verifier program for on-chain verification.
+    /// 
+    /// It also determines the QE type and version from the quote's header, and writes to VerifiedOutput.
     ///
     /// # Parameters
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `quote`: The parsed Quote object to verify
     ///
     /// # Returns
-    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    /// - `Result<Signature>`: The transaction signature for this verification step,
     ///   or an error if verification fails
     async fn verify_quote_integrity(
         &self,
@@ -274,10 +298,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     ///
     /// # Parameters
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `quote`: The parsed Quote object to verify
     ///
     /// # Returns
-    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    /// - `Result<Signature>`: The transaction signature for this verification step,
     ///   or an error if verification fails
     async fn verify_quote_isv_signature(
         &self,
@@ -325,16 +350,17 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// Verifies the enclave source of the DCAP quote.
     ///
     /// This method verifies that the quote originates from a trusted Intel Quoting Enclave (QE).
-    /// It determines the QE type and version from the quote's header, retrieves the corresponding
-    /// enclave identity from the PCCS program, and submits a transaction to the verifier program
+    /// It determines the QE Identity by checking values, such as MRSIGNER, ISVPRODID etc using the corresponding
+    /// enclave identity fetched from the PCCS program, and submits a transaction to the verifier program
     /// for on-chain verification.
     ///
     /// # Parameters
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `quote`: The parsed Quote object to verify
     ///
     /// # Returns
-    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    /// - `Result<Signature>`: The transaction signature for this verification step,
     ///   or an error if verification fails
     async fn verify_quote_enclave_source(
         &self,
@@ -376,16 +402,30 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(tx)
     }
 
+    /// Verifies the PCK certificate chain of the DCAP quote.
+    /// 
+    /// This method verifies that the PCK Certificate Chain attached to the quote has a valid root of trust.
+    /// The chain verification itself is performed off-chain using a ZKVM (Zero-Knowledge Virtual Machine) proof.
+    /// 
+    /// # Parameters:
+    /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
+    /// - `zkvm_verifier_program`: The public key of the ZKVM verifier program
+    /// - `zkvm_selector`: The ZKVM selector (currently only supports RiscZero)
+    /// - `proof_bytes`: The SNARK proof bytes for the PCK certificate chain verification
+    /// 
+    /// # Returns:
+    /// - `Result<Signature>`: The transaction signature for this verification step,
+    ///   or an error if verification fails
     async fn verify_pck_cert_chain(
         &self,
         quote_buffer_pubkey: Pubkey,
         verified_output_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
-        quote: &Quote<'_>,
         zkvm_selector: ZkvmSelector,
         proof_bytes: Vec<u8>,
-    ) -> anyhow::Result<[u8; 6]> {
-        self.program
+    ) -> anyhow::Result<Signature> {
+        let tx = self.program
             .request()
             .accounts(accounts::VerifyPckCertChainZk {
                 quote_data_buffer: quote_buffer_pubkey,
@@ -403,22 +443,25 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .send()
             .await?;
 
-        Ok(quote.signature.get_pck_cert_chain()?.pck_extension.fmspc)
+        Ok(tx)
     }
 
-    /// Verifies the TCB (Trusted Computing Base) status of the DCAP quote.
+    /// Matches the TCB (Trusted Computing Base) status of the platform.
     ///
     /// This method verifies that the platform TCB (hardware, firmware, and software components)
-    /// meets the required security level. It extracts the FMSPC (Family-Model-Stepping-Platform-CustomSKU)
-    /// from the quote, retrieves the corresponding TCB information from the PCCS program, and submits
-    /// a transaction to the verifier program for on-chain verification.
+    /// meets the required security level. Each component SVNs are matched against the TcbInfo
+    /// Collateral fetched from the PCCS program to determine the TCB Status.
+    /// 
+    /// Additionally, TDX quotes also check the TCB Status based on the TCB of the TDX module.
     ///
     /// # Parameters
     /// - `quote`: The parsed Quote object to verify
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
+    /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
+    /// - `quote`: The parsed Quote object to verify
     ///
     /// # Returns
-    /// - `anyhow::Result<Signature>`: The transaction signature for this verification step,
+    /// - `Result<Signature>`: The transaction signature for this verification step,
     ///   or an error if verification fails
     async fn verify_tcb_status(
         &self,
@@ -481,7 +524,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// - `quote_buffer_pubkey`: The public key of the quote buffer account
     ///
     /// # Returns
-    /// - `anyhow::Result<Pubkey>`: The public key of the verified output account,
+    /// - `Result<Pubkey>`: The public key of the verified output account,
     ///   or an error if the calculation fails
     pub async fn get_verified_output_pubkey(
         &self,
@@ -495,6 +538,19 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         Ok(verified_output_pda)
     }
 
+    /// Post-processes the verification result obtained from the verified output account.
+    /// 
+    /// This method ensures that the output is fully verified by checking various flags.
+    /// Then, it performs TCB Status convergence to determine the final TCB Status.
+    /// 
+    /// # Parameters
+    /// - `verified_output_pubkey`: The public key of the verified output account
+    /// 
+    /// # Returns
+    /// - `Result<VerifiedOutput>`: The standard VerifiedOutput object used by our infrastructure.
+    /// As defined in:
+    /// - dcap_rs: https://github.com/automata-network/dcap-rs/blob/main/src/types/mod.rs
+    /// - EVM: https://github.com/automata-network/automata-dcap-attestation/blob/main/evm/contracts/types/CommonStruct.sol#L103-L120
     pub async fn get_verified_output(
         &self,
         verified_output_pubkey: Pubkey,
@@ -561,20 +617,5 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             quote_body: quote_body,
             advisory_ids: verified_output_account.advisory_ids,
         })
-    }
-
-    /// Gets an account of the specified type from the Solana blockchain.
-    ///
-    /// This is a generic utility method for retrieving and deserializing account data.
-    ///
-    /// # Parameters
-    /// - `pubkey`: The public key of the account to retrieve
-    ///
-    /// # Returns
-    /// - `anyhow::Result<T>`: The deserialized account data of type T,
-    ///   or an error if the retrieval or deserialization fails
-    pub async fn get_account<T: AccountDeserialize>(&self, pubkey: Pubkey) -> anyhow::Result<T> {
-        let account = self.program.account::<T>(pubkey).await?;
-        Ok(account)
     }
 }

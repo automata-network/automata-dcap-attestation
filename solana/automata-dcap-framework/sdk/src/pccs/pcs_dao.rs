@@ -12,7 +12,29 @@ use std::ops::Deref;
 use crate::CertificateAuthority;
 use crate::shared::{get_certificate_tbs_and_digest, get_crl_tbs_and_digest};
 
+/// Intel PCS Data Access Object Module
+/// This module provides methods to upload and retrieve the following collaterals from the Onchain PCCS Program:
+/// - Intel Root CA
+/// - Intel SGX PCK Platform CA
+/// - Intel SGX PCK Processor CA
+/// - Intel TCB Signing CA
+/// - Root CRL
+/// - PCK Platform CRL
+/// - PCK Processor CRL
+
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
+    
+    /// Uploads PCS data (encoded in DER) and its tbs digest to the buffer
+    /// 
+    /// # Parameters
+    /// 
+    /// - `is_crl` - Whether this is a Certificate Revocation List
+    /// - `data` - The data to be uploaded
+    /// - `data_buffer_keypair` - Optional: keypair for the data buffer account. If none is provided,
+    /// a new keypair will be generated.
+    /// 
+    /// # Returns
+    /// - `Result<Pubkey>` - The public key of the data buffer account
     pub async fn upload_pcs_data(
         &self,
         is_crl: bool,
@@ -39,16 +61,16 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(data_buffer_pubkey)
     }
 
-    /// Retrieves a PCS certificate from the blockchain.
+    /// Retrieves a PCS certificate or CRL and its corresponding public key from the blockchain.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
-    /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
-    /// * `is_crl` - Whether this is a Certificate Revocation List
+    /// - `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// - `is_crl` - Whether this is a Certificate Revocation List
     ///
     /// # Returns
     ///
-    /// * `Result<PcsCertificate>` - The PCS certificate account data
+    /// - `Result<(Pubkey, Vec<u8>)>` - A tuple containing the public key of the PCS certificate, and the raw data
     pub async fn get_pcs_certificate(
         &self,
         ca_type: CertificateAuthority,
@@ -73,16 +95,20 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok((pcs_certificate_pda.0, pcs_certificate_data))
     }
 
-    /// Creates or updates a PCS (Provisioning Certification Service) certificate on-chain.
+    /// Updates a PCS (Provisioning Certification Service) certificate on-chain.
     ///
-    /// PCS certificates are part of the Intel certificate hierarchy used in attestation.
-    /// This includes root CA certificates, platform certificates, processor certificates,
-    /// and potentially their certificate revocation lists (CRLs).
+    /// This method reads and validates the uploaded certificate data from the data buffer
+    /// and then transfers it to the corresponding PCS certificate PDA.
+    /// 
+    /// If the PDA already exists, it will overwrite the existing certificate.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
-    /// * `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
-    /// * `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    /// - `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    /// - `zkvm_verifier_program` - Public key of the ZKVM verifier program
+    /// - `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// - `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// - `proof` - The SNARK proof bytes for proving ECDSA verification
     ///
     /// # Returns
     ///
@@ -157,6 +183,25 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
+    /// Updates a PCS Certificate Revocation List (CRL) on-chain.
+    ///
+    /// This method reads and validates the uploaded certificate data from the data buffer
+    /// and then transfers it to the corresponding PCS certificate PDA.
+    /// 
+    /// If the PDA already exists, it will overwrite the existing certificate.
+    ///
+    /// # Parameters
+    ///
+    /// - `data_buffer_pubkey` - Public key of the data buffer containing the certificate data
+    /// - `zkvm_verifier_program` - Public key of the ZKVM verifier program
+    /// - `ca_type` - Certificate Authority type (ROOT, PLATFORM, PROCESSOR, SIGNING)
+    /// - `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// - `proof` - The SNARK proof bytes for proving ECDSA verification
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - Success or error
+    ///
     pub async fn upsert_pcs_crl(
         &self,
         data_buffer_pubkey: Pubkey,

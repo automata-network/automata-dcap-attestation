@@ -18,7 +18,26 @@ use std::ops::Deref;
 
 use crate::CertificateAuthority;
 
+/// Intel Enclave Identity Data Access Object Module
+/// This module provides methods to upload and retrieve Enclave Identity data from the Onchain PCCS program.
+
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
+    /// Uploads EnclaveIdentity data and its tbs digest to the buffer
+    ///
+    /// This method must first pre-process the EnclaveIdentity data by converting from JSON
+    /// to a custom serialization format that is compatible with Bytemuck type casting.
+    ///
+    /// By utilizing the custom serialization format, the data can be efficiently deserialized
+    /// onchain into EnclaveIdentityZeroCopy struct, which significantly reduces memory usage
+    ///
+    /// # Parameters
+    ///
+    /// - `data` - The data to be uploaded
+    /// - `data_buffer_keypair` - Optional: keypair for the data buffer account. If none is provided,
+    /// a new keypair will be generated.
+    ///
+    /// # Returns
+    /// - `Result<Pubkey>` - The public key of the data buffer account
     pub async fn upload_identity_data(
         &self,
         data: &[u8],
@@ -50,16 +69,24 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(data_buffer_pubkey)
     }
 
-    /// Creates or updates enclave identity information on-chain.
+    /// Updates enclave identity information on-chain.
     ///
     /// Enclave identity provides information about security properties of Intel SGX enclaves
     /// such as the Quoting Enclave (QE), TD Quoting Enclave (TD_QE), or Quote Verification Enclave (QVE).
     ///
-    /// # Arguments
+    /// This method reads and validates the Enclave identity data from the data buffer
+    /// and then transfers it to the corresponding PDA.
     ///
+    /// If the PDA already exists, it will overwrite the existing certificate.
+    ///
+    /// # Parameters
+    ///
+    /// * `data_buffer_pubkey` - Public key of the data buffer containing the identity data
+    /// * `zkvm_verifier_program` - Public key of the ZKVM verifier program
     /// * `id` - Enclave identity type (TdQe, QE, QVE)
     /// * `version` - Version number of the enclave identity
-    /// * `data_buffer_pubkey` - Public key of the data buffer containing the identity data
+    /// * `zkvm_selector` - The ZKVM selector (currently only supports RiscZero)
+    /// * `proof` - The SNARK proof bytes for proving ECDSA verification
     ///
     /// # Returns
     ///
@@ -73,7 +100,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         version: u8,
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let enclave_identity_pda = Pubkey::find_program_address(
             &[
                 b"enclave_identity",
@@ -115,16 +142,16 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
-    /// Retrieves enclave identity information from the blockchain.
+    /// Retrieves enclave identity and its public key from the blockchain.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
     /// * `id` - Enclave identity type (TdQe, QE, QVE)
     /// * `version` - Version number of the enclave identity
     ///
     /// # Returns
     ///
-    /// * `Result<EnclaveIdentity>` - The enclave identity account data
+    /// * `Result<(Pubkey, EnclaveIdentityObject)>` - The public key of the enclave identity and the enclave identity object
     pub async fn get_enclave_identity(
         &self,
         id: EnclaveIdentityType,

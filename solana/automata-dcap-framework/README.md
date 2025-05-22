@@ -31,7 +31,7 @@ The Solana DCAP Attestation Framework provides a comprehensive solution for veri
 5. Account closure:
     - At any point in time, users can close BOTH the data buffer and verified output accounts to re-claim rent.
     - Users are only able to **SIMULTANEOUSLY** close both the data buffer and verified output accounts (meaning one cannot exist without the other onchain). This is done so by executing the `close_quote_account` instruction in the Automata DCAP Verifier program.
-    - Re-opening a data buffer account using a keypair for previously closed accounts is not possible. To re-verify a quote, users must use a new keypair, re-upload the data and repeat the verification process, i.e. all instructions listed on Step 3 must be executed.
+    - To re-open closed accounts and re-verify a quote, users must re-upload the data and repeat the verification process, i.e. all instructions listed on Step 3 must be executed.
 
 This architecture enables secure, on-chain attestation verification while handling the complexity of DCAP attestation within Solana's constraints.
 

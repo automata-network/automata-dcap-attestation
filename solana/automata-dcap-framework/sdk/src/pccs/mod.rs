@@ -45,17 +45,17 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(Self { program })
     }
 
-    /// Initializes a new data buffer account on-chain for storing certificates or other attestation data.
+    /// Initializes a new data buffer account on-chain for storing data for all collaterals.
     ///
-    /// This method creates a new Solana account that will be used to store data in chunks.
+    /// # Parameters
     ///
-    /// # Arguments
-    ///
+    /// * `data_buffer_keypair` - The keypair for the data buffer account
+    /// * `digest` - The SHA-256 digest of the TBS (To-Be-Signed) portion of the collateral
     /// * `total_size` - The total size in bytes of the data to be stored
     ///
     /// # Returns
     ///
-    /// * `Result<Pubkey>` - The public key of the created data buffer account
+    /// * `Result<()>` - Success or error
     pub async fn init_data_buffer(
         &self,
         data_buffer_keypair: Keypair,
@@ -87,7 +87,7 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     /// Because of Solana's transaction size limitations, large data must be split into
     /// smaller chunks and uploaded sequentially.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
     /// * `data_buffer_pubkey` - The public key of the data buffer account
     /// * `data` - The byte slice containing the data to upload
@@ -120,6 +120,13 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
         Ok(())
     }
 
+    /// Loads the data from a data buffer account.
+    /// 
+    /// # Parameters
+    /// * `data_buffer_pubkey` - The public key of the data buffer account
+    /// 
+    /// # Returns
+    /// * `Result<Vec<u8>>` - The data stored in the data buffer
     pub async fn load_buffer_data(&self, data_buffer_pubkey: Pubkey) -> anyhow::Result<Vec<u8>> {
         let data_buffer = self
             .program
@@ -130,14 +137,27 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
     }
 }
 
+/// Sends a request to the zkVM Prover Network to generate a proof for ECDSA verification.
+/// 
+/// You must set the following environment variables:
+/// - `BONSAI_API_KEY`
+/// - `BONSAI_API_URL`
+/// 
+/// # Parameters
+/// * `input_type` - The collateral type for the ECDSA verification (Possible values: X509, CRL, TcbInfo and Identity)
+/// * `input_data` - The data to be verified
+/// * `issuer_der` - The DER-encoded issuer certificate for the input data
+/// 
+/// # Returns
+/// * `Result<(image_id: [u8; 32], journal_bytes: Vec<u8>, seal: Vec<u8>)>` - The image ID, journal bytes, and Groth16 seal
 pub async fn request_ecdsa_verify_proof(
     input_type: EcdsaZkVerifyInputType,
     input_data: &[u8],
     issuer_der: &[u8],
 ) -> anyhow::Result<(
-    [u8; 32], // image_id
-    Vec<u8>,  // journal_bytes
-    Vec<u8>,  // Groth16 Seal
+    [u8; 32],
+    Vec<u8>, 
+    Vec<u8>,
 )> {
     let (image_id, journal, mut seal) =
         get_ecdsa_verify_proof(input_type, input_data, issuer_der).await?;
@@ -154,6 +174,7 @@ pub async fn request_ecdsa_verify_proof(
     Ok((image_id, journal, seal))
 }
 
+/// Computes the PDA Pubkey for PCS Collaterals
 pub fn compute_pcs_pda_pubkey(ca: CertificateAuthority, is_crl: bool) -> Pubkey {
     let (ret, _) = Pubkey::find_program_address(
         &[b"pcs_cert", ca.common_name().as_bytes(), &[is_crl as u8]],
