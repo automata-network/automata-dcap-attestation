@@ -257,7 +257,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 quote_data_buffer: quote_buffer_pubkey,
                 verified_output: verified_output_pubkey,
                 instructions_sysvar: anchor_client::solana_sdk::sysvar::instructions::ID,
-                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteIntegrity {})
             .send()
@@ -314,7 +313,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 quote_data_buffer: quote_buffer_pubkey,
                 verified_output: verified_output_pubkey,
                 instructions_sysvar: anchor_client::solana_sdk::sysvar::instructions::ID,
-                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteIsvSignature {})
             .send()
@@ -367,7 +365,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 quote_data_buffer: quote_buffer_pubkey,
                 qe_identity_pda: qe_identity_pda,
                 verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteEnclaveSource {
                 _qe_type: qe_type.to_string(),
@@ -455,7 +452,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
                 tcb_info_pda: tcb_info_pda,
                 quote_data_buffer: quote_buffer_pubkey,
                 verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
             })
             .args(args::VerifyDcapQuoteTcbStatus {
                 _tcb_type: tcb_type.common_name().to_string(),
