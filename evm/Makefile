@@ -26,6 +26,14 @@ else
 endif
 	@echo "\nWallet Owner: $(OWNER)"
 
+# Get the Owner's wallet address from env
+get_owner_env:
+ifdef OWNER
+	@echo "\nUsing Owner from environment: $(OWNER)"
+else
+	$(error OWNER is not set. Please set the OWNER environment variable.)
+endif
+
 # Deployment targets
 deploy-router: check_env get_owner
 	@echo "Deploying PCCSRouter..."
@@ -94,32 +102,50 @@ deploy-all-verifiers: check_env get_owner
 deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
-verify-all: check_env
+verify-all: check_env get_owner_env
 	@if [ ! -f deployment/$(CHAIN_ID)/dcap.json ]; then \
 		echo "Deployment not found."; \
 		exit 1; \
 	fi
-	@for contract in PCCSRouter AutomataDcapAttestationFee V3QuoteVerifier V4QuoteVerifier; do \
+	@echo "Determining P256 Verifier address..."
+	@P256_ADDRESS_VAL=$$(forge script P256Configuration --rpc-url $(RPC_URL) --sig "simulateVerify()" -vv | awk '/P256Verifier address:/ { print $$NF; exit }'); \
+	echo "Using P256 Verifier address: $$P256_ADDRESS_VAL"; \
+	ROUTER_ADDR=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
+	PCS_DAO_ADDR=$$(jq -r ".AutomataPcsDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	PCK_DAO_ADDR=$$(jq -r ".AutomataPckDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	FMSPC_TCB_DAO_ADDR=$$(jq -r ".AutomataFmspcTcbDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	ENCLAVE_IDENTITY_DAO_ADDR=$$(jq -r ".AutomataEnclaveIdentityDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	X509_HELPER_ADDR=$$(jq -r ".PCKHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	CRL_HELPER_ADDR=$$(jq -r ".X509CRLHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	FMSPC_TCB_HELPER_ADDR=$$(jq -r ".FmspcTcbHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	for contract in PCCSRouter AutomataDcapAttestationFee V3QuoteVerifier V4QuoteVerifier; do \
 		addr=$$(jq -r ".$$contract" deployment/$(CHAIN_ID)/dcap.json); \
+		current_encoded_args=""; \
+		current_contract_path_name=""; \
 		if [ "$$addr" != "null" ]; then \
-			if [ "$$contract" == "PCCSRouter" ] || [ "$$contract" == "AutomataDcapAttestationFee" ]; then \
-				forge verify-contract \
-					--rpc-url $(RPC_URL) \
-					--verifier $(VERIFIER) \
-					--watch \
-					$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL)) \
-					$$addr \
-					contracts/$$contract.sol:$$contract || true; \
-			else \
-				forge verify-contract \
-					--rpc-url $(RPC_URL) \
-					--verifier $(VERIFIER) \
-					--watch \
-					$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL)) \
-					$$addr \
-					contracts/verifiers/$$contract.sol:$$contract || true; \
-			fi \
-		fi \
+			if [ "$$contract" == "PCCSRouter" ]; then \
+				current_encoded_args=$$(cast abi-encode "constructor(address,address,address,address,address,address,address,address)" $(OWNER) $$ENCLAVE_IDENTITY_DAO_ADDR $$FMSPC_TCB_DAO_ADDR $$PCS_DAO_ADDR $$PCK_DAO_ADDR $$X509_HELPER_ADDR $$CRL_HELPER_ADDR $$FMSPC_TCB_HELPER_ADDR); \
+				current_contract_path_name="contracts/PCCSRouter.sol:PCCSRouter"; \
+			elif [ "$$contract" == "AutomataDcapAttestationFee" ]; then \
+				current_encoded_args=$$(cast abi-encode "constructor(address)" $(OWNER)); \
+				current_contract_path_name="contracts/AutomataDcapAttestationFee.sol:AutomataDcapAttestationFee"; \
+			elif [ "$$contract" == "V3QuoteVerifier" ]; then \
+				current_encoded_args=$$(cast abi-encode "constructor(address,address)" $$P256_ADDRESS_VAL $$ROUTER_ADDR); \
+				current_contract_path_name="contracts/verifiers/V3QuoteVerifier.sol:V3QuoteVerifier"; \
+			elif [ "$$contract" == "V4QuoteVerifier" ]; then \
+				current_encoded_args=$$(cast abi-encode "constructor(address,address)" $$P256_ADDRESS_VAL $$ROUTER_ADDR); \
+				current_contract_path_name="contracts/verifiers/V4QuoteVerifier.sol:V4QuoteVerifier"; \
+			fi; \
+			echo "Verifying $$contract with encoded args: $$current_encoded_args"; \
+			forge verify-contract \
+				--rpc-url $(RPC_URL) \
+				--verifier $(VERIFIER) \
+				--watch \
+				$(if $(VERIFIER_URL),--verifier-url $(VERIFIER_URL)) \
+				$$addr \
+				$$current_contract_path_name \
+				--constructor-args $$current_encoded_args || true; \
+		fi; \
 	done
 
 # ZK Configurations
