@@ -26,6 +26,14 @@ else
 endif
 	@echo "\nWallet Owner: $(OWNER)"
 
+# Get the Owner's wallet address from env
+get_owner_env:
+ifdef OWNER
+	@echo "\nUsing Owner from environment: $(OWNER)"
+else
+	$(error OWNER is not set. Please set the OWNER environment variable.)
+endif
+
 # Deployment targets
 deploy-router: check_env get_owner
 	@echo "Deploying PCCSRouter..."
@@ -94,7 +102,7 @@ deploy-all-verifiers: check_env get_owner
 deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
-verify-all: check_env get_owner
+verify-all: check_env get_owner_env
 	@if [ ! -f deployment/$(CHAIN_ID)/dcap.json ]; then \
 		echo "Deployment not found."; \
 		exit 1; \
