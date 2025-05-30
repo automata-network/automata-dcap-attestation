@@ -202,7 +202,7 @@ help:
 	@echo "  deploy-all-verifiers   Deploy all QuoteVerifier contracts with versions that are currently supported"
 	@echo "  deploy-all             Deploy all contracts"
 	@echo "  verify-all             Verify all contracts"
-	@echo "  config-zk              zkVM Configuraton"
+	@echo "  config-zk              zkVM Configuration"
 	@echo "  config-verifier        QuoteVerifier Configuration"
 	@echo "  config-router          Set authorization for calling PCCSRouter"
 	@echo "  clean                  Remove build artifacts"
