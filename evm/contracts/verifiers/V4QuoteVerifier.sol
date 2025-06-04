@@ -170,8 +170,12 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         X509CertObj[] memory parsedCerts = authData.qeReportCertData.certification.pck.pckChain;
         PCKCertTCB memory pckTcb = authData.qeReportCertData.certification.pck.pckExtension;
         TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+
+        // TODO: use standard TCB Evaluation Number
+        uint32 tcbEval = pccsRouter.getStandardTcbEvaluationDataNumber(tcbId);
+
         (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-            pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
+            pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes), tcbEval);
 
         // Step 3: verify cert chain
         success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
