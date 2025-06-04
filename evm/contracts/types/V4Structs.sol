@@ -20,7 +20,7 @@ struct TD10ReportBody {
     bytes mrOwner; // 48 bytes
     bytes mrOwnerConfig; // 48 bytes
     bytes rtMr0; // 48 bytes
-    bytes rtMr1; // 48 nytes
+    bytes rtMr1; // 48 bytes
     bytes rtMr2; // 48 bytes
     bytes rtMr3; // 48 bytes
     bytes reportData; // 64 bytes
