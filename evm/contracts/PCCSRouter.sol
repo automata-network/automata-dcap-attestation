@@ -203,6 +203,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         if (!emptyDefault && validDefault) {
             bytes memory data = defaultEnclaveIdDao.getAttestedData(defaultKey);
             (identity,) = abi.decode(data, (IdentityObj, EnclaveIdentityJsonObj));
+            uint32 fetchedEval = identity.tcbEvaluationDataNumber;
+            if (fetchedEval != tcbEval) {
+                revert TcbEvalNumberMismatch();
+            }
         } else {
             revert QEIdentityExpiredOrNotFound(id, quoteVersion);
         }
@@ -263,6 +267,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
             bytes memory data = defaultTcbDao.getAttestedData(defaultKey);
             bytes memory encodedLevels;
             (tcbInfo, encodedLevels,) = abi.decode(data, (TcbInfoBasic, bytes, TcbInfoJsonObj));
+            uint32 tcbEvalNumber = tcbInfo.evaluationDataNumber;
+            if (tcbEvalNumber != tcbEval) {
+                revert TcbEvalNumberMismatch();
+            }
             tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
         } else {
             revert FmspcTcbExpiredOrNotFound(TcbId.SGX, 2);
@@ -312,6 +320,10 @@ contract PCCSRouter is IPCCSRouter, Ownable {
             bytes memory encodedTdxModuleIdentities;
             (tcbInfo, tdxModule, encodedTdxModuleIdentities, encodedLevels,) =
                 abi.decode(data, (TcbInfoBasic, TDXModule, bytes, bytes, TcbInfoJsonObj));
+            uint32 tcbEvalNumber = tcbInfo.evaluationDataNumber;
+            if (tcbEvalNumber != tcbEval) {
+                revert TcbEvalNumberMismatch();
+            }
             tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
             if (encodedTdxModuleIdentities.length > 0) {
                 tdxModuleIdentities = _decodeTdxModuleIdentities(encodedTdxModuleIdentities);
