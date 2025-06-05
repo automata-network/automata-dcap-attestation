@@ -9,3 +9,7 @@
 	url = https://github.com/succinctlabs/sp1-contracts
 [submodule "lib/automata-on-chain-pccs"]
 	branch = dev
+[submodule "evm/lib/automata-on-chain-pccs"]
+	branch = dev
+	path = evm/lib/automata-on-chain-pccs
+	url = https://github.com/automata-network/automata-on-chain-pccs
