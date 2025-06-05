@@ -7,8 +7,8 @@
 [submodule "evm/lib/risc0-ethereum"]
 	path = evm/lib/risc0-ethereum
 	url = https://github.com/risc0/risc0-ethereum
+[submodule "lib/automata-on-chain-pccs"]
+	branch = dev
 [submodule "evm/lib/automata-on-chain-pccs"]
 	path = evm/lib/automata-on-chain-pccs
 	url = https://github.com/automata-network/automata-on-chain-pccs
-[submodule "lib/automata-on-chain-pccs"]
-	branch = dev
