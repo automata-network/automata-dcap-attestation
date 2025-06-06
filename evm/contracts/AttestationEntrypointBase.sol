@@ -136,10 +136,27 @@ abstract contract AttestationEntrypointBase is Ownable {
     }
 
     /**
-     * @notice gets the default (universal) contract verifier for the provided ZK Co-processor
+     * @notice gets the default (universal) ZK verifier for the provided ZK Co-processor
      */
     function zkVerifier(uint8 zkCoProcessorType) public view returns (address) {
         return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].defaultZkVerifier;
+    }
+
+    /**
+     * @notice gets the specific ZK Verifier for the provided ZK Co-processor and selector
+     * @notice this function will revert if the provided selector has been frozen
+     * @notice otherwise, if a specific ZK verifier is not configured for the provided selector
+     * @notice it will return the default ZK verifier for the provided ZK Co-processor
+     */
+    function zkVerifier(uint8 zkCoProcessorType, bytes4 selector) public view returns (address) {
+        address verifier = _zkVerifierConfig[ZkCoProcessorType(zkCoProcessorType)][selector];
+        if (verifier == FROZEN_ROUTE) {
+            revert("ZK Route has been frozen");
+        } else if (verifier == address(0)) {
+            return zkVerifier(zkCoProcessorType);
+        } else {
+            return verifier;
+        }
     }
 
     /**
