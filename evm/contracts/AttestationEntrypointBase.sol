@@ -95,12 +95,13 @@ abstract contract AttestationEntrypointBase is Ownable {
     /**
      * @notice full on-chain verification for an attestation
      * @param rawQuote - Intel DCAP Quote serialized in raw bytes
+     * @param tcbEvalNumber - TCB Evaluation Data Number, pass 0 to use "update = standard" collateral
      * @return success - whether the quote has been successfully verified or not
      * @return output - the output upon completion of verification. The output data may require post-processing by the consumer.
      * For verification failures, the output is simply a UTF-8 encoded string, describing the reason for failure.
      * @dev can directly type-cast the failed output as a string
      */
-    function _verifyAndAttestOnChain(bytes calldata rawQuote) internal returns (bool success, bytes memory output) {
+    function _verifyAndAttestOnChain(bytes calldata rawQuote, uint32 tcbEvalNumber) internal returns (bool success, bytes memory output) {
         // Parse the header
         Header memory header;
         (success, header) = _parseQuoteHeader(rawQuote);
@@ -115,7 +116,7 @@ abstract contract AttestationEntrypointBase is Ownable {
 
         // We found a supported version, begin verifying the quote
         // Note: The quote header cannot be trusted yet, it will be validated by the Verifier library
-        (success, output) = quoteVerifier.verifyQuote(header, rawQuote);
+        (success, output) = quoteVerifier.verifyQuote(header, rawQuote, tcbEvalNumber);
 
         emit AttestationSubmitted(success, ZkCoProcessorType.None, output);
     }
@@ -135,11 +136,13 @@ abstract contract AttestationEntrypointBase is Ownable {
      * - Platform or Processor CRL hash
      * @param zkCoprocessor - Specify ZK Co-Processor
      * @param proofBytes - The encoded cryptographic proof (i.e. SNARK)).
+     * @param tcbEvalNumber - TCB Evaluation Data Number, pass 0 to use "update = standard" collateral
      */
     function _verifyAndAttestWithZKProof(
         bytes calldata output,
         ZkCoProcessorType zkCoprocessor,
-        bytes calldata proofBytes
+        bytes calldata proofBytes,
+        uint32 tcbEvalNumber
     ) internal returns (bool success, bytes memory verifiedOutput) {
         ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
 
@@ -157,7 +160,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         if (address(quoteVerifier) == address(0)) {
             return (false, bytes("Unsupported quote version"));
         }
-        (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output);
+        (success, verifiedOutput) = quoteVerifier.verifyZkOutput(output, tcbEvalNumber);
 
         emit AttestationSubmitted(success, zkCoprocessor, verifiedOutput);
     }
