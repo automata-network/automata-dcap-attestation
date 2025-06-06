@@ -62,7 +62,16 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
         // collateral upserts
         string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfov3_00806f050000.json";
         string memory qeIdPath = "/forge-test/assets/0625/qe_td.json";
+        
+        enclaveIdDao.grantRoles(
+            admin,
+            enclaveIdDao.ATTESTER_ROLE()
+        );
         qeIdDaoUpsert(4, qeIdPath);
+        fmspcTcbDao.grantRoles(
+            admin,
+            fmspcTcbDao.ATTESTER_ROLE()
+        );
         fmspcTcbDaoUpsert(tcbInfoPath);
 
         string memory tdxEvalPath = "/forge-test/assets/0625/tdxtcbeval.json";
