@@ -37,7 +37,6 @@ contract AttestationScript is DeploymentConfig {
         vm.startBroadcast(owner);
 
         AutomataDcapAttestationFee(attestationAddr).setQuoteVerifier(quoteVerifier);
-        PCCSRouter(routerAddr).setAuthorized(address(quoteVerifier), true);
 
         vm.stopBroadcast();
     }
