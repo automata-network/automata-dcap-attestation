@@ -18,8 +18,8 @@ import {PCKHelper} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
 import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelper.sol";
 import {TcbEvalJsonObj, TcbEvalHelper} from "@automata-network/on-chain-pccs/helpers/TcbEvalHelper.sol";
 
-import {AutomataFmspcTcbDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataFmspcTcbDao.sol";
-import {AutomataEnclaveIdentityDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataEnclaveIdentityDao.sol";
+import {AutomataFmspcTcbDaoVersioned} from "@automata-network/on-chain-pccs/automata_pccs/versioned/AutomataFmspcTcbDaoVersioned.sol";
+import {AutomataEnclaveIdentityDaoVersioned} from "@automata-network/on-chain-pccs/automata_pccs/versioned/AutomataEnclaveIdentityDaoVersioned.sol";
 import {AutomataTcbEvalDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataTcbEvalDao.sol";
 import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPcsDao.sol";
 import {AutomataPckDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPckDao.sol";
@@ -39,8 +39,8 @@ abstract contract PCCSSetupBase is Test {
 
     AutomataPcsDao pcsDao;
     AutomataPckDao pckDao;
-    AutomataFmspcTcbDao fmspcTcbDao;
-    AutomataEnclaveIdentityDao enclaveIdDao;
+    AutomataFmspcTcbDaoVersioned fmspcTcbDao;
+    AutomataEnclaveIdentityDaoVersioned enclaveIdDao;
     AutomataTcbEvalDao tcbEvalDao;
     AutomataDaoStorage pccsStorage;
     address P256_VERIFIER;
@@ -79,16 +79,25 @@ abstract contract PCCSSetupBase is Test {
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
-        enclaveIdDao = new AutomataEnclaveIdentityDao(
+        enclaveIdDao = new AutomataEnclaveIdentityDaoVersioned(
             address(pccsStorage),
             P256_VERIFIER,
             address(pcsDao),
             address(enclaveIdHelper),
             address(x509),
-            address(x509Crl)
+            address(x509Crl),
+            admin,
+            17
         );
-        fmspcTcbDao = new AutomataFmspcTcbDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509), address(x509Crl)
+        fmspcTcbDao = new AutomataFmspcTcbDaoVersioned(
+            address(pccsStorage), 
+            P256_VERIFIER, 
+            address(pcsDao), 
+            address(tcbHelper), 
+            address(x509), 
+            address(x509Crl),
+            admin,
+            17
         );
         tcbEvalDao = new AutomataTcbEvalDao(
             address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbEvalHelper), address(x509), address(x509Crl)

@@ -39,10 +39,20 @@ contract AutomataDcapOnChainAttestationTest is PCCSSetupBase {
 
         vm.startPrank(admin);
 
+
         // collateral upserts
         string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfo.json";
         string memory qeIdPath = "/forge-test/assets/0625/identity.json";
+
+        enclaveIdDao.grantRoles(
+            admin,
+            enclaveIdDao.ATTESTER_ROLE()
+        );
         qeIdDaoUpsert(3, qeIdPath);
+        fmspcTcbDao.grantRoles(
+            admin,
+            fmspcTcbDao.ATTESTER_ROLE()
+        );
         fmspcTcbDaoUpsert(tcbInfoPath);
 
         string memory sgxEvalPath = "/forge-test/assets/0625/sgxtcbeval.json";
@@ -75,7 +85,15 @@ contract AutomataDcapOnChainAttestationTest is PCCSSetupBase {
         // collateral upserts
         string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfov3_00806f050000.json";
         string memory qeIdPath = "/forge-test/assets/0625/qe_td.json";
+        enclaveIdDao.grantRoles(
+            admin,
+            enclaveIdDao.ATTESTER_ROLE()
+        );
         qeIdDaoUpsert(4, qeIdPath);
+        fmspcTcbDao.grantRoles(
+            admin,
+            fmspcTcbDao.ATTESTER_ROLE()
+        );
         fmspcTcbDaoUpsert(tcbInfoPath);
 
         string memory tdxEvalPath = "/forge-test/assets/0625/tdxtcbeval.json";

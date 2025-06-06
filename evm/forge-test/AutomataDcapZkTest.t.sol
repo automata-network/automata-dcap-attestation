@@ -34,7 +34,17 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         pccsRouter = setupPccsRouter(admin);
         
         pcsDaoUpserts();
+        
+        enclaveIdDao.grantRoles(
+            admin,
+            enclaveIdDao.ATTESTER_ROLE()
+        );
         qeIdDaoUpsert(4, "/forge-test/assets/0625/qe_td.json");
+
+        fmspcTcbDao.grantRoles(
+            admin,
+            fmspcTcbDao.ATTESTER_ROLE()
+        );
         fmspcTcbDaoUpsert("/forge-test/assets/0625/tcbinfov3_90C06F000000.json");
         tcbEvalDaoUpsert("/forge-test/assets/0625/tdxtcbeval.json");
 
