@@ -34,7 +34,7 @@ contract AutomataDcapAttestationFee is FeeManagerBase, AttestationEntrypointBase
         ZkCoProcessorType zkCoprocessor,
         bytes calldata proofBytes
     ) external payable collectFee returns (bool success, bytes memory verifiedOutput) {
-        bytes32 latestProgramIdentifier = programIdentifier(uint8(zkCoprocessor));
+        bytes32 latestProgramIdentifier = programIdentifier(zkCoprocessor);
         (success, verifiedOutput) = _verifyAndAttestWithZKProof(zkCoprocessor, latestProgramIdentifier, output, proofBytes, 0);
     }
 
