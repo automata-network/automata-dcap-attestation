@@ -26,7 +26,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
 
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
-    function verifyZkOutput(bytes calldata outputBytes)
+    function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
         external
         view
         override
@@ -43,11 +43,11 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             return (false, "invalid output length");
         }
         bytes memory errorMessage;
-        (success, errorMessage) = checkCollateralHashes(offset, outputBytes);
+        (success, errorMessage) = checkCollateralHashes(tcbEvalNumber, offset, outputBytes);
         output = success ? outputBytes[2:offset] : errorMessage;
     }
 
-    function verifyQuote(Header calldata header, bytes calldata rawQuote)
+    function verifyQuote(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber)
         external
         view
         override
@@ -75,7 +75,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH];
             V4SGXQuote memory quote =
                 V4SGXQuote({header: header, localEnclaveReport: localEnclaveReport, authData: authData});
-            (success, output) = _verifySGXQuote(quote, rawHeader, rawBody, rawQeReport);
+            (success, output) = _verifySGXQuote(tcbEvalNumber, quote, rawHeader, rawBody, rawQeReport);
         } else if (header.teeType == TDX_TEE) {
             TD10ReportBody memory tdReport;
             (success, tdReport) = parseTD10ReportBody(rawQuoteBody);
@@ -84,7 +84,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             }
             rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + TD_REPORT10_LENGTH];
             V4TDXQuote memory quote = V4TDXQuote({header: header, reportBody: tdReport, authData: authData});
-            (success, output) = _verifyTDXQuote(quote, rawHeader, rawBody, rawQeReport);
+            (success, output) = _verifyTDXQuote(tcbEvalNumber, quote, rawHeader, rawBody, rawQeReport);
         } else {
             return (false, bytes("Unknown TEE type"));
         }
@@ -141,12 +141,19 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     }
 
     function _verifyCommon(
+        uint32 tcbEvalNumber,
         bytes4 tee,
         bytes memory rawHeader,
         bytes memory rawBody,
         bytes memory rawQeReport,
         ECDSAQuoteV4AuthData memory authData
     ) private view returns (bool success, string memory reason, FetchedCollateralsAndStatuses memory ret) {
+        TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+
+        if (tcbEvalNumber == 0) {
+            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumber(tcbId);
+        }
+
         // Step 0: Check QE Report Data
         success = verifyQeReportData(
             authData.qeReportCertData.qeReport.reportData,
@@ -161,7 +168,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         EnclaveIdTcbStatus qeTcbStatus;
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
         EnclaveReport memory qeReport = authData.qeReportCertData.qeReport;
-        (success, qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeReport);
+        (success, qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeReport, tcbEvalNumber);
         if (!success || qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
             return (success, "Verification failed by QEIdentity check", ret);
         }
@@ -169,9 +176,9 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 2: Fetch FMSPC TCB
         X509CertObj[] memory parsedCerts = authData.qeReportCertData.certification.pck.pckChain;
         PCKCertTCB memory pckTcb = authData.qeReportCertData.certification.pck.pckExtension;
-        TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+
         (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-            pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes));
+            pccsRouter.getFmspcTcbV3(tcbId, bytes6(pckTcb.fmspcBytes), tcbEvalNumber);
 
         // Step 3: verify cert chain
         success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), parsedCerts);
@@ -202,6 +209,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     }
 
     function _verifySGXQuote(
+        uint32 tcbEvalNumber,
         V4SGXQuote memory quote,
         bytes memory rawHeader,
         bytes memory rawBody,
@@ -210,7 +218,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 1: Perform verification steps that are required for both SGX and TDX quotes
         string memory reason;
         FetchedCollateralsAndStatuses memory ret;
-        (success, reason, ret) = _verifyCommon(quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
+        (success, reason, ret) =
+            _verifyCommon(tcbEvalNumber, quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -245,6 +254,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     }
 
     function _verifyTDXQuote(
+        uint32 tcbEvalNumber,
         V4TDXQuote memory quote,
         bytes memory rawHeader,
         bytes memory rawBody,
@@ -253,7 +263,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 1: Perform verification steps that are required for both SGX and TDX quotes
         string memory reason;
         FetchedCollateralsAndStatuses memory ret;
-        (success, reason, ret) = _verifyCommon(quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
+        (success, reason, ret) =
+            _verifyCommon(tcbEvalNumber, quote.header.teeType, rawHeader, rawBody, rawQeReport, quote.authData);
         if (!success) {
             return (false, bytes(reason));
         }

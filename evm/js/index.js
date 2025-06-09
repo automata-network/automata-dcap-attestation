@@ -3,7 +3,7 @@ const fs = require('fs');
 const { abi: IAttestationABI } = require('./abi/AutomataDcapAttestationFee.json');
 
 const RPC_URL = "https://1rpc.io/ata/testnet";
-const ATTESTATION_ADDR = "0x6D67Ae70d99A4CcE500De44628BCB4DaCfc1A145";
+const ATTESTATION_ADDR = "0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF";
 
 // two ways you may submit a quote:
 // Option 1: node index.js -p <insert-path>

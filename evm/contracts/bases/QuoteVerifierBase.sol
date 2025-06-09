@@ -77,12 +77,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         success = true;
     }
 
-    function fetchQeIdentityAndCheckQeReport(EnclaveId id, EnclaveReport memory qeReport)
+    function fetchQeIdentityAndCheckQeReport(EnclaveId id, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
         internal
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion);
+        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion, tcbEvalNumber);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );
@@ -148,7 +148,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         );
     }
 
-    function checkCollateralHashes(uint256 offset, bytes calldata zkOutput)
+    function checkCollateralHashes(uint32 tcbEvalNumber, uint256 offset, bytes calldata zkOutput)
         internal
         view
         returns (bool, bytes memory)
@@ -163,14 +163,23 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         bytes4 tee = bytes4(zkOutput[4:8]);
         bytes6 fmspc = bytes6(zkOutput[9:15]);
+
+        TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+
+        if (tcbEvalNumber == 0) {
+            // if tcbEvalNumber is not provided, we use the standard one
+            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumber(tcbId);
+        }
+
         bytes32 expectedTcbInfoContentHash =
-            pccsRouter.getFmspcTcbContentHash(tee == SGX_TEE ? TcbId.SGX : TcbId.TDX, fmspc, quoteVersion < 4 ? 2 : 3);
+            pccsRouter.getFmspcTcbContentHash(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber);
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
             return (false, bytes("tcb info content hash mismatch"));
         }
 
-        bytes32 expectedIdentityContentHash =
-            pccsRouter.getQeIdentityContentHash(tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion);
+        bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHash(
+            tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber
+        );
         if (identityContentHash != expectedIdentityContentHash) {
             return (false, bytes("identity content hash mismatch"));
         }

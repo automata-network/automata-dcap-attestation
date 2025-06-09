@@ -7,11 +7,11 @@ import {X509CertObj} from "@automata-network/on-chain-pccs/helpers/X509Helper.so
 /**
  * @title CommonStruct
  * @notice Structs that are common across different versions and TEE of Intel DCAP Quote
- * @dev may refer to Intel Official Documentation for more details on the struct definition
+ * @dev May refer to Intel Official Documentation for more details on the struct definition
  * @dev Intel V3 SGX DCAP API Library: https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf
  * @dev Intel V4 TDX DCAP API Library: https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/Intel_TDX_DCAP_Quoting_Library_API.pdf
  * @dev Fields that are declared as integers (uint*) must reverse the byte order to big-endian
- * @dev Whereas, fields that are declared as bytes* type do not reverse the byte order
+ * @dev Fields declared as `bytes*` types retain their byte order and do not require conversion
  */
 
 /**

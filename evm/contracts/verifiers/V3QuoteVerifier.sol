@@ -11,7 +11,7 @@ import "../bases/tcb/TCBInfoV2Base.sol";
 contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 3) P256Verifier(_ecdsaVerifier) {}
 
-    function verifyZkOutput(bytes calldata outputBytes)
+    function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
         external
         view
         override
@@ -23,11 +23,11 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             return (false, "invalid output length");
         }
         bytes memory errorMessage;
-        (success, errorMessage) = checkCollateralHashes(offset, outputBytes);
+        (success, errorMessage) = checkCollateralHashes(tcbEvalNumber, offset, outputBytes);
         output = success ? outputBytes[2:offset] : errorMessage;
     }
 
-    function verifyQuote(Header calldata header, bytes calldata rawQuote)
+    function verifyQuote(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber)
         external
         view
         override
@@ -42,7 +42,11 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         }
 
         (success, output) = _verifyQuote(
-            quote, rawQuote[0:HEADER_LENGTH], rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH], rawQeReport
+            tcbEvalNumber,
+            quote,
+            rawQuote[0:HEADER_LENGTH],
+            rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH],
+            rawQeReport
         );
     }
 
@@ -89,11 +93,18 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         parsed = V3Quote({header: header, localEnclaveReport: localReport, authData: authData});
     }
 
-    function _verifyQuote(V3Quote memory quote, bytes memory rawHeader, bytes memory rawBody, bytes memory rawQeReport)
-        private
-        view
-        returns (bool success, bytes memory serialized)
-    {
+    function _verifyQuote(
+        uint32 tcbEvalNumber,
+        V3Quote memory quote,
+        bytes memory rawHeader,
+        bytes memory rawBody,
+        bytes memory rawQeReport
+    ) private view returns (bool success, bytes memory serialized) {
+        if (tcbEvalNumber == 0) {
+            // if tcbEvalNumber is not provided, we use the standard TCB evaluation number
+            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumber(TcbId.SGX);
+        }
+
         // Step 0: Check QE Report Data
         success = verifyQeReportData(
             quote.authData.qeReport.reportData, quote.authData.ecdsaAttestationKey, quote.authData.qeAuthData.data
@@ -105,7 +116,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         // Step 1: Fetch QEIdentity to validate TCB of the QE
         EnclaveIdTcbStatus qeTcbStatus;
         EnclaveReport memory qeReport = quote.authData.qeReport;
-        (success, qeTcbStatus) = fetchQeIdentityAndCheckQeReport(EnclaveId.QE, qeReport);
+        (success, qeTcbStatus) = fetchQeIdentityAndCheckQeReport(EnclaveId.QE, qeReport, tcbEvalNumber);
 
         if (!success || qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
             return (success, bytes("Verification failed by QEIdentity check"));
@@ -114,7 +125,8 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         // Step 2: Fetch FMSPC TCB then get TCBStatus
         X509CertObj[] memory parsedCerts = quote.authData.certification.pck.pckChain;
         PCKCertTCB memory pckTcb = quote.authData.certification.pck.pckExtension;
-        TCBLevelsObj[] memory tcbLevels = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes));
+
+        TCBLevelsObj[] memory tcbLevels = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes), tcbEvalNumber);
         TCBStatus tcbStatus;
         bool statusFound;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
