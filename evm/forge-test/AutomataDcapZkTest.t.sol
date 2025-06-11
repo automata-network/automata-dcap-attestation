@@ -20,7 +20,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
     PlonkSetup setupSp1Plonk = new PlonkSetup();
 
     bytes32 riscZeroImageId = 0x4cf071b3cc25d73e77f430b65f5700dd53522dacc21c1bfc0862b2e46fda3584;
-    bytes32 sp1DcapVkey = 0x0036efd519bb371b29a40322e40031833716e9441c6907f8aefc5e52ceebc9a6;
+    bytes32 sp1DcapVkey = 0x0021feaf3f6c78429dac7756fac5cfed39b606e34603443409733e13a1cf06cc;
 
     function setUp() public override {
         super.setUp();
