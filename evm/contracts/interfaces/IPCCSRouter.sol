@@ -43,6 +43,7 @@ interface IPCCSRouter {
     function fmspcTcbHelperAddr() external view returns (address);
 
     function getEarlyTcbEvaluationDataNumber(TcbId id) external view returns (uint32);
+
     function getStandardTcbEvaluationDataNumber(TcbId id) external view returns (uint32);
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion, uint32 tcbEval)
@@ -80,6 +81,13 @@ interface IPCCSRouter {
     function getCrlHash(CA ca) external view returns (bytes32);
 
     // *withTimestamp() methods to check collateral expiration status based on the provided timestamp
+    function getEarlyTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp) external view returns (uint32);
+
+    function getStandardTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp)
+        external
+        view
+        returns (uint32);
+
     function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
 
     function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
