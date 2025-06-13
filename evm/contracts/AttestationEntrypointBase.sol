@@ -94,6 +94,7 @@ abstract contract AttestationEntrypointBase is Ownable {
     function updateProgramIdentifier(ZkCoProcessorType zkCoProcessor, bytes32 identifier) external onlyOwner {
         require(identifier != bytes32(0), "Program identifier cannot be zero");
         ZkCoProcessorConfig storage config = _zkConfig[zkCoProcessor];
+        require(config.latestDcapProgramIdentifier != identifier, "Program identifier is already the latest");
         config.latestDcapProgramIdentifier = identifier;
         _programIdConfig[zkCoProcessor].add(identifier);
         emit ZkCoProcessorUpdated(zkCoProcessor, identifier, config.defaultZkVerifier);
@@ -143,6 +144,14 @@ abstract contract AttestationEntrypointBase is Ownable {
      */
     function programIdentifier(ZkCoProcessorType zkCoProcessorType) public view returns (bytes32) {
         return _zkConfig[zkCoProcessorType].latestDcapProgramIdentifier;
+    }
+    
+    /**
+     * @param zkCoProcessorType 1 - RiscZero, 2 - Succinct... etc.
+     * @return this returns the list of all DCAP program identifiers for the specified ZK Co-processor
+     */
+    function programIdentifiers(ZkCoProcessorType zkCoProcessorType) public view returns (bytes32[] memory) {
+        return _programIdConfig[zkCoProcessorType].values();
     }
 
     /**
