@@ -84,6 +84,8 @@ contract PCCSRouter is IPCCSRouter, Ownable {
 
     // Reverts for missing collaterals
 
+    // a78bf21a
+    error TcbEvalExpiredOrNotFound(TcbId id);
     // 0a2a9142
     error QEIdentityExpiredOrNotFound(EnclaveId id, uint256 quoteVersion);
     // 343385cf
@@ -166,14 +168,56 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         emit UpdateConfig(_qeid, _fmspcTcb, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
     }
 
-    function getEarlyTcbEvaluationDataNumber(TcbId id) external view override returns (uint32) {
+    function getEarlyTcbEvaluationDataNumber(TcbId id) external view override onlyAuthorized returns (uint32) {
         TcbEvalDao tcbEvalDao = TcbEvalDao(tcbEvalDaoAddr);
-        return tcbEvalDao.early(id);
+        (bool empty, bool valid) = _loadDataIfNotExpired(tcbEvalDao.TCB_EVAL_KEY(id), tcbEvalDaoAddr, block.timestamp);
+        if (!empty && valid) {
+            return tcbEvalDao.early(id);
+        } else {
+            revert TcbEvalExpiredOrNotFound(id);
+        }
     }
 
-    function getStandardTcbEvaluationDataNumber(TcbId id) external view override returns (uint32) {
+    function getStandardTcbEvaluationDataNumber(TcbId id) external view override onlyAuthorized returns (uint32) {
         TcbEvalDao tcbEvalDao = TcbEvalDao(tcbEvalDaoAddr);
-        return tcbEvalDao.standard(id);
+        (bool empty, bool valid) = _loadDataIfNotExpired(tcbEvalDao.TCB_EVAL_KEY(id), tcbEvalDaoAddr, block.timestamp);
+        if (!empty && valid) {
+            return tcbEvalDao.standard(id);
+        } else {
+            revert TcbEvalExpiredOrNotFound(id);
+        }
+    }
+
+    function getEarlyTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (uint32)
+    {
+        TcbEvalDao tcbEvalDao = TcbEvalDao(tcbEvalDaoAddr);
+        (bool empty, bool valid) = _loadDataIfNotExpired(tcbEvalDao.TCB_EVAL_KEY(id), tcbEvalDaoAddr, timestamp);
+        if (!empty && valid) {
+            return tcbEvalDao.early(id);
+        } else {
+            revert TcbEvalExpiredOrNotFound(id);
+        }
+    }
+
+    function getStandardTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (uint32)
+    {
+        TcbEvalDao tcbEvalDao = TcbEvalDao(tcbEvalDaoAddr);
+        (bool empty, bool valid) = _loadDataIfNotExpired(tcbEvalDao.TCB_EVAL_KEY(id), tcbEvalDaoAddr, timestamp);
+        if (!empty && valid) {
+            return tcbEvalDao.standard(id);
+        } else {
+            revert TcbEvalExpiredOrNotFound(id);
+        }
     }
 
     function getQeIdentity(EnclaveId id, uint256 quoteVersion, uint32 tcbEval)
@@ -216,6 +260,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         external
         view
         override
+        onlyAuthorized
         returns (bytes32 contentHash)
     {
         // Try versioned DAO first
@@ -337,6 +382,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         external
         view
         override
+        onlyAuthorized
         returns (bytes32)
     {
         // Try versioned DAO first
@@ -388,11 +434,23 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         hash = _getPcsHash(ca, true, block.timestamp);
     }
 
-    function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+    function getCertHashWithTimestamp(CA ca, uint64 timestamp)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (bytes32 hash)
+    {
         hash = _getPcsHash(ca, false, timestamp);
     }
 
-    function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view override returns (bytes32 hash) {
+    function getCrlHashWithTimestamp(CA ca, uint64 timestamp)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (bytes32 hash)
+    {
         hash = _getPcsHash(ca, true, timestamp);
     }
 

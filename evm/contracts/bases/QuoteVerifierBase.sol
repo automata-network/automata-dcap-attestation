@@ -168,7 +168,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         if (tcbEvalNumber == 0) {
             // if tcbEvalNumber is not provided, we use the standard one
-            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumber(tcbId);
+            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumberWithTimestamp(tcbId, timestamp);
         }
 
         bytes32 expectedTcbInfoContentHash =
