@@ -2,11 +2,12 @@
 pragma solidity ^0.8.0;
 
 import {IQuoteVerifier} from "./interfaces/IQuoteVerifier.sol";
-
 import {BELE} from "./utils/BELE.sol";
 import "./types/Constants.sol";
 import {Header} from "./types/CommonStruct.sol";
+
 import {Ownable} from "solady/auth/Ownable.sol";
+import {EnumerableSet} from "openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 // ZK-Coprocessor imports:
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
@@ -22,14 +23,14 @@ enum ZkCoProcessorType {
 
 /**
  * @title ZK Co-Processor Configuration Object
- * @param dcapProgramIdentifier - This is the identifier of the ZK Program, required for
+ * @param latestDcapProgramIdentifier - This is the most up-to-date identifier of the ZK Program, required for
  * verification
- * @param zkVerifier - Points to the address of the ZK Verifier contract. Ideally
+ * @param defaultZkVerifier - Points to the address of a default ZK Verifier contract. Ideally
  * this should be pointing to a universal verifier, that may support multiple proof types and/or versions.
  */
 struct ZkCoProcessorConfig {
-    bytes32 dcapProgramIdentifier;
-    address zkVerifier;
+    bytes32 latestDcapProgramIdentifier;
+    address defaultZkVerifier;
 }
 
 /**
@@ -37,16 +38,27 @@ struct ZkCoProcessorConfig {
  * @notice Provides full implementation of both on-chain and ZK DCAP Verification
  */
 abstract contract AttestationEntrypointBase is Ownable {
-    // 51abd95c
-    error Unknown_Zk_Coprocessor();
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+    
+    // use this constant to indicate that the ZK Route has been frozen
+    address constant FROZEN = address(0xdead);
+    
+    error ZK_Route_Frozen(ZkCoProcessorType zkCoProcessor, bytes4 selector);
+    error Cannot_Remove_ProgramIdentifier(ZkCoProcessorType zkCoProcessor, bytes32 identifier);
 
     mapping(ZkCoProcessorType => ZkCoProcessorConfig) _zkConfig;
+    mapping(ZkCoProcessorType => EnumerableSet.Bytes32Set) _programIdConfig;
+    mapping(ZkCoProcessorType => mapping (bytes4 selector => address zkVerifier)) _zkVerifierConfig;
 
     mapping(uint16 quoteVersion => IQuoteVerifier verifier) public quoteVerifiers;
 
     event AttestationSubmitted(bool success, ZkCoProcessorType verifierType, bytes output);
     event QuoteVerifierUpdated(uint16 indexed version);
     event ZkCoProcessorUpdated(ZkCoProcessorType indexed zkCoProcessor, bytes32 programIdentifier, address zkVerifier);
+
+    event ZkProgramIdentifierRemoved(ZkCoProcessorType indexed zkCoProcessor, bytes32 programIdentifier);
+    event ZkRouteAdded(ZkCoProcessorType indexed zkCoProcessor, bytes4 selector, address zkVerifier);
+    event ZkRouteFrozen(ZkCoProcessorType indexed zkCoProcessor, bytes4 selector);
 
     constructor(address owner) {
         _initializeOwner(owner);
@@ -72,24 +84,98 @@ abstract contract AttestationEntrypointBase is Ownable {
         onlyOwner
     {
         _zkConfig[zkCoProcessor] = config;
+        _programIdConfig[zkCoProcessor].add(config.latestDcapProgramIdentifier);
+        emit ZkCoProcessorUpdated(zkCoProcessor, config.latestDcapProgramIdentifier, config.defaultZkVerifier);
+    }
 
-        emit ZkCoProcessorUpdated(zkCoProcessor, config.dcapProgramIdentifier, config.zkVerifier);
+    /**
+     * @notice Updates the DCAP Program Identifier for the specified ZK Co-Processor
+     */
+    function updateProgramIdentifier(ZkCoProcessorType zkCoProcessor, bytes32 identifier) external onlyOwner {
+        require(identifier != bytes32(0), "Program identifier cannot be zero");
+        ZkCoProcessorConfig storage config = _zkConfig[zkCoProcessor];
+        require(config.latestDcapProgramIdentifier != identifier, "Program identifier is already the latest");
+        config.latestDcapProgramIdentifier = identifier;
+        _programIdConfig[zkCoProcessor].add(identifier);
+        emit ZkCoProcessorUpdated(zkCoProcessor, identifier, config.defaultZkVerifier);
+    }
+
+    /**
+     * @notice Deprecates a DCAP Program Identifier for the specified ZK Co-Processor
+     */
+    function removeProgramIdentifier(ZkCoProcessorType zkCoProcessor, bytes32 identifier) external onlyOwner {
+        require(_programIdConfig[zkCoProcessor].contains(identifier), "Program identifier does not exist");
+        // To remove the latest program identifier
+        // you must first update it with a newer program identifier
+        if (_zkConfig[zkCoProcessor].latestDcapProgramIdentifier == identifier) {
+            revert Cannot_Remove_ProgramIdentifier(zkCoProcessor, identifier);
+        } 
+        _programIdConfig[zkCoProcessor].remove(identifier);
+        emit ZkProgramIdentifierRemoved(zkCoProcessor, identifier);
+    }
+
+    /**
+     * @notice Adds a verifier for a specific ZK Route to override the default ZK Verifier
+     */
+    function addVerifyRoute(ZkCoProcessorType zkCoProcessor, bytes4 selector, address verifier) external onlyOwner {
+        require(verifier != address(0), "ZK Verifier cannot be zero address");
+        if (_zkVerifierConfig[zkCoProcessor][selector] == FROZEN) {
+            revert ZK_Route_Frozen(zkCoProcessor, selector);
+        }
+        _zkVerifierConfig[zkCoProcessor][selector] = verifier;
+        emit ZkRouteAdded(zkCoProcessor, selector, verifier);
+    }
+
+    /**
+     * @notice PERMANENTLY freezes a ZK Route
+     */
+    function freezeVerifyRoute(ZkCoProcessorType zkCoProcessor, bytes4 selector) external onlyOwner {
+        address verifier = _zkVerifierConfig[zkCoProcessor][selector];
+        if (verifier == FROZEN) {
+            revert ZK_Route_Frozen(zkCoProcessor, selector);
+        }
+        _zkVerifierConfig[zkCoProcessor][selector] = FROZEN;
+        emit ZkRouteFrozen(zkCoProcessor, selector);
     }
 
     /**
      * @param zkCoProcessorType 1 - RiscZero, 2 - Succinct... etc.
-     * @return this is either the IMAGE_ID for RiscZero Guest Program or
-     * Succiinct Program Verifying Key
+     * @return this returns the latest DCAP program identifier for the specified ZK Co-processor
      */
-    function programIdentifier(uint8 zkCoProcessorType) external view returns (bytes32) {
-        return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].dcapProgramIdentifier;
+    function programIdentifier(ZkCoProcessorType zkCoProcessorType) public view returns (bytes32) {
+        return _zkConfig[zkCoProcessorType].latestDcapProgramIdentifier;
+    }
+    
+    /**
+     * @param zkCoProcessorType 1 - RiscZero, 2 - Succinct... etc.
+     * @return this returns the list of all DCAP program identifiers for the specified ZK Co-processor
+     */
+    function programIdentifiers(ZkCoProcessorType zkCoProcessorType) public view returns (bytes32[] memory) {
+        return _programIdConfig[zkCoProcessorType].values();
     }
 
     /**
-     * @notice get the contract verifier for the provided ZK Co-processor
+     * @notice gets the default (universal) ZK verifier for the provided ZK Co-processor
      */
-    function zkVerifier(uint8 zkCoProcessorType) external view returns (address) {
-        return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].zkVerifier;
+    function zkVerifier(ZkCoProcessorType zkCoProcessorType) public view returns (address) {
+        return _zkConfig[zkCoProcessorType].defaultZkVerifier;
+    }
+
+    /**
+     * @notice gets the specific ZK Verifier for the provided ZK Co-processor and proof selector
+     * @notice this function will revert if the provided selector has been frozen
+     * @notice otherwise, if a specific ZK verifier is not configured for the provided selector
+     * @notice it will return the default ZK verifier
+     */
+    function zkVerifier(ZkCoProcessorType zkCoProcessorType, bytes4 selector) public view returns (address) {
+        address verifier = _zkVerifierConfig[zkCoProcessorType][selector];
+        if (verifier == FROZEN) {
+            revert ZK_Route_Frozen(zkCoProcessorType, selector);
+        } else if (verifier == address(0)) {
+            return zkVerifier(zkCoProcessorType);
+        } else {
+            return verifier;
+        }
     }
 
     /**
@@ -124,6 +210,8 @@ abstract contract AttestationEntrypointBase is Ownable {
     /**
      * @notice verifies an attestation using SNARK proofs
      *
+     * @param zkCoprocessor - Specify ZK Co-Processor
+     * @param identifier - The identifier of the DCAP ZK Program that is used to generate proofs
      * @param output - The output of the Guest program, this includes:
      * - uint16 VerifiedOutput bytes length
      * - VerifiedOutput struct
@@ -134,24 +222,46 @@ abstract contract AttestationEntrypointBase is Ownable {
      * - TCB Signing CA hash
      * - Root CRL hash
      * - Platform or Processor CRL hash
-     * @param zkCoprocessor - Specify ZK Co-Processor
-     * @param proofBytes - The encoded cryptographic proof (i.e. SNARK)).
+     * @param proofBytes - The encoded cryptographic proof (i.e. SNARK).
      * @param tcbEvalNumber - TCB Evaluation Data Number, pass 0 to use "update = standard" collateral
      */
     function _verifyAndAttestWithZKProof(
-        bytes calldata output,
         ZkCoProcessorType zkCoprocessor,
+        bytes32 identifier,
+        bytes calldata output,
         bytes calldata proofBytes,
         uint32 tcbEvalNumber
     ) internal returns (bool success, bytes memory verifiedOutput) {
         ZkCoProcessorConfig memory zkConfig = _zkConfig[zkCoprocessor];
 
+        // First, determine the validity of program ID and pick the appropriate ZK Verifier
+        if (!_programIdConfig[zkCoprocessor].contains(identifier)) {
+            return (false, bytes("Invalid ZK Program Identifier"));
+        }
+
+        bytes4 selector = bytes4(proofBytes[0:4]);
+        address verifier = _zkVerifierConfig[zkCoprocessor][selector];
+
+        if (verifier == FROZEN) {
+            return (false, bytes("ZK Route has been frozen"));
+        } 
+        
+        if (verifier == address(0)) {
+            verifier = zkConfig.defaultZkVerifier;
+        }
+
+        // the verifier must be set at this point,
+        // otherwise we cannot verify the proof
+        if (verifier == address(0)) {
+            return (false, bytes("ZK Verifier is not configured"));
+        }
+
         if (zkCoprocessor == ZkCoProcessorType.RiscZero) {
-            IRiscZeroVerifier(zkConfig.zkVerifier).verify(proofBytes, zkConfig.dcapProgramIdentifier, sha256(output));
+            IRiscZeroVerifier(verifier).verify(proofBytes, identifier, sha256(output));
         } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
-            ISP1Verifier(zkConfig.zkVerifier).verifyProof(zkConfig.dcapProgramIdentifier, output, proofBytes);
+            ISP1Verifier(verifier).verifyProof(identifier, output, proofBytes);
         } else {
-            revert Unknown_Zk_Coprocessor();
+            return (false, bytes("Unknown ZK Co-Processor"));
         }
 
         // verifies the output

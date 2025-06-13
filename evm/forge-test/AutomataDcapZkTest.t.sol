@@ -59,7 +59,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         vm.prank(admin);
         attestation.setZkConfiguration(
             ZkCoProcessorType.RiscZero,
-            ZkCoProcessorConfig({dcapProgramIdentifier: riscZeroImageId, zkVerifier: address(riscZeroVerifier)})
+            ZkCoProcessorConfig({latestDcapProgramIdentifier: riscZeroImageId, defaultZkVerifier: address(riscZeroVerifier)})
         );
 
         bytes memory journal =
@@ -79,7 +79,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         vm.prank(admin);
         attestation.setZkConfiguration(
             ZkCoProcessorType.Succinct,
-            ZkCoProcessorConfig({dcapProgramIdentifier: sp1DcapVkey, zkVerifier: address(sp1Groth16Verifier)})
+            ZkCoProcessorConfig({latestDcapProgramIdentifier: sp1DcapVkey, defaultZkVerifier: address(sp1Groth16Verifier)})
         );
 
         bytes memory output =
@@ -98,7 +98,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         vm.prank(admin);
         attestation.setZkConfiguration(
             ZkCoProcessorType.Succinct,
-            ZkCoProcessorConfig({dcapProgramIdentifier: sp1DcapVkey, zkVerifier: address(sp1PlonkVerifier)})
+            ZkCoProcessorConfig({latestDcapProgramIdentifier: sp1DcapVkey, defaultZkVerifier: address(sp1PlonkVerifier)})
         );
 
         bytes memory output =
