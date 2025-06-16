@@ -100,7 +100,7 @@ abstract contract PCCSSetupBase is Test {
             17
         );
         tcbEvalDao = new AutomataTcbEvalDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbEvalHelper), address(x509), address(x509Crl)
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbEvalHelper), address(x509), address(x509Crl), admin
         );
 
         pccsStorage.grantDao(address(pcsDao));
@@ -109,14 +109,19 @@ abstract contract PCCSSetupBase is Test {
         pccsStorage.grantDao(address(enclaveIdDao));
         pccsStorage.grantDao(address(tcbEvalDao));
 
+        tcbEvalDao.grantRoles(
+            admin,
+            tcbEvalDao.ATTESTER_ROLE()
+        );
+
         vm.stopPrank();
     }
 
     function setupPccsRouter(address owner) internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
             owner,
-            address(enclaveIdDao),
-            address(fmspcTcbDao),
+            address(0),
+            address(0),
             address(tcbEvalDao),
             address(pcsDao),
             address(pckDao),
@@ -127,6 +132,17 @@ abstract contract PCCSSetupBase is Test {
 
         // allow PCCS Router to read collaterals from the storage
         pccsStorage.setCallerAuthorization(address(pccsRouter), true);
+
+        // configure versioned dao
+        
+        pccsRouter.setQeIdDaoVersionedAddr(
+            enclaveIdDao.TCB_EVALUATION_NUMBER(),
+            address(enclaveIdDao)
+        );
+        pccsRouter.setFmspcTcbDaoVersionedAddr(
+            fmspcTcbDao.TCB_EVALUATION_NUMBER(),
+            address(fmspcTcbDao)
+        );
     }
 
     function pcsDaoUpserts() internal {
