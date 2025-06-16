@@ -238,19 +238,6 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                 (identity,) = abi.decode(data, (IdentityObj, EnclaveIdentityJsonObj));
                 return identity;
             }
-        }
-
-        // Fallback to default DAO
-        EnclaveIdentityDao defaultEnclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
-        bytes32 defaultKey = defaultEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
-        (bool emptyDefault, bool validDefault) = _loadDataIfNotExpired(defaultKey, qeIdDaoAddr, block.timestamp);
-        if (!emptyDefault && validDefault) {
-            bytes memory data = defaultEnclaveIdDao.getAttestedData(defaultKey);
-            (identity,) = abi.decode(data, (IdentityObj, EnclaveIdentityJsonObj));
-            uint32 fetchedEval = identity.tcbEvaluationDataNumber;
-            if (fetchedEval != tcbEval) {
-                revert TcbEvalNumberMismatch();
-            }
         } else {
             revert QEIdentityExpiredOrNotFound(id, quoteVersion);
         }
@@ -268,16 +255,12 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         if (versionedDao != address(0)) {
             EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
             bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
-            bytes32 versionedHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
-            if (versionedHash != bytes32(0)) {
-                return versionedHash;
-            }
+            contentHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
         }
 
-        // Fallback to default DAO
-        EnclaveIdentityDao defaultEnclaveIdDao = EnclaveIdentityDao(qeIdDaoAddr);
-        bytes32 defaultKey = defaultEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
-        contentHash = defaultEnclaveIdDao.getIdentityContentHash(defaultKey);
+        if (contentHash == bytes32(0)) {
+            revert QEIdentityExpiredOrNotFound(id, quoteVersion);
+        }
     }
 
     function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval)
@@ -301,22 +284,6 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                 tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
                 return tcbLevelsV2;
             }
-        }
-
-        // Fallback to default DAO
-        FmspcTcbDao defaultTcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
-        bytes32 defaultKey = defaultTcbDao.FMSPC_TCB_KEY(uint8(TcbId.SGX), fmspc, 2);
-        (bool emptyDefault, bool validDefault) = _loadDataIfNotExpired(defaultKey, fmspcTcbDaoAddr, block.timestamp);
-        if (!emptyDefault && validDefault) {
-            TcbInfoBasic memory tcbInfo;
-            bytes memory data = defaultTcbDao.getAttestedData(defaultKey);
-            bytes memory encodedLevels;
-            (tcbInfo, encodedLevels,) = abi.decode(data, (TcbInfoBasic, bytes, TcbInfoJsonObj));
-            uint32 tcbEvalNumber = tcbInfo.evaluationDataNumber;
-            if (tcbEvalNumber != tcbEval) {
-                revert TcbEvalNumberMismatch();
-            }
-            tcbLevelsV2 = _decodeTcbLevels(encodedLevels);
         } else {
             revert FmspcTcbExpiredOrNotFound(TcbId.SGX, 2);
         }
@@ -352,27 +319,6 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                 }
                 return (tcbLevelsV3, tdxModule, tdxModuleIdentities);
             }
-        }
-
-        // Fallback to default DAO
-        FmspcTcbDao defaultTcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
-        bytes32 defaultKey = defaultTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, 3);
-        (bool emptyDefault, bool validDefault) = _loadDataIfNotExpired(defaultKey, fmspcTcbDaoAddr, block.timestamp);
-        if (!emptyDefault && validDefault) {
-            TcbInfoBasic memory tcbInfo;
-            bytes memory data = defaultTcbDao.getAttestedData(defaultKey);
-            bytes memory encodedLevels;
-            bytes memory encodedTdxModuleIdentities;
-            (tcbInfo, tdxModule, encodedTdxModuleIdentities, encodedLevels,) =
-                abi.decode(data, (TcbInfoBasic, TDXModule, bytes, bytes, TcbInfoJsonObj));
-            uint32 tcbEvalNumber = tcbInfo.evaluationDataNumber;
-            if (tcbEvalNumber != tcbEval) {
-                revert TcbEvalNumberMismatch();
-            }
-            tcbLevelsV3 = _decodeTcbLevels(encodedLevels);
-            if (encodedTdxModuleIdentities.length > 0) {
-                tdxModuleIdentities = _decodeTdxModuleIdentities(encodedTdxModuleIdentities);
-            }
         } else {
             revert FmspcTcbExpiredOrNotFound(id, 3);
         }
@@ -383,23 +329,19 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         view
         override
         onlyAuthorized
-        returns (bytes32)
+        returns (bytes32 contentHash)
     {
         // Try versioned DAO first
         address versionedDao = fmspcTcbDaoVersionedAddr[tcbEval];
         if (versionedDao != address(0)) {
             FmspcTcbDao versionedTcbDao = FmspcTcbDao(versionedDao);
             bytes32 versionedKey = versionedTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
-            bytes32 versionedHash = versionedTcbDao.getTcbInfoContentHash(versionedKey);
-            if (versionedHash != bytes32(0)) {
-                return versionedHash;
-            }
+            contentHash = versionedTcbDao.getTcbInfoContentHash(versionedKey);
         }
 
-        // Fallback to default DAO
-        FmspcTcbDao defaultTcbDao = FmspcTcbDao(fmspcTcbDaoAddr);
-        bytes32 defaultKey = defaultTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
-        return defaultTcbDao.getTcbInfoContentHash(defaultKey);
+        if (contentHash == bytes32(0)) {
+            revert FmspcTcbExpiredOrNotFound(id, version);
+        }
     }
 
     /**
