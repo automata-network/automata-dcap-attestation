@@ -41,4 +41,4 @@ optimism = { key = "${ETHERSCAN_API_KEY}" }
 arbitrum = { key = "${ETHERSCAN_API_KEY}" }
 world = { key = "${ETHERSCAN_API_KEY}" }
 bsc = { key = "${ETHERSCAN_API_KEY}" }
-polygon_pos = { key = "${ETHERSCAN_API_KEY}" }
+polygon_pos = { key = "${ETHERSCAN_API_KEY}", chain = 137 }
