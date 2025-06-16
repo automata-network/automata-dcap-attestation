@@ -10,6 +10,11 @@ import "./utils/Salt.sol";
 import "./utils/DeploymentConfig.sol";
 import "./utils/Multichain.sol";
 
+enum VersionedDaoType {
+    EnclaveId,
+    FmspcTcb
+}
+
 contract DeployRouter is DeploymentConfig, Multichain {
 
     address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
@@ -20,7 +25,7 @@ contract DeployRouter is DeploymentConfig, Multichain {
     address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
     address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
     address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
-    address tcbEvalDaoAddr = address(0); // TODO
+    address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
 
     address owner = vm.envAddress("OWNER");
 
@@ -49,6 +54,22 @@ contract DeployRouter is DeploymentConfig, Multichain {
         vm.stopBroadcast();
     }
 
+    function updateVersionedDaoConfig(
+        VersionedDaoType versionedDao,
+        address daoAddr
+    ) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        uint32 tcbEvaluataionDataNumber = IVersionedDao(daoAddr).TCB_EVALUATION_NUMBER();
+
+        vm.broadcast(owner);
+
+        if (versionedDao == VersionedDaoType.EnclaveId) {
+            router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
+        } else {
+            router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
+        }
+    }
+
     function setAuthorizedCaller(address caller, bool authorized) public {
         vm.startBroadcast(owner);
 
@@ -56,6 +77,17 @@ contract DeployRouter is DeploymentConfig, Multichain {
         router.setAuthorized(caller, authorized);
 
         vm.stopBroadcast();
+    }
+
+    function toggleRestriction(bool enable) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+
+        vm.broadcast(owner);
+        if (enable) {
+            router.enableCallerRestriction();
+        } else {
+            router.disableCallerRestriction();
+        }
     }
 
     function grantAccessToStorage() public multichain(useMultichain) {
