@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {LibString} from "solady/utils/LibString.sol";
 
+import {TD10ReportParser} from "../utils/TDReportParser.sol";
 import "../bases/QuoteVerifierBase.sol";
 import "../bases/TDXModuleBase.sol";
 import "../bases/tcb/TCBInfoV3Base.sol";
@@ -22,7 +23,6 @@ struct FetchedCollateralsAndStatuses {
  */
 contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
     using LibString for bytes;
-    using BytesUtils for bytes;
 
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
@@ -78,7 +78,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             (success, output) = _verifySGXQuote(tcbEvalNumber, quote, rawHeader, rawBody, rawQeReport);
         } else if (header.teeType == TDX_TEE) {
             TD10ReportBody memory tdReport;
-            (success, tdReport) = parseTD10ReportBody(rawQuoteBody);
+            (success, tdReport) = TD10ReportParser.parse(rawQuoteBody);
             if (!success) {
                 return (false, bytes("local td10 report length is incorrect"));
             }
@@ -273,7 +273,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // then get the TCB Status from the TDXComponent of the matching TCBLevel
         TCBStatus tcbStatus;
         uint256 tcbLevelSelected;
-        (success, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
+        (success, ,tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
         if (!success) {
             return (false, bytes("Failed to locate a valid FMSPC TCB Status"));
         }
@@ -281,8 +281,8 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // Step 3: Fetch TDXModule TCB Status
         TCBStatus tdxModuleStatus;
         uint8 tdxModuleVersion;
-        bytes memory expectedMrSignerSeam;
-        bytes8 expectedSeamAttributes;
+        bytes memory expectedMrSignerSeam = ret.tdxModule.mrsigner;
+        bytes8 expectedSeamAttributes = ret.tdxModule.attributes;
         (success, tdxModuleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes) =
             checkTdxModuleTcbStatus(quote.reportBody.teeTcbSvn, ret.tdxModuleIdentities);
         if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
@@ -312,34 +312,6 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
             advisoryIDs: ret.tcbLevels[tcbLevelSelected].advisoryIDs
         });
         serialized = serializeOutput(output);
-    }
-
-    /**
-     * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
-     */
-    function parseTD10ReportBody(bytes memory reportBytes)
-        internal
-        pure
-        returns (bool success, TD10ReportBody memory report)
-    {
-        success = reportBytes.length == TD_REPORT10_LENGTH;
-        if (success) {
-            report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
-            report.mrSeam = reportBytes.substring(16, 48);
-            report.mrsignerSeam = reportBytes.substring(64, 48);
-            report.seamAttributes = bytes8(reportBytes.substring(112, 8));
-            report.tdAttributes = bytes8(reportBytes.substring(120, 8));
-            report.xFAM = bytes8(reportBytes.substring(128, 8));
-            report.mrTd = reportBytes.substring(136, 48);
-            report.mrConfigId = reportBytes.substring(184, 48);
-            report.mrOwner = reportBytes.substring(232, 48);
-            report.mrOwnerConfig = reportBytes.substring(280, 48);
-            report.rtMr0 = reportBytes.substring(328, 48);
-            report.rtMr1 = reportBytes.substring(376, 48);
-            report.rtMr2 = reportBytes.substring(424, 48);
-            report.rtMr3 = reportBytes.substring(472, 48);
-            report.reportData = reportBytes.substring(520, 64);
-        }
     }
 
     /**

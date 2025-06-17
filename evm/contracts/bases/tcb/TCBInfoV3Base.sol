@@ -19,12 +19,11 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
     function getTDXTcbStatus(TCBLevelsObj[] memory tcbLevels, PCKCertTCB memory pckTcb, bytes16 teeTcbSvn)
         internal
         pure
-        returns (bool tdxTcbFound, TCBStatus status, uint256 tcbLevelSelected)
+        returns (bool tdxTcbFound, TCBStatus sgxStatus, TCBStatus tdxStatus, uint256 tcbLevelSelected)
     {
         bool pceSvnIsHigherOrGreater;
         bool cpuSvnsAreHigherOrGreater;
         bool sgxTcbFound;
-        TCBStatus sgxStatus;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
             TCBLevelsObj memory current = tcbLevels[i];
             if (!sgxTcbFound) {
@@ -38,14 +37,14 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
                 if (teeTcbSvn != bytes16(0)) {
                     if (_isTdxTcbHigherOrEqual(teeTcbSvn, current.tdxComponentCpuSvns)) {
                         tdxTcbFound = true;
-                        status = current.status;
+                        tdxStatus = current.status;
                         tcbLevelSelected = i;
                     }
                 } else {
                     break;
                 }
             } else if (sgxStatus == TCBStatus.TCB_REVOKED) {
-                return (false, TCBStatus.TCB_REVOKED, TCB_LEVEL_ERROR);
+                return (false, TCBStatus.TCB_REVOKED, TCBStatus.TCB_REVOKED, TCB_LEVEL_ERROR);
             }
             if (tdxTcbFound) {
                 break;
@@ -53,7 +52,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
 
         if (!tdxTcbFound) {
-            return (false, TCBStatus.TCB_UNRECOGNIZED, TCB_LEVEL_ERROR);
+            return (false, sgxStatus, TCBStatus.TCB_UNRECOGNIZED, TCB_LEVEL_ERROR);
         }
     }
 
