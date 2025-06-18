@@ -113,7 +113,7 @@ struct PCKCertTCB {
 struct Output {
     uint16 quoteVersion; // serialized as BE, for EVM compatibility
     bytes4 tee;
-    TCBStatus tcbStatus;
+    uint8 tcbStatus;
     bytes6 fmspcBytes;
     bytes quoteBody;
     string[] advisoryIDs;

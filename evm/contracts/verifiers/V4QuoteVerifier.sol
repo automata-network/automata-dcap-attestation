@@ -245,7 +245,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         Output memory output = Output({
             quoteVersion: quoteVersion,
             tee: SGX_TEE,
-            tcbStatus: tcbStatus,
+            tcbStatus: uint8(tcbStatus),
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
             quoteBody: rawBody,
             advisoryIDs: ret.tcbLevels[tcbLevelSelected].advisoryIDs
@@ -306,7 +306,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         Output memory output = Output({
             quoteVersion: quoteVersion,
             tee: TDX_TEE,
-            tcbStatus: tcbStatus,
+            tcbStatus: uint8(tcbStatus),
             fmspcBytes: bytes6(ret.pckTcb.fmspcBytes),
             quoteBody: rawBody,
             advisoryIDs: ret.tcbLevels[tcbLevelSelected].advisoryIDs
