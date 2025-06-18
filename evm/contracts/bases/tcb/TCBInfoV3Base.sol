@@ -60,7 +60,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
     function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
         internal
         pure
-        returns (bool, TCBStatus, uint8, bytes memory, bytes8)
+        returns (bool, TCBStatus, bytes memory, bytes8)
     {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
@@ -68,7 +68,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         bytes8 expectedSeamAttributes;
 
         if (tdxModuleVersion == 0) {
-            return (true, TCBStatus.OK, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
+            return (true, TCBStatus.OK, expectedMrSignerSeam, expectedSeamAttributes);
         }
 
         string memory tdxModuleIdentityId = string(
@@ -96,9 +96,9 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
 
         if (tdxModuleIdentityFound) {
-            return (true, moduleStatus, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
+            return (true, moduleStatus, expectedMrSignerSeam, expectedSeamAttributes);
         } else {
-            return (false, TCBStatus.TCB_UNRECOGNIZED, tdxModuleVersion, expectedMrSignerSeam, expectedSeamAttributes);
+            return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
         }
     }
 
