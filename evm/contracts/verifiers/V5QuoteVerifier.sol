@@ -172,7 +172,7 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
                 bool relaunchAdvised;
                 bool configurationNeeded;
                 (success, reason, relaunchAdvised, configurationNeeded) = _relaunchCheck(
-                    teeTcbSvn2, qeTcbStatus, sgxStatus, tdxStatus, tcbLevels, tdxModule, tdxModuleIdentities
+                    teeTcbSvn2, qeTcbStatus, sgxStatus, tdxStatus, tcbLevels, tdxModuleIdentities
                 );
                 if (!success) {
                     return (false, bytes(reason));
@@ -361,7 +361,6 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         TCBStatus sgxStatus,
         TCBStatus tdxStatus,
         TCBLevelsObj[] memory tcbLevels,
-        TDXModule memory tdxModule,
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
