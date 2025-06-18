@@ -71,39 +71,49 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
             return (true, TCBStatus.OK, expectedMrSignerSeam, expectedSeamAttributes);
         }
 
+        (bool tdxModuleIdentityFound, TDXModuleIdentity memory tdxModuleIdentity) = findTdxModuleIdentity(
+            tdxModuleIdentities,
+            tdxModuleVersion
+        );
+
+        if (tdxModuleIdentityFound) {
+            TDXModuleTCBLevelsObj[] memory tdxModuleTcbLevels = tdxModuleIdentity.tcbLevels;
+            for (uint256 i = 0; i < tdxModuleTcbLevels.length; i++) {
+                if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[i].isvsvn)) {
+                    expectedMrSignerSeam = tdxModuleIdentity.mrsigner;
+                    expectedSeamAttributes = tdxModuleIdentity.attributes;
+                    return (
+                        true,
+                        tdxModuleTcbLevels[i].status,
+                        expectedMrSignerSeam,
+                        expectedSeamAttributes
+                    );
+                }
+            }
+        }
+        
+        return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
+    }
+
+    function findTdxModuleIdentity(
+        TDXModuleIdentity[] memory tdxModuleIdentities,
+        uint8 tdxModuleVersion
+    ) internal pure returns (bool found, TDXModuleIdentity memory tdxModuleIdentity) {
         string memory tdxModuleIdentityId = string(
             abi.encodePacked(bytes("TDX_"), bytes(LibString.toHexStringNoPrefix(abi.encodePacked(tdxModuleVersion))))
         );
 
-        bool tdxModuleIdentityFound;
-        TCBStatus moduleStatus;
-
         for (uint256 i = 0; i < tdxModuleIdentities.length; i++) {
-            TDXModuleIdentity memory currId = tdxModuleIdentities[i];
-            if (tdxModuleIdentityId.eq(currId.id)) {
-                TDXModuleTCBLevelsObj[] memory tdxModuleTcbLevels = currId.tcbLevels;
-                for (uint256 j = 0; j < tdxModuleTcbLevels.length; j++) {
-                    if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[j].isvsvn)) {
-                        tdxModuleIdentityFound = true;
-                        moduleStatus = tdxModuleTcbLevels[j].status;
-                        expectedMrSignerSeam = currId.mrsigner;
-                        expectedSeamAttributes = currId.attributes;
-                        break;
-                    }
-                }
-                break;
+            if (tdxModuleIdentityId.eq(tdxModuleIdentities[i].id)) {
+                return (true, tdxModuleIdentities[i]);
             }
         }
 
-        if (tdxModuleIdentityFound) {
-            return (true, moduleStatus, expectedMrSignerSeam, expectedSeamAttributes);
-        } else {
-            return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
-        }
+        return (false, tdxModuleIdentity);
     }
 
     function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns)
-        internal
+        private
         pure
         returns (bool)
     {
