@@ -100,6 +100,18 @@ struct PCKCertTCB {
     bytes pceidBytes;
 }
 
+/// TCB Status Enumeration
+/// 0: OK
+/// 1: TCB_SW_HARDENING_NEEDED
+/// 2: TCB_CONFIGURATION_AND_SW_HARDENING_NEEDED
+/// 3: TCB_CONFIGURATION_NEEDED
+/// 4: TCB_OUT_OF_DATE
+/// 5: TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
+/// 6: TCB_REVOKED
+/// 7: TCB_UNRECOGNIZED
+/// 8: TCB_TD_RELAUNCH_ADVISED
+/// 9: TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED
+
 /**
  * @title Verified Output struct
  * @notice The output returned by the contract upon successful verification of the quote
