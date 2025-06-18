@@ -11,8 +11,6 @@ import {BELE} from "../../utils/BELE.sol";
 import "./TCBInfoV2Base.sol";
 
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
-    using LibString for string;
-
     uint256 constant TCB_LEVEL_ERROR = type(uint256).max;
 
     /// @dev Modified from https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L129-L181
@@ -54,56 +52,6 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         if (!tdxTcbFound) {
             return (false, sgxStatus, TCBStatus.TCB_UNRECOGNIZED, TCB_LEVEL_ERROR);
         }
-    }
-
-    /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
-    function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
-        internal
-        pure
-        returns (bool, TCBStatus, bytes memory, bytes8)
-    {
-        uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
-        uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
-        bytes memory expectedMrSignerSeam;
-        bytes8 expectedSeamAttributes;
-
-        if (tdxModuleVersion == 0) {
-            return (true, TCBStatus.OK, expectedMrSignerSeam, expectedSeamAttributes);
-        }
-
-        (bool tdxModuleIdentityFound, TDXModuleIdentity memory tdxModuleIdentity) =
-            findTdxModuleIdentity(tdxModuleIdentities, tdxModuleVersion);
-
-        if (tdxModuleIdentityFound) {
-            TDXModuleTCBLevelsObj[] memory tdxModuleTcbLevels = tdxModuleIdentity.tcbLevels;
-            for (uint256 i = 0; i < tdxModuleTcbLevels.length; i++) {
-                if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[i].isvsvn)) {
-                    expectedMrSignerSeam = tdxModuleIdentity.mrsigner;
-                    expectedSeamAttributes = tdxModuleIdentity.attributes;
-                    return (true, tdxModuleTcbLevels[i].status, expectedMrSignerSeam, expectedSeamAttributes);
-                }
-            }
-        }
-
-        return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
-    }
-
-    function findTdxModuleIdentity(TDXModuleIdentity[] memory tdxModuleIdentities, uint8 tdxModuleVersion)
-        internal
-        pure
-        returns (bool found, TDXModuleIdentity memory tdxModuleIdentity)
-    {
-        string memory tdxModuleIdentityId = string(
-            abi.encodePacked(bytes("TDX_"), bytes(LibString.toHexStringNoPrefix(abi.encodePacked(tdxModuleVersion))))
-        );
-
-        for (uint256 i = 0; i < tdxModuleIdentities.length; i++) {
-            if (tdxModuleIdentityId.eq(tdxModuleIdentities[i].id)) {
-                return (true, tdxModuleIdentities[i]);
-            }
-        }
-
-        return (false, tdxModuleIdentity);
     }
 
     function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns)

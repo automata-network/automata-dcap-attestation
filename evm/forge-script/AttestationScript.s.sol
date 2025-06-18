@@ -32,7 +32,6 @@ contract AttestationScript is DeploymentConfig {
         );
         address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
         address quoteVerifier = readContractAddress(ProjectType.DCAP, verifierName);
-        address routerAddr = readContractAddress(ProjectType.DCAP, "PCCSRouter");
 
         vm.startBroadcast(owner);
 

@@ -3,8 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../types/Constants.sol";
 import {BytesUtils} from "./BytesUtils.sol";
-import {TD10ReportBody} from "../types/V4Structs.sol";
-import {TD15ReportBody} from "../types/V5Structs.sol";
+import {TD10ReportBody, TD15ReportBody} from "../types/TDXStruct.sol";
 
 library TD10ReportParser {
     using BytesUtils for bytes;
