@@ -71,10 +71,8 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
             return (true, TCBStatus.OK, expectedMrSignerSeam, expectedSeamAttributes);
         }
 
-        (bool tdxModuleIdentityFound, TDXModuleIdentity memory tdxModuleIdentity) = findTdxModuleIdentity(
-            tdxModuleIdentities,
-            tdxModuleVersion
-        );
+        (bool tdxModuleIdentityFound, TDXModuleIdentity memory tdxModuleIdentity) =
+            findTdxModuleIdentity(tdxModuleIdentities, tdxModuleVersion);
 
         if (tdxModuleIdentityFound) {
             TDXModuleTCBLevelsObj[] memory tdxModuleTcbLevels = tdxModuleIdentity.tcbLevels;
@@ -82,23 +80,19 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
                 if (tdxModuleIsvSvn >= uint8(tdxModuleTcbLevels[i].isvsvn)) {
                     expectedMrSignerSeam = tdxModuleIdentity.mrsigner;
                     expectedSeamAttributes = tdxModuleIdentity.attributes;
-                    return (
-                        true,
-                        tdxModuleTcbLevels[i].status,
-                        expectedMrSignerSeam,
-                        expectedSeamAttributes
-                    );
+                    return (true, tdxModuleTcbLevels[i].status, expectedMrSignerSeam, expectedSeamAttributes);
                 }
             }
         }
-        
+
         return (false, TCBStatus.TCB_UNRECOGNIZED, expectedMrSignerSeam, expectedSeamAttributes);
     }
 
-    function findTdxModuleIdentity(
-        TDXModuleIdentity[] memory tdxModuleIdentities,
-        uint8 tdxModuleVersion
-    ) internal pure returns (bool found, TDXModuleIdentity memory tdxModuleIdentity) {
+    function findTdxModuleIdentity(TDXModuleIdentity[] memory tdxModuleIdentities, uint8 tdxModuleVersion)
+        internal
+        pure
+        returns (bool found, TDXModuleIdentity memory tdxModuleIdentity)
+    {
         string memory tdxModuleIdentityId = string(
             abi.encodePacked(bytes("TDX_"), bytes(LibString.toHexStringNoPrefix(abi.encodePacked(tdxModuleVersion))))
         );
