@@ -273,7 +273,7 @@ contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         // then get the TCB Status from the TDXComponent of the matching TCBLevel
         TCBStatus tcbStatus;
         uint256 tcbLevelSelected;
-        (success, ,tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
+        (success,, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(ret.tcbLevels, ret.pckTcb, quote.reportBody.teeTcbSvn);
         if (!success || tcbStatus == TCBStatus.TCB_REVOKED) {
             return (false, bytes("Failed to locate a valid FMSPC TCB Status"));
         }

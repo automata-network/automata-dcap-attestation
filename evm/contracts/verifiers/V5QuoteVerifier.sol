@@ -116,7 +116,7 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         uint8 tcbStatus = uint8(TCBStatus.TCB_UNRECOGNIZED);
         uint256 tcbLevelSelected = TCB_LEVEL_ERROR;
         uint256 bodyOffset = HEADER_LENGTH + 2 + 4;
-        
+
         if (tee == SGX_TEE) {
             bool statusFound;
             TCBStatus sgxStatus;
@@ -158,32 +158,28 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
                     return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
                 }
 
-                success = checkTdxModule(
-                    mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes
-                );
+                success = checkTdxModule(mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes);
                 if (!success) {
                     return (false, bytes("TDXModule check failed"));
                 }
             }
 
             tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
-            tcbStatus = uint8(
-                convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tdxStatus)
-            );
+            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tdxStatus));
 
             if (quoteBodySize == TD_REPORT15_LENGTH) {
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
                 bool configurationNeeded;
-                (success, reason, relaunchAdvised, configurationNeeded) =
-                    _relaunchCheck(teeTcbSvn2, qeTcbStatus, sgxStatus, tdxStatus, tcbLevels, tdxModule, tdxModuleIdentities);
+                (success, reason, relaunchAdvised, configurationNeeded) = _relaunchCheck(
+                    teeTcbSvn2, qeTcbStatus, sgxStatus, tdxStatus, tcbLevels, tdxModule, tdxModuleIdentities
+                );
                 if (!success) {
                     return (false, bytes(reason));
                 }
                 if (relaunchAdvised) {
-                    tcbStatus = configurationNeeded
-                        ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED
-                        : TCB_TD_RELAUNCH_ADVISED;
+                    tcbStatus =
+                        configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
                 }
             }
         }
@@ -213,11 +209,7 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         )
     {
         bytes4 teeType = header.teeType;
-        (success, reason) = validateHeader(
-            header,
-            quote.length,
-            teeType == SGX_TEE || teeType == TDX_TEE
-        );
+        (success, reason) = validateHeader(header, quote.length, teeType == SGX_TEE || teeType == TDX_TEE);
         if (!success) {
             return (success, reason, 0, rawQeReport, authData);
         }
@@ -328,14 +320,18 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         }
     }
 
-    function _parseTdReport(bytes calldata rawTdReport) private pure returns (
-        bool success,
-        string memory reason,
-        bytes16 teeTcbSvn,
-        bytes memory mrSignerSeam,
-        bytes8 seamAttributes,
-        bytes16 teeTcbSvn2
-    ) {
+    function _parseTdReport(bytes calldata rawTdReport)
+        private
+        pure
+        returns (
+            bool success,
+            string memory reason,
+            bytes16 teeTcbSvn,
+            bytes memory mrSignerSeam,
+            bytes8 seamAttributes,
+            bytes16 teeTcbSvn2
+        )
+    {
         if (rawTdReport.length == TD_REPORT10_LENGTH) {
             TD10ReportBody memory td10ReportBody;
             (success, td10ReportBody) = TD10ReportParser.parse(rawTdReport);
@@ -364,18 +360,15 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
         EnclaveIdTcbStatus qeTcbStatus,
         TCBStatus sgxStatus,
         TCBStatus tdxStatus,
-        TCBLevelsObj[] memory tcbLevels, 
-        TDXModule memory tdxModule, 
+        TCBLevelsObj[] memory tcbLevels,
+        TDXModule memory tdxModule,
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
-            if (
-                sgxStatus != TCBStatus.TCB_OUT_OF_DATE
-                || sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
-            ) {
+            if (sgxStatus != TCBStatus.TCB_OUT_OF_DATE || sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED) {
                 if (
                     tdxStatus == TCBStatus.TCB_OUT_OF_DATE
-                || tdxStatus == TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
+                        || tdxStatus == TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
                 ) {
                     configurationNeeded = _tcbConfigurationNeeded(sgxStatus) || _tcbConfigurationNeeded(tdxStatus);
                     TCBLevelsObj memory latestTcbLevel = tcbLevels[0];
@@ -383,29 +376,23 @@ contract V5QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
                     if (teeTcbSvn2[1] == 0) {
                         if (
                             uint8(teeTcbSvn2[0]) >= latestTcbLevel.tdxComponentCpuSvns[0]
-                            && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
+                                && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
                         ) {
                             relaunchAdvised = true;
                         }
                     } else {
                         TDXModuleIdentity memory matchingModuleIdentity;
-                        (success, matchingModuleIdentity) = findTdxModuleIdentity(
-                            tdxModuleIdentities,
-                            uint8(teeTcbSvn2[1])
-                        );
+                        (success, matchingModuleIdentity) =
+                            findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
                         if (!success) {
-                            return (
-                                false,
-                                "Failed to find matching TDX Module Identity for relaunch check",
-                                false,
-                                false
-                            );
+                            return
+                                (false, "Failed to find matching TDX Module Identity for relaunch check", false, false);
                         }
 
                         TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];
                         if (
                             uint8(teeTcbSvn2[0]) >= latestTdxModuleTcbLevel.isvsvn
-                            && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
+                                && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
                         ) {
                             relaunchAdvised = true;
                         }

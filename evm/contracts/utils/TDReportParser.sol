@@ -12,11 +12,7 @@ library TD10ReportParser {
     /**
      * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
      */
-    function parse(bytes memory reportBytes)
-        internal
-        pure
-        returns (bool success, TD10ReportBody memory report)
-    {
+    function parse(bytes memory reportBytes) internal pure returns (bool success, TD10ReportBody memory report) {
         success = reportBytes.length == TD_REPORT10_LENGTH;
         if (success) {
             report.teeTcbSvn = bytes16(reportBytes.substring(0, 16));
@@ -39,11 +35,7 @@ library TD10ReportParser {
 }
 
 library TD15ReportParser {
-    function parse(bytes memory reportBytes)
-        internal
-        pure
-        returns (bool success, TD15ReportBody memory report)
-    {
+    function parse(bytes memory reportBytes) internal pure returns (bool success, TD15ReportBody memory report) {
         // TODO
     }
 }
