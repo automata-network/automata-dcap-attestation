@@ -78,6 +78,16 @@ struct CertificationData {
 }
 
 /// ========== CUSTOM TYPES ==========
+/// Custom types that are not defined in the Intel DCAP API Library, but are used in the contract
+
+struct AuthData {
+    bytes ecdsa256BitSignature;
+    bytes ecdsaAttestationKey;
+    bytes qeReport;
+    bytes qeReportSignature;
+    bytes qeAuthData;
+    PCKCollateral certification;
+}
 
 /**
  * @title PCK Certificate Collateral
