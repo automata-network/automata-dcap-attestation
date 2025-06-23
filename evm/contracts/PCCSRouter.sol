@@ -87,7 +87,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     // a78bf21a
     error TcbEvalExpiredOrNotFound(TcbId id);
     // 0a2a9142
-    error QEIdentityExpiredOrNotFound(EnclaveId id, uint256 quoteVersion);
+    error QEIdentityExpiredOrNotFound(EnclaveId id, uint256 qeIdentityApiVersion);
     // 343385cf
     error FmspcTcbExpiredOrNotFound(TcbId id, uint256 tcbVersion);
     // 5705a2ef
@@ -220,7 +220,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function getQeIdentity(EnclaveId id, uint256 quoteVersion, uint32 tcbEval)
+    function getQeIdentity(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval)
         external
         view
         override
@@ -231,7 +231,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         address versionedDao = qeIdDaoVersionedAddr[tcbEval];
         if (versionedDao != address(0)) {
             EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
-            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
+            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
             (bool empty, bool valid) = _loadDataIfNotExpired(versionedKey, versionedDao, block.timestamp);
             if (!empty && valid) {
                 bytes memory data = versionedEnclaveIdDao.getAttestedData(versionedKey);
@@ -239,11 +239,11 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                 return identity;
             }
         } else {
-            revert QEIdentityExpiredOrNotFound(id, quoteVersion);
+            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
         }
     }
 
-    function getQeIdentityContentHash(EnclaveId id, uint256 quoteVersion, uint32 tcbEval)
+    function getQeIdentityContentHash(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval)
         external
         view
         override
@@ -254,12 +254,12 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         address versionedDao = qeIdDaoVersionedAddr[tcbEval];
         if (versionedDao != address(0)) {
             EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
-            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), quoteVersion);
+            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
             contentHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
         }
 
         if (contentHash == bytes32(0)) {
-            revert QEIdentityExpiredOrNotFound(id, quoteVersion);
+            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
         }
     }
 

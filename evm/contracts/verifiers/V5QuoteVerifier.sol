@@ -31,7 +31,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         bytes memory rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + 2 + 4 + quoteBodySize];
 
         VerificationResult memory result =
-            _verifyQuoteIntegrity(tcbEvalNumber, header.teeType, rawHeader, rawBody, authData);
+            _verifyQuoteIntegrity(4, tcbEvalNumber, header.teeType, rawHeader, rawBody, authData);
         if (!result.success) {
             return (false, bytes(result.reason));
         }
@@ -93,6 +93,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
             tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
 
             if (quoteBodySize == TD_REPORT15_LENGTH) {
+
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
                 bool configurationNeeded;
@@ -263,6 +264,8 @@ contract V5QuoteVerifier is TdxQuoteBase {
         TCBLevelsObj[] memory tcbLevels,
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
+        success = true;
+        
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
             if (sgxStatus != TCBStatus.TCB_OUT_OF_DATE && sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED) {
                 if (

@@ -51,6 +51,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     }
 
     function _verifyQuoteIntegrity(
+        uint256 qeIdentityApiVersion,
         uint32 tcbEvalNumber,
         bytes4 tee,
         bytes memory rawHeader,
@@ -84,7 +85,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         // Step 1: Fetch QEIdentity to validate TCB of the QE
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
-        (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeReport, tcbEvalNumber);
+        (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeIdentityApiVersion, qeReport, tcbEvalNumber);
         if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
             result.reason = "Verification failed by QEIdentity check";
             return result;
@@ -164,12 +165,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         success = true;
     }
 
-    function fetchQeIdentityAndCheckQeReport(EnclaveId id, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
+    function fetchQeIdentityAndCheckQeReport(EnclaveId id, uint256 qeIdentityApiVersion, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
         internal
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion, tcbEvalNumber);
+        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, qeIdentityApiVersion, tcbEvalNumber);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );
