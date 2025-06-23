@@ -106,7 +106,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
         VerificationResult memory result =
-            _verifyQuoteIntegrity(tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+            _verifyQuoteIntegrity(4, tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData);
         if (!result.success) {
             return (false, bytes(result.reason));
         }
@@ -150,7 +150,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
         VerificationResult memory result =
-            _verifyQuoteIntegrity(tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+            _verifyQuoteIntegrity(4, tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData);
         if (!result.success) {
             return (false, bytes(result.reason));
         }
