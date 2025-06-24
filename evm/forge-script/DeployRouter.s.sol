@@ -70,6 +70,28 @@ contract DeployRouter is DeploymentConfig, Multichain {
         }
     }
 
+    function updateVersionedDaoConfig(
+        VersionedDaoType versionedDao,
+        uint32 tcbEvaluataionDataNumber
+    ) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        address daoAddr = readVersionedContractAddress(
+            versionedDao == VersionedDaoType.EnclaveId ? "AutomataEnclaveIdentityDaoVersioned" : "AutomataFmspcTcbDaoVersioned",
+            tcbEvaluataionDataNumber
+        );
+        require(tcbEvaluataionDataNumber == IVersionedDao(daoAddr).TCB_EVALUATION_NUMBER(), 
+            "TCB Evaluation Data Number Mismatch"
+        );
+
+        vm.broadcast(owner);
+
+        if (versionedDao == VersionedDaoType.EnclaveId) {
+            router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
+        } else {
+            router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
+        }
+    }
+
     function setAuthorizedCaller(address caller, bool authorized) public {
         vm.startBroadcast(owner);
 
