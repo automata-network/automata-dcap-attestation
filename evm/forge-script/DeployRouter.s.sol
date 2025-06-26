@@ -10,11 +10,6 @@ import "./utils/Salt.sol";
 import "./utils/DeploymentConfig.sol";
 import "./utils/Multichain.sol";
 
-enum VersionedDaoType {
-    EnclaveId,
-    FmspcTcb
-}
-
 contract DeployRouter is DeploymentConfig, Multichain {
 
     address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
@@ -55,41 +50,29 @@ contract DeployRouter is DeploymentConfig, Multichain {
     }
 
     function updateVersionedDaoConfig(
-        VersionedDaoType versionedDao,
-        address daoAddr
-    ) public {
-        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
-        uint32 tcbEvaluataionDataNumber = IVersionedDao(daoAddr).TCB_EVALUATION_NUMBER();
-
-        vm.broadcast(owner);
-
-        if (versionedDao == VersionedDaoType.EnclaveId) {
-            router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
-        } else {
-            router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
-        }
-    }
-
-    function updateVersionedDaoConfig(
-        VersionedDaoType versionedDao,
         uint32 tcbEvaluataionDataNumber
     ) public {
         PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
-        address daoAddr = readVersionedContractAddress(
-            versionedDao == VersionedDaoType.EnclaveId ? "AutomataEnclaveIdentityDaoVersioned" : "AutomataFmspcTcbDaoVersioned",
+        address qeIdDaoAddr = readVersionedContractAddress(
+            "AutomataEnclaveIdentityDaoVersioned",
             tcbEvaluataionDataNumber
         );
-        require(tcbEvaluataionDataNumber == IVersionedDao(daoAddr).TCB_EVALUATION_NUMBER(), 
-            "TCB Evaluation Data Number Mismatch"
+        address fmspcTcbDaoAddr = readVersionedContractAddress(
+            "AutomataFmspcTcbDaoVersioned",
+            tcbEvaluataionDataNumber
         );
 
-        vm.broadcast(owner);
+        bool tcbEvalCheck = tcbEvaluataionDataNumber == IVersionedDao(fmspcTcbDaoAddr).TCB_EVALUATION_NUMBER()
+            && tcbEvaluataionDataNumber == IVersionedDao(qeIdDaoAddr).TCB_EVALUATION_NUMBER();
+        
+        require(tcbEvalCheck, "TCB Evaluation Data Number Mismatch");
 
-        if (versionedDao == VersionedDaoType.EnclaveId) {
-            router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
-        } else {
-            router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, daoAddr);
-        }
+        vm.startBroadcast(owner);
+
+        router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, qeIdDaoAddr);
+        router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, fmspcTcbDaoAddr);
+
+        vm.stopBroadcast();
     }
 
     function setAuthorizedCaller(address caller, bool authorized) public {
