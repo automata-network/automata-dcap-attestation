@@ -39,15 +39,25 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         return keccak256(mrsignerSeam) == keccak256(expectedMrSignerSeam) && seamAttributes == expectedSeamAttributes;
     }
 
+    /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L99-L135
     function convergeTcbStatusWithTdxModuleStatus(TCBStatus tdxTcbStatus, TCBStatus tdxModuleTcbStatus)
         internal
         pure
-        returns (TCBStatus)
+        returns (TCBStatus convergedStatus)
     {
-        if (tdxModuleTcbStatus == TCBStatus.TCB_REVOKED) {
-            return TCBStatus.TCB_REVOKED;
+        if (tdxModuleTcbStatus == TCBStatus.TCB_OUT_OF_DATE) {
+            if (tdxTcbStatus == TCBStatus.OK || tdxTcbStatus == TCBStatus.TCB_SW_HARDENING_NEEDED) {
+                convergedStatus = TCBStatus.TCB_OUT_OF_DATE;
+            }
+            if (
+                tdxTcbStatus == TCBStatus.TCB_CONFIGURATION_NEEDED
+                    || tdxTcbStatus == TCBStatus.TCB_CONFIGURATION_AND_SW_HARDENING_NEEDED
+            ) {
+                convergedStatus = TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED;
+            }
+        } else {
+            convergedStatus = tdxTcbStatus;
         }
-        return tdxTcbStatus;
     }
 
      /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
