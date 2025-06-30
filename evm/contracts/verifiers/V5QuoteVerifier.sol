@@ -90,15 +90,13 @@ contract V5QuoteVerifier is TdxQuoteBase {
             }
 
             tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
-            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
 
             if (quoteBodySize == TD_REPORT15_LENGTH) {
-
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
                 bool configurationNeeded;
                 (success, reason, relaunchAdvised, configurationNeeded) =
-                    _checkForRelaunch(teeTcbSvn2, result.qeTcbStatus, sgxStatus, tdxStatus, tcbLevels, tdxModuleIdentities);
+                    _checkForRelaunch(teeTcbSvn2, result.qeTcbStatus, sgxStatus, tdxStatus, tdxModuleStatus, tcbLevels, tdxModuleIdentities);
                 if (!success) {
                     return (false, bytes(reason));
                 }
@@ -107,6 +105,8 @@ contract V5QuoteVerifier is TdxQuoteBase {
                         configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
                 }
             }
+
+            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
         }
 
         Output memory output = Output({
@@ -261,6 +261,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         EnclaveIdTcbStatus qeTcbStatus,
         TCBStatus sgxStatus,
         TCBStatus tdxStatus,
+        TCBStatus tdxModuleStatus,
         TCBLevelsObj[] memory tcbLevels,
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
@@ -272,31 +273,33 @@ contract V5QuoteVerifier is TdxQuoteBase {
                     tdxStatus == TCBStatus.TCB_OUT_OF_DATE
                         || tdxStatus == TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
                 ) {
-                    configurationNeeded = _tcbConfigurationNeeded(sgxStatus) || _tcbConfigurationNeeded(tdxStatus);
-                    TCBLevelsObj memory latestTcbLevel = tcbLevels[0];
+                    if (tdxModuleStatus == TCBStatus.TCB_OUT_OF_DATE) {
+                        configurationNeeded = _tcbConfigurationNeeded(sgxStatus) || _tcbConfigurationNeeded(tdxStatus);
+                        TCBLevelsObj memory latestTcbLevel = tcbLevels[0];
 
-                    if (teeTcbSvn2[1] == 0) {
-                        if (
-                            uint8(teeTcbSvn2[0]) >= latestTcbLevel.tdxComponentCpuSvns[0]
-                                && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
-                        ) {
-                            relaunchAdvised = true;
-                        }
-                    } else {
-                        TDXModuleIdentity memory matchingModuleIdentity;
-                        (success, matchingModuleIdentity) =
-                            findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
-                        if (!success) {
-                            return
-                                (false, "Failed to find matching TDX Module Identity for relaunch check", false, false);
-                        }
+                        if (teeTcbSvn2[1] == 0) {
+                            if (
+                                uint8(teeTcbSvn2[0]) >= latestTcbLevel.tdxComponentCpuSvns[0]
+                                    && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
+                            ) {
+                                relaunchAdvised = true;
+                            }
+                        } else {
+                            TDXModuleIdentity memory matchingModuleIdentity;
+                            (success, matchingModuleIdentity) =
+                                findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
+                            if (!success) {
+                                return
+                                    (false, "Failed to find matching TDX Module Identity for relaunch check", false, false);
+                            }
 
-                        TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];
-                        if (
-                            uint8(teeTcbSvn2[0]) >= latestTdxModuleTcbLevel.isvsvn
-                                && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
-                        ) {
-                            relaunchAdvised = true;
+                            TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];
+                            if (
+                                uint8(teeTcbSvn2[0]) >= latestTdxModuleTcbLevel.isvsvn
+                                    && uint8(teeTcbSvn2[2]) >= latestTcbLevel.tdxComponentCpuSvns[2]
+                            ) {
+                                relaunchAdvised = true;
+                            }
                         }
                     }
                 }
