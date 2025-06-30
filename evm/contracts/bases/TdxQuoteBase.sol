@@ -45,6 +45,7 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         pure
         returns (TCBStatus convergedStatus)
     {
+        convergedStatus = tdxTcbStatus; // Default to TDX TCB status
         if (tdxModuleTcbStatus == TCBStatus.TCB_OUT_OF_DATE) {
             if (tdxTcbStatus == TCBStatus.OK || tdxTcbStatus == TCBStatus.TCB_SW_HARDENING_NEEDED) {
                 convergedStatus = TCBStatus.TCB_OUT_OF_DATE;
@@ -55,21 +56,19 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
             ) {
                 convergedStatus = TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED;
             }
-        } else {
-            convergedStatus = tdxTcbStatus;
         }
     }
 
      /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
-    function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModuleIdentity[] memory tdxModuleIdentities)
+    function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities)
         internal
         pure
         returns (bool, TCBStatus, bytes memory, bytes8)
     {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
-        bytes memory expectedMrSignerSeam;
-        bytes8 expectedSeamAttributes;
+        bytes memory expectedMrSignerSeam = tdxModule.mrsigner;
+        bytes8 expectedSeamAttributes = tdxModule.attributes;
 
         if (tdxModuleVersion == 0) {
             return (true, TCBStatus.OK, expectedMrSignerSeam, expectedSeamAttributes);

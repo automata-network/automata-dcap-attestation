@@ -78,13 +78,15 @@ contract V5QuoteVerifier is TdxQuoteBase {
             }
 
             TCBStatus tdxModuleStatus;
-            (success, tdxModuleStatus, mrSignerSeam, seamAttributes) =
-                checkTdxModuleTcbStatus(teeTcbSvn, tdxModuleIdentities);
+            bytes memory expectedMrSignerSeam;
+            bytes8 expectedSeamAttributes;
+            (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
+                checkTdxModuleTcbStatus(teeTcbSvn, tdxModule, tdxModuleIdentities);
             if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
                 return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
             }
 
-            success = checkTdxModule(mrSignerSeam, tdxModule.mrsigner, seamAttributes, tdxModule.attributes);
+            success = checkTdxModule(mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes);
             if (!success) {
                 return (false, bytes("TDXModule check failed"));
             }

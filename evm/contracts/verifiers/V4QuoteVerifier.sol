@@ -174,10 +174,10 @@ contract V4QuoteVerifier is TdxQuoteBase {
         }
 
         TCBStatus tdxModuleStatus;
-        bytes memory expectedMrSignerSeam = tdxModule.mrsigner;
-        bytes8 expectedSeamAttributes = tdxModule.attributes;
+        bytes memory expectedMrSignerSeam;
+        bytes8 expectedSeamAttributes;
         (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
-            checkTdxModuleTcbStatus(reportBody.teeTcbSvn, tdxModuleIdentities);
+            checkTdxModuleTcbStatus(reportBody.teeTcbSvn, tdxModule, tdxModuleIdentities);
         if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
             return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
         }
