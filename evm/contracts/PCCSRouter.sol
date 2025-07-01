@@ -454,9 +454,9 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         bytes4 COLLATERAL_VALIDITY_SELECTOR = 0x3e960426;
         (bool success, bytes memory ret) = dao.staticcall(abi.encodeWithSelector(COLLATERAL_VALIDITY_SELECTOR, key));
         require(success, "Failed to determine collateral validity");
-        empty = ret.length == 0;
+        (uint64 issuedAt, uint64 expiredAt) = abi.decode(ret, (uint64, uint64));
+        empty = issuedAt == 0 || expiredAt == 0; // neither issuedAt nor expiredAt should be zero
         if (!empty) {
-            (uint64 issuedAt, uint64 expiredAt) = abi.decode(ret, (uint64, uint64));
             valid = timestamp >= issuedAt && timestamp <= expiredAt;
         }
     }
