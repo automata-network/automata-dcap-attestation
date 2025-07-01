@@ -120,8 +120,6 @@ abstract contract PCCSSetupBase is Test {
     function setupPccsRouter(address owner) internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
             owner,
-            address(0),
-            address(0),
             address(tcbEvalDao),
             address(pcsDao),
             address(pckDao),

@@ -11,11 +11,8 @@ import "./utils/DeploymentConfig.sol";
 import "./utils/Multichain.sol";
 
 contract DeployRouter is DeploymentConfig, Multichain {
-
-    address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
     address enclaveIdHelperAddr = readContractAddress(ProjectType.PCCS, "EnclaveIdentityHelper");
     address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
-    address tcbDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataFmspcTcbDao");
     address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
     address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
     address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
@@ -30,7 +27,7 @@ contract DeployRouter is DeploymentConfig, Multichain {
         vm.startBroadcast(owner);
 
         PCCSRouter router = new PCCSRouter{salt: PCCS_ROUTER_SALT}(
-            owner, enclaveIdDaoAddr, tcbDaoAddr, tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+            owner, tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
         console2.log("Deployed PCCSRouter to", address(router));
         writeToJson("PCCSRouter", address(router));
@@ -43,7 +40,7 @@ contract DeployRouter is DeploymentConfig, Multichain {
 
         PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
         router.setConfig(
-            enclaveIdDaoAddr, tcbDaoAddr, tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+            tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
 
         vm.stopBroadcast();

@@ -22,10 +22,6 @@ import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
  * to fetch collaterals from the On Chain PCCS
  */
 interface IPCCSRouter {
-    function qeIdDaoAddr() external view returns (address);
-
-    function fmspcTcbDaoAddr() external view returns (address);
-
     function qeIdDaoVersionedAddr(uint32 tcbEval) external view returns (address);
 
     function fmspcTcbDaoVersionedAddr(uint32 tcbEval) external view returns (address);
