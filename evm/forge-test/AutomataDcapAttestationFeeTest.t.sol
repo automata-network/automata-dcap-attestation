@@ -24,6 +24,10 @@ contract AutomataDcapAttestationFeeTest is PCCSSetupBase, RiscZeroSetup {
     address user = address(69);
 
     function setUp() public override {
+        // comment this line out if you are replacing sampleQuote with your own
+        // this line is needed to bypass expiry reverts for stale quotes
+        vm.warp(1749095100); // pinned June 5th, 2025, 3:45am UTC
+        
         super.setUp();
 
         vm.deal(user, 1 ether);

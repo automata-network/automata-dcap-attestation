@@ -11,13 +11,15 @@ import {
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
 
-import {ISP1Verifier} from "@sp1-contracts/ISP1Verifier.sol";
-
 contract AutomataDcapOnChainAttestationTest is PCCSSetupBase {
     AutomataDcapAttestationFee attestation;
     PCCSRouter pccsRouter;
 
     function setUp() public override {
+        // comment this line out if you are replacing sampleQuote with your own
+        // this line is needed to bypass expiry reverts for stale quotes
+        vm.warp(1749095100); // pinned June 5th, 2025, 3:45am UTC
+
         super.setUp();
         vm.startPrank(admin);
 

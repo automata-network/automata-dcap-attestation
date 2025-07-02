@@ -9,11 +9,18 @@ import {BytesUtils} from "../utils/BytesUtils.sol";
 import {BELE} from "../utils/BELE.sol";
 import {P256Verifier} from "../utils/P256Verifier.sol";
 
-import {Header, EnclaveReport, Output} from "../types/CommonStruct.sol";
+import "../types/CommonStruct.sol";
 import "../types/Constants.sol";
 
 import "./EnclaveIdBase.sol";
 import "./X509ChainBase.sol";
+
+struct VerificationResult {
+    bool success;
+    string reason;
+    EnclaveIdTcbStatus qeTcbStatus;
+    uint32 tcbEvalNumber;
+}
 
 abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainBase {
     using BytesUtils for bytes;
@@ -24,6 +31,87 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     constructor(address _router, uint16 _version) {
         pccsRouter = IPCCSRouter(_router);
         quoteVersion = _version;
+    }
+
+    function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
+        public
+        view
+        virtual
+        override
+        returns (bool success, bytes memory output)
+    {
+        uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
+        uint256 offset = 2 + outputLength;
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+            return (false, "invalid output length");
+        }
+        bytes memory errorMessage;
+        (success, errorMessage) = checkCollateralHashes(tcbEvalNumber, offset, outputBytes);
+        output = success ? outputBytes[2:offset] : errorMessage;
+    }
+
+    function _verifyQuoteIntegrity(
+        uint256 qeIdentityApiVersion,
+        uint32 tcbEvalNumber,
+        bytes4 tee,
+        bytes memory rawHeader,
+        bytes memory rawBody,
+        AuthData memory authData
+    ) internal view returns (VerificationResult memory result) {
+        TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+
+        if (tcbEvalNumber == 0) {
+            tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumber(tcbId);
+        }
+        result.tcbEvalNumber = tcbEvalNumber;
+
+        // Step 0: Check QE Report Data
+        (bool parsedQeReport, EnclaveReport memory qeReport) = parseEnclaveReport(authData.qeReport);
+        if (!parsedQeReport) {
+            result.success = false;
+            result.reason = "Failed to parse QE Report";
+            return result;
+        }
+        result.success =
+            verifyQeReportData(
+                qeReport.reportData, 
+                authData.ecdsaAttestationKey, 
+                authData.qeAuthData
+            );
+        if (!result.success) {
+            result.reason = "Invalid QEReport data";
+            return result;
+        }
+
+        // Step 1: Fetch QEIdentity to validate TCB of the QE
+        EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
+        (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeIdentityApiVersion, qeReport, tcbEvalNumber);
+        if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
+            result.reason = "Verification failed by QEIdentity check";
+            return result;
+        }
+
+        // Step 2: verify cert chain
+        result.success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), authData.certification.pckChain);
+        if (!result.success) {
+            result.reason = "Failed to verify X509 Chain";
+            return result;
+        }
+
+        // Step 3: Signature Verification on local isv report and qereport
+        bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
+        result.success = attestationVerification(
+            authData.qeReport,
+            authData.qeReportSignature,
+            authData.certification.pckChain[0].subjectPublicKey,
+            localAttestationData,
+            authData.ecdsa256BitSignature,
+            authData.ecdsaAttestationKey
+        );
+        if (!result.success) {
+            result.reason = "Failed to verify attestation and/or qe report signatures";
+            return result;
+        }
     }
 
     function validateHeader(Header calldata header, uint256 quoteLength, bool teeIsValid)
@@ -77,12 +165,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         success = true;
     }
 
-    function fetchQeIdentityAndCheckQeReport(EnclaveId id, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
+    function fetchQeIdentityAndCheckQeReport(EnclaveId id, uint256 qeIdentityApiVersion, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
         internal
         view
         returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
     {
-        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, quoteVersion, tcbEvalNumber);
+        IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, qeIdentityApiVersion, tcbEvalNumber);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
         );
@@ -116,12 +204,13 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         return attestationVerified;
     }
 
+    // https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/Verifiers/QuoteVerifier.cpp#L271-L312
     function convergeTcbStatusWithQeTcbStatus(EnclaveIdTcbStatus qeTcbStatus, TCBStatus tcbStatus)
         internal
         pure
         returns (TCBStatus convergedStatus)
     {
-        // https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/16b7291a7a86e486fdfcf1dfb4be885c0cc00b4e/Src/AttestationLibrary/src/Verifiers/QuoteVerifier.cpp#L271-L312
+        convergedStatus = tcbStatus;
         if (qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
             if (tcbStatus == TCBStatus.OK || tcbStatus == TCBStatus.TCB_SW_HARDENING_NEEDED) {
                 convergedStatus = TCBStatus.TCB_OUT_OF_DATE;
@@ -132,15 +221,13 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             ) {
                 convergedStatus = TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED;
             }
-        } else {
-            convergedStatus = tcbStatus;
         }
     }
 
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
         return abi.encodePacked(
             output.quoteVersion,
-            output.tee,
+            output.quoteBodyType,
             output.tcbStatus,
             output.fmspcBytes,
             output.quoteBody,
