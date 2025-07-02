@@ -19,10 +19,11 @@ contract V5QuoteVerifier is TdxQuoteBase {
         returns (bool success, bytes memory serializedOutput)
     {
         string memory reason;
+        uint16 quoteBodyType;
         uint32 quoteBodySize;
         AuthData memory authData;
 
-        (success, reason, quoteBodySize, authData) = _parseV5Quote(header, rawQuote);
+        (success, reason, quoteBodyType, quoteBodySize, authData) = _parseV5Quote(header, rawQuote);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -113,7 +114,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: header.teeType,
+            quoteBodyType: quoteBodyType,
             tcbStatus: tcbStatus,
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
             quoteBody: rawQuote[bodyOffset:bodyOffset + quoteBodySize],
@@ -130,6 +131,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         returns (
             bool success,
             string memory reason,
+            uint16 quoteBodyType,
             uint32 quoteBodySize,
             AuthData memory authData
         )
@@ -137,18 +139,18 @@ contract V5QuoteVerifier is TdxQuoteBase {
         bytes4 teeType = header.teeType;
         (success, reason) = validateHeader(header, quote.length, teeType == SGX_TEE || teeType == TDX_TEE);
         if (!success) {
-            return (success, reason, 0, authData);
+            return (success, reason, 0, 0, authData);
         }
 
         uint256 offset = HEADER_LENGTH;
 
-        uint16 quoteBodyType = uint16(BELE.leBytesToBeUint(quote[offset:offset + 2]));
+        quoteBodyType = uint16(BELE.leBytesToBeUint(quote[offset:offset + 2]));
         offset += 2;
 
         uint32 expectedBodySize;
         if (teeType == SGX_TEE) {
             if (quoteBodyType != 1) {
-                return (false, "Invalid body type for SGX quote", 0, authData);
+                return (false, "Invalid body type for SGX quote", 0, 0, authData);
             }
             expectedBodySize = ENCLAVE_REPORT_LENGTH;
         } else {
@@ -157,25 +159,25 @@ contract V5QuoteVerifier is TdxQuoteBase {
             } else if (quoteBodyType == 3) {
                 expectedBodySize = TD_REPORT15_LENGTH;
             } else {
-                return (false, "Invalid body type for TDX quote", 0, authData);
+                return (false, "Invalid body type for TDX quote", 0, 0, authData);
             }
         }
 
         quoteBodySize = uint32(BELE.leBytesToBeUint(quote[offset:offset + 4]));
         if (quoteBodySize != expectedBodySize) {
-            return (false, "Invalid body size", 0, authData);
+            return (false, "Invalid body size", 0, 0, authData);
         }
         offset += 4 + quoteBodySize;
 
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote auth data length is incorrect", 0, authData);
+            return (false, "quote auth data length is incorrect", 0, 0, authData);
         }
 
         (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
-            return (false, "failed to parse authdata", 0, authData);
+            return (false, "failed to parse authdata", 0, 0, authData);
         }
     }
 

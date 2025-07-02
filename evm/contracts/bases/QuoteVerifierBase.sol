@@ -227,7 +227,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     function serializeOutput(Output memory output) internal pure returns (bytes memory) {
         return abi.encodePacked(
             output.quoteVersion,
-            output.tee,
+            output.quoteBodyType,
             output.tcbStatus,
             output.fmspcBytes,
             output.quoteBody,

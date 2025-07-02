@@ -126,7 +126,7 @@ struct PCKCertTCB {
  * @title Verified Output struct
  * @notice The output returned by the contract upon successful verification of the quote
  * @param quoteVersion The version of the quote
- * @param tee The TEE type of the quote
+ * @param quoteBodyType The quote body type, 1. SGX Enclave Report, 2. TD1.0 Report, 3. TD1.5 Report
  * @param tcbStatus The TCB status of the quote
  * @param fmspcBytes The FMSPC values
  * @param quoteBody This can either be the Local ISV Report or TD10 Report, depending on the TEE type
@@ -134,7 +134,7 @@ struct PCKCertTCB {
  */
 struct Output {
     uint16 quoteVersion; // serialized as BE, for EVM compatibility
-    bytes4 tee;
+    uint16 quoteBodyType; // serialized as BE, for EVM compatibility
     uint8 tcbStatus;
     bytes6 fmspcBytes;
     bytes quoteBody;

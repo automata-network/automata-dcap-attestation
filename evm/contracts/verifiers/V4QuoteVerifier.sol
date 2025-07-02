@@ -133,7 +133,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: SGX_TEE,
+            quoteBodyType: 1,
             tcbStatus: uint8(tcbStatus),
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
             quoteBody: rawQuoteBody,
@@ -194,7 +194,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         Output memory output = Output({
             quoteVersion: quoteVersion,
-            tee: TDX_TEE,
+            quoteBodyType: 2, // TD10 Report
             tcbStatus: uint8(tcbStatus),
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
             quoteBody: rawQuoteBody,
