@@ -11,6 +11,7 @@ import {P256Verifier} from "../utils/P256Verifier.sol";
 
 import "../types/CommonStruct.sol";
 import "../types/Constants.sol";
+import "../types/Errors.sol";
 
 import "./EnclaveIdBase.sol";
 import "./X509ChainBase.sol";
@@ -43,7 +44,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
         uint256 offset = 2 + outputLength;
         if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
-            return (false, "invalid output length");
+            return (false, bytes(OUTS));
         }
         bytes memory errorMessage;
         (success, errorMessage) = checkCollateralHashes(tcbEvalNumber, offset, outputBytes);
@@ -69,7 +70,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         (bool parsedQeReport, EnclaveReport memory qeReport) = parseEnclaveReport(authData.qeReport);
         if (!parsedQeReport) {
             result.success = false;
-            result.reason = "Failed to parse QE Report";
+            result.reason = QEF;
             return result;
         }
         result.success =
@@ -79,7 +80,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
                 authData.qeAuthData
             );
         if (!result.success) {
-            result.reason = "Invalid QEReport data";
+            result.reason = QEVE;
             return result;
         }
 
@@ -87,14 +88,14 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
         (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, qeIdentityApiVersion, qeReport, tcbEvalNumber);
         if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
-            result.reason = "Verification failed by QEIdentity check";
+            result.reason = QEIDVE;
             return result;
         }
 
         // Step 2: verify cert chain
         result.success = verifyCertChain(pccsRouter, pccsRouter.crlHelperAddr(), authData.certification.pckChain);
         if (!result.success) {
-            result.reason = "Failed to verify X509 Chain";
+            result.reason = X509VE;
             return result;
         }
 
@@ -109,7 +110,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             authData.ecdsaAttestationKey
         );
         if (!result.success) {
-            result.reason = "Failed to verify attestation and/or qe report signatures";
+            result.reason = ATTVE;
             return result;
         }
     }
@@ -120,23 +121,23 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         returns (bool valid, string memory reason)
     {
         if (quoteLength < MINIMUM_QUOTE_LENGTH) {
-            return (false, "Quote length is less than minimum");
+            return (false, QHS);
         }
 
         if (header.version != quoteVersion) {
-            return (false, "Version mismatch");
+            return (false, QHV);
         }
 
         if (header.attestationKeyType != SUPPORTED_ATTESTATION_KEY_TYPE) {
-            return (false, "Unsupported attestation key type");
+            return (false, QHATTF);
         }
 
         if (!teeIsValid) {
-            return (false, "Unknown TEE type");
+            return (false, TEE);
         }
 
         if (header.qeVendorId != VALID_QE_VENDOR_ID) {
-            return (false, "Not a valid Intel SGX QE Vendor ID");
+            return (false, QEVEN);
         }
 
         valid = true;
@@ -261,27 +262,27 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         bytes32 expectedTcbInfoContentHash =
             pccsRouter.getFmspcTcbContentHash(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber);
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
-            return (false, bytes("tcb info content hash mismatch"));
+            return (false, bytes(TCBCH));
         }
 
         bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHash(
             tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber
         );
         if (identityContentHash != expectedIdentityContentHash) {
-            return (false, bytes("identity content hash mismatch"));
+            return (false, bytes(QEIDCH));
         }
 
         bytes32 expectedRootCaHash = pccsRouter.getCertHashWithTimestamp(CA.ROOT, timestamp);
         if (rootCaHash != expectedRootCaHash) {
-            return (false, bytes("root ca hash mismatch"));
+            return (false, bytes(ROOTH));
         }
         bytes32 expectedTcbSigningHash = pccsRouter.getCertHashWithTimestamp(CA.SIGNING, timestamp);
         if (tcbSigningHash != expectedTcbSigningHash) {
-            return (false, bytes("tcb signing ca hash mismatch"));
+            return (false, bytes(SIGNH));
         }
         bytes32 expectedRootCrlHash = pccsRouter.getCrlHashWithTimestamp(CA.ROOT, timestamp);
         if (rootCaCrlHash != expectedRootCrlHash) {
-            return (false, bytes("root ca crl hash mismatch"));
+            return (false, bytes(ROOTCRLH));
         }
 
         // use low level calls for PCK CRLs, because we don't know which one of the CAs is used
@@ -306,10 +307,10 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
         } else {
             // Both Processor and Platform PCKs not found
-            return (false, bytes("missing either pck platform or processor crl"));
+            return (false, bytes(PCKCRLM));
         }
 
         bool crlHashMatched = pckCrlHash == expectedPlatformCrlHash || pckCrlHash == expectedProcessorCrlHash;
-        return (crlHashMatched, crlHashMatched ? bytes("") : bytes("pck crl hash mismatch"));
+        return (crlHashMatched, crlHashMatched ? bytes("") : bytes(PCKCRLH));
     }
 }

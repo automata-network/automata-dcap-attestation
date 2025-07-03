@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {LibString} from "solady/utils/LibString.sol";
-
 import {TD10ReportParser, TD15ReportParser} from "../utils/TDReportParser.sol";
+import "../types/Errors.sol";
 import "../bases/TdxQuoteBase.sol";
 
 contract V5QuoteVerifier is TdxQuoteBase {
@@ -57,6 +56,9 @@ contract V5QuoteVerifier is TdxQuoteBase {
                     break;
                 }
             }
+            if (sgxStatus == TCBStatus.TCB_REVOKED) {
+                return (false, bytes(TCBR));
+            }
             sgxStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, sgxStatus);
             tcbStatus = uint8(sgxStatus);
         } else {
@@ -75,7 +77,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
             TCBStatus tdxStatus = TCBStatus.TCB_UNRECOGNIZED;
             (success, sgxStatus, tdxStatus, tcbLevelSelected) = getTDXTcbStatus(tcbLevels, pckTcb, teeTcbSvn);
             if (!success || tdxStatus == TCBStatus.TCB_REVOKED) {
-                return (false, "Failed to get TDX TCB status");
+                return (false, bytes(TCBR));
             }
 
             TCBStatus tdxModuleStatus;
@@ -84,12 +86,12 @@ contract V5QuoteVerifier is TdxQuoteBase {
             (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
                 checkTdxModuleTcbStatus(teeTcbSvn, tdxModule, tdxModuleIdentities);
             if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
-                return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
+                return (false, bytes(TCBR));
             }
 
             success = checkTdxModule(mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes);
             if (!success) {
-                return (false, bytes("TDXModule check failed"));
+                return (false, bytes(TDMF));
             }
 
             tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
@@ -150,7 +152,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         uint32 expectedBodySize;
         if (teeType == SGX_TEE) {
             if (quoteBodyType != 1) {
-                return (false, "Invalid body type for SGX quote", 0, 0, authData);
+                return (false, QBF, 0, 0, authData);
             }
             expectedBodySize = ENCLAVE_REPORT_LENGTH;
         } else {
@@ -159,25 +161,25 @@ contract V5QuoteVerifier is TdxQuoteBase {
             } else if (quoteBodyType == 3) {
                 expectedBodySize = TD_REPORT15_LENGTH;
             } else {
-                return (false, "Invalid body type for TDX quote", 0, 0, authData);
+                return (false, QBF, 0, 0, authData);
             }
         }
 
         quoteBodySize = uint32(BELE.leBytesToBeUint(quote[offset:offset + 4]));
         if (quoteBodySize != expectedBodySize) {
-            return (false, "Invalid body size", 0, 0, authData);
+            return (false, QBS, 0, 0, authData);
         }
         offset += 4 + quoteBodySize;
 
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote auth data length is incorrect", 0, 0, authData);
+            return (false, ADS, 0, 0, authData);
         }
 
         (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
-            return (false, "failed to parse authdata", 0, 0, authData);
+            return (false, ADF, 0, 0, authData);
         }
     }
 
@@ -241,7 +243,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
             TD10ReportBody memory td10ReportBody;
             (success, td10ReportBody) = TD10ReportParser.parse(rawTdReport);
             if (!success) {
-                return (false, "Failed to parse TD10 report body", teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
+                return (false, TD10F, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
             }
             teeTcbSvn = td10ReportBody.teeTcbSvn;
             mrSignerSeam = td10ReportBody.mrsignerSeam;
@@ -250,7 +252,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
             TD15ReportBody memory td15ReportBody;
             (success, td15ReportBody) = TD15ReportParser.parse(rawTdReport);
             if (!success) {
-                return (false, "Failed to parse TD15 report body", teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
+                return (false, TD15F, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
             }
             teeTcbSvn = td15ReportBody.teeTcbSvn;
             teeTcbSvn2 = td15ReportBody.teeTcbSvn2;
@@ -294,7 +296,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                                 findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
                             if (!success) {
                                 return
-                                    (false, "Failed to find matching TDX Module Identity for relaunch check", false, false);
+                                    (false, TDRF, false, false);
                             }
 
                             TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];

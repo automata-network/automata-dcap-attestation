@@ -25,7 +25,7 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
     {
         bytes4 teeType = bytes4(outputBytes[4:8]);
         if (teeType != SGX_TEE && teeType != TDX_TEE) {
-            return (false, bytes("Unknown TEE type"));
+            return (false, bytes(TEE));
         }
         return super.verifyZkOutput(outputBytes, tcbEvalNumber);
     }

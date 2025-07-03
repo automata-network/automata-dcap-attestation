@@ -5,6 +5,7 @@ import {LibString} from "solady/utils/LibString.sol";
 import {TD10ReportParser} from "../utils/TDReportParser.sol";
 import {TD10ReportBody} from "../types/TDXStruct.sol";
 import "../bases/TdxQuoteBase.sol";
+import "../types/Errors.sol";
 
 /**
  * @title Automata DCAP QuoteV4 Verifier
@@ -35,18 +36,18 @@ contract V4QuoteVerifier is TdxQuoteBase {
             EnclaveReport memory localEnclaveReport;
             (success, localEnclaveReport) = parseEnclaveReport(rawQuoteBody);
             if (!success) {
-                return (false, bytes("local isv report length is incorrect"));
+                return (false, bytes(QBS));
             }
             (success, output) = _verifySGXQuote(tcbEvalNumber, rawQuoteHeader, rawQuoteBody, authData);
         } else if (header.teeType == TDX_TEE) {
             TD10ReportBody memory tdReport;
             (success, tdReport) = TD10ReportParser.parse(rawQuoteBody);
             if (!success) {
-                return (false, bytes("local td10 report length is incorrect"));
+                return (false, bytes(QBS));
             }
             (success, output) = _verifyTDXQuote(tcbEvalNumber, rawQuoteHeader, rawQuoteBody, authData);
         } else {
-            return (false, bytes("Unknown TEE type"));
+            return (false, bytes(TEE));
         }
     }
 
@@ -79,7 +80,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
         rawQuoteBody = quote[HEADER_LENGTH:offset];
 
         if (quote.length < offset) {
-            return (false, "quote body length is incorrect", rawQuoteBody, authData);
+            return (false, QBS, rawQuoteBody, authData);
         }
 
         // check authData length
@@ -88,14 +89,14 @@ contract V4QuoteVerifier is TdxQuoteBase {
         // we don't strictly require the auth data to be equal to the provided length
         // but this ignores any trailing bytes after the indicated length allocated for authData
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote auth data length is incorrect", rawQuoteBody, authData);
+            return (false, ADS, rawQuoteBody, authData);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
         (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
-            return (false, "failed to parse authdata", rawQuoteBody, authData);
+            return (false, ADF, rawQuoteBody, authData);
         }
     }
 
@@ -126,7 +127,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes("Failed to locate a valid FMSPC TCB Status"));
+            return (statusFound, bytes(TCBR));
         }
 
         tcbStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tcbStatus);
@@ -163,14 +164,14 @@ contract V4QuoteVerifier is TdxQuoteBase {
         TD10ReportBody memory reportBody;
         (success, reportBody) = TD10ReportParser.parse(rawQuoteBody);
         if (!success) {
-            return (false, bytes("Failed to parse TD10 report body"));
+            return (false, bytes(TD10F));
         }
 
         TCBStatus tcbStatus;
         uint256 tcbLevelSelected;
         (success,, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(tcbLevels, pckTcb, reportBody.teeTcbSvn);
         if (!success || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (false, bytes("Failed to locate a valid FMSPC TCB Status"));
+            return (false, bytes(TCBR));
         }
 
         TCBStatus tdxModuleStatus;
@@ -179,14 +180,14 @@ contract V4QuoteVerifier is TdxQuoteBase {
         (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
             checkTdxModuleTcbStatus(reportBody.teeTcbSvn, tdxModule, tdxModuleIdentities);
         if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
-            return (false, bytes("Failed to locate a valid TDXModule TCB Status"));
+            return (false, bytes(TCBR));
         }
 
         success = checkTdxModule(
             reportBody.mrsignerSeam, expectedMrSignerSeam, reportBody.seamAttributes, expectedSeamAttributes
         );
         if (!success) {
-            return (false, bytes("TDXModule check failed"));
+            return (false, bytes(TDMF));
         }
 
         tcbStatus = convergeTcbStatusWithTdxModuleStatus(tcbStatus, tdxModuleStatus);

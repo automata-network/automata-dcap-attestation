@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../bases/QuoteVerifierBase.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
+import "../types/Errors.sol";
 
 /**
  * @title Automata DCAP QuoteV3 Verifier
@@ -43,7 +44,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes("Verificaton failed by TCBInfo check"));
+            return (statusFound, bytes(TCBR));
         }
 
         tcbStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tcbStatus);
@@ -82,14 +83,14 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         // we don't strictly require the auth data to be equal to the provided length
         // but this ignores any trailing bytes after the indicated length allocated for authData
         if (quote.length - offset < localAuthDataSize) {
-            return (false, "quote auth data length is incorrect", authData);
+            return (false, ADS, authData);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
         (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
-            return (false, "failed to parse authdata", authData);
+            return (false, ADF, authData);
         }
 
         success = true;
