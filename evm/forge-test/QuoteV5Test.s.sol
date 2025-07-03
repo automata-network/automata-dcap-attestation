@@ -50,7 +50,7 @@ contract QuoteV5Test is PCCSSetupBase {
         assertEq(address(attestation.quoteVerifiers(5)), address(quoteVerifier));
 
         // collateral upserts
-        string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfov3_90c06f000000.json";
+        string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfov3_90C06F000000.json";
         string memory qeIdPath = "/forge-test/assets/0625/qe_td.json";
 
         enclaveIdDao.grantRoles(
