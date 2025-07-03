@@ -2,9 +2,12 @@ name: Foundry Build CI/CD
 
 on: 
     push:
-        branches: [main, development]
+        branches: 
+          - main
     pull_request:
-        branches: [main]
+        branches:
+          - main
+          - 'v*'
 
     workflow_dispatch:
 
