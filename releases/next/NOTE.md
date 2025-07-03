@@ -38,3 +38,23 @@ This release applies to both source codes in the `/evm` and `/solana` directorie
 
 ## What's Changed?
 
+- Debuting "versioned" DAOs. I.e. collaterals are further categorized by their TCB Evaluation Data Number. This affects both FMSPC TCB and QE Identity collaterals.
+
+- PCCS Router Changes and Fixes:
+    - Interface to perform admin configurations for `TcbEvalDao` and versioned `FMSPC` and `QEIdentity` DAOs has been added to the PCCS Router contract.
+        - [9874573](https://github.com/automata-network/automata-dcap-attestation/commit/9874573fcd9080851e094dcfa90aa6c7c33905b2)
+    - Both FMSPC and QE Identity must be fetched from their corresponding versioned DAOs.
+        - [01733e3](https://github.com/automata-network/automata-dcap-attestation/commit/01733e37f8df62847318ae08c38c6f2f95f8eb17)
+    - Reads collateral from `TcbEvalDao` to get `standard()` and `early()` TCB Evaluation Data Number
+    - Fixed incorrect collateral validity check.
+        - Closes issue [#50](https://github.com/automata-network/automata-dcap-attestation/issues/50)
+        - [6246682](https://github.com/automata-network/automata-dcap-attestation/commit/62466820089a124ac872e6cedbae2a4cdae416b0)
+- Automata DCAP Attestation Changes:
+    - New interface to include TCB Evaluation Data Number as an argument
+        - []()
+    - Multiple zkVM Program Identifiers in a single zkVM configuration
+        - PR [#46](https://github.com/automata-network/automata-dcap-attestation/pull/46)
+    - Quote Verification Code Refactoring and support for QuoteV5
+        -PR [#51](https://github.com/automata-network/automata-dcap-attestation/pull/51)
+- Misc:
+    - PRs [#33](https://github.com/automata-network/automata-dcap-attestation/pull/33) and [#43](https://github.com/automata-network/automata-dcap-attestation/pull/43)
