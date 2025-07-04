@@ -54,10 +54,10 @@ It consists of three smart contracts:
 
 Automata DCAP Attestation contract implements two attestation methods available to users. Here is a quick comparison:
 
-|  | On-Chain | Groth16 Proof Verification with RiscZero v1.2.1 | Groth16 Proof Verification with SP1 v4.1 | Plonk Proof Verification with SP1 v4.1| 
+|  | On-Chain | Groth16 Proof Verification with RiscZero v2.1 | Groth16 Proof Verification with SP1 v5 | Plonk Proof Verification with SP1 v5| 
 | --- | --- | --- | --- | --- |
-| Quote Verification Time | Instant | Proving takes <1 minute, instant verification | [Proving takes <30s](https://network.succinct.xyz/request/0x5a5cf42ec2be9dd830ca6b2955a9dad79c4fabf588970c3c6d30774d61e7d7b5), instant verification  | Proving takes ~2 minutes, instant verification |
-| Gas Cost | ~4M gas (with RIP-7212 precompile); ~5M gas (without precompile) | 450k gas | 425k gas | 510k gas |
+| Quote Verification Time | Instant | Proving takes <1 minute, instant verification | [Proving takes <30s](https://explorer.succinct.xyz/request/0x07af234869635075dcbc714135ea52c71b9019ffda59e33d3aa5fb6673a724d2), instant verification  | [Proving takes <2 minutes](https://explorer.succinct.xyz/request/0x64bc5f55b3425cc8e6400597765c656c8ab4a7c18de04719e9f6595703ea9c04), instant verification |
+| Gas Cost | ~4M gas (with RIP-7212 precompile); ~5M gas (without precompile) | 522k gas | 493k gas | 569k gas |
 | Execution | Runs fully on-chain | Execution proven by remote prover Bonsai | Execution proven by the SP1 Network | Execution proven by the SP1 Network |
 
 ---
