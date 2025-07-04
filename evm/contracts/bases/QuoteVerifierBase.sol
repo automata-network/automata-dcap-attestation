@@ -249,10 +249,11 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         bytes32 rootCaCrlHash = bytes32(zkOutput[offset + 136:offset + 168]);
         bytes32 pckCrlHash = bytes32(zkOutput[offset + 168:offset + 200]);
 
-        bytes4 tee = bytes4(zkOutput[4:8]);
-        bytes6 fmspc = bytes6(zkOutput[9:15]);
+        uint16 quoteBodyType = uint16(bytes2(zkOutput[4:6]));
+        bytes6 fmspc = bytes6(zkOutput[7:13]);
+        bool isSGX = quoteBodyType == 1;
 
-        TcbId tcbId = tee == SGX_TEE ? TcbId.SGX : TcbId.TDX;
+        TcbId tcbId = isSGX ? TcbId.SGX : TcbId.TDX;
 
         if (tcbEvalNumber == 0) {
             // if tcbEvalNumber is not provided, we use the standard one
@@ -266,7 +267,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         }
 
         bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHash(
-            tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber
+            isSGX ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber
         );
         if (identityContentHash != expectedIdentityContentHash) {
             return (false, bytes(QEIDCH));

@@ -17,19 +17,6 @@ import "./tcb/TCBInfoV3Base.sol";
 abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
     using LibString for string;
 
-    function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
-        public
-        view
-        override
-        returns (bool success, bytes memory output)
-    {
-        bytes4 teeType = bytes4(outputBytes[4:8]);
-        if (teeType != SGX_TEE && teeType != TDX_TEE) {
-            return (false, bytes(TEE));
-        }
-        return super.verifyZkOutput(outputBytes, tcbEvalNumber);
-    }
-
     function checkTdxModule(
         bytes memory mrsignerSeam,
         bytes memory expectedMrSignerSeam,
