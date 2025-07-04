@@ -124,8 +124,8 @@ make deploy-attestation RPC_URL=<rpc-url>
 
 | zkVM | zkVM Selector | zkVM Program ID |
 | --- | --- | --- |
-| RiscZero | 1 | `0x4cf071b3cc25d73e77f430b65f5700dd53522dacc21c1bfc0862b2e46fda3584` |
-| SP1 | 2 | `0x0036efd519bb371b29a40322e40031833716e9441c6907f8aefc5e52ceebc9a6` |
+| RiscZero | 1 | `0x86ce2fcc83810f39791f81fc89d36488a061e2f1ea48df9057417a079251352a` |
+| SP1 | 2 | `0x004b1c0509dc0eee05ad437e3600027bd8cb3fbb03b29bf9cd839ae2e684c749` |
 
 ```bash
 make config-zk RPC_URL=<rpc-url> ZKVM_SELECTOR=<number> ZKVM_VERIFIER_ADDRESS=<address> ZKVM_PROGRAM_IDENTIFIER=<identifier>

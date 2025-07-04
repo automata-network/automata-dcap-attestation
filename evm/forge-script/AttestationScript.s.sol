@@ -32,7 +32,6 @@ contract AttestationScript is DeploymentConfig {
         );
         address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
         address quoteVerifier = readContractAddress(ProjectType.DCAP, verifierName);
-        address routerAddr = readContractAddress(ProjectType.DCAP, "PCCSRouter");
 
         vm.startBroadcast(owner);
 
@@ -45,7 +44,7 @@ contract AttestationScript is DeploymentConfig {
         address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
 
         ZkCoProcessorConfig memory config =
-            ZkCoProcessorConfig({dcapProgramIdentifier: programId, zkVerifier: verifierGateway});
+            ZkCoProcessorConfig({latestDcapProgramIdentifier: programId, defaultZkVerifier: verifierGateway});
 
         vm.broadcast(owner);
         AutomataDcapAttestationFee(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
