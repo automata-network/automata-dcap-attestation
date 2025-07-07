@@ -425,27 +425,28 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         zkvm_selector: ZkvmSelector,
         proofs: [Vec<u8>; 3],
     ) -> anyhow::Result<Signature> {
-        // let tx = self.program
-        //     .request()
-        //     .accounts(accounts::VerifyPckCertChainZk {
-        //         quote_data_buffer: quote_buffer_pubkey,
-        //         zkvm_verifier_program,
-        //         pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
-        //         root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
-        //         verified_output: verified_output_pubkey,
-        //         system_program: anchor_client::solana_sdk::system_program::ID,
-        //     })
-        //     .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
-        //     .args(args::VerifyPckCertChainZk {
-        //         zkvm_selector,
-        //         proof_bytes,
-        //     })
-        //     .send()
-        //     .await?;
+        // TEMP
+        let proof_bytes = proofs[0].clone();
 
-        // Ok(tx)
+        let tx = self.program
+            .request()
+            .accounts(accounts::VerifyPckCertChainZk {
+                quote_data_buffer: quote_buffer_pubkey,
+                zkvm_verifier_program,
+                pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
+                root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
+                verified_output: verified_output_pubkey,
+                system_program: anchor_client::solana_sdk::system_program::ID,
+            })
+            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
+            .args(args::VerifyPckCertChainZk {
+                zkvm_selector,
+                proof_bytes,
+            })
+            .send()
+            .await?;
 
-        Ok(Signature::default()) // TODO
+        Ok(tx)
     }
 
     /// Matches the TCB (Trusted Computing Base) status of the platform.

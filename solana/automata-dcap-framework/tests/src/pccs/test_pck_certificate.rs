@@ -2,9 +2,9 @@ use std::sync::Arc;
 use sdk::Sdk;
 use sdk::pccs::automata_on_chain_pccs::types::ZkvmSelector;
 use sdk::models::CertificateAuthority;
-use sdk::pccs::{EcdsaZkVerifyInputType, request_ecdsa_verify_proof};
+use sdk::pccs::EcdsaZkVerifyInputType;
 use anchor_client::solana_sdk::signer::keypair::Keypair;
-use crate::{ROOT_CRL_BYTES, TEST_RISC0_VERIFIER_PUBKEY};
+use crate::{ROOT_CRL_BYTES, TEST_ZKVM_VERIFIER_PUBKEY};
 
 pub(crate) async fn test_pck_certificate_upsert(sdk: &Sdk<Arc<Keypair>>) {
     let pck_cert_data = include_bytes!("../../data/pck.der").to_vec();
@@ -36,7 +36,7 @@ pub(crate) async fn test_pck_certificate_upsert(sdk: &Sdk<Arc<Keypair>>) {
 
     let _tx = client.upsert_pck_certificate(
         data_buffer_pubkey,
-        TEST_RISC0_VERIFIER_PUBKEY,
+        TEST_ZKVM_VERIFIER_PUBKEY,
         qe_id.to_string(),
         pce_id.to_string(),
         tcbm.to_string(),

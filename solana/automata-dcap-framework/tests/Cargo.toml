@@ -17,7 +17,6 @@ hex = "0.4.3"
 automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
 automata-on-chain-pccs = { version = "0.1.0", path = "../programs/automata-on-chain-pccs" }
 anyhow = "1.0.89"
-solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git" }
 serde_json = { version = "1.0.100" }
 borsh = { version = "1.5.7" }
 dcap-rs = { workspace = true, features = ["full"] }

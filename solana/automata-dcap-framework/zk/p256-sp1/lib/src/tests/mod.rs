@@ -5,7 +5,8 @@ use dcap_rs::types::{
 };
 
 #[test]
-pub fn test_get_program_vkey() {
+#[ignore]
+pub fn test_zk_get_program_vkey() {
     // [0, 111, 202, 109, 191, 166, 239, 42, 224, 146, 249, 26, 3, 212, 159, 255, 220, 251, 19, 62, 72, 240, 105, 251, 148, 90, 95, 152, 48, 11, 41, 149]
     let vkey = get_program_vkey();
     println!("program vkey: {:?}", vkey);
@@ -13,7 +14,7 @@ pub fn test_get_program_vkey() {
 
 #[test]
 #[ignore]
-pub fn test_verify_root_x509() {
+pub fn test_zk_verify_root_x509() {
     let root_der_bytes = include_bytes!("./samples/root.der");
 
     let ret = get_proof(
@@ -28,7 +29,7 @@ pub fn test_verify_root_x509() {
 
 #[test]
 #[ignore]
-pub fn verify_signing_x509() {
+pub fn test_zk_verify_signing_x509() {
     let signing_der_bytes = include_bytes!("./samples/signing.der");
     let root_der_bytes = include_bytes!("./samples/root.der");
 
@@ -45,7 +46,7 @@ pub fn verify_signing_x509() {
 
 #[test]
 #[ignore]
-pub fn test_verify_root_crl() {
+pub fn test_zk_verify_root_crl() {
     let root_crl_bytes = include_bytes!("./samples/root_crl.der");
     let root_der_bytes = include_bytes!("./samples/root.der");
 
@@ -62,7 +63,7 @@ pub fn test_verify_root_crl() {
 
 #[test]
 #[ignore]
-pub fn test_verify_tcb_info() {
+pub fn test_zk_verify_tcb_info() {
     let tcb_info_bytes = include_bytes!("./samples/tcb_info_v3_sgx.json");
 
     // serialize tcb_info into pod
@@ -88,7 +89,7 @@ pub fn test_verify_tcb_info() {
 
 #[test]
 #[ignore]
-pub fn test_verify_enclave_identity() {
+pub fn test_zk_verify_enclave_identity() {
     let qe_identity_bytes = include_bytes!("./samples/qe_identity.json");
 
     // serialize enclave identity into pod

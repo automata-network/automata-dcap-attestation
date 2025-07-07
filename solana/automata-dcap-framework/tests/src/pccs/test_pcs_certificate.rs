@@ -1,9 +1,9 @@
-use crate::{ROOT_CRL_BYTES, TEST_RISC0_VERIFIER_PUBKEY};
+use crate::{ROOT_CRL_BYTES, TEST_ZKVM_VERIFIER_PUBKEY};
 use anchor_client::solana_sdk::signer::keypair::Keypair;
 use sdk::Sdk;
 use sdk::models::CertificateAuthority;
 use sdk::pccs::automata_on_chain_pccs::types::ZkvmSelector;
-use sdk::pccs::{EcdsaZkVerifyInputType, request_ecdsa_verify_proof};
+use sdk::pccs::EcdsaZkVerifyInputType;
 use std::sync::Arc;
 
 pub(crate) async fn test_pcs_root_ca_upsert(sdk: &Sdk<Arc<Keypair>>) {
@@ -28,7 +28,7 @@ pub(crate) async fn test_pcs_root_ca_upsert(sdk: &Sdk<Arc<Keypair>>) {
     let _tx = client
         .upsert_pcs_certificate(
             data_buffer_pubkey,
-            TEST_RISC0_VERIFIER_PUBKEY,
+            TEST_ZKVM_VERIFIER_PUBKEY,
             ca_type,
             ZkvmSelector::RiscZero,
             proof,
@@ -68,7 +68,7 @@ pub(crate) async fn test_pcs_root_crl_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
     let _tx = client
         .upsert_pcs_crl(
             data_buffer_pubkey, 
-            TEST_RISC0_VERIFIER_PUBKEY, 
+            TEST_ZKVM_VERIFIER_PUBKEY, 
             ca_type, 
             ZkvmSelector::RiscZero, 
             proof
@@ -108,7 +108,7 @@ pub(crate) async fn test_pcs_signing_certificate_upsert(sdk: &Sdk<Arc<Keypair>>)
     let _tx = client
         .upsert_pcs_certificate(
             data_buffer_pubkey,
-            TEST_RISC0_VERIFIER_PUBKEY,
+            TEST_ZKVM_VERIFIER_PUBKEY,
             ca_type,
             ZkvmSelector::RiscZero,
             proof,
@@ -148,7 +148,7 @@ pub(crate) async fn test_pcs_platform_certificate_upsert(sdk: &Sdk<Arc<Keypair>>
     let _tx = client
         .upsert_pcs_certificate(
             data_buffer_pubkey,
-            TEST_RISC0_VERIFIER_PUBKEY,
+            TEST_ZKVM_VERIFIER_PUBKEY,
             ca_type,
             ZkvmSelector::RiscZero,
             proof,
@@ -188,7 +188,7 @@ pub(crate) async fn test_pcs_platform_crl_certificate_upsert(sdk: &Sdk<Arc<Keypa
     let _tx = client
         .upsert_pcs_crl(
             data_buffer_pubkey, 
-            TEST_RISC0_VERIFIER_PUBKEY, 
+            TEST_ZKVM_VERIFIER_PUBKEY, 
             ca_type, 
             ZkvmSelector::RiscZero, 
             proof

@@ -3,7 +3,7 @@ mod verifier;
 use anchor_client::solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair, signature::read_keypair_file};
 use std::sync::Arc;
 
-pub const TEST_RISC0_VERIFIER_PUBKEY: Pubkey =
+pub const TEST_ZKVM_VERIFIER_PUBKEY: Pubkey =
     Pubkey::from_str_const("5Gxa8YTih2rg3NY5EuWLtpS3Eq5xpS7PKWxspAAni5RS");
 
 pub const ROOT_CRL_BYTES: &[u8] = include_bytes!("../data/intel_root_ca_crl.der");

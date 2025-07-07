@@ -2049,7 +2049,7 @@ dependencies = [
 [[package]]
 name = "dcap-rs"
 version = "1.1.0"
-source = "git+https://github.com/automata-network/dcap-rs.git?branch=dev#8d14db4503da9f9a9a65c121311b60af9652d695"
+source = "git+https://github.com/automata-network/dcap-rs.git?branch=dev#ee2b89dfc1e8c917693a3b226a8a9578d4d272dc"
 dependencies = [
  "alloy-sol-types",
  "anyhow",
@@ -2482,7 +2482,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5081,7 +5081,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5584,7 +5584,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5671,7 +5671,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -8307,25 +8307,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-zk"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/solana-zkvm-verifier.git#1f3efe8a4c56b4d388a5e4aee940ded5d2dc9777"
-dependencies = [
- "anchor-lang",
-]
-
-[[package]]
-name = "solana-zk-client"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/solana-zkvm-verifier.git#1f3efe8a4c56b4d388a5e4aee940ded5d2dc9777"
-dependencies = [
- "anchor-client",
- "anyhow",
- "solana-program",
- "solana-zk",
-]
-
-[[package]]
 name = "solana-zk-sdk"
 version = "2.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9310,7 +9291,7 @@ dependencies = [
  "getrandom 0.3.2",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -9338,7 +9319,6 @@ dependencies = [
  "sdk",
  "serde_json",
  "sha2 0.10.8",
- "solana-zk-client",
  "tokio",
  "zerofrom",
  "zerovec 0.11.0",
