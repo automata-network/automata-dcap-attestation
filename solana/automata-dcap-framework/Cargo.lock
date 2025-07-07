@@ -971,7 +971,6 @@ dependencies = [
  "programs_shared",
  "serde_json",
  "sha2 0.10.8",
- "solana-sdk-ids",
  "zerocopy 0.7.35",
 ]
 
@@ -2071,6 +2070,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dcap_ecdsa_sp1"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "sp1-solana",
+]
+
+[[package]]
 name = "der"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,6 +2912,21 @@ dependencies = [
  "rand 0.8.5",
  "smallvec",
  "spinning_top",
+]
+
+[[package]]
+name = "groth16-solana"
+version = "0.0.3"
+source = "git+https://github.com/automata-network/groth16-solana.git?branch=patch-v0.0.3#87d18ad713b4cc8672514f3a549491ca18c5ad7e"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "num-bigint 0.4.6",
+ "solana-bn254",
+ "solana-program",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -8745,6 +8767,21 @@ dependencies = [
  "tonic",
  "tracing",
  "twirp-rs",
+]
+
+[[package]]
+name = "sp1-solana"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/sp1-solana.git#4085cee2cf6c415de626032d12d39b545752bd39"
+dependencies = [
+ "ark-bn254",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "groth16-solana",
+ "hex",
+ "num-bigint 0.4.6",
+ "sha2 0.10.8",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::Instruction;
-use solana_sdk_ids::secp256r1_program::ID as SEC256R1_PROGRAM_ID;
+
+pub const SEC256R1_PROGRAM_ID: Pubkey = pubkey!("Secp256r1SigVerify1111111111111111111111111");
 
 use crate::errors::DcapVerifierError;
 
