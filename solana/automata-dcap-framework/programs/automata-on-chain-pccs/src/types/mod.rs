@@ -1,5 +1,3 @@
-pub mod zk;
-
 use anchor_lang::prelude::*;
 use std::{
     str::FromStr,

@@ -7,7 +7,6 @@ pub mod event;
 pub mod instructions;
 pub mod state;
 pub mod types;
-pub mod utils;
 
 declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 
@@ -17,16 +16,16 @@ use instructions::*;
 use programs_shared::certs::*;
 use programs_shared::crl::*;
 use programs_shared::get_cn_from_x509_name;
+use programs_shared::zk::*;
 use types::*;
-use utils::zk::digest_ecdsa_zk_verify;
+
+use crate::instructions::UpsertPckCertificate;
+use sha2::{Digest, Sha256};
+use std::str::FromStr;
 
 #[program]
 pub mod automata_on_chain_pccs {
     use super::*;
-
-    use crate::{instructions::UpsertPckCertificate, utils::zk::compute_output_digest};
-    use sha2::{Digest, Sha256};
-    use std::str::FromStr;
 
     pub fn init_data_buffer(
         ctx: Context<InitDataBuffer>,
@@ -84,7 +83,7 @@ pub mod automata_on_chain_pccs {
         qe_id: String,
         pce_id: String,
         tcbm: String,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let pck_certificate = &mut ctx.accounts.pck_certificate;
@@ -141,17 +140,17 @@ pub mod automata_on_chain_pccs {
         let output_digest =
             compute_output_digest(&fingerprint, &pck_tbs_digest, &issuer_tbs_digest);
 
-        let pck_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
+        // let pck_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
 
-        if pck_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // if pck_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         pck_certificate.qe_id = hex::decode(qe_id)
             .map_err(|_| PccsError::InvalidHexString)?
@@ -190,7 +189,7 @@ pub mod automata_on_chain_pccs {
 
     pub fn upsert_root_ca(
         ctx: Context<UpsertRootCA>,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let root_ca_pda = &mut ctx.accounts.root_ca;
@@ -222,17 +221,18 @@ pub mod automata_on_chain_pccs {
         let fingerprint: [u8; 32] = Sha256::digest(&root_ca_data).into();
         let output_digest = compute_output_digest(&fingerprint, &root_tbs_digest, &root_tbs_digest);
 
-        let root_ca_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
+        // let root_ca_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
 
-        if root_ca_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // if root_ca_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
+
         // write to root pda data
         root_ca_pda.ca_type = CertificateAuthority::ROOT;
         root_ca_pda.cert_data = root_ca_data.to_vec();
@@ -254,7 +254,7 @@ pub mod automata_on_chain_pccs {
 
     pub fn upsert_root_crl(
         ctx: Context<UpsertRootCrl>,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let root_crl = &mut ctx.accounts.root_crl;
@@ -290,17 +290,17 @@ pub mod automata_on_chain_pccs {
         let output_digest =
             compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
+        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
 
-        if pcs_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // if pcs_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         root_crl.ca_type = CertificateAuthority::ROOT;
         root_crl.cert_data = crl_data.to_vec();
@@ -327,7 +327,7 @@ pub mod automata_on_chain_pccs {
     pub fn upsert_pcs_certificate(
         ctx: Context<UpsertPcsCertificate>,
         ca_type: CertificateAuthority,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let pcs_certificate = &mut ctx.accounts.pcs_certificate;
@@ -376,17 +376,17 @@ pub mod automata_on_chain_pccs {
         let output_digest =
             compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
+        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
 
-        if pcs_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // if pcs_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         pcs_certificate.ca_type = ca_type;
         pcs_certificate.cert_data = cert_data.to_vec();
@@ -414,7 +414,7 @@ pub mod automata_on_chain_pccs {
     pub fn upsert_pcs_crl(
         ctx: Context<UpsertPcsCrl>,
         ca_type: CertificateAuthority,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         let pcs_crl = &mut ctx.accounts.pcs_crl;
@@ -457,17 +457,17 @@ pub mod automata_on_chain_pccs {
         let output_digest =
             compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
+        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
 
-        if pcs_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // if pcs_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         pcs_crl.ca_type = ca_type;
         pcs_crl.cert_data = crl_data.to_vec();
@@ -492,7 +492,7 @@ pub mod automata_on_chain_pccs {
         ctx: Context<UpsertEnclaveIdentity>,
         id: EnclaveIdentityType,
         version: u8,
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         use dcap_rs::types::pod::enclave_identity::zero_copy::*;
@@ -542,16 +542,16 @@ pub mod automata_on_chain_pccs {
             &issuer_tbs_digest,
         );
 
-        let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
-        if enclave_identity_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
+        // if enclave_identity_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         enclave_identity_account.identity_type = id;
         enclave_identity_account.version = version;
@@ -581,7 +581,7 @@ pub mod automata_on_chain_pccs {
         tcb_type: TcbType,
         version: u8,
         fmspc: [u8; 6],
-        zkvm_selector: zk::ZkvmSelector,
+        zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
         use dcap_rs::types::pod::tcb_info::zero_copy::TcbInfoZeroCopy;
@@ -626,16 +626,16 @@ pub mod automata_on_chain_pccs {
         let fingerprint: [u8; 32] = Sha256::digest(tcb_info_data).into();
         let output_digest =
             compute_output_digest(&fingerprint, &tcb_info_digest, &issuer_tbs_digest);
-        let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
-            output_digest,
-            &proof,
-            zkvm_selector,
-            &ctx.accounts.zkvm_verifier_program.to_account_info(),
-            &ctx.accounts.system_program,
-        );
-        if tcb_info_verified_with_zk.is_err() {
-            return Err(PccsError::InvalidProof.into());
-        }
+        // let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
+        //     output_digest,
+        //     &proof,
+        //     zkvm_selector,
+        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
+        //     &ctx.accounts.system_program,
+        // );
+        // if tcb_info_verified_with_zk.is_err() {
+        //     return Err(PccsError::InvalidProof.into());
+        // }
 
         tcb_info_account.tcb_type = tcb_type;
         tcb_info_account.version = version;

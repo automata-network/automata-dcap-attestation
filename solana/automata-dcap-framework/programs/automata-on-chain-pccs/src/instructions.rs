@@ -1,8 +1,10 @@
 use crate::errors::PccsError;
 use crate::state::{DataBuffer, EnclaveIdentity, PckCertificate, PcsCertificate, TcbInfo};
-use crate::types::{CertificateAuthority, EnclaveIdentityType, TcbType, zk::ZkvmSelector};
+use crate::types::{CertificateAuthority, EnclaveIdentityType, TcbType};
 
 use anchor_lang::prelude::*;
+
+use programs_shared::zk::ZkvmSelector;
 
 // Maximum size of the certificate data in bytes (4KB)
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
