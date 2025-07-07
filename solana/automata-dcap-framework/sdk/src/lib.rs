@@ -59,7 +59,7 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
         zkvm_verifier_program: Pubkey,
         zkvm_selector: ZkvmSelector,
         raw_quote_bytes: &[u8],
-        pck_cert_chain_verify_proof: Vec<u8>,
+        pck_cert_chain_proofs: [Vec<u8>; 3],
     ) -> anyhow::Result<(Pubkey, Vec<Signature>)> {
         let (quote_buffer_pubkey, verified_output_pubkey) = self
             .verifier_client
@@ -77,7 +77,7 @@ impl<S: Clone + Deref<Target = impl Signer>> Sdk<S> {
                 verified_output_pubkey,
                 zkvm_verifier_program,
                 zkvm_selector,
-                pck_cert_chain_verify_proof,
+                pck_cert_chain_proofs,
             )
             .await?;
 

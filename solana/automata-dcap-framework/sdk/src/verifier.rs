@@ -178,7 +178,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         verified_output_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         zkvm_selector: ZkvmSelector,
-        pck_cert_chain_verify_proof_bytes: Vec<u8>,
+        pck_cert_chain_verify_proofs: [Vec<u8>; 3],
     ) -> anyhow::Result<Vec<Signature>> {
         // Parse Quote
         let quote_data = self
@@ -213,7 +213,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             verified_output_pubkey,
             zkvm_verifier_program,
             zkvm_selector,
-            pck_cert_chain_verify_proof_bytes,
+            pck_cert_chain_verify_proofs,
         )
         .await?;
 
@@ -423,27 +423,29 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         verified_output_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         zkvm_selector: ZkvmSelector,
-        proof_bytes: Vec<u8>,
+        proofs: [Vec<u8>; 3],
     ) -> anyhow::Result<Signature> {
-        let tx = self.program
-            .request()
-            .accounts(accounts::VerifyPckCertChainZk {
-                quote_data_buffer: quote_buffer_pubkey,
-                zkvm_verifier_program,
-                pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
-                root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
-                verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
-            })
-            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
-            .args(args::VerifyPckCertChainZk {
-                zkvm_selector,
-                proof_bytes,
-            })
-            .send()
-            .await?;
+        // let tx = self.program
+        //     .request()
+        //     .accounts(accounts::VerifyPckCertChainZk {
+        //         quote_data_buffer: quote_buffer_pubkey,
+        //         zkvm_verifier_program,
+        //         pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
+        //         root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
+        //         verified_output: verified_output_pubkey,
+        //         system_program: anchor_client::solana_sdk::system_program::ID,
+        //     })
+        //     .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
+        //     .args(args::VerifyPckCertChainZk {
+        //         zkvm_selector,
+        //         proof_bytes,
+        //     })
+        //     .send()
+        //     .await?;
 
-        Ok(tx)
+        // Ok(tx)
+
+        Ok(Signature::default()) // TODO
     }
 
     /// Matches the TCB (Trusted Computing Base) status of the platform.
@@ -609,9 +611,16 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         converged_tcb_status =
             TcbInfo::converge_tcb_status_with_qe_tcb(converged_tcb_status, qe_tcb_status);
 
+        // TEMP
+        let quote_body_type: u16 = if verified_output_account.tee_type == SGX_TEE_TYPE {
+            1
+        } else {
+            2
+        };
+
         Ok(VerifiedOutput {
             quote_version: verified_output_account.quote_version,
-            tee_type: verified_output_account.tee_type.to_le(),
+            quote_body_type: quote_body_type,
             tcb_status: converged_tcb_status as u8,
             fmspc: verified_output_account.fmspc,
             quote_body: quote_body,
