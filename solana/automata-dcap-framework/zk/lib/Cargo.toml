@@ -1,0 +1,7 @@
+[package]
+version = "0.1.0"
+name = "dcap-p256-zk-lib"
+edition = "2021"
+
+[dependencies]
+borsh = { version = "1.5.7", features = ["derive"] }

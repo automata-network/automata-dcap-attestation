@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "lib",
+    "program",
+]
+resolver = "2"
+
+[workspace.dependencies]
+sp1-sdk = { version = "^5.0.0" }
+sp1-zkvm = { version = "^5.0.0" }
+dcap-p256-zk-lib = { path = "../lib" }
+serde_json = { version = "1.0.125", features = ["raw_value"] }
+borsh = { version = "1.5.7", features = ["derive"] }
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev", features = ["full"] }
+
+[patch.crates-io]
+sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.8-sp1-4.0.0" }
+crypto-bigint = { git = "https://github.com/sp1-patches/RustCrypto-bigint", tag = "patch-0.5.5-sp1-4.0.0" }
+k256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-k256-13.4-sp1-5.0.0" }
+p256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-p256-13.2-sp1-5.0.0" }
+ecdsa = { git = "https://github.com/sp1-patches/signatures", tag = "patch-16.9-sp1-4.1.0" }
