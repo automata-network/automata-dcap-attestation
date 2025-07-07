@@ -5,3 +5,19 @@ edition = "2021"
 
 [dependencies]
 borsh = { version = "1.5.7", features = ["derive"] }
+serde_json = { version = "1.0.125", features = ["raw_value"], optional = true }
+der = { version = "0.7.9", default-features = false, features = [
+    "derive",
+    "oid",
+], optional = true }
+x509-cert = { version = "0.2.5", optional = true }
+sha2 = { version = "=0.10.8", optional = true }
+p256 = { version = "=0.13.2", optional = true }
+dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev", features = [
+    "full",
+], optional = true }
+
+[features]
+default = ["client", "program"]
+client = []
+program = ["serde_json", "der", "x509-cert", "sha2", "p256", "dcap-rs"]

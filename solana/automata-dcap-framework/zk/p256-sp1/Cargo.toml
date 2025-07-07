@@ -8,8 +8,7 @@ resolver = "2"
 [workspace.dependencies]
 sp1-sdk = { version = "^5.0.0" }
 sp1-zkvm = { version = "^5.0.0" }
-dcap-p256-zk-lib = { path = "../lib" }
-serde_json = { version = "1.0.125", features = ["raw_value"] }
+dcap-p256-zk-lib = { path = "../lib", default-features = false }
 borsh = { version = "1.5.7", features = ["derive"] }
 dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev", features = ["full"] }
 

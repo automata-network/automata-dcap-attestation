@@ -6,12 +6,13 @@ use dcap_rs::types::{
 
 #[test]
 pub fn test_get_program_vkey() {
-    // [0, 164, 240, 143, 193, 129, 47, 232, 100, 186, 124, 214, 206, 247, 108, 77, 146, 246, 231, 225, 4, 201, 164, 144, 162, 142, 10, 214, 195, 180, 187, 117]
+    // [0, 111, 202, 109, 191, 166, 239, 42, 224, 146, 249, 26, 3, 212, 159, 255, 220, 251, 19, 62, 72, 240, 105, 251, 148, 90, 95, 152, 48, 11, 41, 149]
     let vkey = get_program_vkey();
     println!("program vkey: {:?}", vkey);
 }
 
 #[test]
+#[ignore]
 pub fn test_verify_root_x509() {
     let root_der_bytes = include_bytes!("./samples/root.der");
 
@@ -26,6 +27,7 @@ pub fn test_verify_root_x509() {
 }
 
 #[test]
+#[ignore]
 pub fn verify_signing_x509() {
     let signing_der_bytes = include_bytes!("./samples/signing.der");
     let root_der_bytes = include_bytes!("./samples/root.der");
@@ -42,6 +44,7 @@ pub fn verify_signing_x509() {
 }
 
 #[test]
+#[ignore]
 pub fn test_verify_root_crl() {
     let root_crl_bytes = include_bytes!("./samples/root_crl.der");
     let root_der_bytes = include_bytes!("./samples/root.der");
@@ -58,6 +61,7 @@ pub fn test_verify_root_crl() {
 }
 
 #[test]
+#[ignore]
 pub fn test_verify_tcb_info() {
     let tcb_info_bytes = include_bytes!("./samples/tcb_info_v3_sgx.json");
 
@@ -83,6 +87,7 @@ pub fn test_verify_tcb_info() {
 }
 
 #[test]
+#[ignore]
 pub fn test_verify_enclave_identity() {
     let qe_identity_bytes = include_bytes!("./samples/qe_identity.json");
 

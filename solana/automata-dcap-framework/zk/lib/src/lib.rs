@@ -1,3 +1,8 @@
+#[cfg(feature = "client")]
+pub mod client;
+#[cfg(feature = "program")]
+pub mod verify;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq)]

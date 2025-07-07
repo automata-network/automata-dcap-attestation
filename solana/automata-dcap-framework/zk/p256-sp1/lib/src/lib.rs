@@ -2,8 +2,8 @@
 mod tests;
 
 use anyhow::Result;
-use borsh::BorshSerialize;
-use dcap_p256_zk_lib::*;
+use dcap_p256_zk_lib::client::serialize_input;
+use dcap_p256_zk_lib::InputType;
 use sp1_sdk::{HashableKey, ProverClient, SP1Stdin, include_elf};
 
 pub const PROGRAM_ELF: &[u8] = include_elf!("dcap-p256-sp1-program");
@@ -26,13 +26,7 @@ pub fn get_proof(
     Vec<u8>,  // proof bytes
 )> {
     // serialize the input
-    let input = Input {
-        input_type,
-        subject_data,
-        issuer_raw_der,
-    };
-    let mut input_bytes = vec![];
-    input.serialize(&mut input_bytes)?;
+    let input_bytes = serialize_input(input_type, subject_data, issuer_raw_der);
 
     // prepare the zkVM input
     let mut stdin = SP1Stdin::new();
