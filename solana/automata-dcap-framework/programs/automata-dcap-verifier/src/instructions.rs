@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 use automata_on_chain_pccs::types::CertificateAuthority;
+use programs_shared::zk::ZkvmSelector;
 
 use crate::errors::DcapVerifierError;
 use crate::state::{DataBuffer, VerifiedOutput};
-use crate::utils::zk::ZkvmSelector;
 
 use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo, PcsCertificate};
 

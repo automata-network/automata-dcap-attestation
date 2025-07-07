@@ -18,3 +18,4 @@ codegen-units = 1
 
 [workspace.dependencies]
 dcap-rs = { git = "https://github.com/automata-network/dcap-rs.git", branch = "dev", default-features = false }
+anchor-lang = { version = "0.31.1", default-features = false }

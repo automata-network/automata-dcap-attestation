@@ -11,28 +11,23 @@ use errors::*;
 use instructions::*;
 use p256::ecdsa::Signature;
 use p256::ecdsa::VerifyingKey;
-use utils::certs::compute_output_digest_from_pem;
 use utils::ecdsa::*;
-use utils::zk::*;
+
+use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
+use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
+use zerocopy::AsBytes;
+
+use programs_shared::certs::*;
+use programs_shared::crl::*;
+use programs_shared::zk::ZkvmSelector;
+use programs_shared::x509_parser::parse_x509_certificate;
+use programs_shared::get_cn_from_x509_name;
 
 declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
 #[program]
 pub mod automata_dcap_verifier {
-    use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
-    use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
-    use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
-    use programs_shared::get_cn_from_x509_name;
-    use solana_zk_client::verify::{
-        risc0::risc0_verify_instruction_data, succinct::sp1_groth16_verify_instruction_data,
-    };
-    use solana_zk_client::{RISC0_VERIFIER_ROUTER_ID, SUCCINCT_SP1_VERIFIER_ID};
-    use zerocopy::AsBytes;
-
-    use programs_shared::certs::*;
-    use programs_shared::crl::*;
-    use programs_shared::x509_parser::parse_x509_certificate;
-
     use super::*;
 
     pub fn create_quote_accounts(ctx: Context<Create>, quote_size: u32) -> Result<()> {
@@ -310,12 +305,7 @@ pub mod automata_dcap_verifier {
         // Step 1: Extract the PCK Certificate Chain from the quote data
         let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
 
-        // Step 2: Compute the zkVM output data
-        // the data consists of ABI-encoded of (bytes32, bytes32, bool) containing these values:
-        // - the hash of the abi-encoded bytes array contains the PCK Certificate DER chain
-        // - the hash of the root certificate DER
-        // - true
-        let (cert_chain, output_digest) = compute_output_digest_from_pem(pck_cert_chain_pem)?;
+        // TODO: pick a certificate from the given index and its issuer
 
         // // Step 3: Validate each certificate in the chain
         // let now = Clock::get().unwrap().unix_timestamp;
@@ -371,52 +361,47 @@ pub mod automata_dcap_verifier {
         //     }
         // }
 
-        // Step 4: make CPI to the Solana ZK Verifier program to verify proofs
-        let x509_program_vkey = zkvm_selector
-            .get_x509_verifier_program_vkey()
-            .expect("Missing X509 Verifier program for the provided zkVM");
+        // // First, we get the instruction data and the zkvm verifier address
+        // let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
+        //     ZkvmSelector::RiscZero => (
+        //         risc0_verify_instruction_data(&proof_bytes, *x509_program_vkey, output_digest),
+        //         RISC0_VERIFIER_ROUTER_ID,
+        //     ),
+        //     ZkvmSelector::Succinct => (
+        //         sp1_groth16_verify_instruction_data(
+        //             &proof_bytes,
+        //             *x509_program_vkey,
+        //             output_digest,
+        //         ),
+        //         SUCCINCT_SP1_VERIFIER_ID,
+        //     ),
+        //     _ => {
+        //         return Err(DcapVerifierError::InvalidZkvmSelector.try_into().unwrap());
+        //     },
+        // };
 
-        // First, we get the instruction data and the zkvm verifier address
-        let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
-            ZkvmSelector::RiscZero => (
-                risc0_verify_instruction_data(&proof_bytes, *x509_program_vkey, output_digest),
-                RISC0_VERIFIER_ROUTER_ID,
-            ),
-            ZkvmSelector::Succinct => (
-                sp1_groth16_verify_instruction_data(
-                    &proof_bytes,
-                    *x509_program_vkey,
-                    output_digest,
-                ),
-                SUCCINCT_SP1_VERIFIER_ID,
-            ),
-            _ => {
-                return Err(DcapVerifierError::InvalidZkvmSelector.try_into().unwrap());
-            },
-        };
+        // // Check zkvm verifier program
+        // let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
+        // // require!(
+        // //     zkvm_verifier_program.key == &zkvm_verifier_address,
+        // //     DcapVerifierError::InvalidZkvmProgram
+        // // );
 
-        // Check zkvm verifier program
-        let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
-        // require!(
-        //     zkvm_verifier_program.key == &zkvm_verifier_address,
-        //     DcapVerifierError::InvalidZkvmProgram
+        // // Create the context for the CPI call
+        // let verify_cpi_context = CpiContext::new(
+        //     zkvm_verifier_program.to_account_info(),
+        //     vec![ctx.accounts.system_program.to_account_info()],
         // );
 
-        // Create the context for the CPI call
-        let verify_cpi_context = CpiContext::new(
-            zkvm_verifier_program.to_account_info(),
-            vec![ctx.accounts.system_program.to_account_info()],
-        );
-
-        // Invoke CPI to the zkvm verifier program
-        invoke(
-            &Instruction {
-                program_id: zkvm_verifier_program.key().clone(),
-                accounts: verify_cpi_context.to_account_metas(None),
-                data: zk_verify_instruction_data,
-            },
-            &[ctx.accounts.system_program.to_account_info()],
-        )?;
+        // // Invoke CPI to the zkvm verifier program
+        // invoke(
+        //     &Instruction {
+        //         program_id: zkvm_verifier_program.key().clone(),
+        //         accounts: verify_cpi_context.to_account_metas(None),
+        //         data: zk_verify_instruction_data,
+        //     },
+        //     &[ctx.accounts.system_program.to_account_info()],
+        // )?;
 
         let verified_output = &mut ctx.accounts.verified_output;
         verified_output.pck_cert_chain_verified = true;

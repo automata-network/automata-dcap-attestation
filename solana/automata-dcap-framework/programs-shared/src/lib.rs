@@ -1,5 +1,6 @@
 pub mod certs;
 pub mod crl;
+pub mod zk;
 
 pub use x509_parser;
 

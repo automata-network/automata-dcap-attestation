@@ -17,16 +17,15 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = "0.31.1"
+anchor-lang = { workspace = true }
 solana-sdk-ids = "=2.2.1"
 dcap-rs = { workspace = true, default-features = false, features = ["zero-copy"] }
 zerocopy = { version = "0.7.34" }
-automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = ["cpi"] }
-serde_json   	= { version = "1.0.125", features = ["raw_value"] }
+automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = [
+    "cpi",
+] }
+serde_json = { version = "1.0.125", features = ["raw_value"] }
 hex = { version = "0.4.3" }
-solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git", default-features = false }
-alloy-primitives = { version = "^0.6.1" }
-alloy-sol-types = { version = "^0.6.1" }
 sha2 = { version = "0.10.8" }
 p256 = { version = "=0.13.2" }
 aligned-vec = { version = "0.6.4" }

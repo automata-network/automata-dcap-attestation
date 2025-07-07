@@ -17,8 +17,7 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
-solana-zk-client = { git = "https://github.com/automata-network/solana-zkvm-verifier.git", default-features = false }
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
 hex = "0.4.3"
 sha2 = "0.10.8"
 dcap-rs = { workspace = true, default-features = false, features = ["zero-copy"] }
