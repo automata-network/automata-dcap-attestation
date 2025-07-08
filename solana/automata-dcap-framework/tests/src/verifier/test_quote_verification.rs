@@ -19,7 +19,7 @@ pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
     ];
     let (verified_output_pubkey, signatures) = sdk.verify_quote(
         TEST_ZKVM_VERIFIER_PUBKEY,
-        ZkvmSelector::RiscZero,
+        ZkvmSelector::Succinct,
         quote_data,
         proofs
     )
@@ -66,7 +66,7 @@ pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
 //             quote_buffer_pubkey,
 //             verified_output_pubkey,
 //             TEST_ZKVM_VERIFIER_PUBKEY,
-//             ZkvmSelector::RiscZero,
+//             ZkvmSelector::Succinct,
 //             proof
 //         )
 //         .await

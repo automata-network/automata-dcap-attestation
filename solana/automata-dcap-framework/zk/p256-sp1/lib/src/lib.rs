@@ -8,7 +8,7 @@ use sp1_sdk::{HashableKey, ProverClient, SP1Stdin, include_elf};
 
 pub const PROGRAM_ELF: &[u8] = include_elf!("dcap-p256-sp1-program");
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ProofType {
     Mock,
     Groth16,

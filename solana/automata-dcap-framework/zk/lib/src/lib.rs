@@ -5,7 +5,7 @@ pub mod verify;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-#[derive(BorshDeserialize, BorshSerialize, PartialEq)]
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Copy)]
 #[borsh(use_discriminant = true)]
 #[repr(u8)]
 pub enum InputType {

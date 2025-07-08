@@ -2,12 +2,15 @@ use anchor_client::solana_sdk::signer::keypair::Keypair;
 use dcap_rs::types::tcb_info::{TcbInfoAndSignature, TcbInfoVersion};
 use sdk::Sdk;
 use sdk::models::{CertificateAuthority, TcbType};
-use sdk::pccs::automata_on_chain_pccs::{types::ZkvmSelector, accounts::TcbInfo as TcbInfoAccount};
 use sdk::pccs::EcdsaZkVerifyInputType;
+use sdk::pccs::automata_on_chain_pccs::types::ZkvmSelector;
+use sdk::shared::zk::RequestProof;
+use sdk::shared::zk::sp1::SP1RequestArguments;
+
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::{ROOT_CRL_BYTES, TEST_ZKVM_VERIFIER_PUBKEY};
+use crate::TEST_ZKVM_VERIFIER_PUBKEY;
 
 // pub(crate) async fn test_tcb_info_upsert_v3_sgx(sdk: &Sdk<Arc<Keypair>>) {
 //     let tcb_info_data = include_bytes!("../../data/tcb_info_v3_sgx.json");
@@ -47,7 +50,7 @@ use crate::{ROOT_CRL_BYTES, TEST_ZKVM_VERIFIER_PUBKEY};
 //             tcb_type,
 //             3,
 //             fmspc_bytes,
-//             ZkvmSelector::RiscZero,
+//             ZkvmSelector::Succinct,
 //             proof,
 //         )
 //         .await
@@ -77,22 +80,22 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
         .await
         .unwrap();
 
-    // let data_buffer_account_data = client.load_buffer_data(data_buffer_pubkey).await.unwrap();
+    let data_buffer_account_data = client.load_buffer_data(data_buffer_pubkey).await.unwrap();
 
-    // let (_, issuer_der) = client
-    //     .get_pcs_certificate(CertificateAuthority::SIGNING, false)
-    //     .await
-    //     .unwrap();
+    let (_, issuer_der) = client
+        .get_pcs_certificate(CertificateAuthority::SIGNING, false)
+        .await
+        .unwrap();
 
-    // let (_image_id, _journal, proof) = request_ecdsa_verify_proof(
-    //     EcdsaZkVerifyInputType::TcbInfo,
-    //     data_buffer_account_data.as_slice(),
-    //     issuer_der.as_slice(),
-    // )
-    // .await
-    // .unwrap();
+    let sp1_args = SP1RequestArguments {
+        input_type: EcdsaZkVerifyInputType::TcbInfo,
+        subject_data: data_buffer_account_data,
+        issuer_raw_der: issuer_der,
+    };
+    let (_vkey, _output, proof) = sp1_args.request_p256_proof().await.unwrap();
 
-    let proof = hex::decode("259659e72b79a5882d32e18644f417e0066350d21f9651c46d39ec51db75daea04fc5ebb356e37f2a5650aeaecc3cb985dc0446977c8f3180e1b7db9e064da412f9b9fc319ea66e16b0768b2a3d36635b2d7e34a534a94e8f2114ac017d640ca17f472a2fd4cadf9463c7ad42d4f745eb2f403077e3c9419bdcbd76136a9f6112867d9b26705719bac41c7647046c00e2f6a7b707b6db2aa98c20b59e98f1ff01b1319b7da34bf87784266bc7811646650440149cbe4ea054dcf75a06b0141df041c168c6e9e1133c87f9a3be33ecc0234f2ba11c34f07182f1132c75d24e4541c2a449825d5f2e7d06f37667ff013f5ed5ec556967342e8177e49a13b40f17f").unwrap();
+    print!("Proof: {}", hex::encode(&proof));
+    // let proof = hex::decode("259659e72b79a5882d32e18644f417e0066350d21f9651c46d39ec51db75daea04fc5ebb356e37f2a5650aeaecc3cb985dc0446977c8f3180e1b7db9e064da412f9b9fc319ea66e16b0768b2a3d36635b2d7e34a534a94e8f2114ac017d640ca17f472a2fd4cadf9463c7ad42d4f745eb2f403077e3c9419bdcbd76136a9f6112867d9b26705719bac41c7647046c00e2f6a7b707b6db2aa98c20b59e98f1ff01b1319b7da34bf87784266bc7811646650440149cbe4ea054dcf75a06b0141df041c168c6e9e1133c87f9a3be33ecc0234f2ba11c34f07182f1132c75d24e4541c2a449825d5f2e7d06f37667ff013f5ed5ec556967342e8177e49a13b40f17f").unwrap();
 
     let tcb_type = TcbType::Tdx;
     let fmspc = "00806f050000";
@@ -104,7 +107,7 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
             tcb_type,
             3,
             fmspc_bytes,
-            ZkvmSelector::RiscZero,
+            ZkvmSelector::Succinct,
             proof,
         )
         .await

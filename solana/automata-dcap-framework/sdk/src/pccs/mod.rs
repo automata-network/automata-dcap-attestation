@@ -4,8 +4,6 @@ pub mod pck_dao;
 pub mod pcs_dao;
 
 pub use dcap_p256_zk_lib::InputType as EcdsaZkVerifyInputType;
-
-use crate::shared::negate_g1;
 use crate::models::*;
 
 use std::ops::Deref;

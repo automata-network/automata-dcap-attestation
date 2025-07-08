@@ -1,5 +1,5 @@
 {
-  "address": "Fb5vSs8XwQAopUnrVtMGnVciFaGT4J649nuR1i5kTPQH",
+  "address": "3tXQLx1CPpecJcBzHBLnC1fvRhLEpHqvWqDRPyxrKDCe",
   "metadata": {
     "name": "dcap_ecdsa_sp1",
     "version": "0.1.0",
@@ -8,19 +8,24 @@
   },
   "instructions": [
     {
-      "name": "initialize",
+      "name": "verify_p256_proof",
       "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
+        209,
+        161,
+        66,
+        1,
+        26,
+        20,
+        105,
+        28
       ],
       "accounts": [],
-      "args": []
+      "args": [
+        {
+          "name": "instruction_data",
+          "type": "bytes"
+        }
+      ]
     }
   ]
 }
