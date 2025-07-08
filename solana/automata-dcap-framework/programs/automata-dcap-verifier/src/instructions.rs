@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
-use automata_on_chain_pccs::types::CertificateAuthority;
 use programs_shared::zk::ZkvmSelector;
 
 use crate::errors::DcapVerifierError;
@@ -185,6 +184,7 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
 /// This instruction simply verifies the SNARK proof and the public inputs
 #[derive(Accounts)]
 #[instruction(
+    certificate_index: u64,
     zkvm_selector: ZkvmSelector,
     proof_bytes: Vec<u8>,
 )]
@@ -194,19 +194,8 @@ pub struct VerifyPckCertChainZk<'info> {
     )]
     pub quote_data_buffer: Account<'info, DataBuffer>,
 
-    /// CHECK: The program checks the address of the PCK CRL account
-    pub pck_crl: Account<'info, PcsCertificate>,
-
-    #[account(
-        seeds = [
-            b"pcs_cert",
-            CertificateAuthority::ROOT.common_name().as_bytes(),
-            &[true as u8]
-        ],
-        bump,
-        seeds::program = automata_on_chain_pccs::ID,
-    )]
-    pub root_crl: Account<'info, PcsCertificate>,
+    /// CHECK: The program checks the address of the CRL account
+    pub crl: Account<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,

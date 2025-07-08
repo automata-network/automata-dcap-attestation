@@ -457,6 +457,12 @@
     },
     {
       "name": "verify_pck_cert_chain_zk",
+      "docs": [
+        "Certificate index:",
+        "0 - PCK Certificate",
+        "1 - PCK Intermediate CA",
+        "2 - Intel SGX Root CA"
+      ],
       "discriminator": [
         251,
         227,
@@ -472,10 +478,7 @@
           "name": "quote_data_buffer"
         },
         {
-          "name": "pck_crl"
-        },
-        {
-          "name": "root_crl"
+          "name": "crl"
         },
         {
           "name": "zkvm_verifier_program"
@@ -518,6 +521,10 @@
         }
       ],
       "args": [
+        {
+          "name": "certificate_index",
+          "type": "u64"
+        },
         {
           "name": "zkvm_selector",
           "type": {
@@ -720,6 +727,11 @@
       "code": 6023,
       "name": "InvalidRootCa",
       "msg": "Invalid Root CA"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidCertificateIndex",
+      "msg": "Invalid PCK Certificate Chain Index"
     }
   ],
   "types": [
@@ -1048,7 +1060,15 @@
             "type": "bool"
           },
           {
-            "name": "pck_cert_chain_verified",
+            "name": "pck_leaf_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_intermediate_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_root_verified",
             "type": "bool"
           },
           {

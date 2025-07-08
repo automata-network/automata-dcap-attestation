@@ -969,7 +969,6 @@ dependencies = [
  "hex",
  "p256",
  "programs_shared",
- "serde_json",
  "sha2 0.10.8",
  "zerocopy 0.7.35",
 ]

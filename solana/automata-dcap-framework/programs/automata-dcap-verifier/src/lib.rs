@@ -11,18 +11,20 @@ use errors::*;
 use instructions::*;
 use p256::ecdsa::Signature;
 use p256::ecdsa::VerifyingKey;
+use sha2::{Digest, Sha256};
 use utils::ecdsa::*;
 
 use anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked;
 use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
 use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
+use dcap_rs::utils::cert_chain_processor::find_certificate_ranges;
 use zerocopy::AsBytes;
 
 use programs_shared::certs::*;
 use programs_shared::crl::*;
-use programs_shared::zk::ZkvmSelector;
-use programs_shared::x509_parser::parse_x509_certificate;
 use programs_shared::get_cn_from_x509_name;
+use programs_shared::x509_parser::pem::parse_x509_pem;
+use programs_shared::zk::{self, *};
 
 declare_id!("FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC");
 
@@ -289,8 +291,13 @@ pub mod automata_dcap_verifier {
         Ok(())
     }
 
+    /// Certificate index:
+    /// 0 - PCK Certificate
+    /// 1 - PCK Intermediate CA
+    /// 2 - Intel SGX Root CA
     pub fn verify_pck_cert_chain_zk(
         ctx: Context<VerifyPckCertChainZk>,
+        certificate_index: u64,
         zkvm_selector: ZkvmSelector,
         proof_bytes: Vec<u8>,
     ) -> Result<()> {
@@ -303,108 +310,86 @@ pub mod automata_dcap_verifier {
         })?;
 
         // Step 1: Extract the PCK Certificate Chain from the quote data
-        let pck_cert_chain_pem = quote.signature.cert_data.cert_data;
+        let pck_cert_chain = quote.signature.cert_data.cert_data;
+        let cert_ranges = find_certificate_ranges(&pck_cert_chain);
 
-        // TODO: pick a certificate from the given index and its issuer
+        // Step 2: Validate the certificate
+        let now = Clock::get().unwrap().unix_timestamp;
+        let current_range = cert_ranges.get(certificate_index as usize).unwrap();
+        let cert = parse_x509_pem(&pck_cert_chain[current_range.0..current_range.1])
+            .unwrap()
+            .1;
+        let x509 = cert.parse_x509().unwrap();
+        let tbs = &x509.tbs_certificate;
 
-        // // Step 3: Validate each certificate in the chain
-        // let now = Clock::get().unwrap().unix_timestamp;
-        // for (i, cert) in cert_chain.iter().enumerate() {
-        //     let (_, x509) = parse_x509_certificate(cert).unwrap();
-        //     let tbs = &x509.tbs_certificate;
-            
-        //     // First, check the validity range for each certificate
-        //     let (not_before, not_after) = get_certificate_validity(tbs);
-        //     let serial_nuber = get_certificate_serial(tbs);
+        // First, check the validity range for each certificate
+        let (not_before, not_after) = get_certificate_validity(tbs);
+        let serial_nuber = get_certificate_serial(tbs);
 
-        //     let cert_validity = now >= not_before && now <= not_after;
-        //     if !cert_validity {
-        //         msg!("Certificate {} has expired", i);
-        //         return Err(DcapVerifierError::ExpiredCollateral.into());
-        //     }
+        let cert_validity = now >= not_before && now <= not_after;
+        if !cert_validity {
+            msg!("Certificate at index {} has expired", certificate_index);
+            return Err(DcapVerifierError::ExpiredCollateral.into());
+        }
 
-        //     // Then, check the revocation status for PCK and PCK Issuer Certificate
-        //     // For the root certificate, we just have to make sure that the pubkey matches
-        //     // with what is expected
-        //     if i == 0 {
-        //         let pck_crl_account = &ctx.accounts.pck_crl;
+        // Then, check the revocation status for PCK and PCK Issuer Certificate
+        // For the root certificate, we just have to make sure that the pubkey matches
+        // with what is expected
+        if certificate_index == 2 {
+            let root_pubkey = tbs.public_key().subject_public_key.as_ref();
+            require!(
+                root_pubkey == INTEL_ROOT_PUB_KEY,
+                DcapVerifierError::InvalidRootCa
+            );
+        } else {
+            let crl_account = &ctx.accounts.crl;
+            let issuer_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
+            let (expected_crl_pubkey, _) = Pubkey::find_program_address(
+                &[b"pcs_cert", issuer_ca_type_str.as_bytes(), &[true as u8]],
+                &automata_on_chain_pccs::ID,
+            );
+            require!(
+                crl_account.key() == expected_crl_pubkey,
+                DcapVerifierError::MismatchPda
+            );
+            if check_certificate_revocation(&serial_nuber, &crl_account.cert_data).is_err() {
+                msg!("Certificate at index {} revoked", certificate_index);
+                return Err(DcapVerifierError::RevokedCertificate.into());
+            }
+        };
 
-        //         // Check PCK CRL account is valid
-        //         let pck_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
-        //         let (expected_pck_crl_pubkey, _) = Pubkey::find_program_address(
-        //             &[b"pcs_cert", pck_ca_type_str.as_bytes(), &[true as u8]],
-        //             &automata_on_chain_pccs::ID,
-        //         );
+        let fingerprint: [u8; 32] = Sha256::digest(&cert.contents).into();
+        let subject_tbs_digest: [u8; 32] = Sha256::digest(tbs.as_ref()).into();
+        let issuer_tbs_digest: [u8; 32] = if certificate_index == 2 {
+            subject_tbs_digest
+        } else {
+            let issuer_range = cert_ranges.get(certificate_index as usize + 1).unwrap();
+            let issuer_cert = parse_x509_pem(&pck_cert_chain[issuer_range.0..issuer_range.1])
+                .unwrap()
+                .1;
+            let issuer_tbs = &issuer_cert.parse_x509().unwrap().tbs_certificate;
+            Sha256::digest(issuer_tbs.as_ref()).into()
+        };
 
-        //         if expected_pck_crl_pubkey != pck_crl_account.key() {
-        //             msg!("Invalid PCK CRL account");
-        //             return Err(DcapVerifierError::MismatchPda.into());
-        //         }
-
-        //         if check_certificate_revocation(&serial_nuber, &pck_crl_account.cert_data).is_err() {
-        //             msg!("PCK Certificate revoked");
-        //             return Err(DcapVerifierError::RevokedCertificate.into());
-        //         }
-        //     } else if i == 1 {
-        //         let root_crl_account = &ctx.accounts.root_crl;
-
-        //         if check_certificate_revocation(&serial_nuber, &root_crl_account.cert_data).is_err() {
-        //             msg!("PCK Intermediate Certificate revoked");
-        //             return Err(DcapVerifierError::RevokedCertificate.into());
-        //         }
-        //     } else {
-        //         let root_pubkey = tbs.public_key().subject_public_key.as_ref();
-        //         require!(
-        //             root_pubkey == INTEL_ROOT_PUB_KEY,
-        //             DcapVerifierError::InvalidRootCa
-        //         );
-        //     }
-        // }
-
-        // // First, we get the instruction data and the zkvm verifier address
-        // let (zk_verify_instruction_data, zkvm_verifier_address) = match zkvm_selector {
-        //     ZkvmSelector::RiscZero => (
-        //         risc0_verify_instruction_data(&proof_bytes, *x509_program_vkey, output_digest),
-        //         RISC0_VERIFIER_ROUTER_ID,
-        //     ),
-        //     ZkvmSelector::Succinct => (
-        //         sp1_groth16_verify_instruction_data(
-        //             &proof_bytes,
-        //             *x509_program_vkey,
-        //             output_digest,
-        //         ),
-        //         SUCCINCT_SP1_VERIFIER_ID,
-        //     ),
-        //     _ => {
-        //         return Err(DcapVerifierError::InvalidZkvmSelector.try_into().unwrap());
-        //     },
-        // };
-
-        // // Check zkvm verifier program
-        // let zkvm_verifier_program = &ctx.accounts.zkvm_verifier_program;
-        // // require!(
-        // //     zkvm_verifier_program.key == &zkvm_verifier_address,
-        // //     DcapVerifierError::InvalidZkvmProgram
-        // // );
-
-        // // Create the context for the CPI call
-        // let verify_cpi_context = CpiContext::new(
-        //     zkvm_verifier_program.to_account_info(),
-        //     vec![ctx.accounts.system_program.to_account_info()],
-        // );
-
-        // // Invoke CPI to the zkvm verifier program
-        // invoke(
-        //     &Instruction {
-        //         program_id: zkvm_verifier_program.key().clone(),
-        //         accounts: verify_cpi_context.to_account_metas(None),
-        //         data: zk_verify_instruction_data,
-        //     },
-        //     &[ctx.accounts.system_program.to_account_info()],
-        // )?;
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        ecdsa_zk_verify(
+            fingerprint,
+            subject_tbs_digest,
+            issuer_tbs_digest,
+            proof_bytes,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        )?;
 
         let verified_output = &mut ctx.accounts.verified_output;
-        verified_output.pck_cert_chain_verified = true;
+        match certificate_index {
+            0 => verified_output.pck_leaf_verified = true,
+            1 => verified_output.pck_intermediate_verified = true,
+            2 => verified_output.pck_root_verified = true,
+            _ => {
+                return Err(DcapVerifierError::InvalidCertificateIndex.into());
+            },
+        }
 
         Ok(())
     }
@@ -590,4 +575,68 @@ pub mod automata_dcap_verifier {
         );
         Ok(())
     }
+}
+
+/// Helper function to validate the provided zkvm Verifier account info
+fn validate_zkvm_verifier_account_info(
+    zkvm_selector: ZkvmSelector,
+    zkvm_verifier_program: &AccountInfo,
+) -> Result<()> {
+    match zkvm_selector {
+        ZkvmSelector::Succinct => {
+            require!(
+                *zkvm_verifier_program.key == zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY,
+                DcapVerifierError::InvalidZkvmProgram
+            );
+            Ok(())
+        },
+        _ => {
+            return Err(DcapVerifierError::InvalidZkvmProgram.into());
+        },
+    }
+}
+
+/// Helper function to perform CPI to the verifier program to verify SNARK proofs
+fn ecdsa_zk_verify<'a>(
+    fingerprint: [u8; 32],
+    subject_tbs_digest: [u8; 32],
+    issuer_tbs_digest: [u8; 32],
+    proof: Vec<u8>,
+    zkvm_verifier_program: &AccountInfo<'a>,
+    system_program: &Program<'a, System>,
+) -> Result<()> {
+    let instruction_data = match zkvm_verifier_program.key {
+        &zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY => {
+            use zk::sp1::SP1Groth16Proof;
+
+            let sp1_public_inputs =
+                concatenate_output(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
+            let proof = SP1Groth16Proof {
+                proof: proof,
+                sp1_public_inputs,
+            };
+
+            proof
+                .verify_p256_proof_instruction()
+                .expect("Failed to create instruction data")
+        },
+        _ => return Err(DcapVerifierError::InvalidZkvmProgram.into()),
+    };
+
+    let verify_cpi_context = CpiContext::new(
+        zkvm_verifier_program.clone(),
+        vec![system_program.to_account_info()],
+    );
+
+    invoke(
+        &Instruction {
+            program_id: zkvm_verifier_program.key(),
+            accounts: verify_cpi_context.to_account_metas(None),
+            data: instruction_data,
+        },
+        &[system_program.to_account_info()],
+    )
+    .unwrap();
+
+    Ok(())
 }

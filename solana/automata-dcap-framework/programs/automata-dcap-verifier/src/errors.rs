@@ -73,4 +73,7 @@ pub enum DcapVerifierError {
 
     #[msg("Invalid Root CA")]
     InvalidRootCa,
+
+    #[msg("Invalid PCK Certificate Chain Index")]
+    InvalidCertificateIndex,
 }

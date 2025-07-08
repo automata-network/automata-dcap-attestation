@@ -17,12 +17,17 @@ use automata_dcap_verifier::{client::accounts, client::args};
 use dcap_rs::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE, TDX_TEE_TYPE};
 use dcap_rs::types::report::{EnclaveReportBody, Td10ReportBody};
 use dcap_rs::types::{VerifiedOutput, tcb_info::*};
+use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
 use p256::ecdsa::{Signature as P256Signature, VerifyingKey as P256VerifyingKey};
 use zerocopy::AsBytes;
 
-use crate::pccs::compute_pcs_pda_pubkey;
-use crate::{TcbType, pccs::PCCS_PROGRAM_ID, shared::ecdsa::get_secp256r1_instruction};
 use crate::CertificateAuthority;
+use crate::pccs::compute_pcs_pda_pubkey;
+use crate::shared::get_issuer_common_name;
+use crate::{TcbType, pccs::PCCS_PROGRAM_ID, shared::ecdsa::get_secp256r1_instruction};
+
+const PLATFORM_ISSUER_NAME: &str = "Intel SGX PCK Platform CA";
+const PROCESSOR_ISSUER_NAME: &str = "Intel SGX PCK Processor CA";
 
 /// A client for the Automata DCAP Verifier program on Solana.
 ///
@@ -38,7 +43,7 @@ use crate::CertificateAuthority;
 /// - Verifying the enclave source, and checking the TCB Status for the Quoting Enclave (QE)
 /// - Verifying the PCK (Provisioning Certification Key) certificate chain
 /// - Checks the TCB Status for the platform
-/// 
+///
 /// And finally, the client also provides a function that post-processes the verification results.
 pub struct VerifierClient<S> {
     pub program: Program<S>,
@@ -52,10 +57,10 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     }
 
     /// Initializes a buffer account for storing quote data, and creates a corresponding VerifiedOutput PDA
-    /// 
+    ///
     /// # Parameters
     /// - `quote_size`: The size of the quote data to be stored in the buffer
-    /// 
+    ///
     /// # Returns
     /// - `Result<(Pubkey, Pubkey)>`: A tuple containing the public key of the buffer account and the verified output PDA
     pub async fn init_quote_buffer(&self, quote_size: u32) -> anyhow::Result<(Pubkey, Pubkey)> {
@@ -121,11 +126,11 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     }
 
     /// Deletes (or more accurately, closes) the quote buffer and VerifiedOutput accounts to claim rent.
-    /// 
+    ///
     /// # Parameters
     /// - `quote_buffer_pubkey`: The public key of the buffer account to be closed
     /// - `verified_output_pubkey`: The public key of the VerifiedOutput account to be closed
-    /// 
+    ///
     /// # Returns
     /// - `Result<()>`: Success or an error if the deletion fails
     pub async fn delete_quote_buffer(
@@ -168,7 +173,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// - `zkvm_verifier_program`: The public key of the ZKVM verifier program
     /// - `zkvm_selector`: The ZKVM selector (currently only supports RiscZero)
     /// - `pck_cert_chain_verify_proof_bytes`: The SNARK proof bytes for the PCK certificate chain verification
-    /// 
+    ///
     /// # Returns
     /// - `Result<Vec<Signature>>`: A vector of transaction signatures for each verification step,
     ///   or an error if any verification step fails
@@ -208,14 +213,17 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
             .await?;
         signatures.push(tx);
 
-        self.verify_pck_cert_chain(
-            quote_buffer_pubkey,
-            verified_output_pubkey,
-            zkvm_verifier_program,
-            zkvm_selector,
-            pck_cert_chain_verify_proofs,
-        )
-        .await?;
+        let pck_signatures = self
+            .verify_pck_cert_chain(
+                &quote,
+                quote_buffer_pubkey,
+                verified_output_pubkey,
+                zkvm_verifier_program,
+                zkvm_selector,
+                pck_cert_chain_verify_proofs,
+            )
+            .await?;
+        signatures.extend_from_slice(&pck_signatures);
 
         // Verify TCB status
         let tx = self
@@ -231,7 +239,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// This method validates that the quote structure is intact and correctly signed. It extracts
     /// the PCK certificate from the quote, uses the public key to verify the QE (Quoting Enclave) report
     /// signature, and submits a transaction to the verifier program for on-chain verification.
-    /// 
+    ///
     /// It also determines the QE type and version from the quote's header, and writes to VerifiedOutput.
     ///
     /// # Parameters
@@ -403,50 +411,68 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     }
 
     /// Verifies the PCK certificate chain of the DCAP quote.
-    /// 
+    ///
     /// This method verifies that the PCK Certificate Chain attached to the quote has a valid root of trust.
     /// The chain verification itself is performed off-chain using a ZKVM (Zero-Knowledge Virtual Machine) proof.
-    /// 
+    ///
     /// # Parameters:
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
     /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `zkvm_verifier_program`: The public key of the ZKVM verifier program
     /// - `zkvm_selector`: The ZKVM selector (currently only supports RiscZero)
     /// - `proof_bytes`: The SNARK proof bytes for the PCK certificate chain verification
-    /// 
+    ///
     /// # Returns:
     /// - `Result<Signature>`: The transaction signature for this verification step,
     ///   or an error if verification fails
     async fn verify_pck_cert_chain(
         &self,
+        quote: &Quote<'_>,
         quote_buffer_pubkey: Pubkey,
         verified_output_pubkey: Pubkey,
         zkvm_verifier_program: Pubkey,
         zkvm_selector: ZkvmSelector,
         proofs: [Vec<u8>; 3],
-    ) -> anyhow::Result<Signature> {
-        // TEMP
-        let proof_bytes = proofs[0].clone();
+    ) -> anyhow::Result<[Signature; 3]> {
+        let mut return_signatures = [Signature::default(); 3];
+        for i in 0..3 {
+            let crl = if i == 0 {
+                let cert_data = quote.signature.cert_data.cert_data;
+                let cert = load_first_cert_from_pem_data(cert_data).map_err(|e| {
+                    anyhow::anyhow!("failed to load first cert from PEM data: {}", e)
+                })?;
+                let cert_issuer_name = get_issuer_common_name(&cert.tbs_certificate).unwrap();
+                let ca = match cert_issuer_name.as_str() {
+                    PLATFORM_ISSUER_NAME => CertificateAuthority::PLATFORM,
+                    PROCESSOR_ISSUER_NAME => CertificateAuthority::PROCESSOR,
+                    _ => return Err(anyhow::anyhow!("unknown PCK CA issuer name")),
+                };
+                compute_pcs_pda_pubkey(ca, true)
+            } else {
+                compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true)
+            };
+            let tx = self
+                .program
+                .request()
+                .accounts(accounts::VerifyPckCertChainZk {
+                    quote_data_buffer: quote_buffer_pubkey,
+                    zkvm_verifier_program,
+                    crl,
+                    verified_output: verified_output_pubkey,
+                    system_program: anchor_client::solana_sdk::system_program::ID,
+                })
+                .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
+                .args(args::VerifyPckCertChainZk {
+                    certificate_index: i as u64,
+                    zkvm_selector,
+                    proof_bytes: proofs[i].clone(),
+                })
+                .send()
+                .await?;
+            return_signatures[i] = tx;
+        }
 
-        let tx = self.program
-            .request()
-            .accounts(accounts::VerifyPckCertChainZk {
-                quote_data_buffer: quote_buffer_pubkey,
-                zkvm_verifier_program,
-                pck_crl: compute_pcs_pda_pubkey(CertificateAuthority::PLATFORM, true),
-                root_crl: compute_pcs_pda_pubkey(CertificateAuthority::ROOT, true),
-                verified_output: verified_output_pubkey,
-                system_program: anchor_client::solana_sdk::system_program::ID,
-            })
-            .instruction(ComputeBudgetInstruction::set_compute_unit_limit(1_000_000))
-            .args(args::VerifyPckCertChainZk {
-                zkvm_selector,
-                proof_bytes,
-            })
-            .send()
-            .await?;
-
-        Ok(tx)
+        Ok(return_signatures)
     }
 
     /// Matches the TCB (Trusted Computing Base) status of the platform.
@@ -454,7 +480,7 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// This method verifies that the platform TCB (hardware, firmware, and software components)
     /// meets the required security level. Each component SVNs are matched against the TcbInfo
     /// Collateral fetched from the PCCS program to determine the TCB Status.
-    /// 
+    ///
     /// Additionally, TDX quotes also check the TCB Status based on the TCB of the TDX module.
     ///
     /// # Parameters
@@ -542,13 +568,13 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     }
 
     /// Post-processes the verification result obtained from the verified output account.
-    /// 
+    ///
     /// This method ensures that the output is fully verified by checking various flags.
     /// Then, it performs TCB Status convergence to determine the final TCB Status.
-    /// 
+    ///
     /// # Parameters
     /// - `verified_output_pubkey`: The public key of the verified output account
-    /// 
+    ///
     /// # Returns
     /// - `Result<VerifiedOutput>`: The standard VerifiedOutput object used by our infrastructure.
     /// As defined in:
@@ -565,7 +591,9 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
 
         let verified = verified_output_account.integrity_verified
             && verified_output_account.isv_signature_verified
-            && verified_output_account.pck_cert_chain_verified
+            && verified_output_account.pck_leaf_verified
+            && verified_output_account.pck_intermediate_verified
+            && verified_output_account.pck_root_verified
             && verified_output_account.fmspc_tcb_status != TcbStatus::Unspecified as u8
             && verified_output_account.qe_tcb_status != TcbStatus::Unspecified as u8;
 
