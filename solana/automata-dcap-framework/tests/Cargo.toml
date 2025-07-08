@@ -18,8 +18,8 @@ automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-
 automata-on-chain-pccs = { version = "0.1.0", path = "../programs/automata-on-chain-pccs" }
 anyhow = "1.0.89"
 serde_json = { version = "1.0.100" }
-borsh = { version = "1.5.7" }
 dcap-rs = { workspace = true, features = ["full"] }
 sdk = { version = "0.1.0", path = "../sdk" }
 tokio = { version = "1.39.0", features = ["full"] }
 sha2 = { version = "0.10.8" }
+x509-parser = { git = "https://github.com/automata-network/x509-parser.git", branch = "solana-patch" }
