@@ -965,6 +965,7 @@ dependencies = [
  "aligned-vec",
  "anchor-lang",
  "automata-on-chain-pccs",
+ "bytemuck",
  "dcap-rs",
  "hex",
  "p256",
@@ -979,6 +980,7 @@ version = "0.1.0"
 dependencies = [
  "aligned-vec",
  "anchor-lang",
+ "bytemuck",
  "chrono",
  "dcap-rs",
  "hex",

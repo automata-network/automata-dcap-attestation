@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 
-#[account]
+pub const MAX_QUOTE_SIZE: usize = 9219; // 9 KB + 3 bytes for alignment
+
+#[account(zero_copy)]
 pub struct DataBuffer {
     pub owner: Pubkey,
     pub total_size: u32,
-    pub complete: bool,
-    pub data: Vec<u8>,
+    pub complete: u8,
+    pub data: [u8; MAX_QUOTE_SIZE],
 }
 
 #[account]

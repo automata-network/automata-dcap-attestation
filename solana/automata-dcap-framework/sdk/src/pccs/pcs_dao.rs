@@ -90,9 +90,10 @@ impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
             .account::<automata_on_chain_pccs::accounts::PcsCertificate>(pcs_certificate_pda.0)
             .await?;
 
-        let pcs_certificate_data = account.cert_data;
+        let pcs_certificate_data = account.cert_data[0..account.cert_data_size as usize]
+            .to_vec();
 
-        Ok((pcs_certificate_pda.0, pcs_certificate_data))
+        Ok((pcs_certificate_pda.0, pcs_certificate_data.to_vec()))
     }
 
     /// Updates a PCS (Provisioning Certification Service) certificate on-chain.

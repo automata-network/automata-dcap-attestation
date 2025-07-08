@@ -114,24 +114,25 @@ pub mod automata_on_chain_pccs {
         }
 
         // Check if the current PCK Certificate has not been revoked
-        let pck_crl_data = ctx.accounts.pck_crl.cert_data.as_slice();
+        let pck_crl_data = &ctx.accounts.pck_crl.load()?.cert_data;
         let pck_serial_number = get_certificate_serial(&pck_tbs);
         if check_certificate_revocation(&pck_serial_number, pck_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let issuer_ca = &ctx.accounts.issuer_ca.load()?;
+        let issuer_tbs_digest = issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= issuer_ca.validity_not_before && now <= issuer_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
         // check if the issuer CA has not been revoked
-        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        let root_crl_data = &ctx.accounts.root_crl.load()?.cert_data;
+        let issuer_serial_number = issuer_ca.serial_number;
         if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -192,7 +193,17 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let root_ca_pda = &mut ctx.accounts.root_ca;
+        let root_ca_account_info = &mut ctx.accounts.root_ca.to_account_info();
+        let root_ca_account_discriminator: [u8; 8] = {
+            let data = root_ca_account_info.data.borrow();
+            data[..8].try_into().unwrap()
+        };
+        let root_ca_pda = if account_discriminator_set(root_ca_account_discriminator.as_slice()) {
+            &mut ctx.accounts.root_ca.load_mut()?
+        } else {
+            // if the account is empty, use load_init to set the account discriminator
+            &mut ctx.accounts.root_ca.load_init()?
+        };
         let root_ca_data = ctx.accounts.data_buffer.data.as_slice();
 
         let (root_tbs_digest, root_tbs) = get_certificate_tbs_and_digest(root_ca_data);
@@ -234,19 +245,20 @@ pub mod automata_on_chain_pccs {
         }
 
         // write to root pda data
-        root_ca_pda.ca_type = CertificateAuthority::ROOT;
-        root_ca_pda.cert_data = root_ca_data.to_vec();
-        root_ca_pda.is_crl = false;
+        root_ca_pda.ca_type = CertificateAuthority::ROOT as u8;
+        root_ca_pda.cert_data_size = root_ca_data.len() as u16;
+        root_ca_pda.cert_data[0..root_ca_data.len()].copy_from_slice(root_ca_data);
+        root_ca_pda.is_crl = 0;
         root_ca_pda.digest = root_tbs_digest;
         root_ca_pda.validity_not_before = root_ca_validity_not_before;
         root_ca_pda.validity_not_after = root_ca_validity_not_after;
-        root_ca_pda.serial_number = Some(get_certificate_serial(&root_tbs));
+        root_ca_pda.serial_number = get_certificate_serial(&root_tbs);
 
         // Emit event
         emit!(PcsCertificateUpserted {
-            ca_type: root_ca_pda.ca_type,
-            is_crl: root_ca_pda.is_crl,
-            pda: root_ca_pda.key(),
+            ca_type: CertificateAuthority::ROOT,
+            is_crl: false,
+            pda: root_ca_account_info.key(),
         });
 
         Ok(())
@@ -257,7 +269,17 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let root_crl = &mut ctx.accounts.root_crl;
+        let root_crl_account_info = &mut ctx.accounts.root_crl.to_account_info();
+        let root_crl_account_discriminator: [u8; 8] = {
+            let data = root_crl_account_info.data.borrow();
+            data[..8].try_into().unwrap()
+        };
+        let root_crl = if account_discriminator_set(root_crl_account_discriminator.as_slice()) {
+            &mut ctx.accounts.root_crl.load_mut()?
+        } else {
+            // if the account is empty, use load_init to set the account discriminator
+            &mut ctx.accounts.root_crl.load_init()?
+        };
         let crl_data = ctx.accounts.data_buffer.data.as_slice();
 
         let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
@@ -276,11 +298,12 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.root_ca.digest;
+        let root_ca = &ctx.accounts.root_ca.load()?;
+        let issuer_tbs_digest = root_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.root_ca.validity_not_before
-            && now <= ctx.accounts.root_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= root_ca.validity_not_before && now <= root_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -302,18 +325,19 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidProof.into());
         }
 
-        root_crl.ca_type = CertificateAuthority::ROOT;
-        root_crl.cert_data = crl_data.to_vec();
-        root_crl.is_crl = true;
+        root_crl.ca_type = CertificateAuthority::ROOT as u8;
+        root_crl.cert_data_size = crl_data.len() as u16;
+        root_crl.cert_data[0..crl_data.len()].copy_from_slice(crl_data);
+        root_crl.is_crl = 1;
         root_crl.digest = subject_tbs_digest;
         root_crl.validity_not_before = crl_validity_not_before;
         root_crl.validity_not_after = crl_validity_not_after;
 
         // Emit event
         emit!(PcsCertificateUpserted {
-            ca_type: root_crl.ca_type,
-            is_crl: root_crl.is_crl,
-            pda: root_crl.key(),
+            ca_type: CertificateAuthority::ROOT,
+            is_crl: true,
+            pda: root_crl_account_info.key(),
         });
 
         msg!(
@@ -330,7 +354,18 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let pcs_certificate = &mut ctx.accounts.pcs_certificate;
+        let pcs_certificate_account_info = &mut ctx.accounts.pcs_certificate.to_account_info();
+        let pcs_certificate_account_discriminator: [u8; 8] = {
+            let data = pcs_certificate_account_info.data.borrow();
+            data[..8].try_into().unwrap()
+        };
+        let pcs_certificate =
+            if account_discriminator_set(pcs_certificate_account_discriminator.as_slice()) {
+                &mut ctx.accounts.pcs_certificate.load_mut()?
+            } else {
+                // if the account is empty, use load_init to set the account discriminator
+                &mut ctx.accounts.pcs_certificate.load_init()?
+            };
         let cert_data = ctx.accounts.data_buffer.data.as_slice();
 
         let (subject_tbs_digest, subject_tbs) = get_certificate_tbs_and_digest(cert_data);
@@ -356,17 +391,20 @@ pub mod automata_on_chain_pccs {
         }
 
         // check if the CA has been revoked
-        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
+        let root_crl = &ctx.accounts.root_crl.load()?;
+        let root_crl_size = root_crl.cert_data_size as usize;
+        let root_crl_data = &root_crl.cert_data[0..root_crl_size];
         let subject_serial_number = get_certificate_serial(&subject_tbs);
         if check_certificate_revocation(&subject_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let issuer_ca = &ctx.accounts.issuer_ca.load()?;
+        let issuer_tbs_digest = issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= issuer_ca.validity_not_before && now <= issuer_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
@@ -388,19 +426,20 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidProof.into());
         }
 
-        pcs_certificate.ca_type = ca_type;
-        pcs_certificate.cert_data = cert_data.to_vec();
-        pcs_certificate.is_crl = false;
+        pcs_certificate.ca_type = ca_type as u8;
+        pcs_certificate.cert_data_size = cert_data.len() as u16;
+        pcs_certificate.cert_data[0..cert_data.len()].copy_from_slice(cert_data);
+        pcs_certificate.is_crl = 0;
         pcs_certificate.digest = subject_tbs_digest;
         pcs_certificate.validity_not_before = validity_not_before;
         pcs_certificate.validity_not_after = validity_not_after;
-        pcs_certificate.serial_number = Some(subject_serial_number);
+        pcs_certificate.serial_number = subject_serial_number;
 
         // Emit event
         emit!(PcsCertificateUpserted {
-            ca_type: pcs_certificate.ca_type,
-            is_crl: pcs_certificate.is_crl,
-            pda: pcs_certificate.key(),
+            ca_type: ca_type,
+            is_crl: false,
+            pda: pcs_certificate_account_info.key(),
         });
 
         msg!(
@@ -417,7 +456,17 @@ pub mod automata_on_chain_pccs {
         zkvm_selector: ZkvmSelector,
         proof: Vec<u8>,
     ) -> Result<()> {
-        let pcs_crl = &mut ctx.accounts.pcs_crl;
+        let pcs_crl_account_info = &mut ctx.accounts.pcs_crl.to_account_info();
+        let pcs_crl_account_discriminator: [u8; 8] = {
+            let data = pcs_crl_account_info.data.borrow();
+            data[..8].try_into().unwrap()
+        };
+        let pcs_crl = if account_discriminator_set(pcs_crl_account_discriminator.as_slice()) {
+            &mut ctx.accounts.pcs_crl.load_mut()?
+        } else {
+            // if the account is empty, use load_init to set the account discriminator
+            &mut ctx.accounts.pcs_crl.load_init()?
+        };
         let crl_data = ctx.accounts.data_buffer.data.as_slice();
 
         let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
@@ -436,18 +485,21 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let issuer_ca = &ctx.accounts.issuer_ca.load()?;
+        let issuer_tbs_digest = issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= issuer_ca.validity_not_before && now <= issuer_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
         // check if the issuer CA has not been revoked
-        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        let root_crl = &ctx.accounts.root_crl.load()?;
+        let root_crl_size = root_crl.cert_data_size as usize;
+        let root_crl_data = &root_crl.cert_data[0..root_crl_size];
+        let issuer_serial_number = issuer_ca.serial_number;
         if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -469,18 +521,19 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::InvalidProof.into());
         }
 
-        pcs_crl.ca_type = ca_type;
-        pcs_crl.cert_data = crl_data.to_vec();
-        pcs_crl.is_crl = true;
+        pcs_crl.ca_type = ca_type as u8;
+        pcs_crl.cert_data_size = crl_data.len() as u16;
+        pcs_crl.cert_data[0..crl_data.len()].copy_from_slice(crl_data);
+        pcs_crl.is_crl = 1;
         pcs_crl.digest = subject_tbs_digest;
         pcs_crl.validity_not_before = crl_validity_not_before;
         pcs_crl.validity_not_after = crl_validity_not_after;
 
         // Emit event
         emit!(PcsCertificateUpserted {
-            ca_type: pcs_crl.ca_type,
-            is_crl: pcs_crl.is_crl,
-            pda: pcs_crl.key(),
+            ca_type: ca_type,
+            is_crl: true,
+            pda: pcs_crl_account_info.key(),
         });
 
         msg!("PCS certificate upserted to {}", ctx.accounts.pcs_crl.key());
@@ -534,18 +587,19 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let issuer_ca = &ctx.accounts.issuer_ca.load()?;
+        let issuer_tbs_digest = issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= issuer_ca.validity_not_before && now <= issuer_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
         // check if the issuer CA has not been revoked
-        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        let root_crl_data = &ctx.accounts.root_crl.load()?.cert_data;
+        let issuer_serial_number = issuer_ca.serial_number;
         if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -621,11 +675,10 @@ pub mod automata_on_chain_pccs {
         };
 
         // the first 64 bytes is the signature
-        let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..])
-            .map_err(|e| {
-                msg!("Failed to deserialize TCB Info: {}", e);
-                PccsError::FailedDeserialization
-            })?;
+        let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..]).map_err(|e| {
+            msg!("Failed to deserialize TCB Info: {}", e);
+            PccsError::FailedDeserialization
+        })?;
 
         // Check the given TCB Info is unexpired
         let tcb_info_issue_timestamp = tcb_info.issue_date_timestamp();
@@ -637,18 +690,19 @@ pub mod automata_on_chain_pccs {
             return Err(PccsError::ExpiredCollateral.into());
         }
 
-        let issuer_tbs_digest = ctx.accounts.issuer_ca.digest;
+        let issuer_ca = &ctx.accounts.issuer_ca.load()?;
+        let issuer_tbs_digest = issuer_ca.digest;
 
         // Check if the issuer CA is unexpired
-        let issuer_is_valid = now >= ctx.accounts.issuer_ca.validity_not_before
-            && now <= ctx.accounts.issuer_ca.validity_not_after;
+        let issuer_is_valid =
+            now >= issuer_ca.validity_not_before && now <= issuer_ca.validity_not_after;
         if !issuer_is_valid {
             return Err(PccsError::InvalidIssuer.into());
         }
 
         // check if the issuer CA has not been revoked
-        let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
-        let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
+        let root_crl_data = &ctx.accounts.root_crl.load()?.cert_data;
+        let issuer_serial_number = issuer_ca.serial_number;
         if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
@@ -692,6 +746,11 @@ pub mod automata_on_chain_pccs {
         );
         Ok(())
     }
+}
+
+/// Helper function to check if account discriminator has set
+fn account_discriminator_set(data: &[u8]) -> bool {
+    data.len() == 8 && data.iter().any(|b| *b != 0)
 }
 
 /// Helper function to validate the provided zkvm Verifier account info

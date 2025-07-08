@@ -34,19 +34,13 @@ pub struct PckCertificate {
     pub serial_number: [u8; SERIAL_NUMBER_MAX_LENGTH],
 }
 
-#[account]
+#[account(zero_copy)]
 pub struct PcsCertificate {
-    /// The type of certificate authority that signed this certificate
-    pub ca_type: CertificateAuthority,
-
-    /// Whether this is a CRL
-    pub is_crl: bool,
-
-    /// Certificate data
-    pub cert_data: Vec<u8>,
-
     /// The digest of the certificate
     pub digest: [u8; 32],
+
+    /// Certificate data
+    pub cert_data: [u8; crate::instructions::MAX_CERT_DATA_SIZE],
 
     /// The ValidtyNotBefore timestamp of the certificate
     pub validity_not_before: i64,
@@ -56,7 +50,17 @@ pub struct PcsCertificate {
     pub validity_not_after: i64,
 
     /// Serial number of the certificate
-    pub serial_number: Option<[u8; SERIAL_NUMBER_MAX_LENGTH]>,
+    /// Zero Bytes if this is a CRL
+    pub serial_number: [u8; SERIAL_NUMBER_MAX_LENGTH],
+
+    /// The type of certificate authority that signed this certificate
+    pub ca_type: u8,
+
+    /// Whether this is a CRL; 0 for certificate, 1 for CRL
+    pub is_crl: u8,
+
+    /// The size of the certificate data
+    pub cert_data_size: u16,
 }
 
 #[account]

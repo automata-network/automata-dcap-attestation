@@ -7,6 +7,7 @@ use std::{
 /// Represents the different types of Certificate Authorities in the Intel SGX
 /// attestation.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum CertificateAuthority {
     /// Intel SGX Root CA
     ROOT = 0,

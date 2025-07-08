@@ -33,12 +33,12 @@ pub mod automata_dcap_verifier {
     use super::*;
 
     pub fn create_quote_accounts(ctx: Context<Create>, quote_size: u32) -> Result<()> {
-        let quote_buffer_account = &mut ctx.accounts.quote_data_buffer;
+        let quote_buffer_account = &mut ctx.accounts.quote_data_buffer.load_init()?;
 
         // Initialize the quote buffer account
         quote_buffer_account.owner = *ctx.accounts.owner.key;
         quote_buffer_account.total_size = quote_size;
-        quote_buffer_account.data = vec![0u8; quote_size as usize];
+        quote_buffer_account.data = [0u8; state::MAX_QUOTE_SIZE];
 
         // Set all tcb statuses to 7 (Unspecified)
         let verified_output = &mut ctx.accounts.verified_output;
@@ -59,13 +59,14 @@ pub mod automata_dcap_verifier {
         chunk_data: Vec<u8>,
         offset: u32,
     ) -> Result<()> {
-        let data_buffer = &mut ctx.accounts.data_buffer;
+        let data_buffer = &mut ctx.accounts.data_buffer.load_mut()?;
 
         let start_index = offset as usize;
         let end_index = start_index + chunk_data.len();
 
         data_buffer.data[start_index..end_index].copy_from_slice(&chunk_data);
-        data_buffer.complete = offset + chunk_data.len() as u32 == data_buffer.total_size;
+        let complete = offset + chunk_data.len() as u32 == data_buffer.total_size;
+        data_buffer.complete = complete as u8;
 
         msg!(
             "Added chunk with offset {}, total bytes received until now: {}",
@@ -78,8 +79,9 @@ pub mod automata_dcap_verifier {
     pub fn verify_dcap_quote_integrity(ctx: Context<VerifyDcapQuoteIntegrity>) -> Result<()> {
         use dcap_rs::utils::cert_chain_processor::load_first_cert_from_pem_data;
 
-        let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote_data = &mut data_buffer.data.as_slice();
+        let data_buffer = &ctx.accounts.quote_data_buffer.load()?;
+        let quote_size = data_buffer.total_size as usize;
+        let quote_data = &mut data_buffer.data[0..quote_size].as_ref();
 
         let quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -136,8 +138,9 @@ pub mod automata_dcap_verifier {
     pub fn verify_dcap_quote_isv_signature(
         ctx: Context<VerifyDcapQuoteIsvSignature>,
     ) -> Result<()> {
-        let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote_data = &mut data_buffer.data.as_slice();
+        let data_buffer = &ctx.accounts.quote_data_buffer.load()?;
+        let quote_size = data_buffer.total_size as usize;
+        let quote_data = &mut data_buffer.data[0..quote_size].as_ref();
 
         let quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -186,8 +189,9 @@ pub mod automata_dcap_verifier {
     ) -> Result<()> {
         use dcap_rs::types::pod::enclave_identity::zero_copy::*;
 
-        let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote_data = &mut data_buffer.data.as_slice();
+        let data_buffer = &ctx.accounts.quote_data_buffer.load()?;
+        let quote_size = data_buffer.total_size as usize;
+        let quote_data = &mut data_buffer.data[0..quote_size].as_ref();
 
         let quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -301,8 +305,9 @@ pub mod automata_dcap_verifier {
         zkvm_selector: ZkvmSelector,
         proof_bytes: Vec<u8>,
     ) -> Result<()> {
-        let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote_data = &mut data_buffer.data.as_slice();
+        let data_buffer = &ctx.accounts.quote_data_buffer.load()?;
+        let quote_size = data_buffer.total_size as usize;
+        let quote_data = &mut data_buffer.data[0..quote_size].as_ref();
 
         let quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
@@ -322,10 +327,10 @@ pub mod automata_dcap_verifier {
         let x509 = cert.parse_x509().unwrap();
         let tbs = &x509.tbs_certificate;
 
-        // First, check the validity range for each certificate
         let (not_before, not_after) = get_certificate_validity(tbs);
         let serial_nuber = get_certificate_serial(tbs);
 
+        // First, check the validity range for each certificate
         let cert_validity = now >= not_before && now <= not_after;
         if !cert_validity {
             msg!("Certificate at index {} has expired", certificate_index);
@@ -342,17 +347,19 @@ pub mod automata_dcap_verifier {
                 DcapVerifierError::InvalidRootCa
             );
         } else {
-            let crl_account = &ctx.accounts.crl;
+            let crl_account = &ctx.accounts.crl.load()?;
             let issuer_ca_type_str = get_cn_from_x509_name(tbs.issuer()).unwrap();
             let (expected_crl_pubkey, _) = Pubkey::find_program_address(
                 &[b"pcs_cert", issuer_ca_type_str.as_bytes(), &[true as u8]],
                 &automata_on_chain_pccs::ID,
             );
             require!(
-                crl_account.key() == expected_crl_pubkey,
+                ctx.accounts.crl.key() == expected_crl_pubkey,
                 DcapVerifierError::MismatchPda
             );
-            if check_certificate_revocation(&serial_nuber, &crl_account.cert_data).is_err() {
+            let crl_size = crl_account.cert_data_size as usize;
+            let crl_data = &crl_account.cert_data[0..crl_size];
+            if check_certificate_revocation(&serial_nuber, crl_data).is_err() {
                 msg!("Certificate at index {} revoked", certificate_index);
                 return Err(DcapVerifierError::RevokedCertificate.into());
             }
@@ -371,13 +378,13 @@ pub mod automata_dcap_verifier {
             Sha256::digest(issuer_tbs.as_ref()).into()
         };
 
-        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        // validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
         ecdsa_zk_verify(
             fingerprint,
             subject_tbs_digest,
             issuer_tbs_digest,
             proof_bytes,
-            &ctx.accounts.zkvm_verifier_program,
+            &zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY,
             &ctx.accounts.system_program,
         )?;
 
@@ -403,8 +410,10 @@ pub mod automata_dcap_verifier {
         use dcap_rs::types::pod::tcb_info::zero_copy::utils::*;
         use dcap_rs::types::pod::tcb_info::zero_copy::*;
 
-        let data_buffer = &ctx.accounts.quote_data_buffer;
-        let quote = Quote::read(&mut data_buffer.data.as_slice()).map_err(|e| {
+        let data_buffer = &ctx.accounts.quote_data_buffer.load()?;
+        let quote_size = data_buffer.total_size as usize;
+        let quote_data = &mut data_buffer.data[0..quote_size].as_ref();
+        let quote = Quote::read(quote_data).map_err(|e| {
             msg!("Error reading quote: {}", e);
             DcapVerifierError::InvalidQuote
         })?;
@@ -577,24 +586,24 @@ pub mod automata_dcap_verifier {
     }
 }
 
-/// Helper function to validate the provided zkvm Verifier account info
-fn validate_zkvm_verifier_account_info(
-    zkvm_selector: ZkvmSelector,
-    zkvm_verifier_program: &AccountInfo,
-) -> Result<()> {
-    match zkvm_selector {
-        ZkvmSelector::Succinct => {
-            require!(
-                *zkvm_verifier_program.key == zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY,
-                DcapVerifierError::InvalidZkvmProgram
-            );
-            Ok(())
-        },
-        _ => {
-            return Err(DcapVerifierError::InvalidZkvmProgram.into());
-        },
-    }
-}
+// /// Helper function to validate the provided zkvm Verifier account info
+// fn validate_zkvm_verifier_account_info(
+//     zkvm_selector: ZkvmSelector,
+//     zkvm_verifier_program: &AccountInfo,
+// ) -> Result<()> {
+//     match zkvm_selector {
+//         ZkvmSelector::Succinct => {
+//             require!(
+//                 *zkvm_verifier_program.key == zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY,
+//                 DcapVerifierError::InvalidZkvmProgram
+//             );
+//             Ok(())
+//         },
+//         _ => {
+//             return Err(DcapVerifierError::InvalidZkvmProgram.into());
+//         },
+//     }
+// }
 
 /// Helper function to perform CPI to the verifier program to verify SNARK proofs
 fn ecdsa_zk_verify<'a>(
@@ -602,36 +611,44 @@ fn ecdsa_zk_verify<'a>(
     subject_tbs_digest: [u8; 32],
     issuer_tbs_digest: [u8; 32],
     proof: Vec<u8>,
-    zkvm_verifier_program: &AccountInfo<'a>,
+    zkvm_verifier_pubkey: &Pubkey,
     system_program: &Program<'a, System>,
 ) -> Result<()> {
-    let instruction_data = match zkvm_verifier_program.key {
-        &zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY => {
-            use zk::sp1::SP1Groth16Proof;
+    // let instruction_data = match zkvm_verifier_program.key {
+    //     &zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY => {
+    //         use zk::sp1::SP1Groth16Proof;
 
-            let sp1_public_inputs =
-                concatenate_output(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
-            let proof = SP1Groth16Proof {
-                proof: proof,
-                sp1_public_inputs,
-            };
+    //         let sp1_public_inputs =
+    //             concatenate_output(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
+    //         let proof = SP1Groth16Proof {
+    //             proof: proof,
+    //             sp1_public_inputs,
+    //         };
 
-            proof
-                .verify_p256_proof_instruction()
-                .expect("Failed to create instruction data")
-        },
-        _ => return Err(DcapVerifierError::InvalidZkvmProgram.into()),
+    //         proof
+    //             .verify_p256_proof_instruction()
+    //             .expect("Failed to create instruction data")
+    //     },
+    //     _ => return Err(DcapVerifierError::InvalidZkvmProgram.into()),
+    // };
+
+    use zk::sp1::SP1Groth16Proof;
+
+    let sp1_public_inputs =
+        concatenate_output(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
+    let proof = SP1Groth16Proof {
+        proof: proof,
+        sp1_public_inputs,
     };
-
-    let verify_cpi_context = CpiContext::new(
-        zkvm_verifier_program.clone(),
-        vec![system_program.to_account_info()],
-    );
+    let instruction_data = proof.verify_p256_proof_instruction().expect("Failed to create instruction data");
 
     invoke(
         &Instruction {
-            program_id: zkvm_verifier_program.key(),
-            accounts: verify_cpi_context.to_account_metas(None),
+            program_id: zkvm_verifier_pubkey.clone(),
+            accounts: vec![
+                AccountMeta::new_readonly(zkvm_verifier_pubkey.clone(), false),
+                AccountMeta::new_readonly(system_program.key(), false)
+            ],
             data: instruction_data,
         },
         &[system_program.to_account_info()],

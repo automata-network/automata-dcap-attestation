@@ -10,6 +10,7 @@ use x509_parser::pem::Pem;
 
 pub(crate) async fn test_quote_tdx_verification(sdk: &Sdk<Arc<Keypair>>) {
     let quote_data = include_bytes!("../../data/quote_tdx.bin");
+
     let verifier_client = sdk.verifier_client();
 
     let cert_chain = get_cert_chain_from_quote_data(quote_data);

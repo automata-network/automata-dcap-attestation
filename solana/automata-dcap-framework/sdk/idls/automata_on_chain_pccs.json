@@ -759,6 +759,9 @@
         "Represents the different types of Certificate Authorities in the Intel SGX",
         "attestation."
       ],
+      "repr": {
+        "kind": "rust"
+      },
       "type": {
         "kind": "enum",
         "variants": [
@@ -1059,34 +1062,13 @@
     },
     {
       "name": "PcsCertificate",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "ca_type",
-            "docs": [
-              "The type of certificate authority that signed this certificate"
-            ],
-            "type": {
-              "defined": {
-                "name": "CertificateAuthority"
-              }
-            }
-          },
-          {
-            "name": "is_crl",
-            "docs": [
-              "Whether this is a CRL"
-            ],
-            "type": "bool"
-          },
-          {
-            "name": "cert_data",
-            "docs": [
-              "Certificate data"
-            ],
-            "type": "bytes"
-          },
           {
             "name": "digest",
             "docs": [
@@ -1096,6 +1078,18 @@
               "array": [
                 "u8",
                 32
+              ]
+            }
+          },
+          {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4096
               ]
             }
           },
@@ -1117,16 +1111,36 @@
           {
             "name": "serial_number",
             "docs": [
-              "Serial number of the certificate"
+              "Serial number of the certificate",
+              "Zero Bytes if this is a CRL"
             ],
             "type": {
-              "option": {
-                "array": [
-                  "u8",
-                  20
-                ]
-              }
+              "array": [
+                "u8",
+                20
+              ]
             }
+          },
+          {
+            "name": "ca_type",
+            "docs": [
+              "The type of certificate authority that signed this certificate"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_crl",
+            "docs": [
+              "Whether this is a CRL; 0 for certificate, 1 for CRL"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "cert_data_size",
+            "docs": [
+              "The size of the certificate data"
+            ],
+            "type": "u16"
           }
         ]
       }

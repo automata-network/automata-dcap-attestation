@@ -3,9 +3,9 @@ use anchor_lang::solana_program::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR
 use programs_shared::zk::ZkvmSelector;
 
 use crate::errors::DcapVerifierError;
-use crate::state::{DataBuffer, VerifiedOutput};
+use crate::state::{DataBuffer, VerifiedOutput, MAX_QUOTE_SIZE};
 
-use automata_on_chain_pccs::state::{EnclaveIdentity, TcbInfo, PcsCertificate};
+use automata_on_chain_pccs::state::{EnclaveIdentity, PcsCertificate, TcbInfo};
 
 /// Instruction to create a new on-chain account that will store DCAP
 /// attestation quote data. Since DCAP quotes (typically 4-6 KB) exceed
@@ -52,9 +52,9 @@ pub struct Create<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 + 32 + 4 + 1 + 4 + quote_size as usize,
+        space = 8 + 32 + 4 + 1 + MAX_QUOTE_SIZE,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     /// The account that will store the result of the DCAP quote verification
     #[account(
@@ -84,11 +84,11 @@ pub struct AddQuoteChunk<'info> {
 
     #[account(
         mut,
-        constraint = data_buffer.owner == owner.key() @ DcapVerifierError::InvalidOwner,
-        constraint = data_buffer.complete == false @ DcapVerifierError::BufferAlreadyComplete,
-        constraint = (offset as usize + chunk_data.len()) as u32 <= data_buffer.total_size @ DcapVerifierError::ChunkOutOfBounds
+        constraint = data_buffer.load().unwrap().owner == owner.key() @ DcapVerifierError::InvalidOwner,
+        constraint = data_buffer.load().unwrap().complete == 0 @ DcapVerifierError::BufferAlreadyComplete,
+        constraint = (offset as usize + chunk_data.len()) as u32 <= data_buffer.load().unwrap().total_size @ DcapVerifierError::ChunkOutOfBounds
     )]
-    pub data_buffer: Account<'info, DataBuffer>,
+    pub data_buffer: AccountLoader<'info, DataBuffer>,
 }
 
 /// Instruction to verify the QE Report and its signature.
@@ -96,9 +96,9 @@ pub struct AddQuoteChunk<'info> {
 pub struct VerifyDcapQuoteIntegrity<'info> {
     #[account(
         mut,
-        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.load().unwrap().complete == 1 @ DcapVerifierError::IncompleteQuote,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     #[account(
         mut,
@@ -123,9 +123,9 @@ pub struct VerifyDcapQuoteIntegrity<'info> {
 pub struct VerifyDcapQuoteIsvSignature<'info> {
     #[account(
         mut,
-        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.load().unwrap().complete == 1 @ DcapVerifierError::IncompleteQuote,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     #[account(
         mut,
@@ -153,9 +153,9 @@ pub struct VerifyDcapQuoteIsvSignature<'info> {
 pub struct VerifyDcapQuoteEnclaveSource<'info> {
     #[account(
         mut,
-        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.load().unwrap().complete == 1 @ DcapVerifierError::IncompleteQuote,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     #[account(
         seeds = [
@@ -190,16 +190,16 @@ pub struct VerifyDcapQuoteEnclaveSource<'info> {
 )]
 pub struct VerifyPckCertChainZk<'info> {
     #[account(
-        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.load().unwrap().complete == 1 @ DcapVerifierError::IncompleteQuote,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     /// CHECK: The program checks the address of the CRL account
-    pub crl: Account<'info, PcsCertificate>,
+    pub crl: AccountLoader<'info, PcsCertificate>,
 
     /// CHECK: This is the address of the ZKVM Verifier Program.
     pub zkvm_verifier_program: AccountInfo<'info>,
-    
+
     #[account(
         mut,
         seeds = [
@@ -220,9 +220,9 @@ pub struct VerifyPckCertChainZk<'info> {
 pub struct VerifyDcapQuoteTcbStatus<'info> {
     #[account(
         mut,
-        constraint = quote_data_buffer.complete @ DcapVerifierError::IncompleteQuote,
+        constraint = quote_data_buffer.load().unwrap().complete == 1 @ DcapVerifierError::IncompleteQuote,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     #[account(
         seeds = [
@@ -259,9 +259,9 @@ pub struct CloseQuoteBuffer<'info> {
     #[account(
         mut,
         close = owner,
-        constraint = quote_data_buffer.owner == owner.key() @ DcapVerifierError::InvalidOwner,
+        constraint = quote_data_buffer.load().unwrap().owner == owner.key() @ DcapVerifierError::InvalidOwner,
     )]
-    pub quote_data_buffer: Account<'info, DataBuffer>,
+    pub quote_data_buffer: AccountLoader<'info, DataBuffer>,
 
     /// The verified output account to be closed.
     #[account(
