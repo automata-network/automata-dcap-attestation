@@ -10,16 +10,17 @@ pub mod types;
 
 declare_id!("3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt");
 
-use errors::*;
+use errors::PccsError;
 use event::*;
 use instructions::*;
 use programs_shared::certs::*;
 use programs_shared::crl::*;
 use programs_shared::get_cn_from_x509_name;
-use programs_shared::zk::*;
+use programs_shared::zk::{self, *};
 use types::*;
 
 use crate::instructions::UpsertPckCertificate;
+use aligned_vec::AVec;
 use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
@@ -137,20 +138,19 @@ pub mod automata_on_chain_pccs {
 
         // Verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
-        let output_digest =
-            compute_output_digest(&fingerprint, &pck_tbs_digest, &issuer_tbs_digest);
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let pck_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            pck_tbs_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
 
-        // let pck_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-
-        // if pck_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        if pck_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         pck_certificate.qe_id = hex::decode(qe_id)
             .map_err(|_| PccsError::InvalidHexString)?
@@ -219,19 +219,19 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&root_ca_data).into();
-        let output_digest = compute_output_digest(&fingerprint, &root_tbs_digest, &root_tbs_digest);
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let root_ca_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            root_tbs_digest,
+            root_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
 
-        // let root_ca_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-
-        // if root_ca_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        if root_ca_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         // write to root pda data
         root_ca_pda.ca_type = CertificateAuthority::ROOT;
@@ -287,20 +287,20 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
-        let output_digest =
-            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let pcs_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            subject_tbs_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
 
-        // if pcs_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         root_crl.ca_type = CertificateAuthority::ROOT;
         root_crl.cert_data = crl_data.to_vec();
@@ -373,20 +373,20 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&cert_data).into();
-        let output_digest =
-            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let pcs_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            subject_tbs_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
 
-        // if pcs_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         pcs_certificate.ca_type = ca_type;
         pcs_certificate.cert_data = cert_data.to_vec();
@@ -454,20 +454,20 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(&crl_data).into();
-        let output_digest =
-            compute_output_digest(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
 
-        // let pcs_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let pcs_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            subject_tbs_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
 
-        // if pcs_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        if pcs_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         pcs_crl.ca_type = ca_type;
         pcs_crl.cert_data = crl_data.to_vec();
@@ -503,8 +503,26 @@ pub mod automata_on_chain_pccs {
         let identity_digest = data_buffer.signed_digest;
         let identity_data = data_buffer.data.as_slice();
 
-        let identity = EnclaveIdentityZeroCopy::from_bytes(&identity_data[64..])
-            .map_err(|_| PccsError::FailedDeserialization)?;
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
+        // AFAIK, the serialized QEIdentity data should not exceed the Solana 32kb heap limit
+
+        let qe_identity_data_owned: Option<AVec<u8>>;
+        let identity_data = if identity_data.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            identity_data
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> = AVec::with_capacity(8, identity_data.len());
+            buff.extend_from_slice(identity_data);
+            qe_identity_data_owned = Some(buff);
+            qe_identity_data_owned.as_ref().unwrap().as_slice()
+        };
+
+        let identity = EnclaveIdentityZeroCopy::from_bytes(&identity_data[64..]).map_err(|e| {
+            msg!("Failed to deserialize enclave identity: {}", e);
+            PccsError::FailedDeserialization
+        })?;
 
         // Check the given Enclave Identity is unexpired
         let now = Clock::get().unwrap().unix_timestamp;
@@ -528,30 +546,25 @@ pub mod automata_on_chain_pccs {
         // check if the issuer CA has not been revoked
         let root_crl_data = ctx.accounts.root_crl.cert_data.as_slice();
         let issuer_serial_number = ctx.accounts.issuer_ca.serial_number.unwrap();
-        if check_certificate_revocation(&issuer_serial_number, root_crl_data)
-            .is_err()
-        {
+        if check_certificate_revocation(&issuer_serial_number, root_crl_data).is_err() {
             return Err(PccsError::RevokedCertificate.into());
         }
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(identity_data).into();
-        let output_digest = compute_output_digest(
-            &fingerprint,
-            &identity_digest,
-            &issuer_tbs_digest,
-        );
 
-        // let enclave_identity_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-        // if enclave_identity_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let enclave_identity_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            identity_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
+        if enclave_identity_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         enclave_identity_account.identity_type = id;
         enclave_identity_account.version = version;
@@ -592,9 +605,27 @@ pub mod automata_on_chain_pccs {
         let tcb_info_data = data_buffer.data.as_slice();
         let tcb_info_digest = data_buffer.signed_digest;
 
+        // TEMP: Using **owned** data for now by copying and aligned the data into heap,
+        // because if I simply "borrow" the data, we would run into alignment issues upon de-serialization
+        // AFAIK, the serialized TCBInfo data should not exceed the Solana 32kb heap limit
+        let tcb_info_data_owned: Option<AVec<u8>>;
+        let tcb_info_data = if tcb_info_data.as_ptr().align_offset(8) == 0 {
+            // The data is already aligned, so we can use it directly
+            tcb_info_data
+        } else {
+            // The data is not aligned, so we need to copy it into an aligned vector
+            let mut buff: AVec<u8> = AVec::with_capacity(8, tcb_info_data.len());
+            buff.extend_from_slice(tcb_info_data);
+            tcb_info_data_owned = Some(buff);
+            tcb_info_data_owned.as_ref().unwrap().as_slice()
+        };
+
         // the first 64 bytes is the signature
         let tcb_info = TcbInfoZeroCopy::from_bytes(&tcb_info_data[64..])
-            .map_err(|_| PccsError::FailedDeserialization)?;
+            .map_err(|e| {
+                msg!("Failed to deserialize TCB Info: {}", e);
+                PccsError::FailedDeserialization
+            })?;
 
         // Check the given TCB Info is unexpired
         let tcb_info_issue_timestamp = tcb_info.issue_date_timestamp();
@@ -624,18 +655,19 @@ pub mod automata_on_chain_pccs {
 
         // verify the proof
         let fingerprint: [u8; 32] = Sha256::digest(tcb_info_data).into();
-        let output_digest =
-            compute_output_digest(&fingerprint, &tcb_info_digest, &issuer_tbs_digest);
-        // let tcb_info_verified_with_zk = digest_ecdsa_zk_verify(
-        //     output_digest,
-        //     &proof,
-        //     zkvm_selector,
-        //     &ctx.accounts.zkvm_verifier_program.to_account_info(),
-        //     &ctx.accounts.system_program,
-        // );
-        // if tcb_info_verified_with_zk.is_err() {
-        //     return Err(PccsError::InvalidProof.into());
-        // }
+
+        validate_zkvm_verifier_account_info(zkvm_selector, &ctx.accounts.zkvm_verifier_program)?;
+        let tcb_info_verified_with_zk = ecdsa_zk_verify(
+            fingerprint,
+            tcb_info_digest,
+            issuer_tbs_digest,
+            proof,
+            &ctx.accounts.zkvm_verifier_program,
+            &ctx.accounts.system_program,
+        );
+        if tcb_info_verified_with_zk.is_err() {
+            return Err(PccsError::InvalidProof.into());
+        }
 
         tcb_info_account.tcb_type = tcb_type;
         tcb_info_account.version = version;
@@ -660,4 +692,70 @@ pub mod automata_on_chain_pccs {
         );
         Ok(())
     }
+}
+
+/// Helper function to validate the provided zkvm Verifier account info
+fn validate_zkvm_verifier_account_info(
+    zkvm_selector: ZkvmSelector,
+    zkvm_verifier_program: &AccountInfo,
+) -> Result<()> {
+    match zkvm_selector {
+        ZkvmSelector::Succinct => {
+            require!(
+                *zkvm_verifier_program.key == zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY,
+                PccsError::InvalidZkvmProgram
+            );
+            Ok(())
+        },
+        _ => {
+            return Err(PccsError::UnsupportedZkvm.into());
+        },
+    }
+}
+
+/// Helper function to perform CPI to the verifier program to verify SNARK proofs
+fn ecdsa_zk_verify<'a>(
+    fingerprint: [u8; 32],
+    subject_tbs_digest: [u8; 32],
+    issuer_tbs_digest: [u8; 32],
+    proof: Vec<u8>,
+    zkvm_verifier_program: &AccountInfo<'a>,
+    system_program: &Program<'a, System>,
+) -> Result<()> {
+    let instruction_data = match zkvm_verifier_program.key {
+        &zk::sp1::ECDSA_SP1_DCAP_P256_PUBKEY => {
+            use zk::sp1::SP1Groth16Proof;
+
+            let sp1_public_inputs =
+                concatenate_output(&fingerprint, &subject_tbs_digest, &issuer_tbs_digest);
+            let proof = SP1Groth16Proof {
+                proof: proof,
+                sp1_public_inputs,
+            };
+
+            proof
+                .verify_p256_proof_instruction()
+                .expect("Failed to create instruction data")
+        },
+        _ => return Err(PccsError::InvalidZkvmProgram.into()),
+    };
+
+    let verify_cpi_context = CpiContext::new(
+        zkvm_verifier_program.clone(),
+        vec![system_program.to_account_info()],
+    );
+
+    use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+
+    invoke(
+        &Instruction {
+            program_id: zkvm_verifier_program.key(),
+            accounts: verify_cpi_context.to_account_metas(None),
+            data: instruction_data,
+        },
+        &[system_program.to_account_info()],
+    )
+    .unwrap();
+
+    Ok(())
 }

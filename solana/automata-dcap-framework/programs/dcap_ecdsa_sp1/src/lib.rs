@@ -8,7 +8,7 @@ declare_id!("3tXQLx1CPpecJcBzHBLnC1fvRhLEpHqvWqDRPyxrKDCe");
 pub const ECDSA_SP1_DCAP_P256_VKEY: &str =
     "0x006fca6dbfa6ef2ae092f91a03d49fffdcfb133e48f069fb945a5f98300b2995";
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SP1Groth16Proof {
     pub proof: Vec<u8>,
     pub sp1_public_inputs: Vec<u8>,
@@ -18,11 +18,7 @@ pub struct SP1Groth16Proof {
 pub mod dcap_ecdsa_sp1 {
     use super::*;
 
-    pub fn verify_p256_proof(_ctx: Context<VerifyProof>, instruction_data: Vec<u8>) -> Result<()> {
-        // Deserialize the instruction data into SP1Groth16Proof
-        let groth16_proof = SP1Groth16Proof::try_from_slice(&instruction_data)
-            .map_err(|_| ProgramError::InvalidInstructionData)?;
-
+    pub fn verify_p256_proof(_ctx: Context<VerifyProof>, groth16_proof: SP1Groth16Proof) -> Result<()> {
         let vk = sp1_solana::GROTH16_VK_5_0_0_BYTES;
 
         let verified = verify_proof(

@@ -17,19 +17,19 @@ pub(crate) async fn test_pck_certificate_upsert(sdk: &Sdk<Arc<Keypair>>) {
         .await
         .unwrap();
 
-    let (_, issuer_der) = client
-        .get_pcs_certificate(CertificateAuthority::PLATFORM, false)
-        .await
-        .unwrap();
-    let sp1_args = SP1RequestArguments {
-        input_type: EcdsaZkVerifyInputType::X509,
-        subject_data: pck_cert_data.clone(),
-        issuer_raw_der: issuer_der,
-    };
-    let (_vkey, _output, proof) = sp1_args.request_p256_proof().await.unwrap();
+    // let (_, issuer_der) = client
+    //     .get_pcs_certificate(CertificateAuthority::PLATFORM, false)
+    //     .await
+    //     .unwrap();
+    // let sp1_args = SP1RequestArguments {
+    //     input_type: EcdsaZkVerifyInputType::X509,
+    //     subject_data: pck_cert_data.clone(),
+    //     issuer_raw_der: issuer_der,
+    // };
+    // let (_vkey, _output, proof) = sp1_args.request_p256_proof().await.unwrap();
 
-    println!("Proof: {}", hex::encode(&proof));
-    // let proof = hex::decode("03e7cdba01a2cdd524f1c89a6a87fdd7f02185027117db036401400e1cb77f790c405deffdeb0a041604b5994c2c15706b73cf4b26a8c619ffa40f55bc1ace2a1895e02381b5ed1337284eaf779cc1ca4d1f600c56d9b55afc4d1dc34672fa700e70b96dd8c916efeedeeb47656fb245e712f74858efc5b5efe4980e7eb154d7219d49f215ede5d8c81ee7bfd578fe0847ab7e5ebdb66e3ef7f12f06e23bade20219569d89fc3726a5d2d2b77865a27d951840e29928ddd92c01001063a85f6b0636588dff8a292fc3f28f8210a5cf128fa94210d39671a733a8d3b885637f79253429067187c54edcb1b3edde942c80338a67d8e290908e4df16eca08475667").unwrap();
+    // println!("Proof: {}", hex::encode(&proof));
+    let proof = hex::decode("a4594c590e3d3f92bd9b4405351de6196bc2a34d60a78d7811b95acf5350d49087d2af68100d7eca1f817531017a3882116c2e3d4b5a628329efa96fa6e627a94a905000091dbacc2ab32611d2642a92da7ec2d330591f550211670d01aaac822366758d15a21b006c78a4f469d83138f0eee1acc7b6f1781c97ebc4dbf4d1125b88c253124bf74c834c366023ac4d662ffe4486481b6b5e80db02d77bff1b38c774f0921b4c91616eb3092b9488ff26c9d2a1abd643ab6bf1dc4da457966a9b5faa7a071cf80aff611e1d47dffb994f53235dc255f11fc7a18cdff549f583b1b6dab61b04109976bcf3c0514a0690136bbef1c1f8d346c4fa1181b7e761e0ad965a6762").unwrap();
 
     let qe_id = "ad04024c9dfb382baf51ca3e5d6cb6e6";
     let pce_id = "0000";

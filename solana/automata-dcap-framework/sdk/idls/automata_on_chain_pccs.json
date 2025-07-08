@@ -718,31 +718,36 @@
     },
     {
       "code": 6010,
+      "name": "InvalidZkvmProgram",
+      "msg": "Invalid zkVM Program"
+    },
+    {
+      "code": 6011,
       "name": "UnsupportedZkvm",
       "msg": "Unsupported ZKVM Selector"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "InvalidProof",
       "msg": "Invalid Proof"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "FailedDeserialization",
       "msg": "Failed to deserialize data"
     },
     {
-      "code": 6013,
+      "code": 6014,
       "name": "ExpiredCollateral",
       "msg": "Collateral has expired"
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "RevokedCertificate",
       "msg": "Certificate has been revoked"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "InvalidIssuer",
       "msg": "Issuer has expired or revoked"
     }

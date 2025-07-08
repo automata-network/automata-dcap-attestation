@@ -22,10 +22,32 @@
       "accounts": [],
       "args": [
         {
-          "name": "instruction_data",
-          "type": "bytes"
+          "name": "groth16_proof",
+          "type": {
+            "defined": {
+              "name": "SP1Groth16Proof"
+            }
+          }
         }
       ]
+    }
+  ],
+  "types": [
+    {
+      "name": "SP1Groth16Proof",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof",
+            "type": "bytes"
+          },
+          {
+            "name": "sp1_public_inputs",
+            "type": "bytes"
+          }
+        ]
+      }
     }
   ]
 }

@@ -32,6 +32,9 @@ pub enum PccsError {
     #[msg("Invalid Root Certificate")]
     InvalidRoot,
 
+    #[msg("Invalid zkVM Program")]
+    InvalidZkvmProgram,
+
     #[msg("Unsupported ZKVM Selector")]
     UnsupportedZkvm,
 

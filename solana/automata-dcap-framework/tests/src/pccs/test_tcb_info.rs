@@ -82,20 +82,20 @@ pub(crate) async fn test_tcb_info_upsert_v3_tdx(sdk: &Sdk<Arc<Keypair>>) {
 
     let data_buffer_account_data = client.load_buffer_data(data_buffer_pubkey).await.unwrap();
 
-    let (_, issuer_der) = client
-        .get_pcs_certificate(CertificateAuthority::SIGNING, false)
-        .await
-        .unwrap();
+    // let (_, issuer_der) = client
+    //     .get_pcs_certificate(CertificateAuthority::SIGNING, false)
+    //     .await
+    //     .unwrap();
 
-    let sp1_args = SP1RequestArguments {
-        input_type: EcdsaZkVerifyInputType::TcbInfo,
-        subject_data: data_buffer_account_data,
-        issuer_raw_der: issuer_der,
-    };
-    let (_vkey, _output, proof) = sp1_args.request_p256_proof().await.unwrap();
+    // let sp1_args = SP1RequestArguments {
+    //     input_type: EcdsaZkVerifyInputType::TcbInfo,
+    //     subject_data: data_buffer_account_data,
+    //     issuer_raw_der: issuer_der,
+    // };
+    // let (_vkey, _output, proof) = sp1_args.request_p256_proof().await.unwrap();
 
-    print!("Proof: {}", hex::encode(&proof));
-    // let proof = hex::decode("259659e72b79a5882d32e18644f417e0066350d21f9651c46d39ec51db75daea04fc5ebb356e37f2a5650aeaecc3cb985dc0446977c8f3180e1b7db9e064da412f9b9fc319ea66e16b0768b2a3d36635b2d7e34a534a94e8f2114ac017d640ca17f472a2fd4cadf9463c7ad42d4f745eb2f403077e3c9419bdcbd76136a9f6112867d9b26705719bac41c7647046c00e2f6a7b707b6db2aa98c20b59e98f1ff01b1319b7da34bf87784266bc7811646650440149cbe4ea054dcf75a06b0141df041c168c6e9e1133c87f9a3be33ecc0234f2ba11c34f07182f1132c75d24e4541c2a449825d5f2e7d06f37667ff013f5ed5ec556967342e8177e49a13b40f17f").unwrap();
+    // print!("Proof: {}", hex::encode(&proof));
+    let proof = hex::decode("a4594c5923f2ac2edf204c94d0856e5a0b3570180c18dd465988185ff5bf466dcd507256206e3e9fd7df8ab0a9d672e40ab9dba30411ba5a5ee7a6bf8d22bb306bd7fdaa12a5bc14ae0a72d15f02ce7e7207e303fa77480adb16224c4bbf843898a8f27d15fa1d6e4d56bb2751d88d0808805e1e33f68e8519b16818de28cf674374b45922e48eae3dc87dc0420be72c8f95f3d699f12eee30c92c3bbfc79764e01dae9f07bf8cb5091219dec05f738307b05bc1fb0586f9c20a56e5575508364a80a2ac1a15395d57a1b1bc153fca96ec8b73957ab9a5da10e78af240ad5dbc6b46777204ee0bde262218fc92157e9b80e14946735cb1296951ba4f811f7c9222ad3955").unwrap();
 
     let tcb_type = TcbType::Tdx;
     let fmspc = "00806f050000";

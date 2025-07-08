@@ -18,6 +18,7 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { workspace = true, features = ["init-if-needed"] }
+aligned-vec = { version = "0.6.4" }
 hex = "0.4.3"
 sha2 = "0.10.8"
 dcap-rs = { workspace = true, default-features = false, features = ["zero-copy"] }

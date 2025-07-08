@@ -978,6 +978,7 @@ dependencies = [
 name = "automata-on-chain-pccs"
 version = "0.1.0"
 dependencies = [
+ "aligned-vec",
  "anchor-lang",
  "chrono",
  "dcap-rs",
@@ -4974,6 +4975,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anyhow",
+ "dcap_ecdsa_sp1",
  "sha2 0.10.8",
  "x509-parser 0.17.0",
 ]
