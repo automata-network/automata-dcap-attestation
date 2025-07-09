@@ -1,0 +1,1314 @@
+{
+  "address": "3Whsu6eycQpQoW2aArtkGcKVbLtosZUuK67PMAc7uqzt",
+  "metadata": {
+    "name": "automata_on_chain_pccs",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_data_chunk",
+      "discriminator": [
+        213,
+        140,
+        39,
+        203,
+        184,
+        53,
+        64,
+        247
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "chunk_data",
+          "type": "bytes"
+        },
+        {
+          "name": "offset",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_data_buffer",
+      "discriminator": [
+        227,
+        249,
+        103,
+        201,
+        55,
+        1,
+        36,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The signer who will own this quote buffer.",
+            "Must sign the transaction and pay for the account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "docs": [
+            "The account that will store the chunked data."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Required by the system program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "total_size",
+          "type": "u32"
+        },
+        {
+          "name": "signed_digest",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "upsert_enclave_identity",
+      "discriminator": [
+        67,
+        158,
+        232,
+        197,
+        49,
+        166,
+        35,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "enclave_identity",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "defined": {
+              "name": "EnclaveIdentityType"
+            }
+          }
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_pck_certificate",
+      "discriminator": [
+        238,
+        104,
+        13,
+        98,
+        140,
+        233,
+        166,
+        23
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pck_certificate",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "pck_crl"
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
+        {
+          "name": "qe_id",
+          "type": "string"
+        },
+        {
+          "name": "pce_id",
+          "type": "string"
+        },
+        {
+          "name": "tcbm",
+          "type": "string"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_pcs_certificate",
+      "discriminator": [
+        140,
+        22,
+        148,
+        170,
+        29,
+        121,
+        87,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pcs_certificate",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_pcs_crl",
+      "discriminator": [
+        79,
+        221,
+        14,
+        84,
+        207,
+        40,
+        230,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pcs_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ca_type",
+          "type": {
+            "defined": {
+              "name": "CertificateAuthority"
+            }
+          }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_root_ca",
+      "discriminator": [
+        115,
+        57,
+        70,
+        77,
+        149,
+        211,
+        45,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_ca",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_root_crl",
+      "discriminator": [
+        240,
+        56,
+        34,
+        178,
+        75,
+        96,
+        143,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_crl",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upsert_tcb_info",
+      "discriminator": [
+        190,
+        16,
+        221,
+        140,
+        132,
+        25,
+        171,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tcb_info",
+          "writable": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        },
+        {
+          "name": "root_crl"
+        },
+        {
+          "name": "issuer_ca"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tcb_type",
+          "type": {
+            "defined": {
+              "name": "TcbType"
+            }
+          }
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        },
+        {
+          "name": "fmspc",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DataBuffer",
+      "discriminator": [
+        235,
+        220,
+        51,
+        248,
+        56,
+        77,
+        241,
+        89
+      ]
+    },
+    {
+      "name": "EnclaveIdentity",
+      "discriminator": [
+        214,
+        36,
+        189,
+        105,
+        171,
+        103,
+        129,
+        177
+      ]
+    },
+    {
+      "name": "PckCertificate",
+      "discriminator": [
+        9,
+        190,
+        238,
+        169,
+        146,
+        79,
+        57,
+        63
+      ]
+    },
+    {
+      "name": "PcsCertificate",
+      "discriminator": [
+        206,
+        13,
+        94,
+        39,
+        155,
+        246,
+        124,
+        143
+      ]
+    },
+    {
+      "name": "TcbInfo",
+      "discriminator": [
+        151,
+        129,
+        27,
+        70,
+        182,
+        10,
+        3,
+        12
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "EnclaveIdentityUpserted",
+      "discriminator": [
+        175,
+        100,
+        199,
+        211,
+        108,
+        27,
+        100,
+        92
+      ]
+    },
+    {
+      "name": "PckCertificateUpserted",
+      "discriminator": [
+        162,
+        80,
+        9,
+        130,
+        28,
+        152,
+        117,
+        119
+      ]
+    },
+    {
+      "name": "PcsCertificateUpserted",
+      "discriminator": [
+        251,
+        19,
+        105,
+        18,
+        135,
+        171,
+        52,
+        140
+      ]
+    },
+    {
+      "name": "TcbInfoUpdated",
+      "discriminator": [
+        154,
+        66,
+        145,
+        8,
+        184,
+        57,
+        40,
+        243
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidOwner",
+      "msg": "Invalid owner"
+    },
+    {
+      "code": 6001,
+      "name": "BufferAlreadyComplete",
+      "msg": "Buffer already complete"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidChunkIndex",
+      "msg": "Invalid chunk index"
+    },
+    {
+      "code": 6003,
+      "name": "ChunkOutOfBounds",
+      "msg": "Chunk out of bounds"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidDigest",
+      "msg": "Invalid digest"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidHexString",
+      "msg": "Invalid Hex String"
+    },
+    {
+      "code": 6006,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6007,
+      "name": "IncompleteBuffer",
+      "msg": "Incomplete Buffer"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidSubject",
+      "msg": "Invalid Subject Certificate or CRL"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRoot",
+      "msg": "Invalid Root Certificate"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidZkvmProgram",
+      "msg": "Invalid zkVM Program"
+    },
+    {
+      "code": 6011,
+      "name": "UnsupportedZkvm",
+      "msg": "Unsupported ZKVM Selector"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidProof",
+      "msg": "Invalid Proof"
+    },
+    {
+      "code": 6013,
+      "name": "FailedDeserialization",
+      "msg": "Failed to deserialize data"
+    },
+    {
+      "code": 6014,
+      "name": "ExpiredCollateral",
+      "msg": "Collateral has expired"
+    },
+    {
+      "code": 6015,
+      "name": "RevokedCertificate",
+      "msg": "Certificate has been revoked"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidIssuer",
+      "msg": "Issuer has expired or revoked"
+    }
+  ],
+  "types": [
+    {
+      "name": "CertificateAuthority",
+      "docs": [
+        "Represents the different types of Certificate Authorities in the Intel SGX",
+        "attestation."
+      ],
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ROOT"
+          },
+          {
+            "name": "PLATFORM"
+          },
+          {
+            "name": "PROCESSOR"
+          },
+          {
+            "name": "SIGNING"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DataBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_size",
+            "type": "u32"
+          },
+          {
+            "name": "num_chunks",
+            "type": "u8"
+          },
+          {
+            "name": "complete",
+            "type": "bool"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "name": "signed_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "identity_type",
+            "docs": [
+              "The type of enclave identity"
+            ],
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the enclave identity"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the enclave identity"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentityType",
+      "docs": [
+        "Represents the different types of Enclave Identities in the Intel SGX",
+        "attestation."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "QE"
+          },
+          {
+            "name": "QVE"
+          },
+          {
+            "name": "TdQe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentityUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PckCertificate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ca_type",
+            "docs": [
+              "The type of certificate authority that signed this certificate"
+            ],
+            "type": {
+              "defined": {
+                "name": "CertificateAuthority"
+              }
+            }
+          },
+          {
+            "name": "qe_id",
+            "docs": [
+              "The ID of the Quality of Execution (QE) that signed this certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "pce_id",
+            "docs": [
+              "The ID of the Platform Configuration Entity (PCE) that signed this certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "tcbm",
+            "docs": [
+              "The TCBM of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                18
+              ]
+            }
+          },
+          {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PckCertificateUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "qe_id",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "pce_id",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "tcbm",
+            "type": {
+              "array": [
+                "u8",
+                18
+              ]
+            }
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PcsCertificate",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4096
+              ]
+            }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate",
+              "This field is optional for CRLs"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate",
+              "Zero Bytes if this is a CRL"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          },
+          {
+            "name": "ca_type",
+            "docs": [
+              "The type of certificate authority that signed this certificate"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_crl",
+            "docs": [
+              "Whether this is a CRL; 0 for certificate, 1 for CRL"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "cert_data_size",
+            "docs": [
+              "The size of the certificate data"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PcsCertificateUpserted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ca_type",
+            "type": {
+              "defined": {
+                "name": "CertificateAuthority"
+              }
+            }
+          },
+          {
+            "name": "is_crl",
+            "type": "bool"
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "docs": [
+              "The type of TCB"
+            ],
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the TCB"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "docs": [
+              "The FMSPC of the TCB"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the TCB"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfoUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "pda",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbType",
+      "docs": [
+        "Represents different types of TCB"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Sgx"
+          },
+          {
+            "name": "Tdx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkvmSelector",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Invalid"
+          },
+          {
+            "name": "RiscZero"
+          },
+          {
+            "name": "Succinct"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "address": "3tXQLx1CPpecJcBzHBLnC1fvRhLEpHqvWqDRPyxrKDCe",
+  "metadata": {
+    "name": "dcap_ecdsa_sp1",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "verify_p256_proof",
+      "discriminator": [
+        209,
+        161,
+        66,
+        1,
+        26,
+        20,
+        105,
+        28
+      ],
+      "accounts": [],
+      "args": [
+        {
+          "name": "groth16_proof",
+          "type": {
+            "defined": {
+              "name": "SP1Groth16Proof"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "SP1Groth16Proof",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof",
+            "type": "bytes"
+          },
+          {
+            "name": "sp1_public_inputs",
+            "type": "bytes"
+          }
+        ]
+      }
+    }
+  ]
+}

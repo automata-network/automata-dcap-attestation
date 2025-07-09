@@ -1,0 +1,1114 @@
+{
+  "address": "FsmdtLRqiQt3jFdRfD4Goomz78LNtjthFqWuQt8rTKhC",
+  "metadata": {
+    "name": "automata_dcap_verifier",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_quote_chunk",
+      "discriminator": [
+        93,
+        28,
+        10,
+        61,
+        222,
+        222,
+        191,
+        23
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "data_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "chunk_data",
+          "type": "bytes"
+        },
+        {
+          "name": "offset",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "close_quote_accounts",
+      "discriminator": [
+        248,
+        0,
+        99,
+        116,
+        198,
+        116,
+        113,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The owner of the quote buffer and verified output accounts."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "docs": [
+            "The quote buffer account to be closed."
+          ],
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "docs": [
+            "The verified output account to be closed."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "The system program account, required for closing accounts."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_quote_accounts",
+      "discriminator": [
+        197,
+        230,
+        66,
+        114,
+        41,
+        37,
+        166,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The signer who will own this quote buffer.",
+            "Must sign the transaction and pay for account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "quote_data_buffer",
+          "docs": [
+            "The account that will store the DCAP quote data.",
+            "This is initialized with the specified space and",
+            "owned by the program."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "verified_output",
+          "docs": [
+            "The account that will store the result of the DCAP quote verification"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Required by the system program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "quote_size",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_enclave_source",
+      "discriminator": [
+        7,
+        60,
+        137,
+        108,
+        41,
+        253,
+        177,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "qe_identity_pda"
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_qe_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "verify_dcap_quote_integrity",
+      "discriminator": [
+        178,
+        183,
+        98,
+        209,
+        167,
+        76,
+        100,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_dcap_quote_isv_signature",
+      "discriminator": [
+        0,
+        249,
+        164,
+        83,
+        46,
+        80,
+        247,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "the supplied Sysvar could be anything else.",
+            "The Instruction Sysvar has not been implemented",
+            "in the Anchor framework yet, so this is the safe approach."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_dcap_quote_tcb_status",
+      "discriminator": [
+        232,
+        199,
+        127,
+        71,
+        188,
+        148,
+        119,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "quote_data_buffer",
+          "writable": true
+        },
+        {
+          "name": "tcb_info_pda"
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_tcb_type",
+          "type": "string"
+        },
+        {
+          "name": "_version",
+          "type": "u8"
+        },
+        {
+          "name": "fmspc",
+          "type": {
+            "array": [
+              "u8",
+              6
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "verify_pck_cert_chain_zk",
+      "docs": [
+        "Certificate index:",
+        "0 - PCK Certificate",
+        "1 - PCK Intermediate CA",
+        "2 - Intel SGX Root CA"
+      ],
+      "discriminator": [
+        251,
+        227,
+        244,
+        138,
+        52,
+        134,
+        202,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "quote_data_buffer"
+        },
+        {
+          "name": "crl"
+        },
+        {
+          "name": "zkvm_verifier_program"
+        },
+        {
+          "name": "verified_output",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  105,
+                  101,
+                  100,
+                  95,
+                  111,
+                  117,
+                  116,
+                  112,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_data_buffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "certificate_index",
+          "type": "u64"
+        },
+        {
+          "name": "zkvm_selector",
+          "type": {
+            "defined": {
+              "name": "ZkvmSelector"
+            }
+          }
+        },
+        {
+          "name": "proof_bytes",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DataBuffer",
+      "discriminator": [
+        235,
+        220,
+        51,
+        248,
+        56,
+        77,
+        241,
+        89
+      ]
+    },
+    {
+      "name": "EnclaveIdentity",
+      "discriminator": [
+        214,
+        36,
+        189,
+        105,
+        171,
+        103,
+        129,
+        177
+      ]
+    },
+    {
+      "name": "PcsCertificate",
+      "discriminator": [
+        206,
+        13,
+        94,
+        39,
+        155,
+        246,
+        124,
+        143
+      ]
+    },
+    {
+      "name": "TcbInfo",
+      "discriminator": [
+        151,
+        129,
+        27,
+        70,
+        182,
+        10,
+        3,
+        12
+      ]
+    },
+    {
+      "name": "VerifiedOutput",
+      "discriminator": [
+        33,
+        23,
+        162,
+        153,
+        121,
+        58,
+        199,
+        180
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidOwner",
+      "msg": "Invalid buffer owner"
+    },
+    {
+      "code": 6001,
+      "name": "BufferAlreadyComplete",
+      "msg": "Buffer already complete"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidChunkIndex",
+      "msg": "Invalid chunk index"
+    },
+    {
+      "code": 6003,
+      "name": "ChunkOutOfBounds",
+      "msg": "Chunk out of bounds"
+    },
+    {
+      "code": 6004,
+      "name": "IncompleteQuote",
+      "msg": "Incomplete quote"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidQuote",
+      "msg": "Invalid quote"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidZkvmSelector",
+      "msg": "Invalid zkVM selector"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidZkvmProgram",
+      "msg": "Invalid zkVM program"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidZkProof",
+      "msg": "Invalid zk proof"
+    },
+    {
+      "code": 6009,
+      "name": "SerializationError",
+      "msg": "Serialization error"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidHexString",
+      "msg": "Invalid hex string"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidSgxPckExtension",
+      "msg": "Invalid SgxPckExtension"
+    },
+    {
+      "code": 6012,
+      "name": "UnsuccessfulTcbStatusVerification",
+      "msg": "Unsuccessful TcbStatus verification"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidSecp256r1Instruction",
+      "msg": "Invalid Secp256r1 instruction"
+    },
+    {
+      "code": 6014,
+      "name": "ExpiredCollateral",
+      "msg": "The collateral has expired"
+    },
+    {
+      "code": 6015,
+      "name": "RevokedCertificate",
+      "msg": "Certificate has been revoked"
+    },
+    {
+      "code": 6016,
+      "name": "MismatchFmspc",
+      "msg": "PCK FMSPC does not match"
+    },
+    {
+      "code": 6017,
+      "name": "MismatchPceid",
+      "msg": "PCK PCEID does not match"
+    },
+    {
+      "code": 6018,
+      "name": "MissingTdxModule",
+      "msg": "Missing TDX Module"
+    },
+    {
+      "code": 6019,
+      "name": "MissingTdxModuleIdentities",
+      "msg": "Missing TDX Module Identities"
+    },
+    {
+      "code": 6020,
+      "name": "MismatchMrsignerSeam",
+      "msg": "MRSIGNER SEAM Mismatch"
+    },
+    {
+      "code": 6021,
+      "name": "MismatchSeamAttribute",
+      "msg": "SEAM Attribute Mismatch"
+    },
+    {
+      "code": 6022,
+      "name": "MismatchPda",
+      "msg": "Mismatch PDA"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidRootCa",
+      "msg": "Invalid Root CA"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidCertificateIndex",
+      "msg": "Invalid PCK Certificate Chain Index"
+    }
+  ],
+  "types": [
+    {
+      "name": "DataBuffer",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_size",
+            "type": "u32"
+          },
+          {
+            "name": "complete",
+            "type": "u8"
+          },
+          {
+            "name": "data",
+            "type": {
+              "array": [
+                "u8",
+                9219
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "identity_type",
+            "docs": [
+              "The type of enclave identity"
+            ],
+            "type": {
+              "defined": {
+                "name": "EnclaveIdentityType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the enclave identity"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the enclave identity"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnclaveIdentityType",
+      "docs": [
+        "Represents the different types of Enclave Identities in the Intel SGX",
+        "attestation."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "QE"
+          },
+          {
+            "name": "QVE"
+          },
+          {
+            "name": "TdQe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PcsCertificate",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cert_data",
+            "docs": [
+              "Certificate data"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4096
+              ]
+            }
+          },
+          {
+            "name": "validity_not_before",
+            "docs": [
+              "The ValidtyNotBefore timestamp of the certificate"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "validity_not_after",
+            "docs": [
+              "The ValidtyNotAfter timestamp of the certificate",
+              "This field is optional for CRLs"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "serial_number",
+            "docs": [
+              "Serial number of the certificate",
+              "Zero Bytes if this is a CRL"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          },
+          {
+            "name": "ca_type",
+            "docs": [
+              "The type of certificate authority that signed this certificate"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_crl",
+            "docs": [
+              "Whether this is a CRL; 0 for certificate, 1 for CRL"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "cert_data_size",
+            "docs": [
+              "The size of the certificate data"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tcb_type",
+            "docs": [
+              "The type of TCB"
+            ],
+            "type": {
+              "defined": {
+                "name": "TcbType"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "The version of the TCB"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fmspc",
+            "docs": [
+              "The FMSPC of the TCB"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "data",
+            "docs": [
+              "The data of the TCB"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "digest",
+            "docs": [
+              "The digest of the certificate"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "issue_timestamp",
+            "docs": [
+              "The issuance timestamp of the collateral"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "next_update_timestamp",
+            "docs": [
+              "The timestamp when the collateral expects to be updated"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TcbType",
+      "docs": [
+        "Represents different types of TCB"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Sgx"
+          },
+          {
+            "name": "Tdx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifiedOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quote_version",
+            "type": "u16"
+          },
+          {
+            "name": "tee_type",
+            "type": "u32"
+          },
+          {
+            "name": "fmspc",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "quote_body",
+            "type": "bytes"
+          },
+          {
+            "name": "integrity_verified",
+            "type": "bool"
+          },
+          {
+            "name": "isv_signature_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_leaf_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_intermediate_verified",
+            "type": "bool"
+          },
+          {
+            "name": "pck_root_verified",
+            "type": "bool"
+          },
+          {
+            "name": "fmspc_tcb_status",
+            "type": "u8"
+          },
+          {
+            "name": "tdx_module_tcb_status",
+            "type": "u8"
+          },
+          {
+            "name": "qe_tcb_status",
+            "type": "u8"
+          },
+          {
+            "name": "advisory_ids",
+            "type": {
+              "option": {
+                "vec": "string"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkvmSelector",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Invalid"
+          },
+          {
+            "name": "RiscZero"
+          },
+          {
+            "name": "Succinct"
+          }
+        ]
+      }
+    }
+  ]
+}

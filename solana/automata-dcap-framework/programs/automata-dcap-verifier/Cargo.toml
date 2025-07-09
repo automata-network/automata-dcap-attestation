@@ -1,0 +1,31 @@
+[package]
+name = "automata-dcap-verifier"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "automata_dcap_framework"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+dcap-rs = { workspace = true, default-features = false, features = ["zero-copy"] }
+zerocopy = { version = "0.7.34" }
+automata-on-chain-pccs = { path = "../automata-on-chain-pccs", features = [
+    "cpi",
+] }
+hex = { version = "0.4.3" }
+sha2 = { version = "0.10.8" }
+p256 = { version = "=0.13.2" }
+aligned-vec = { version = "0.6.4" }
+bytemuck = { version = "1.23.0", features = ["min_const_generics", "derive"] }
+programs_shared = { path = "../../programs-shared" }
