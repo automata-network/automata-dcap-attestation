@@ -48,6 +48,8 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
 
 ## What's Changed?
 
+### EVM
+
 - Debuting "versioned" DAOs. I.e. collaterals are further categorized by their TCB Evaluation Data Number. This affects both FMSPC TCB and QE Identity collaterals.
 
 - PCCS Router Changes and Fixes:
@@ -61,10 +63,16 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
         - [6246682](https://github.com/automata-network/automata-dcap-attestation/commit/62466820089a124ac872e6cedbae2a4cdae416b0)
 - Automata DCAP Attestation Changes:
     - New interface to include TCB Evaluation Data Number as an argument
-        - []()
+        - Commit [#060dd0d](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/060dd0d6a61facf3f0ae68f6dd23ab45acbd6fee)
     - Multiple zkVM Program Identifiers in a single zkVM configuration
         - PR [#46](https://github.com/automata-network/automata-dcap-attestation/pull/46)
     - Quote Verification Code Refactoring and support for QuoteV5
-        -PR [#51](https://github.com/automata-network/automata-dcap-attestation/pull/51)
+        - PR [#51](https://github.com/automata-network/automata-dcap-attestation/pull/51)
 - Misc:
+    - Closes issue [#50](https://github.com/automata-network/automata-dcap-attestation/issues/50) with commit [#624668](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0)
     - PRs [#33](https://github.com/automata-network/automata-dcap-attestation/pull/33) and [#43](https://github.com/automata-network/automata-dcap-attestation/pull/43)
+
+### Solana
+
+- Solana PCCS and DCAP Verifier with SP1 Integration
+    - PR [#54](https://github.com/automata-network/automata-dcap-attestation/pull/54)
