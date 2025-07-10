@@ -69,7 +69,6 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
     - Quote Verification Code Refactoring and support for QuoteV5
         - PR [#51](https://github.com/automata-network/automata-dcap-attestation/pull/51)
 - Misc:
-    - Closes issue [#50](https://github.com/automata-network/automata-dcap-attestation/issues/50) with commit [#624668](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0)
     - PRs [#33](https://github.com/automata-network/automata-dcap-attestation/pull/33) and [#43](https://github.com/automata-network/automata-dcap-attestation/pull/43)
 
 ### Solana
