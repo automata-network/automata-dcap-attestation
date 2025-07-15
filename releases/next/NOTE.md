@@ -61,6 +61,8 @@ The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#fin
     - Fixed incorrect collateral validity check.
         - Closes issue [#50](https://github.com/automata-network/automata-dcap-attestation/issues/50)
         - [6246682](https://github.com/automata-network/automata-dcap-attestation/commit/62466820089a124ac872e6cedbae2a4cdae416b0)
+    - Validity check upon fetching JSON collateral content hashes.
+        - [96be512](https://github.com/automata-network/automata-dcap-attestation/commit/96be5127c970a498df7739ef72b86e47f1cfdeda)
 - Automata DCAP Attestation Changes:
     - New interface to include TCB Evaluation Data Number as an argument
         - Commit [#060dd0d](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/060dd0d6a61facf3f0ae68f6dd23ab45acbd6fee)
