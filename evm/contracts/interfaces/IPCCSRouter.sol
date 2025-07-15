@@ -84,6 +84,13 @@ interface IPCCSRouter {
         view
         returns (uint32);
 
+    function getQeIdentityContentHashWithTimestamp(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval, uint64 timestamp) external view returns (bytes32);
+
+    function getFmspcTcbContentHashWithTimestamp(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval, uint64 timestamp)
+        external
+        view
+        returns (bytes32);
+
     function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
 
     function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);

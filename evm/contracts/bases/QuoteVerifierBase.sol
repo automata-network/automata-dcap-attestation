@@ -261,13 +261,13 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         }
 
         bytes32 expectedTcbInfoContentHash =
-            pccsRouter.getFmspcTcbContentHash(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber);
+            pccsRouter.getFmspcTcbContentHashWithTimestamp(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber, timestamp);
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
             return (false, bytes(TCBCH));
         }
 
-        bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHash(
-            isSGX ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber
+        bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHashWithTimestamp(
+            isSGX ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber, timestamp
         );
         if (identityContentHash != expectedIdentityContentHash) {
             return (false, bytes(QEIDCH));

@@ -240,17 +240,16 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         onlyAuthorized
         returns (bytes32 contentHash)
     {
-        // Try versioned DAO first
-        address versionedDao = qeIdDaoVersionedAddr[tcbEval];
-        if (versionedDao != address(0)) {
-            EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
-            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
-            contentHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
-        }
+        contentHash = _getQeIdentityContentHash(id, qeIdentityApiVersion, tcbEval, block.timestamp);
+    }
 
-        if (contentHash == bytes32(0)) {
-            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
-        }
+    function getQeIdentityContentHashWithTimestamp(
+        EnclaveId id,
+        uint256 qeIdentityApiVersion,
+        uint32 tcbEval,
+        uint64 timestamp
+    ) external view override onlyAuthorized returns (bytes32 contentHash) {
+        contentHash = _getQeIdentityContentHash(id, qeIdentityApiVersion, tcbEval, timestamp);
     }
 
     function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval)
@@ -321,17 +320,17 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         onlyAuthorized
         returns (bytes32 contentHash)
     {
-        // Try versioned DAO first
-        address versionedDao = fmspcTcbDaoVersionedAddr[tcbEval];
-        if (versionedDao != address(0)) {
-            FmspcTcbDao versionedTcbDao = FmspcTcbDao(versionedDao);
-            bytes32 versionedKey = versionedTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
-            contentHash = versionedTcbDao.getTcbInfoContentHash(versionedKey);
-        }
+        contentHash = _getFmspcTcbContentHash(id, fmspc, version, tcbEval, block.timestamp);
+    }
 
-        if (contentHash == bytes32(0)) {
-            revert FmspcTcbExpiredOrNotFound(id, version);
-        }
+    function getFmspcTcbContentHashWithTimestamp(
+        TcbId id,
+        bytes6 fmspc,
+        uint32 version,
+        uint32 tcbEval,
+        uint64 timestamp
+    ) external view override onlyAuthorized returns (bytes32 contentHash) {
+        contentHash = _getFmspcTcbContentHash(id, fmspc, version, tcbEval, timestamp);
     }
 
     /**
@@ -428,6 +427,51 @@ contract PCCSRouter is IPCCSRouter, Ownable {
             } else {
                 revert CertExpiredOrNotFound(ca);
             }
+        }
+    }
+
+    function _getQeIdentityContentHash(
+        EnclaveId id,
+        uint256 qeIdentityApiVersion,
+        uint32 tcbEval,
+        uint256 timestamp
+    ) private view returns (bytes32 contentHash) {
+        // Try versioned DAO first
+        address versionedDao = qeIdDaoVersionedAddr[tcbEval];
+        if (versionedDao != address(0)) {
+            EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
+            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
+            (bool empty, bool valid) = _loadDataIfNotExpired(versionedKey, versionedDao, timestamp);
+            if (!empty && valid) {
+                contentHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
+            }
+        }
+
+        if (contentHash == bytes32(0)) {
+            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
+        }
+    }
+
+    function _getFmspcTcbContentHash(
+        TcbId id,
+        bytes6 fmspc,
+        uint32 version,
+        uint32 tcbEval,
+        uint256 timestamp
+    ) private view returns (bytes32 contentHash) {
+        // Try versioned DAO first
+        address versionedDao = fmspcTcbDaoVersionedAddr[tcbEval];
+        if (versionedDao != address(0)) {
+            FmspcTcbDao versionedTcbDao = FmspcTcbDao(versionedDao);
+            bytes32 versionedKey = versionedTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
+            (bool empty, bool valid) = _loadDataIfNotExpired(versionedKey, versionedDao, timestamp);
+            if (!empty && valid) {
+                contentHash = versionedTcbDao.getTcbInfoContentHash(versionedKey);
+            }
+        }
+
+        if (contentHash == bytes32(0)) {
+            revert FmspcTcbExpiredOrNotFound(id, version);
         }
     }
 
