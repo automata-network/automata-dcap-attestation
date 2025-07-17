@@ -33,18 +33,8 @@ contract V4QuoteVerifier is TdxQuoteBase {
         // parse body then verify quote
         bytes memory rawQuoteHeader = rawQuote[0:HEADER_LENGTH];
         if (header.teeType == SGX_TEE) {
-            EnclaveReport memory localEnclaveReport;
-            (success, localEnclaveReport) = parseEnclaveReport(rawQuoteBody);
-            if (!success) {
-                return (false, bytes(QBS));
-            }
             (success, output) = _verifySGXQuote(tcbEvalNumber, rawQuoteHeader, rawQuoteBody, authData);
         } else if (header.teeType == TDX_TEE) {
-            TD10ReportBody memory tdReport;
-            (success, tdReport) = TD10ReportParser.parse(rawQuoteBody);
-            if (!success) {
-                return (false, bytes(QBS));
-            }
             (success, output) = _verifyTDXQuote(tcbEvalNumber, rawQuoteHeader, rawQuoteBody, authData);
         } else {
             return (false, bytes(TEE));
