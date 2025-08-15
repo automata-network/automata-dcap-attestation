@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { TcbId } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import "../bases/QuoteVerifierBase.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 import "../types/Errors.sol";
@@ -28,13 +29,17 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         bytes memory rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH];
 
         VerificationResult memory result =
-            _verifyQuoteIntegrity(3, tcbEvalNumber, SGX_TEE, rawHeader, rawBody, authData);
+            _verifyQuoteIntegrity(4, tcbEvalNumber, SGX_TEE, rawHeader, rawBody, authData);
         if (!result.success) {
             return (false, bytes(result.reason));
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        TCBLevelsObj[] memory tcbLevels = pccsRouter.getFmspcTcbV2(bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber);
+        (TCBLevelsObj[] memory tcbLevels,,) = pccsRouter.getFmspcTcbV3(
+            TcbId.SGX,
+            bytes6(pckTcb.fmspcBytes), 
+            result.tcbEvalNumber
+        );
         TCBStatus tcbStatus;
         bool statusFound;
         for (uint256 i = 0; i < tcbLevels.length; i++) {

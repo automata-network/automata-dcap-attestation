@@ -83,7 +83,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     // a78bf21a
     error TcbEvalExpiredOrNotFound(TcbId id);
     // 0a2a9142
-    error QEIdentityExpiredOrNotFound(EnclaveId id, uint256 qeIdentityApiVersion);
+    error QEIdentityExpiredOrNotFound(EnclaveId id, uint256 pcsApiVersion);
     // 343385cf
     error FmspcTcbExpiredOrNotFound(TcbId id, uint256 tcbVersion);
     // 5705a2ef
@@ -210,7 +210,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
     }
 
-    function getQeIdentity(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval)
+    function getQeIdentity(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
         external
         view
         override
@@ -221,7 +221,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         address versionedDao = qeIdDaoVersionedAddr[tcbEval];
         if (versionedDao != address(0)) {
             EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
-            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
+            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), pcsApiVersion);
             (bool empty, bool valid) = _loadDataIfNotExpired(versionedKey, versionedDao, block.timestamp);
             if (!empty && valid) {
                 bytes memory data = versionedEnclaveIdDao.getAttestedData(versionedKey);
@@ -229,27 +229,27 @@ contract PCCSRouter is IPCCSRouter, Ownable {
                 return identity;
             }
         } else {
-            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
+            revert QEIdentityExpiredOrNotFound(id, pcsApiVersion);
         }
     }
 
-    function getQeIdentityContentHash(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval)
+    function getQeIdentityContentHash(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
         external
         view
         override
         onlyAuthorized
         returns (bytes32 contentHash)
     {
-        contentHash = _getQeIdentityContentHash(id, qeIdentityApiVersion, tcbEval, block.timestamp);
+        contentHash = _getQeIdentityContentHash(id, pcsApiVersion, tcbEval, block.timestamp);
     }
 
     function getQeIdentityContentHashWithTimestamp(
         EnclaveId id,
-        uint256 qeIdentityApiVersion,
+        uint256 pcsApiVersion,
         uint32 tcbEval,
         uint64 timestamp
     ) external view override onlyAuthorized returns (bytes32 contentHash) {
-        contentHash = _getQeIdentityContentHash(id, qeIdentityApiVersion, tcbEval, timestamp);
+        contentHash = _getQeIdentityContentHash(id, pcsApiVersion, tcbEval, timestamp);
     }
 
     function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval)
@@ -432,7 +432,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
 
     function _getQeIdentityContentHash(
         EnclaveId id,
-        uint256 qeIdentityApiVersion,
+        uint256 pcsApiVersion,
         uint32 tcbEval,
         uint256 timestamp
     ) private view returns (bytes32 contentHash) {
@@ -440,7 +440,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         address versionedDao = qeIdDaoVersionedAddr[tcbEval];
         if (versionedDao != address(0)) {
             EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
-            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), qeIdentityApiVersion);
+            bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), pcsApiVersion);
             (bool empty, bool valid) = _loadDataIfNotExpired(versionedKey, versionedDao, timestamp);
             if (!empty && valid) {
                 contentHash = versionedEnclaveIdDao.getIdentityContentHash(versionedKey);
@@ -448,7 +448,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         }
 
         if (contentHash == bytes32(0)) {
-            revert QEIdentityExpiredOrNotFound(id, qeIdentityApiVersion);
+            revert QEIdentityExpiredOrNotFound(id, pcsApiVersion);
         }
     }
 

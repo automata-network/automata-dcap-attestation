@@ -156,10 +156,10 @@ abstract contract PCCSSetupBase is Test {
         pcsDao.upsertPckCrl(CA.PLATFORM, platformCrlDer);
     }
 
-    function qeIdDaoUpsert(uint256 qeIdentityApiVersion, string memory path) internal {
+    function qeIdDaoUpsert(uint256 pcsApiVersion, string memory path) internal {
         EnclaveIdentityJsonObj memory identityJson = _readIdentityJson(path);
         (IdentityObj memory identity,) = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
-        enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), qeIdentityApiVersion, identityJson);
+        enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), pcsApiVersion, identityJson);
     }
 
     function fmspcTcbDaoUpsert(string memory path) internal {

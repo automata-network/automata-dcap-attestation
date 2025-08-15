@@ -42,12 +42,12 @@ interface IPCCSRouter {
 
     function getStandardTcbEvaluationDataNumber(TcbId id) external view returns (uint32);
 
-    function getQeIdentity(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval)
+    function getQeIdentity(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
         external
         view
         returns (IdentityObj memory);
 
-    function getQeIdentityContentHash(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval) external view returns (bytes32);
+    function getQeIdentityContentHash(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval) external view returns (bytes32);
 
     function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval) external view returns (TCBLevelsObj[] memory);
 
@@ -84,7 +84,7 @@ interface IPCCSRouter {
         view
         returns (uint32);
 
-    function getQeIdentityContentHashWithTimestamp(EnclaveId id, uint256 qeIdentityApiVersion, uint32 tcbEval, uint64 timestamp) external view returns (bytes32);
+    function getQeIdentityContentHashWithTimestamp(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval, uint64 timestamp) external view returns (bytes32);
 
     function getFmspcTcbContentHashWithTimestamp(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval, uint64 timestamp)
         external

@@ -41,23 +41,32 @@ contract AutomataDcapOnChainAttestationTest is PCCSSetupBase {
 
         vm.startPrank(admin);
 
+        vm.warp(1755236700); // pinned August 15th, 2025, 5:45am UTC
+
+        // renew platform crl specific to this testcase
+        string memory platformCrlPath = "/forge-test/assets/0825/platform_crl.der";
+        bytes memory platformCrl = vm.readFileBinary(string.concat(
+            vm.projectRoot(),
+            platformCrlPath
+        ));
+        pcsDao.upsertPckCrl(CA.PLATFORM, platformCrl);
 
         // collateral upserts
-        string memory tcbInfoPath = "/forge-test/assets/0625/tcbinfo.json";
-        string memory qeIdPath = "/forge-test/assets/0625/identity.json";
+        string memory tcbInfoPath = "/forge-test/assets/0825/sgx_tcbinfov3_00606a000000.json";
+        string memory qeIdPath = "/forge-test/assets/0825/sgx_qeidentity_v4.json";
 
         enclaveIdDao.grantRoles(
             admin,
             enclaveIdDao.ATTESTER_ROLE()
         );
-        qeIdDaoUpsert(3, qeIdPath);
+        qeIdDaoUpsert(4, qeIdPath);
         fmspcTcbDao.grantRoles(
             admin,
             fmspcTcbDao.ATTESTER_ROLE()
         );
         fmspcTcbDaoUpsert(tcbInfoPath);
 
-        string memory sgxEvalPath = "/forge-test/assets/0625/sgxtcbeval.json";
+        string memory sgxEvalPath = "/forge-test/assets/0825/sgxtcbeval.json";
         tcbEvalDaoUpsert(sgxEvalPath);
 
         // deploy and configure QuoteV3Verifier on the Attestation contract
