@@ -53,7 +53,7 @@ abstract contract FeeManagerBase {
             if (excess > 0) {
                 // refund the sender, rather than the caller
                 // @dev may fail subsequent call(s), if the caller were a contract
-                // that might need to make subsequent calls requiring ETh transfers
+                // that might need to make subsequent calls requiring ETH transfers
                 _refund(tx.origin, excess);
             }
         }

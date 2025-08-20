@@ -79,7 +79,7 @@ abstract contract AttestationEntrypointBase is Ownable {
     /**
      * @param zkCoProcessorType 1 - RiscZero, 2 - Succinct... etc.
      * @return this is either the IMAGE_ID for RiscZero Guest Program or
-     * Succiinct Program Verifying Key
+     * Succinct Program Verifying Key
      */
     function programIdentifier(uint8 zkCoProcessorType) external view returns (bytes32) {
         return _zkConfig[ZkCoProcessorType(zkCoProcessorType)].dcapProgramIdentifier;
