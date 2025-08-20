@@ -312,7 +312,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         require(success, "Failed to determine collateral validity");
         if (ret.length > 0) {
             (uint64 issuedAt, uint64 expiredAt) = abi.decode(ret, (uint64, uint64));
-            valid = timestamp >= issuedAt || timestamp <= expiredAt;
+            valid = timestamp >= issuedAt && timestamp <= expiredAt;
         }
     }
 }
