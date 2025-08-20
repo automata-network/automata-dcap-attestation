@@ -20,7 +20,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
         uint256 offset = 2 + outputLength;
         if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
-            return (false, "invalid output length");
+            return (false, bytes("invalid output length"));
         }
         bytes memory errorMessage;
         (success, errorMessage) = checkCollateralHashes(offset, outputBytes);
@@ -124,7 +124,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes("Verificaton failed by TCBInfo check"));
+            return (statusFound, bytes("Verification failed by TCBInfo check"));
         }
 
         // Step 3: Converge QEIdentity and FMSPC TCB Status
