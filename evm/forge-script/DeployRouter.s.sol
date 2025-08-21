@@ -21,8 +21,6 @@ contract DeployRouter is DeploymentConfig, Multichain {
 
     address owner = vm.envAddress("OWNER");
 
-    bool useMultichain = vm.envBool("MULTICHAIN");
-
     function run() public checkPccsHasDeployed {
         vm.startBroadcast(owner);
 
@@ -92,7 +90,7 @@ contract DeployRouter is DeploymentConfig, Multichain {
         }
     }
 
-    function grantAccessToStorage() public multichain(useMultichain) {
+    function grantAccessToStorage() public multichain {
         vm.startBroadcast(owner);
 
         console.log("Checking PCCSRouter access to AutomataDaoStorage on chain: ", block.chainid);

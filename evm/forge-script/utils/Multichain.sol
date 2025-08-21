@@ -8,7 +8,8 @@ abstract contract Multichain {
     address constant HEVM_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
     Vm constant internalVm = Vm(HEVM_ADDRESS);
 
-    modifier multichain(bool runMultichain) {
+    modifier multichain() {
+        bool runMultichain = internalVm.envOr("MULTICHAIN", false);
         if (runMultichain) {
             string[] memory chains = internalVm.envString("CHAINS", ",");
             for (uint256 i = 0; i < chains.length; i++) {
