@@ -10,7 +10,7 @@ async fn test_risc0_dcap_verifier() {
 
     let test_env = setup_test().await;
 
-    // these outputs can be obtained from the autaomta-dcap-zkvm-cli repo.
+    // these outputs can be obtained from the automata-dcap-zkvm-cli repo.
     // see: https://github.com/automata-network/automata-dcap-zkvm-cli/
 
     let proof_bytes = hex::decode("1850aa52559f1d4a858a48b788b52bdd963888e29465a59ca4dace241ad1aeef2b1796d0acb6ea9f4d77a60a0555f28c85867e62b91ac8d0473ff017c88883da077c6be0d1140a77f0ab695679470472cc32f55ebdcf735e9d52ff4a53d3b685020772e77e8e94578796fd6cc122420a77c1c0ba8dff1c6e07e53e30da46d483147732f37ffb72fda399256a551beb49da688ea7cbdcf268fbc15695c3db42a40569e5093c75654a1390cb1fe9c57c360a8f338f66d61ae1115d4584faecc36f238a9eb4cfecea8d3e4995a354dbe5c4bc12db6a12da41e376931548110fb3c008c01d08cf9e8afb7fe661befbb5afce139c9a1ba1b6c10562645ce60954ab48").unwrap();
