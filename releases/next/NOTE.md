@@ -22,9 +22,9 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Testnet | [0x596Da214F6Afd15078eD72884b69D9af0C4897a1](https://explorer-testnet.ata.network/address/0x596Da214F6Afd15078eD72884b69D9af0C4897a1) |
-|  | Ethereum Sepolia | [0x96b531b28E19Bc7887e9c07797bF504aD497aBED](https://sepolia.etherscan.io/address/0x96b531b28E19Bc7887e9c07797bF504aD497aBED) |
-|  | Ethereum Holesky | [0x96b531b28E19Bc7887e9c07797bF504aD497aBED](https://holesky.etherscan.io/address/0x96b531b28E19Bc7887e9c07797bF504aD497aBED) |
+| `PCCSRouter.sol` | Automata Testnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://explorer-testnet.ata.network/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
+|  | Ethereum Sepolia | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://sepolia.etherscan.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
+|  | Ethereum Holesky | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://holesky.etherscan.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
 |  | Ethereum Hoodi | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://hoodi.etherscan.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
 |  | Avalanche C Fuji Testnet | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://testnet.snowtrace.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
 |  | BNB Testnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://testnet.bscscan.com/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
@@ -46,9 +46,9 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://sepolia.worldscan.org/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 |  | Arbitrum Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](http://sepolia.arbiscan.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 |  | Unichain Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://unichain-sepolia.blockscout.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
-| `V3QuoteVerifier.sol` | Automata Testnet | [0x21b24841F04Cc1430B768EE291a09e34d748B2d5](https://explorer-testnet.ata.network/address/0x21b24841F04Cc1430B768EE291a09e34d748B2d5) |
-|  | Ethereum Sepolia | [0x4cB11b4EaE8F088dcC0425516359e03D367C63A4](https://sepolia.etherscan.io/address/0x4cB11b4EaE8F088dcC0425516359e03D367C63A4) |
-|  | Ethereum Holesky | [0x4cB11b4EaE8F088dcC0425516359e03D367C63A4](https://holesky.etherscan.io/address/0x4cB11b4EaE8F088dcC0425516359e03D367C63A4) |
+| `V3QuoteVerifier.sol` | Automata Testnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://explorer-testnet.ata.network/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
+|  | Ethereum Sepolia | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://sepolia.etherscan.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
+|  | Ethereum Holesky | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://holesky.etherscan.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 |  | Ethereum Hoodi | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://hoodi.etherscan.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 |  | Avalanche C Fuji Testnet | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://testnet.snowtrace.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 |  | BNB Testnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://testnet.bscscan.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
@@ -58,9 +58,9 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://sepolia.worldscan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 |  | Arbitrum Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](http://sepolia.arbiscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 |  | Unichain Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://unichain-sepolia.blockscout.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
-| `V4QuoteVerifier.sol` | Automata Testnet | [0x777Ad761228e4DCBD44dc35949D71f01e58Be48a](https://explorer-testnet.ata.network/address/0x777Ad761228e4DCBD44dc35949D71f01e58Be48a) |
-|  | Ethereum Sepolia | [0x1e31b2C74bA921eaC448f6fc18FF6C8250d82BC2](https://sepolia.etherscan.io/address/0x1e31b2C74bA921eaC448f6fc18FF6C8250d82BC2) |
-|  | Ethereum Holesky | [0x1e31b2C74bA921eaC448f6fc18FF6C8250d82BC2](https://holesky.etherscan.io/address/0x1e31b2C74bA921eaC448f6fc18FF6C8250d82BC2) |
+| `V4QuoteVerifier.sol` | Automata Testnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://explorer-testnet.ata.network/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
+|  | Ethereum Sepolia | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://sepolia.etherscan.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
+|  | Ethereum Holesky | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://holesky.etherscan.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
 |  | Ethereum Hoodi | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://hoodi.etherscan.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
 |  | Avalanche C Fuji Testnet | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://testnet.snowtrace.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
 |  | BNB Testnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://testnet.bscscan.com/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
@@ -75,7 +75,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `PCCSRouter.sol` | Automata Mainnet | [0x596Da214F6Afd15078eD72884b69D9af0C4897a1](https://explorer.ata.network/address/0x596Da214F6Afd15078eD72884b69D9af0C4897a1) |
+| `PCCSRouter.sol` | Automata Mainnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://explorer.ata.network/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 | | Base Mainnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://basescan.org/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 | | OP Mainnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://optimistic.etherscan.io/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 | | World Mainnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://worldscan.org/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
@@ -93,7 +93,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://bscscan.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | | Avalanche C Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://snowtrace.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | | Unichain Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://unichain.blockscout.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
-| `V3QuoteVerifier.sol` | Automata Mainnet | [0x21b24841F04Cc1430B768EE291a09e34d748B2d5](https://explorer.ata.network/address/0x21b24841F04Cc1430B768EE291a09e34d748B2d5) |
+| `V3QuoteVerifier.sol` | Automata Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://explorer.ata.network/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | Base Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://basescan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | OP Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://optimistic.etherscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | World Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://worldscan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
@@ -102,7 +102,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://bscscan.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | Avalanche C Mainnet | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://snowtrace.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 | | Unichain Mainnet | [0x6976e688E9616f82E52fc3aEC760DEedc8618f52](https://unichain.blockscout.com/address/0x6976e688E9616f82E52fc3aEC760DEedc8618f52) |
-| `V4QuoteVerifier.sol` | Automata Mainnet | [0x777Ad761228e4DCBD44dc35949D71f01e58Be48a](https://explorer.ata.network/address/0x777Ad761228e4DCBD44dc35949D71f01e58Be48a) |
+| `V4QuoteVerifier.sol` | Automata Mainnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://explorer.ata.network/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 | | Base Mainnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://basescan.org/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 | | OP Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://optimistic.etherscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | World Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://worldscan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
