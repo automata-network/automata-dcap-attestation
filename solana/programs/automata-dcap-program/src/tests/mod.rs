@@ -57,7 +57,7 @@ async fn setup_test() -> TestEnv {
     // RiscZero Groth-16-Verifier compiled from
     // https://github.com/preston4896/risc0-solana/blob/8aac7e4e5bd358c4eec0e79fdd3ec4fc910dbe26/solana-verifier/programs/groth_16_verifier/src/lib.rs#L37-L65
     // SP1 DCAP Verifier Program compiled from
-    // https://github.com/automata-network/automata-dcap-zkvm-cli/blob/solana/dcap-sp1-cli/dcap-sp1-solana-program/src/lib.rs
+    // https://github.com/automata-network/automata-dcap-attestation/blob/main/solana/programs/dcap-sp1-solana-program/src/lib.rs
     std::env::set_var("SBF_OUT_DIR", "./src/tests/fixtures");
 
     let sp1_dcap_verifier_program_id = Pubkey::from_str_const(SP1_DCAP_GROTH16_VERIFIER_ADDR);
