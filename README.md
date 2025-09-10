@@ -72,7 +72,6 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | OP Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia-optimism.etherscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | World Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-sepolia.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Arbitrum Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://sepolia.arbiscan.io/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
-|  | World Sepolia | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://worldchain-sepolia.explorer.alchemy.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Avalanche C-Chain Fuji | [0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a](https://subnets-test.avax.network/c-chain/address/0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a) |
 |  | BSC Testnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://testnet.bscscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Polygon Amoy | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://amoy.polygonscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
