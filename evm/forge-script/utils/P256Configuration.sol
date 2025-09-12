@@ -22,7 +22,7 @@ contract P256Configuration is Script {
     }
 
     function simulateVerify() public returns (address verifier) {
-        bytes memory data = abi.encodePacked(sha256(test_message), test_sig, test_pubkey);
+        bytes memory data = abi.encodePacked(test_message, test_sig, test_pubkey);
 
         bool precompileVerified = verifyWithFfi(RIP7212_P256_PRECOMPILE, data);
 
