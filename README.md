@@ -182,7 +182,7 @@ The following diagram illustrates an overview of the execution flow of the DCAP 
 
 ### zkVM Verifier Programs
 
-Depending on which zkVM programs that the user has chosen, the Automata DCAP Solana Program sends the processed `VerifiedOutput` along with proofs to one of the following programs:
+Depending on which zkVM programs the user has chosen, the Automata DCAP Solana Program sends the processed `VerifiedOutput` along with proofs to one of the following programs:
 
 - [RiscZero Groth16 Verifier](https://github.com/risc0/risc0-solana/blob/main/solana-verifier/programs/groth_16_verifier/src/lib.rs), this is a general-purpose Groth16 Verifier built by RiscZero that can be called by any Solana programs to perform Groth16 Verifications.
 
