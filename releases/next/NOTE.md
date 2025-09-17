@@ -34,6 +34,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://sepolia.worldscan.org/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 |  | Arbitrum Sepolia | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](http://sepolia.arbiscan.io/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 |  | Unichain Sepolia | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://unichain-sepolia.blockscout.com/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
+|  | HyperEVM Testnet | [0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2](https://testnet.purrsec.com/address/0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2) |
 | `AutomataDcapAttestationFee.sol` | Automata Testnet | [0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10](https://explorer-testnet.ata.network/address/0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10) |
 |  | Ethereum Sepolia | [0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10](https://sepolia.etherscan.io/address/0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10) |
 |  | Ethereum Holesky | [0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10](https://holesky.etherscan.io/address/0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10) |
@@ -46,6 +47,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://sepolia.worldscan.org/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 |  | Arbitrum Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](http://sepolia.arbiscan.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 |  | Unichain Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://unichain-sepolia.blockscout.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
+|  | HyperEVM Testnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://testnet.purrsec.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | `V3QuoteVerifier.sol` | Automata Testnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://explorer-testnet.ata.network/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 |  | Ethereum Sepolia | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://sepolia.etherscan.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 |  | Ethereum Holesky | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://holesky.etherscan.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
@@ -58,6 +60,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://sepolia.worldscan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 |  | Arbitrum Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](http://sepolia.arbiscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 |  | Unichain Sepolia | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://unichain-sepolia.blockscout.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
+|  | HyperEVM Testnet | [0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7](https://testnet.purrsec.com/address/0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7) |
 | `V4QuoteVerifier.sol` | Automata Testnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://explorer-testnet.ata.network/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 |  | Ethereum Sepolia | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://sepolia.etherscan.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
 |  | Ethereum Holesky | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://holesky.etherscan.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
@@ -70,6 +73,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 |  | World Sepolia | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://sepolia.worldscan.org/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 |  | Arbitrum Sepolia | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](http://sepolia.arbiscan.io/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 |  | Unichain Sepolia | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://unichain-sepolia.blockscout.com/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
+|  | HyperEVM Testnet | [0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e](https://testnet.purrsec.com/address/0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e) |
 
 ### Mainnet
 
