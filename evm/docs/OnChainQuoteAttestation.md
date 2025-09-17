@@ -8,7 +8,7 @@ The verification process leverages dedicated quote verifiers to attest hardware 
 
 ---
 
-## Table of Content
+## Table of Contents
 1. [Overview](#1-overview)
 2. [Quote Structure](#2-quote-structure)
 3. [Quote Verification](#3-quote-verification)
@@ -113,7 +113,7 @@ At this step, it has already been confirmed that the PCK Certificate can be link
 There are two more signatures that need to be checked:
 
 - The QE Report must be signed by the PCK key;
-- The raw data, consisting the quote header and body must be signed by the attestation key.
+- The raw data, consisting of the quote header and body must be signed by the attestation key.
 
 Since the QE report data contains information about the attestation key, it shows that the attestation key is indeed generated in a trusted environment that runs on legitimate Intel hardware.
 
