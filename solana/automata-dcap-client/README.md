@@ -1,6 +1,6 @@
 # Automata DCAP on Solana Rust Client
 
-Add the line below in your project's `Cargo.toml`.
+Add the line below to your project's `Cargo.toml`.
 
 ```toml
 [dependencies]
