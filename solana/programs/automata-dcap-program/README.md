@@ -34,7 +34,7 @@ We recommend running each test individually.
 cargo test-sbf <insert-test-name>
 ```
 
-To deploy the program yourself, you must first generate the keypairs for both the program and counter accounts. This requires changes to be made on the constant values at `automata-dcap-program/src/lib.rs` and `automata-dcap-client/src/lib.rs`.
+To deploy the program yourself, you must first generate the keypairs for both the program and counter accounts. This requires changes to be made to the constant values at `automata-dcap-program/src/lib.rs` and `automata-dcap-client/src/lib.rs`.
 
 Run the command below to deploy the program:
 
