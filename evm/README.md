@@ -2,7 +2,7 @@
 
 ## Integration
 
-To integrate your contract with Automata DCAP Attestation, you need to first install [Foundry](https://book.getfoundry.sh/getting-started/installation).
+To integrate your contract with Automata DCAP Attestation, you need first to install [Foundry](https://book.getfoundry.sh/getting-started/installation).
 
 Add to your dependency, by running:
 
