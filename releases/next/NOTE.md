@@ -88,6 +88,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://bscscan.com/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 | | Avalanche C Mainnet | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://snowtrace.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
 | | Unichain Mainnet | [0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB](https://unichain.blockscout.com/address/0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB) |
+| | HyperEVM Mainnet | [0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2](https://hyperevmscan.io/address/0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2) |
 | `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10](https://explorer.ata.network/address/0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10) |
 | | Base Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://basescan.org/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | | OP Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://optimistic.etherscan.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
@@ -97,6 +98,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://bscscan.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | | Avalanche C Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://snowtrace.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | | Unichain Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://unichain.blockscout.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
+| | HyperEVM Mainnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://hyperevmscan.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | `V3QuoteVerifier.sol` | Automata Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://explorer.ata.network/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | Base Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://basescan.org/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | OP Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://optimistic.etherscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
@@ -106,6 +108,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://bscscan.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | Avalanche C Mainnet | [0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0](https://snowtrace.io/address/0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0) |
 | | Unichain Mainnet | [0x6976e688E9616f82E52fc3aEC760DEedc8618f52](https://unichain.blockscout.com/address/0x6976e688E9616f82E52fc3aEC760DEedc8618f52) |
+| | HyperEVM Mainnet | [0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7](https://hyperevmscan.io/address/0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7) |
 | `V4QuoteVerifier.sol` | Automata Mainnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://explorer.ata.network/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 | | Base Mainnet | [0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6](https://basescan.org/address/0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6) |
 | | OP Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://optimistic.etherscan.io/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
@@ -115,6 +118,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 | | BNB Mainnet | [0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162](https://bscscan.com/address/0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162) |
 | | Avalanche C Mainnet | [0x428Da5a573d9e77a7246E1512e1924d660dC1d48](https://snowtrace.io/address/0x428Da5a573d9e77a7246E1512e1924d660dC1d48) |
 | | Unichain Mainnet | [0xeF1e09EB7B0412730C5D6Ccd82aC12C961798A56](https://unichain.blockscout.com/address/0xeF1e09EB7B0412730C5D6Ccd82aC12C961798A56) |
+| | HyperEVM Mainnet | [0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e](https://hyperevmscan.io/address/0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e) |
 
 ---
 

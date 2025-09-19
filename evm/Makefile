@@ -113,8 +113,7 @@ verify-all: check_env get_owner_env
 	ROUTER_ADDR=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
 	PCS_DAO_ADDR=$$(jq -r ".AutomataPcsDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	PCK_DAO_ADDR=$$(jq -r ".AutomataPckDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	FMSPC_TCB_DAO_ADDR=$$(jq -r ".AutomataFmspcTcbDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	ENCLAVE_IDENTITY_DAO_ADDR=$$(jq -r ".AutomataEnclaveIdentityDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	TCB_EVAL_DAO_ADDR=$$(jq -r ".AutomataTcbEvalDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	X509_HELPER_ADDR=$$(jq -r ".PCKHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	CRL_HELPER_ADDR=$$(jq -r ".X509CRLHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	FMSPC_TCB_HELPER_ADDR=$$(jq -r ".FmspcTcbHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
@@ -124,7 +123,7 @@ verify-all: check_env get_owner_env
 		current_contract_path_name=""; \
 		if [ "$$addr" != "null" ]; then \
 			if [ "$$contract" == "PCCSRouter" ]; then \
-				current_encoded_args=$$(cast abi-encode "constructor(address,address,address,address,address,address,address,address)" $(OWNER) $$ENCLAVE_IDENTITY_DAO_ADDR $$FMSPC_TCB_DAO_ADDR $$PCS_DAO_ADDR $$PCK_DAO_ADDR $$X509_HELPER_ADDR $$CRL_HELPER_ADDR $$FMSPC_TCB_HELPER_ADDR); \
+				current_encoded_args=$$(cast abi-encode "constructor(address,address,address,address,address,address,address)" $(OWNER) $$TCB_EVAL_DAO_ADDR $$PCS_DAO_ADDR $$PCK_DAO_ADDR $$X509_HELPER_ADDR $$CRL_HELPER_ADDR $$FMSPC_TCB_HELPER_ADDR); \
 				current_contract_path_name="contracts/PCCSRouter.sol:PCCSRouter"; \
 			elif [ "$$contract" == "AutomataDcapAttestationFee" ]; then \
 				current_encoded_args=$$(cast abi-encode "constructor(address)" $(OWNER)); \
