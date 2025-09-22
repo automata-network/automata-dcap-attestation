@@ -4,9 +4,9 @@
 [submodule "evm/lib/sp1-contracts"]
 	path = evm/lib/sp1-contracts
 	url = https://github.com/succinctlabs/sp1-contracts
-[submodule "evm/lib/risc0-ethereum"]
-	path = evm/lib/risc0-ethereum
-	url = https://github.com/risc0/risc0-ethereum
 [submodule "evm/lib/automata-on-chain-pccs"]
 	path = evm/lib/automata-on-chain-pccs
 	url = https://github.com/automata-network/automata-on-chain-pccs
+[submodule "evm/lib/risc0-ethereum"]
+	path = evm/lib/risc0-ethereum
+	url = https://github.com/risc0/risc0-ethereum
