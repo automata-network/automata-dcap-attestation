@@ -3,11 +3,8 @@ cache*/
 **/.DS_Store
 out/
 
-# Ignores development broadcast logs
-broadcast/**/31337/
-broadcast/**/run-*.json
-broadcast/**/dry-run/
-!broadcast/**/*-latest.json
+# Ignores broadcast logs
+broadcast/
 
 # Ignores local deployment
 deployment/31337
