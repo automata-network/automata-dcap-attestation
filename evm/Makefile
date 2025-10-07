@@ -78,7 +78,7 @@ deploy-attestation: check_env get_owner
 		-vv \
 	@echo "AutomataDCAPAttestationFee deployed"
 
-deploy-verifier:
+deploy-verifier: check_env get_owner
 ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
@@ -96,8 +96,8 @@ endif
 
 # deploy all verifiers with the versions we support
 deploy-all-verifiers: check_env get_owner
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
+	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
+	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
 
 deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
