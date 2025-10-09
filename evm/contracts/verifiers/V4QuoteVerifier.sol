@@ -21,7 +21,6 @@ struct FetchedCollateralsAndStatuses {
  * @title Automata DCAP QuoteV4 Verifier
  */
 contract V4QuoteVerifier is QuoteVerifierBase, TCBInfoV3Base, TDXModuleBase {
-    using LibString for bytes;
     using BytesUtils for bytes;
 
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
