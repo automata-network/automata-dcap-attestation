@@ -51,10 +51,9 @@ abstract contract FeeManagerBase {
         if (msg.value > 0) {
             uint256 excess = msg.value - txFee;
             if (excess > 0) {
-                // refund the sender, rather than the caller
-                // @dev may fail subsequent call(s), if the caller were a contract
-                // that might need to make subsequent calls requiring ETh transfers
-                _refund(tx.origin, excess);
+                // Refund the immediate caller to avoid tx.origin anti-pattern and
+                // preserve compatibility with contract callers and account abstraction.
+                _refund(msg.sender, excess);
             }
         }
     }
