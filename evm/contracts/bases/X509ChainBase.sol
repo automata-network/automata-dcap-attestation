@@ -13,7 +13,6 @@ import {CA} from "@automata-network/on-chain-pccs/Common.sol";
 
 abstract contract X509ChainBase is P256Verifier {
     using BytesUtils for bytes;
-    using LibString for bytes;
 
     uint8 constant PCK_CERT_CHAIN_LENGTH = 3;
 
