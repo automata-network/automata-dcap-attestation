@@ -82,7 +82,7 @@ For each certificate in the chain, the following checks are performed:
 - The corresponding CRL is fetched via `PCCSRouter` to check for revocation status.
 - Verifies the signature against the issuer's public key.
 
-At the last iteration, it checks whether the public key matches with Intel Root CA's key.
+At the last iteration, it checks whether the public key matches Intel Root CA's key.
 
 >
 > ℹ️ **Note**: This step also extracts the `fmspc` and `tcbm` values from the leaf PCK Certificate, which is essential for TCB Validation in the next step.
