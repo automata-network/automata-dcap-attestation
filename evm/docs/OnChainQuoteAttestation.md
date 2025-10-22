@@ -39,7 +39,7 @@ The on-chain workflow is designed to:
     - Header
         - Information about the quote version, attestation key type, TEE type, Intel QE Vendor ID etc.
     - Body: Local ISV Enclave Report
-    - V3Quote Auth Data, contains the attestation key and signature, QE Report, QE signature and Certification Data.
+    - V3Quote Auth Data contains the attestation key and signature, QE Report, QE signature and Certification Data.
         - Currently only supports Certification Data of type 5, which contains the full PCK Certificate Chain.
 - **Definition:** Detailed in `contracts/types/V3Structs.sol`.
 
