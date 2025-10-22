@@ -94,7 +94,7 @@ Steps to validate TCB values
 
 The `fmspc` value obtained in Step 3.2.2 is used to fetch the appropriate TCB Info collateral via the PCCS Router.
 
-The TCB Info contains a list of TCB Statuses with sets of CPU SVNs, known as the TCB Level. The CPU SVNs extracted from the PCK Certificate must match with the ones that is highest in the TCB Level. The status indicated in the matching TCB Level is the **FMSPC TCB** Status.
+The TCB Info contains a list of TCB Statuses with sets of CPU SVNs, known as the TCB Level. The CPU SVNs extracted from the PCK Certificate must match the one that is highest in the TCB Level. The status indicated in the matching TCB Level is the **FMSPC TCB** Status.
 
 An additional step is required for TDX quotes. This involves checking the `TEE_TCB_SVN` values with the TDX Module and Identities fields found in the TCB Info. This step yields the **TDX TCB** Status.
 
