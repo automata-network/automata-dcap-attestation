@@ -74,7 +74,7 @@ Then, the `mrsigner`, `isvprodid`, `miscselect` and `attributes` values are chec
 
 In this step, the attached PCK Certificate is parsed and verified by the `X509ChainBase` library. 
 
-The library performs a strict assertion that the certificate chain must consist of exactly 3 X509 Certificates.
+The library performs a strict assertion that the certificate chain must consist of exactly 3 X.509 certificates.
 
 For each certificate in the chain, the following checks are performed:
 
