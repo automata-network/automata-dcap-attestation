@@ -12,13 +12,15 @@ import {EnumerableSet} from "openzeppelin/contracts/utils/structs/EnumerableSet.
 // ZK-Coprocessor imports:
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ISP1Verifier} from "@sp1-contracts/ISP1Verifier.sol";
+import {IPicoVerifier} from "./zk/pico/interfaces/IPicoVerifier.sol";
 
 enum ZkCoProcessorType {
     // if the ZkCoProcessorType is included as None in the AttestationSubmitted event log
     // it indicates that the attestation of the DCAP quote is executed entirely on-chain
     None,
     RiscZero,
-    Succinct
+    Succinct,
+    Pico
 }
 
 /**
@@ -285,6 +287,12 @@ abstract contract AttestationEntrypointBase is Ownable {
             IRiscZeroVerifier(verifier).verify(proofBytes, identifier, sha256(output));
         } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
             ISP1Verifier(verifier).verifyProof(identifier, output, proofBytes);
+        } else if (zkCoprocessor == ZkCoProcessorType.Pico) {
+            IPicoVerifier(verifier).verifyPicoProof(
+                identifier,
+                output,
+                abi.decode(proofBytes[4:], (uint256[8]))
+            );
         } else {
             return (false, bytes("Unknown ZK Co-Processor"));
         }
