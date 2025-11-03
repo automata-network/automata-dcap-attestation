@@ -1,0 +1,14 @@
+{
+  "lib/automata-on-chain-pccs": {
+    "rev": "2a0e110b190bc7292aeca0c698072ae268e6ecc3"
+  },
+  "lib/forge-std": {
+    "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
+  },
+  "lib/risc0-ethereum": {
+    "rev": "32aa0b6f23ddd02dd93fc71717667606e5c7db86"
+  },
+  "lib/sp1-contracts": {
+    "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"
+  }
+}

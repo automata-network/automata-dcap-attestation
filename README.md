@@ -128,6 +128,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Polygon PoS Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://polygonscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | BSC Mainnet | [0x0d089B3fA00CBAD0a5098025519e9e4620622acF](https://bscscan.com/address/0x0d089B3fA00CBAD0a5098025519e9e4620622acF) |
 |  | Avalanche C-Chain | [0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a](https://subnets.avax.network/c-chain/address/0xe20C4d54afBbea5123728d5b7dAcD9CB3c65C39a) |
+|  | Unichain Mainnet | [0x543AC1a621c0E36d6e8cec261C66E70125710421](https://uniscan.xyz/address/0x543AC1a621c0E36d6e8cec261C66E70125710421) |
 | `AutomataDcapAttestationFee.sol` | Automata Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://explorer.ata.network/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Ethereum Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://etherscan.io/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Base Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://basescan.org/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
@@ -137,6 +138,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Polygon PoS Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://polygonscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | BSC Mainnet | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://bscscan.com/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
 |  | Avalanche C-Chain | [0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF](https://subnets.avax.network/c-chain/address/0x95175096a9B74165BE0ac84260cc14Fc1c0EF5FF) |
+|  | Unichain Mainnet | [0x3cffaB18b9Fa4b18C2660dBD8Ae04509228E9b2B](https://uniscan.xyz/address/0x3cffaB18b9Fa4b18C2660dBD8Ae04509228E9b2B) |
 | `V3QuoteVerifier.sol` | Automata Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://explorer.ata.network/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Ethereum Mainnet | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://etherscan.io/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
 |  | Base Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://basescan.org/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
@@ -146,6 +148,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Polygon PoS Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://polygonscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | BSC Mainnet | [0x69523d25E25e5c78d828Df90459b75F189D40Cf7](https://bscscan.com/address/0x69523d25E25e5c78d828Df90459b75F189D40Cf7) |
 |  | Avalanche C-Chain | [0x816ADa3B63F3c643fb04152eA32B58Db89aadd89](https://subnets.avax.network/c-chain/address/0x816ADa3B63F3c643fb04152eA32B58Db89aadd89) |
+|  | Unichain Mainnet | [0xb0217A35c07A52Fce6f8F81EaC0D823e0bfB299b](https://uniscan.xyz/address/0xb0217A35c07A52Fce6f8F81EaC0D823e0bfB299b) |
 | `V4QuoteVerifier.sol` | Automata Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://explorer.ata.network/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Ethereum Mainnet | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://etherscan.io/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
 |  | Base Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://basescan.org/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
@@ -155,6 +158,7 @@ Automata DCAP Attestation contract implements two attestation methods available 
 |  | Polygon PoS Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://polygonscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | BSC Mainnet | [0xD34Cf419AF06629e158DB5F67541AaF2230290FB](https://bscscan.com/address/0xD34Cf419AF06629e158DB5F67541AaF2230290FB) |
 |  | Avalanche C-Chain | [0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8](https://subnets.avax.network/c-chain/address/0x1a9E873C041F566fCBAdbD9e1358095b7Ea12AA8) |
+|  | Unichain Mainnet | [0x61F457a981f64Dd1a3C124ab0E54134bb7375337](https://uniscan.xyz/address/0x61F457a981f64Dd1a3C124ab0E54134bb7375337) |
 
 ---
 

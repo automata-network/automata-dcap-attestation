@@ -20,7 +20,9 @@ get_owner:
 ifdef PRIVATE_KEY
 	$(eval OWNER := $(shell cast wallet address --private-key $(PRIVATE_KEY)))
 else
+ifndef KEYSTORE_PASSWORD
 	$(eval KEYSTORE_PASSWORD := $(shell read -s -p "Enter keystore password: " pwd; echo $$pwd))
+endif
 	$(eval OWNER := $(shell cast wallet address --keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD) \
 		|| (echo "Improper wallet configuration"; exit 1)))
 endif
@@ -75,10 +77,10 @@ deploy-attestation: check_env get_owner
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(LEGACY), --legacy) \
-		-vv \
+		-vv
 	@echo "AutomataDCAPAttestationFee deployed"
 
-deploy-verifier: check_env get_owner
+deploy-verifier:
 ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
