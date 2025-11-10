@@ -266,8 +266,9 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             return (false, bytes(TCBCH));
         }
 
+        uint32 pcsApiVersion = quoteVersion < 4 ? 3 : 4;
         bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHashWithTimestamp(
-            isSGX ? EnclaveId.QE : EnclaveId.TD_QE, quoteVersion, tcbEvalNumber, timestamp
+            isSGX ? EnclaveId.QE : EnclaveId.TD_QE, pcsApiVersion, tcbEvalNumber, timestamp
         );
         if (identityContentHash != expectedIdentityContentHash) {
             return (false, bytes(QEIDCH));
