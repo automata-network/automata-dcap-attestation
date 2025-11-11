@@ -27,7 +27,7 @@ ffi = true
 
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}" }
-holesky = { key = "${ETHERSCAN_API_KEY}" }
+hoodi = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 optimism_sepolia = { key = "${ETHERSCAN_API_KEY}" }
 arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY}" }

@@ -11,7 +11,7 @@ set -e
 # Configuration
 PCCS_REPO_URL="https://api.github.com/repos/automata-network/automata-on-chain-pccs/contents/deployment"
 RAW_BASE_URL="https://raw.githubusercontent.com/automata-network/automata-on-chain-pccs"
-LOCAL_SUBMODULE_PATH="./lib/automata-on-chain-pccs/deployment"
+# LOCAL_SUBMODULE_PATH="./lib/automata-on-chain-pccs/deployment"
 DEPLOYMENT_DIR="./deployment"
 
 # Colors for output
