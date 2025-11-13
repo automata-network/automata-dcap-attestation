@@ -18,11 +18,18 @@ abstract contract Multichain {
 
                 // run the fork
                 try internalVm.createSelectFork(rpcUrl) {
+                    // set RPC_URL for current chain execution
+                    internalVm.setEnv("RPC_URL", rpcUrl);
+                    
                     // run the script
+                    console.log("Running on chain: ", chain);
                     _;
-                } catch {
+                    
+                    // unset RPC_URL to avoid pollution
+                    internalVm.setEnv("RPC_URL", "");
+                } catch Error(string memory reason) {
                     // if the fork fails, skip it
-                    console.log("Skipping chain: ", chain);
+                    console.log("Skipping chain: ", chain, " Reason: ", reason);
                 }
             }
         } else {

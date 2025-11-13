@@ -11,17 +11,17 @@ import "./utils/DeploymentConfig.sol";
 import "./utils/Multichain.sol";
 
 contract DeployRouter is DeploymentConfig, Multichain {
-    address enclaveIdHelperAddr = readContractAddress(ProjectType.PCCS, "EnclaveIdentityHelper");
-    address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
-    address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
-    address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
-    address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
-    address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
-    address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
-
     address owner = vm.envAddress("OWNER");
 
-    function run() public checkPccsHasDeployed {
+    function run() public checkPccsHasDeployed multichain {
+        // Read contract addresses after multichain fork is active
+        address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
+        address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
+        address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
+        address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
+        address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
+        address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
+
         vm.startBroadcast(owner);
 
         PCCSRouter router = new PCCSRouter{salt: PCCS_ROUTER_SALT}(
@@ -34,6 +34,14 @@ contract DeployRouter is DeploymentConfig, Multichain {
     }
 
     function updateConfig() public {
+        // Read contract addresses
+        address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
+        address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
+        address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
+        address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
+        address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
+        address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
+
         vm.startBroadcast(owner);
 
         PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));

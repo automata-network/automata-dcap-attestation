@@ -8,12 +8,13 @@ import "../contracts/PCCSRouter.sol";
 
 import "./utils/Salt.sol";
 import "./utils/DeploymentConfig.sol";
+import "./utils/Multichain.sol";
 
-contract AttestationScript is DeploymentConfig {
+contract AttestationScript is DeploymentConfig, Multichain {
 
     address owner = vm.envAddress("OWNER");
 
-    function deployEntrypoint() public {
+    function deployEntrypoint() public multichain {
         vm.startBroadcast(owner);
 
         AutomataDcapAttestationFee attestation = new AutomataDcapAttestationFee{salt: DCAP_ATTESTATION_SALT}(owner);
