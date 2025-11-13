@@ -131,13 +131,27 @@ make config-zk RPC_URL=<rpc-url> ZKVM_SELECTOR=<number> ZKVM_VERIFIER_ADDRESS=<a
 ```bash
 make deploy-all-verifiers RPC_URL=<rpc-url>
 ```
-Currently, we only support V3 and V4 quotes.
+Currently, we support V3, V4, and V5 quotes. Supported versions are defined in `verifier-versions.json`.
 
 #### Deploy Quote Verifier For A Specific Version
 
 ```bash
 make deploy-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
 ```
+
+#### Deploy Across Multiple Chains (MULTICHAIN)
+
+To deploy to multiple chains simultaneously, use `MULTICHAIN=true` and provide chain-specific RPC URLs:
+
+```bash
+# Deploy a specific verifier version across multiple chains
+MULTICHAIN=true make deploy-verifier QUOTE_VERIFIER_VERSION=5
+
+# Deploy all supported verifiers across multiple chains
+MULTICHAIN=true make deploy-all-verifiers
+```
+
+> ℹ️ **NOTE**: When using `MULTICHAIN=true`, you don't need to set `RPC_URL`.
 
 #### Add QuoteVerifier(s) to the Entrypoint contract:
 
