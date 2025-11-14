@@ -124,7 +124,7 @@ Since the QE report data contains information about the attestation key, it show
 After successful verification, the attestation contract generates a serialized output following the structure described below:
 
 - uint16 quote version (big-endian encoded)
-- bytes4 tee (little-endian encoded)
+- uint16 quote body type (big-endian encoded)
 - enum tcb status: (stored as uint8)
   - 0: OK,
   - 1: TCB_SW_HARDENING_NEEDED,
