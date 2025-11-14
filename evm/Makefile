@@ -79,7 +79,7 @@ deploy-attestation: check_env get_owner
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(LEGACY), --legacy) \
-		-vv \
+		-vv
 	@echo "AutomataDCAPAttestationFee deployed"
 
 deploy-verifier: check_env get_owner
