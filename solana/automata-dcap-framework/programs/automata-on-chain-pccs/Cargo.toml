@@ -1,0 +1,27 @@
+[package]
+name = "automata-on-chain-pccs"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "automata_on_chain_pccs"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+aligned-vec = { version = "0.6.4" }
+hex = "0.4.3"
+sha2 = "0.10.8"
+dcap-rs = { workspace = true, default-features = false, features = ["zero-copy"] }
+chrono = { version = "0.4", features = ["alloc"] }
+bytemuck = { version = "1.23.0", features = ["min_const_generics", "derive"] }
+programs_shared = { path = "../../programs-shared" }

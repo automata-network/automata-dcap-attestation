@@ -1,0 +1,25 @@
+[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-client = { version = "0.31.0", features = ["async"] }
+## We are pinning these dependnecies as their latest version require
+## Rust 1.81.0 as minimum version. And at the time of this writing,
+## Solana only supports Rust 1.79.0
+base64ct = "=1.6.0"
+litemap = "=0.7.4"
+zerofrom = "=0.1.5"
+zerovec = "=0.11.0"
+hex = "0.4.3"
+automata-dcap-verifier = { version = "0.1.0", path = "../programs/automata-dcap-verifier" }
+automata-on-chain-pccs = { version = "0.1.0", path = "../programs/automata-on-chain-pccs" }
+anyhow = "1.0.89"
+serde_json = { version = "1.0.100" }
+dcap-rs = { workspace = true, features = ["full"] }
+sdk = { version = "0.1.0", path = "../sdk" }
+tokio = { version = "1.39.0", features = ["full"] }
+sha2 = { version = "0.10.8" }
+x509-parser = { git = "https://github.com/automata-network/x509-parser.git", branch = "solana-patch" }
