@@ -7,7 +7,11 @@ To integrate your contract with Automata DCAP Attestation, you need to first ins
 Add to your dependency, by running:
 
 ```bash
+# submodules
 forge install automata-network/automata-dcap-attestation
+
+# NPM
+npm install @automata-network/automata-dcap-attestation
 ```
 
 Then, add the following to your `remappings.txt`

@@ -1,0 +1,33 @@
+# Ignore everything by default
+*
+
+# Include only contracts and README
+!contracts/
+!contracts/**/*.sol
+!README.md
+
+# Ignore common files
+.DS_Store
+.env
+.env.example
+*.swp
+*.swo
+*~
+.cache
+node_modules/
+
+# Ignore build artifacts and test files
+cache/
+cache_forge/
+out/
+broadcast/
+forge-test/
+forge-script/
+deployment/
+docs/
+
+# Ignore config files
+foundry.toml
+foundry.lock
+Makefile
+.gitignore
