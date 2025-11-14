@@ -16,7 +16,7 @@ The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-
 
 ## Contract Deployment
 
-Click [here](../../rust-crates/libraries/network-registry/deployment/current/DEPLOYMENT.md) to get the contract deployment info.
+Click [here](https://github.com/automata-network/automata-dcap-attestation/blob/v1.1.0/rust-crates/libraries/network-registry/deployment/current/DEPLOYMENT.md) to get the contract deployment info.
 
 ---
 
