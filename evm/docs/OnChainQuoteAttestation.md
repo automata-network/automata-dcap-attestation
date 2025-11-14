@@ -39,7 +39,7 @@ The on-chain workflow is designed to:
     - Header
         - Information about the quote version, attestation key type, TEE type, Intel QE Vendor ID etc.
     - Body: Local ISV Enclave Report
-    - V3Quote Auth Data, contains the attestation key and signature, QE Report, QE signature and Certification Data.
+    - V3Quote Auth Data contains the attestation key and signature, QE Report, QE signature and Certification Data.
         - Currently only supports Certification Data of type 5, which contains the full PCK Certificate Chain.
 - **Definition:** Detailed in `contracts/types/V3Structs.sol`.
 
@@ -74,7 +74,7 @@ Then, the `mrsigner`, `isvprodid`, `miscselect` and `attributes` values are chec
 
 In this step, the attached PCK Certificate is parsed and verified by the `X509ChainBase` library. 
 
-The library performs a strict assertion that the certificate chain must consist of exactly 3 X509 Certificates.
+The library performs a strict assertion that the certificate chain must consist of exactly 3 X.509 certificates.
 
 For each certificate in the chain, the following checks are performed:
 
@@ -82,7 +82,7 @@ For each certificate in the chain, the following checks are performed:
 - The corresponding CRL is fetched via `PCCSRouter` to check for revocation status.
 - Verifies the signature against the issuer's public key.
 
-At the last iteration, it checks whether the public key matches with Intel Root CA's key.
+At the last iteration, it checks whether the public key matches Intel Root CA's key.
 
 >
 > ℹ️ **Note**: This step also extracts the `fmspc` and `tcbm` values from the leaf PCK Certificate, which is essential for TCB Validation in the next step.
@@ -94,7 +94,7 @@ Steps to validate TCB values
 
 The `fmspc` value obtained in Step 3.2.2 is used to fetch the appropriate TCB Info collateral via the PCCS Router.
 
-The TCB Info contains a list of TCB Statuses with sets of CPU SVNs, known as the TCB Level. The CPU SVNs extracted from the PCK Certificate must match with the ones that is highest in the TCB Level. The status indicated in the matching TCB Level is the **FMSPC TCB** Status.
+The TCB Info contains a list of TCB Statuses with sets of CPU SVNs, known as the TCB Level. The CPU SVNs extracted from the PCK Certificate must match the one that is the highest in the TCB Level. The status indicated in the matching TCB Level is the **FMSPC TCB** Status.
 
 An additional step is required for TDX quotes. This involves checking the `TEE_TCB_SVN` values with the TDX Module and Identities fields found in the TCB Info. This step yields the **TDX TCB** Status.
 
