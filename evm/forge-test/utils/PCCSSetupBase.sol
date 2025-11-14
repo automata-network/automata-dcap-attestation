@@ -16,9 +16,11 @@ import {
 import {TcbInfoJsonObj, FmspcTcbHelper} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {PCKHelper} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
 import {X509CRLHelper} from "@automata-network/on-chain-pccs/helpers/X509CRLHelper.sol";
+import {TcbEvalJsonObj, TcbEvalHelper} from "@automata-network/on-chain-pccs/helpers/TcbEvalHelper.sol";
 
-import {AutomataFmspcTcbDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataFmspcTcbDao.sol";
-import {AutomataEnclaveIdentityDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataEnclaveIdentityDao.sol";
+import {AutomataFmspcTcbDaoVersioned} from "@automata-network/on-chain-pccs/automata_pccs/versioned/AutomataFmspcTcbDaoVersioned.sol";
+import {AutomataEnclaveIdentityDaoVersioned} from "@automata-network/on-chain-pccs/automata_pccs/versioned/AutomataEnclaveIdentityDaoVersioned.sol";
+import {AutomataTcbEvalDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataTcbEvalDao.sol";
 import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPcsDao.sol";
 import {AutomataPckDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPckDao.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
@@ -33,32 +35,28 @@ abstract contract PCCSSetupBase is Test {
     FmspcTcbHelper public tcbHelper;
     PCKHelper public x509;
     X509CRLHelper public x509Crl;
+    TcbEvalHelper public tcbEvalHelper;
 
     AutomataPcsDao pcsDao;
     AutomataPckDao pckDao;
-    AutomataFmspcTcbDao fmspcTcbDao;
-    AutomataEnclaveIdentityDao enclaveIdDao;
+    AutomataFmspcTcbDaoVersioned fmspcTcbDao;
+    AutomataEnclaveIdentityDaoVersioned enclaveIdDao;
+    AutomataTcbEvalDao tcbEvalDao;
     AutomataDaoStorage pccsStorage;
     address P256_VERIFIER;
 
     address internal constant admin = address(1);
 
-    bytes constant tcbDer =
-        hex"3082028b30820232a00302010202147e3882d5fb55294a40498e458403e91491bdf455300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553301e170d3138303532313130353031305a170d3235303532313130353031305a306c311e301c06035504030c15496e74656c2053475820544342205369676e696e67311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b30090603550406130255533059301306072a8648ce3d020106082a8648ce3d0301070342000443451bcc73c9d5917caf766e61af3fe98087dd4f13257b261e851897799dd13d6811fb47713803bb9bae587fccddc2e31be9a28b86962acc6daf96da58eeca96a381b53081b2301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac30520603551d1f044b30493047a045a043864168747470733a2f2f6365727469666963617465732e7472757374656473657276696365732e696e74656c2e636f6d2f496e74656c534758526f6f7443412e646572301d0603551d0e041604147e3882d5fb55294a40498e458403e91491bdf455300e0603551d0f0101ff0404030206c0300c0603551d130101ff04023000300a06082a8648ce3d040302034700304402201f42f3038037f226c43b46002576e3a29caa36a064e47493272dc81aec1862550220237ed6eb346b0653c607db5d5d46260da0f3eed7d669ff37bc26686e8c1d2807";
     bytes constant rootCaDer =
         hex"3082028f30820234a003020102021422650cd65a9d3489f383b49552bf501b392706ac300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553301e170d3138303532313130343531305a170d3439313233313233353935395a3068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b30090603550406130255533059301306072a8648ce3d020106082a8648ce3d030107034200040ba9c4c0c0c86193a3fe23d6b02cda10a8bbd4e88e48b4458561a36e705525f567918e2edc88e40d860bd0cc4ee26aacc988e505a953558c453f6b0904ae7394a381bb3081b8301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac30520603551d1f044b30493047a045a043864168747470733a2f2f6365727469666963617465732e7472757374656473657276696365732e696e74656c2e636f6d2f496e74656c534758526f6f7443412e646572301d0603551d0e0416041422650cd65a9d3489f383b49552bf501b392706ac300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff020101300a06082a8648ce3d0403020349003046022100e5bfe50911f92f428920dc368a302ee3d12ec5867ff622ec6497f78060c13c20022100e09d25ac7a0cb3e5e8e68fec5fa3bd416c47440bd950639d450edcbea4576aa2";
     bytes constant platformDer =
         hex"308202963082023da003020102021500956f5dcdbd1be1e94049c9d4f433ce01570bde54300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553301e170d3138303532313130353031305a170d3333303532313130353031305a30703122302006035504030c19496e74656c205347582050434b20506c6174666f726d204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b30090603550406130255533059301306072a8648ce3d020106082a8648ce3d0301070342000435207feeddb595748ed82bb3a71c3be1e241ef61320c6816e6b5c2b71dad5532eaea12a4eb3f948916429ea47ba6c3af82a15e4b19664e52657939a2d96633dea381bb3081b8301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac30520603551d1f044b30493047a045a043864168747470733a2f2f6365727469666963617465732e7472757374656473657276696365732e696e74656c2e636f6d2f496e74656c534758526f6f7443412e646572301d0603551d0e04160414956f5dcdbd1be1e94049c9d4f433ce01570bde54300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff020100300a06082a8648ce3d040302034700304402205ec5648b4c3e8ba558196dd417fdb6b9a5ded182438f551e9c0f938c3d5a8b970220261bd520260f9c647d3569be8e14a32892631ac358b994478088f4d2b27cf37e";
-
     bytes constant rootCrlDer =
-        hex"308201223081c8020101300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553170d3234303332303139313933305a170d3235303430333139313933305aa02f302d300a0603551d140403020101301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac300a06082a8648ce3d0403020349003046022100e7606fef2da68785a0c39bc34ac344c9e2d6ed4b0223e79a6c6297d421b73784022100fc1587aece4296d5e9370fd6a444a72d03c598cb21dc8104c55b127b766ea82b";
+        hex"308201203081C8020101300A06082A8648CE3D0403023068311A301806035504030C11496E74656C2053475820526F6F74204341311A3018060355040A0C11496E74656C20436F72706F726174696F6E3114301206035504070C0B53616E746120436C617261310B300906035504080C024341310B3009060355040613025553170D3235303332303131323135375A170D3236303430333131323135375AA02F302D300A0603551D140403020101301F0603551D2304183016801422650CD65A9D3489F383B49552BF501B392706AC300A06082A8648CE3D0403020347003044022030C9FCE1438DA0A94E4FFFDD46C9650E393BE6E5A7862D4E4E73527932D04AF302206539EFE3F734C3D7DF20D9DFC4630E1C7FF0439A0F8ECE101F15B5EAFF9B4F33";
+    bytes constant signingDer =
+        hex"3082028d30820232a00302010202147e3882d5fb55294a40498e458403e91491bdf455300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553301e170d3235303530363039323530305a170d3332303530363039323530305a306c311e301c06035504030c15496e74656c2053475820544342205369676e696e67311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b30090603550406130255533059301306072a8648ce3d020106082a8648ce3d0301070342000443451bcc73c9d5917caf766e61af3fe98087dd4f13257b261e851897799dd13d6811fb47713803bb9bae587fccddc2e31be9a28b86962acc6daf96da58eeca96a381b53081b2301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac30520603551d1f044b30493047a045a043864168747470733a2f2f6365727469666963617465732e7472757374656473657276696365732e696e74656c2e636f6d2f496e74656c534758526f6f7443412e646572301d0603551d0e041604147e3882d5fb55294a40498e458403e91491bdf455300e0603551d0f0101ff0404030206c0300c0603551d130101ff04023000300a06082a8648ce3d0403020349003046022100dd9a646e028dea08ef130b522824c213028384c38765804047cd2cf54ee3124c022100a553a8e92de7df9ca343b79b7842fafe456f4d058d859c81ebb71228ce50ba39";
 
     function setUp() public virtual {
-        // pinned June 27th,2024 2pm UTC
-        // comment this line out if you are replacing sampleQuote with your own
-        // this line is needed to bypass expiry reverts for stale quotes
-        vm.warp(1719496800);
-
         vm.deal(admin, 100 ether);
 
         vm.startPrank(admin);
@@ -69,27 +67,46 @@ abstract contract PCCSSetupBase is Test {
         tcbHelper = new FmspcTcbHelper();
         x509 = new PCKHelper();
         x509Crl = new X509CRLHelper();
+        tcbEvalHelper = new TcbEvalHelper();
 
         pccsStorage = new AutomataDaoStorage(admin);
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
-        enclaveIdDao = new AutomataEnclaveIdentityDao(
+        enclaveIdDao = new AutomataEnclaveIdentityDaoVersioned(
             address(pccsStorage),
             P256_VERIFIER,
             address(pcsDao),
             address(enclaveIdHelper),
             address(x509),
-            address(x509Crl)
+            address(x509Crl),
+            admin,
+            17
         );
-        fmspcTcbDao = new AutomataFmspcTcbDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbHelper), address(x509), address(x509Crl)
+        fmspcTcbDao = new AutomataFmspcTcbDaoVersioned(
+            address(pccsStorage), 
+            P256_VERIFIER, 
+            address(pcsDao), 
+            address(tcbHelper), 
+            address(x509), 
+            address(x509Crl),
+            admin,
+            17
+        );
+        tcbEvalDao = new AutomataTcbEvalDao(
+            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbEvalHelper), address(x509), address(x509Crl), admin
         );
 
         pccsStorage.grantDao(address(pcsDao));
         pccsStorage.grantDao(address(pckDao));
         pccsStorage.grantDao(address(fmspcTcbDao));
         pccsStorage.grantDao(address(enclaveIdDao));
+        pccsStorage.grantDao(address(tcbEvalDao));
+
+        tcbEvalDao.grantRoles(
+            admin,
+            tcbEvalDao.ATTESTER_ROLE()
+        );
 
         vm.stopPrank();
     }
@@ -97,8 +114,7 @@ abstract contract PCCSSetupBase is Test {
     function setupPccsRouter(address owner) internal returns (PCCSRouter pccsRouter) {
         pccsRouter = new PCCSRouter(
             owner,
-            address(enclaveIdDao),
-            address(fmspcTcbDao),
+            address(tcbEvalDao),
             address(pcsDao),
             address(pckDao),
             address(x509),
@@ -108,31 +124,47 @@ abstract contract PCCSSetupBase is Test {
 
         // allow PCCS Router to read collaterals from the storage
         pccsStorage.setCallerAuthorization(address(pccsRouter), true);
+
+        // configure versioned dao
+        
+        pccsRouter.setQeIdDaoVersionedAddr(
+            enclaveIdDao.TCB_EVALUATION_NUMBER(),
+            address(enclaveIdDao)
+        );
+        pccsRouter.setFmspcTcbDaoVersionedAddr(
+            fmspcTcbDao.TCB_EVALUATION_NUMBER(),
+            address(fmspcTcbDao)
+        );
     }
 
     function pcsDaoUpserts() internal {
         // upsert rootca
         pcsDao.upsertPcsCertificates(CA.ROOT, rootCaDer);
 
-        // upsert tcb signing ca
-        pcsDao.upsertPcsCertificates(CA.SIGNING, tcbDer);
-
         // upsert Platform intermediate CA
         pcsDao.upsertPcsCertificates(CA.PLATFORM, platformDer);
 
         // upsert rootca crl
         pcsDao.upsertRootCACrl(rootCrlDer);
+
+        // upsert Intel TCB Signing CA
+        pcsDao.upsertPcsCertificates(CA.SIGNING, signingDer);
     }
 
-    function qeIdDaoUpsert(uint256 quoteVersion, string memory path) internal {
+    function qeIdDaoUpsert(uint256 pcsApiVersion, string memory path) internal {
         EnclaveIdentityJsonObj memory identityJson = _readIdentityJson(path);
         (IdentityObj memory identity,) = enclaveIdHelper.parseIdentityString(identityJson.identityStr);
-        enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), quoteVersion, identityJson);
+        enclaveIdDao.upsertEnclaveIdentity(uint256(identity.id), pcsApiVersion, identityJson);
     }
 
     function fmspcTcbDaoUpsert(string memory path) internal {
         TcbInfoJsonObj memory tcbInfoJson = _readTcbInfoJson(path);
         fmspcTcbDao.upsertFmspcTcb(tcbInfoJson);
+    }
+
+    function tcbEvalDaoUpsert(string memory path) internal {
+        TcbEvalJsonObj memory tcbEvalJson = _readTcbEvalJson(path);
+        tcbEvalDao.upsertTcbEvaluationData(tcbEvalJson);
     }
 
     function _readTcbInfoJson(string memory tcbInfoPath) private view returns (TcbInfoJsonObj memory tcbInfoJson) {
@@ -179,6 +211,31 @@ abstract contract PCCSSetupBase is Test {
         // Solady JSONParserLib does not provide a method where I can convert a hexstring to bytes
         // i am sad
         identityJson.signature = stdJson.readBytes(idData, ".signature");
+    }
+
+    function _readTcbEvalJson(string memory tcbEvalPath)
+        private
+        view
+        returns (TcbEvalJsonObj memory tcbEvalJson)
+    {
+        string memory inputFile = string.concat(vm.projectRoot(), tcbEvalPath);
+        string memory tcbEvalData = vm.readFile(inputFile);
+
+        // use Solady JSONParserLib to get the stringified JSON object
+        // since stdJson.readString() method does not accept JSON-objects as a valid string
+        JSONParserLib.Item memory root = JSONParserLib.parse(tcbEvalData);
+        JSONParserLib.Item[] memory tcbEvalObj = root.children();
+        for (uint256 i = 0; i < root.size(); i++) {
+            JSONParserLib.Item memory current = tcbEvalObj[i];
+            string memory decodedKey = JSONParserLib.decodeString(current.key());
+            if (decodedKey.eq("tcbEvaluationDataNumbers")) {
+                tcbEvalJson.tcbEvaluationDataNumbers = current.value();
+            }
+        }
+
+        // Solady JSONParserLib does not provide a method where I can convert a hexstring to bytes
+        // i am sad
+        tcbEvalJson.signature = stdJson.readBytes(tcbEvalData, ".signature");
     }
 
     function _deployP256() private {
