@@ -6,5 +6,3 @@
 **/.DS_Store
 **/.env
 **/node_modules/
-**/.anchor
-**/test-ledger

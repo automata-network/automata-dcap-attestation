@@ -15,7 +15,12 @@ abstract contract DeploymentConfig is Script {
         require(
             vm.exists(
                 string.concat(
-                    vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid), "/", "onchain_pccs.json"
+                    vm.projectRoot(),
+                    "/",
+                    "../rust-crates/libraries/network-registry/deployment/current/",
+                    vm.toString(block.chainid), 
+                    "/", 
+                    "onchain_pccs.json"
                 )
             ),
             "Missing On Chain PCCS Deployment"
@@ -28,7 +33,12 @@ abstract contract DeploymentConfig is Script {
         view
         returns (address contractAddress)
     {
-        string memory dir = string.concat(vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid));
+        string memory dir = string.concat(
+            vm.projectRoot(),
+            "/", 
+            "../rust-crates/libraries/network-registry/deployment/current/", 
+            vm.toString(block.chainid)
+        );
         if (!vm.exists(dir)) {
             revert("Deployment does not exist");
         }
@@ -43,7 +53,13 @@ abstract contract DeploymentConfig is Script {
 
     function readVersionedContractAddress(string memory contractName, uint32 version) internal view returns (address contractAddress) {
         string memory deploymentDir =
-            string.concat(vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid), "/", "onchain_pccs.json");
+            string.concat(vm.projectRoot(), 
+            "/",
+            "../rust-crates/libraries/network-registry/deployment/current/", 
+            vm.toString(block.chainid), 
+            "/", 
+            "onchain_pccs.json"
+        );
         if (!vm.exists(deploymentDir)) {
             revert("Cannot find deployment file");
         }
@@ -59,7 +75,11 @@ abstract contract DeploymentConfig is Script {
 
     function writeToJson(string memory contractName, address contractAddress) internal {
         string memory deploymentDir =
-            string.concat(vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid));
+            string.concat(vm.projectRoot(), 
+            "/",
+            "../rust-crates/libraries/network-registry/deployment/current/", 
+            vm.toString(block.chainid)
+        );
 
         // deployment path
         string memory jsonPath = string.concat(deploymentDir, "/", "dcap.json");

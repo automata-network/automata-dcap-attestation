@@ -1,0 +1,34 @@
+[package]
+name = "automata-dcap-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "automata-dcap"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+hex = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+serde = { workspace = true, optional = true }
+alloy = { workspace = true }
+dotenvy = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }
+automata-dcap-qpl = { workspace = true }
+automata-dcap-utils = { workspace = true }
+pccs-reader-rs = { workspace = true }
+automata-dcap-network-registry = { workspace = true }
+automata-dcap-zkvm = { workspace = true }
+automata-dcap-verifier = { workspace = true }
+
+[features]
+default = ["risc0", "sp1", "pico"]
+risc0 = ["automata-dcap-zkvm/risc0"]
+sp1 = ["automata-dcap-zkvm/sp1"]
+pico = ["automata-dcap-zkvm/pico"]

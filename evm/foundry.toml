@@ -5,7 +5,10 @@ libs = ['lib']
 script = 'forge-script'
 test = 'forge-test'
 cache_path  = 'cache_forge'
-fs_permissions = [{ access = "read-write", path = "./"}]
+fs_permissions = [
+    { access = "read", path = "./forge-test/assets"},
+    { access = "read-write", path = "../rust-crates/libraries/network-registry/deployment/current"}
+]
 remappings = [
     "solady/=lib/automata-on-chain-pccs/lib/solady/src/",
     "p256-verifier/=lib/automata-on-chain-pccs/lib/p256-verifier/src/",

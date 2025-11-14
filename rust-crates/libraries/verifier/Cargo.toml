@@ -1,0 +1,23 @@
+[package]
+name = "automata-dcap-verifier"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+# Workspace dependencies
+anyhow.workspace = true
+thiserror.workspace = true
+alloy.workspace = true
+tokio.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# Internal crates
+automata-dcap-evm-bindings = { workspace = true }
+automata-dcap-network-registry = { workspace = true }
+automata-dcap-utils = { workspace = true }
+automata-dcap-zkvm = { workspace = true }

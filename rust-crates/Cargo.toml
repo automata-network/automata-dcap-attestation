@@ -1,0 +1,64 @@
+[workspace]
+resolver = "2"
+
+# All packages in the unified workspace
+members = [
+    # Unified CLI
+    "apps/cli",
+
+    # Core library
+    "libraries/dcap-rs",
+
+    # Refactored crates
+    "libraries/utils",
+    "libraries/bindings",
+    "libraries/network-registry",
+    "libraries/pccs-reader",
+    "libraries/qpl",
+    "libraries/zkvm",
+    "libraries/verifier"
+]
+
+[workspace.package]
+version = "1.1.0"
+edition = "2021"
+authors = ["Automata Team"]
+homepage = "https://ata.network/"
+license = "MIT"
+
+# Workspace-wide build configuration
+# Note: zkVM CLIs are included in default-members and work out-of-the-box
+
+[workspace.dependencies]
+
+# Common dependencies
+anyhow = "^1.0.93"
+hex = "0.4.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.48", features = ["full"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+thiserror = "2.0.17"
+dotenvy = "0.15.7"
+env_logger = "0.10"
+log = "0.4"
+
+# Ethereum/EVM dependencies
+alloy = { version = "1.0.41", features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
+
+# DCAP dependencies
+dcap-rs = { path = "libraries/dcap-rs" }
+x509-parser = "0.16"
+
+# zkVM unified crate (includes both risc0 and sp1 by default)
+# you need to explicitly enable the "pico" feature and build with nightly Rust to use Pico zkVM
+automata-dcap-zkvm = { path = "libraries/zkvm" }
+
+# Internal workspace crates
+automata-dcap-cli = { path = "apps/cli" }
+automata-dcap-utils = { path = "libraries/utils" }
+automata-dcap-evm-bindings = { path = "libraries/bindings" }
+automata-dcap-network-registry = { path = "libraries/network-registry" }
+pccs-reader-rs = { path = "libraries/pccs-reader" }
+automata-dcap-qpl = { path = "libraries/qpl" }
+automata-dcap-verifier = { path = "libraries/verifier" }

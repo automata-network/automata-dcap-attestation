@@ -966,7 +966,7 @@ dependencies = [
  "anchor-lang",
  "automata-on-chain-pccs",
  "bytemuck",
- "dcap-rs",
+ "dcap-rs 1.1.0",
  "hex",
  "p256",
  "programs_shared",
@@ -982,7 +982,7 @@ dependencies = [
  "anchor-lang",
  "bytemuck",
  "chrono",
- "dcap-rs",
+ "dcap-rs 1.1.0",
  "hex",
  "programs_shared",
  "sha2 0.10.8",
@@ -2028,7 +2028,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "dcap-p256-zk-lib",
- "dcap-rs",
+ "dcap-rs 1.1.0",
  "serde_json",
  "sp1-build",
  "sp1-sdk",
@@ -2039,12 +2039,35 @@ name = "dcap-p256-zk-lib"
 version = "0.1.0"
 dependencies = [
  "borsh 1.5.7",
- "dcap-rs",
+ "dcap-rs 1.1.0 (git+https://github.com/automata-network/dcap-rs.git?branch=dev)",
  "der",
  "p256",
  "serde_json",
  "sha2 0.10.8",
  "x509-cert",
+]
+
+[[package]]
+name = "dcap-rs"
+version = "1.1.0"
+dependencies = [
+ "alloy-sol-types",
+ "anyhow",
+ "asn1",
+ "base64ct",
+ "bytemuck",
+ "chrono",
+ "hex",
+ "p256",
+ "pem 3.0.5",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "time",
+ "tiny-keccak",
+ "x509-cert",
+ "x509-verify",
+ "zerocopy 0.7.35",
 ]
 
 [[package]]
@@ -5833,7 +5856,7 @@ dependencies = [
  "bytemuck",
  "dcap-p256-sp1-lib",
  "dcap-p256-zk-lib",
- "dcap-rs",
+ "dcap-rs 1.1.0",
  "der",
  "hex",
  "p256",
@@ -9350,7 +9373,7 @@ dependencies = [
  "automata-dcap-verifier",
  "automata-on-chain-pccs",
  "base64ct",
- "dcap-rs",
+ "dcap-rs 1.1.0",
  "hex",
  "litemap",
  "sdk",

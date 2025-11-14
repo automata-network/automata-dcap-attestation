@@ -1,0 +1,23 @@
+[package]
+name = "automata-dcap-utils"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+
+[lib]
+name = "automata_dcap_utils"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+hex = { workspace = true }
+serde = { workspace = true }
+dcap-rs = { workspace = true }
+alloy = { workspace = true }
+
+[build-dependencies]
+toml = "0.8"
+proc-macro2 = "1.0"
+quote = "1.0"

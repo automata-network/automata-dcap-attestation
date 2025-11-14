@@ -1,0 +1,7 @@
+# Deployment cache (hash files for tracking changes)
+deployment/cache/
+
+# Ignore local deployment
+deployment/**/31337
+deployment/**/33611633
+deployment/**/22444422

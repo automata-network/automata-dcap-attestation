@@ -1,0 +1,23 @@
+[package]
+name = "pccs-reader-rs"
+version = { workspace = true }
+edition = { workspace = true }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+serde = { workspace = true }
+hex = { workspace = true }
+serde_json = { workspace = true }
+alloy = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
+x509-parser = "0.15.1"
+tokio = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2.0.12"
+pem = "3.0.5"
+automata-dcap-evm-bindings = { workspace = true }
+automata-dcap-network-registry = { workspace = true }
+automata-dcap-utils = { workspace = true }
+dcap-rs = { workspace = true }
