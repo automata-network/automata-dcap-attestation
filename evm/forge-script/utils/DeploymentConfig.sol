@@ -41,6 +41,22 @@ abstract contract DeploymentConfig is Script {
         contractAddress = stdJson.readAddress(jsonStr, string.concat(".", contractName));
     }
 
+    function readVersionedContractAddress(string memory contractName, uint32 version) internal view returns (address contractAddress) {
+        string memory deploymentDir =
+            string.concat(vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid), "/", "onchain_pccs.json");
+        if (!vm.exists(deploymentDir)) {
+            revert("Cannot find deployment file");
+        }
+        string memory jsonStr = vm.readFile(deploymentDir);
+        contractAddress = stdJson.readAddress(
+            jsonStr, 
+            string.concat(
+                ".", 
+                string.concat(contractName, "_tcbeval_", vm.toString(version))
+            )
+        );
+    }
+
     function writeToJson(string memory contractName, address contractAddress) internal {
         string memory deploymentDir =
             string.concat(vm.projectRoot(), "/", "deployment", "/", vm.toString(block.chainid));

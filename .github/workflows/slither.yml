@@ -23,7 +23,7 @@ jobs:
         working-directory: evm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run Slither
         uses: crytic/slither-action@v0.4.0

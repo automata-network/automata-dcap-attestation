@@ -22,9 +22,11 @@ import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
  * to fetch collaterals from the On Chain PCCS
  */
 interface IPCCSRouter {
-    function qeIdDaoAddr() external view returns (address);
+    function qeIdDaoVersionedAddr(uint32 tcbEval) external view returns (address);
 
-    function fmspcTcbDaoAddr() external view returns (address);
+    function fmspcTcbDaoVersionedAddr(uint32 tcbEval) external view returns (address);
+
+    function tcbEvalDaoAddr() external view returns (address);
 
     function pckDaoAddr() external view returns (address);
 
@@ -36,18 +38,28 @@ interface IPCCSRouter {
 
     function fmspcTcbHelperAddr() external view returns (address);
 
-    function getQeIdentity(EnclaveId id, uint256 quoteVersion) external view returns (IdentityObj memory);
+    function getEarlyTcbEvaluationDataNumber(TcbId id) external view returns (uint32);
 
-    function getQeIdentityContentHash(EnclaveId id, uint256 version) external view returns (bytes32);
+    function getStandardTcbEvaluationDataNumber(TcbId id) external view returns (uint32);
 
-    function getFmspcTcbV2(bytes6 fmspc) external view returns (TCBLevelsObj[] memory);
+    function getQeIdentity(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
+        external
+        view
+        returns (IdentityObj memory);
 
-    function getFmspcTcbV3(TcbId id, bytes6 fmspc)
+    function getQeIdentityContentHash(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval) external view returns (bytes32);
+
+    function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval) external view returns (TCBLevelsObj[] memory);
+
+    function getFmspcTcbV3(TcbId id, bytes6 fmspc, uint32 tcbEval)
         external
         view
         returns (TCBLevelsObj[] memory, TDXModule memory, TDXModuleIdentity[] memory);
 
-    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version) external view returns (bytes32);
+    function getFmspcTcbContentHash(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval)
+        external
+        view
+        returns (bytes32);
 
     function getPckCert(
         string calldata qeid,
@@ -65,6 +77,20 @@ interface IPCCSRouter {
     function getCrlHash(CA ca) external view returns (bytes32);
 
     // *withTimestamp() methods to check collateral expiration status based on the provided timestamp
+    function getEarlyTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp) external view returns (uint32);
+
+    function getStandardTcbEvaluationDataNumberWithTimestamp(TcbId id, uint64 timestamp)
+        external
+        view
+        returns (uint32);
+
+    function getQeIdentityContentHashWithTimestamp(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval, uint64 timestamp) external view returns (bytes32);
+
+    function getFmspcTcbContentHashWithTimestamp(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval, uint64 timestamp)
+        external
+        view
+        returns (bytes32);
+
     function getCertHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);
 
     function getCrlHashWithTimestamp(CA ca, uint64 timestamp) external view returns (bytes32);

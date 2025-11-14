@@ -8,11 +8,15 @@ QUOTE_VERIFIER_VERSION ?=
 
 # Required environment variables check
 check_env:
+ifndef MULTICHAIN
 ifdef RPC_URL
 	$(eval CHAIN_ID := $(shell cast chain-id --rpc-url $(RPC_URL)))
 	@echo "Chain ID: $(CHAIN_ID)"
-else 
+else
 	$(error RPC_URL is not set)
+endif
+else
+	@echo "MULTICHAIN mode enabled - skipping RPC_URL check"
 endif
 
 # Get the Owner's Wallet Address
@@ -20,7 +24,7 @@ get_owner:
 ifdef PRIVATE_KEY
 	$(eval OWNER := $(shell cast wallet address --private-key $(PRIVATE_KEY)))
 else
-	$(eval KEYSTORE_PASSWORD := $(shell read -s -p "Enter keystore password: " pwd; echo $$pwd))
+	$(eval $(if $(KEYSTORE_PASSWORD),,KEYSTORE_PASSWORD := $(shell read -s -p "Enter keystore password: " pwd; echo $$pwd)))
 	$(eval OWNER := $(shell cast wallet address --keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD) \
 		|| (echo "Improper wallet configuration"; exit 1)))
 endif
@@ -39,7 +43,7 @@ deploy-router: check_env get_owner
 	@echo "Deploying PCCSRouter..."
 	@OWNER=$(OWNER) \
 		forge script DeployRouter \
-		--rpc-url $(RPC_URL) \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -70,7 +74,7 @@ deploy-attestation: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		--sig "deployEntrypoint()" \
-		--rpc-url $(RPC_URL) \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -78,14 +82,14 @@ deploy-attestation: check_env get_owner
 		-vv \
 	@echo "AutomataDCAPAttestationFee deployed"
 
-deploy-verifier:
+deploy-verifier: check_env get_owner
 ifndef QUOTE_VERIFIER_VERSION
 	$(error QUOTE_VERIFIER_VERSION is not set)
 else
 	@echo "Deploying QuoteVerifierV$(QUOTE_VERIFIER_VERSION)..."
-	@OWNER=$(OWNER) \
-		forge script DeployV$(QUOTE_VERIFIER_VERSION) \
-		--rpc-url $(RPC_URL) \
+	@OWNER=$(OWNER) QUOTE_VERIFIER_VERSION=$(QUOTE_VERIFIER_VERSION) \
+		forge script DeployVerifier \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -96,8 +100,12 @@ endif
 
 # deploy all verifiers with the versions we support
 deploy-all-verifiers: check_env get_owner
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=3 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
-	@make deploy-verifier QUOTE_VERIFIER_VERSION=4 OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY)
+	@SUPPORTED_VERSIONS=$$(jq -r '.supportedVersions[]' verifier-versions.json); \
+	echo "Deploying verifiers for versions: $$SUPPORTED_VERSIONS"; \
+	for version in $$SUPPORTED_VERSIONS; do \
+		echo "=== Deploying V$$version QuoteVerifier ==="; \
+		make deploy-verifier QUOTE_VERIFIER_VERSION=$$version OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY) || exit 1; \
+	done
 
 deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
@@ -113,8 +121,7 @@ verify-all: check_env get_owner_env
 	ROUTER_ADDR=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
 	PCS_DAO_ADDR=$$(jq -r ".AutomataPcsDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	PCK_DAO_ADDR=$$(jq -r ".AutomataPckDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	FMSPC_TCB_DAO_ADDR=$$(jq -r ".AutomataFmspcTcbDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	ENCLAVE_IDENTITY_DAO_ADDR=$$(jq -r ".AutomataEnclaveIdentityDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	TCB_EVAL_DAO_ADDR=$$(jq -r ".AutomataTcbEvalDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	X509_HELPER_ADDR=$$(jq -r ".PCKHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	CRL_HELPER_ADDR=$$(jq -r ".X509CRLHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
 	FMSPC_TCB_HELPER_ADDR=$$(jq -r ".FmspcTcbHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
@@ -124,7 +131,7 @@ verify-all: check_env get_owner_env
 		current_contract_path_name=""; \
 		if [ "$$addr" != "null" ]; then \
 			if [ "$$contract" == "PCCSRouter" ]; then \
-				current_encoded_args=$$(cast abi-encode "constructor(address,address,address,address,address,address,address,address)" $(OWNER) $$ENCLAVE_IDENTITY_DAO_ADDR $$FMSPC_TCB_DAO_ADDR $$PCS_DAO_ADDR $$PCK_DAO_ADDR $$X509_HELPER_ADDR $$CRL_HELPER_ADDR $$FMSPC_TCB_HELPER_ADDR); \
+				current_encoded_args=$$(cast abi-encode "constructor(address,address,address,address,address,address,address)" $(OWNER) $$TCB_EVAL_DAO_ADDR $$PCS_DAO_ADDR $$PCK_DAO_ADDR $$X509_HELPER_ADDR $$CRL_HELPER_ADDR $$FMSPC_TCB_HELPER_ADDR); \
 				current_contract_path_name="contracts/PCCSRouter.sol:PCCSRouter"; \
 			elif [ "$$contract" == "AutomataDcapAttestationFee" ]; then \
 				current_encoded_args=$$(cast abi-encode "constructor(address)" $(OWNER)); \
@@ -152,7 +159,7 @@ verify-all: check_env get_owner_env
 config-zk: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script AttestationScript \
-		--rpc-url $(RPC_URL) \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -166,7 +173,7 @@ config-zk: check_env get_owner
 config-verifier: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script AttestationScript \
-		--rpc-url $(RPC_URL) \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -178,7 +185,7 @@ config-verifier: check_env get_owner
 config-router: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script DeployRouter \
-		--rpc-url $(RPC_URL) \
+		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
@@ -202,7 +209,7 @@ help:
 	@echo "  deploy-all-verifiers   Deploy all QuoteVerifier contracts with versions that are currently supported"
 	@echo "  deploy-all             Deploy all contracts"
 	@echo "  verify-all             Verify all contracts"
-	@echo "  config-zk              zkVM Configuraton"
+	@echo "  config-zk              zkVM Configuration"
 	@echo "  config-verifier        QuoteVerifier Configuration"
 	@echo "  config-router          Set authorization for calling PCCSRouter"
 	@echo "  clean                  Remove build artifacts"
