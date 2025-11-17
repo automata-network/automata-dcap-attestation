@@ -1,0 +1,17 @@
+[package]
+version = "0.1.0"
+name = "dcap-p256-sp1-lib"
+edition = "2021"
+
+[dependencies]
+sp1-sdk = { version = "^5.0.0" }
+dcap-p256-zk-lib = { path = "../../lib", features = ["client"] }
+anyhow = { version = "1.0.98" }
+
+[dev-dependencies]
+dcap-rs = { workspace = true }
+serde_json = { version = "1.0.125", features = ["raw_value"] }
+
+[build-dependencies]
+sp1-build = "^5.0.0"
+sp1-sdk = { version = "^5.0.0" }

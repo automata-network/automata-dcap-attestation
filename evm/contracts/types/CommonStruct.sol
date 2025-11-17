@@ -7,11 +7,11 @@ import {X509CertObj} from "@automata-network/on-chain-pccs/helpers/X509Helper.so
 /**
  * @title CommonStruct
  * @notice Structs that are common across different versions and TEE of Intel DCAP Quote
- * @dev may refer to Intel Official Documentation for more details on the struct definiton
+ * @dev May refer to Intel Official Documentation for more details on the struct definition
  * @dev Intel V3 SGX DCAP API Library: https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf
  * @dev Intel V4 TDX DCAP API Library: https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/Intel_TDX_DCAP_Quoting_Library_API.pdf
  * @dev Fields that are declared as integers (uint*) must reverse the byte order to big-endian
- * @dev Whereas, fields that are declared as bytes* type do not reverse the byte order
+ * @dev Fields declared as `bytes*` types retain their byte order and do not require conversion
  */
 
 /**
@@ -78,6 +78,16 @@ struct CertificationData {
 }
 
 /// ========== CUSTOM TYPES ==========
+/// Custom types that are not defined in the Intel DCAP API Library, but are used in the contract
+
+struct AuthData {
+    bytes ecdsa256BitSignature;
+    bytes ecdsaAttestationKey;
+    bytes qeReport;
+    bytes qeReportSignature;
+    bytes qeAuthData;
+    PCKCollateral certification;
+}
 
 /**
  * @title PCK Certificate Collateral
@@ -100,11 +110,23 @@ struct PCKCertTCB {
     bytes pceidBytes;
 }
 
+/// TCB Status Enumeration
+/// 0: OK
+/// 1: TCB_SW_HARDENING_NEEDED
+/// 2: TCB_CONFIGURATION_AND_SW_HARDENING_NEEDED
+/// 3: TCB_CONFIGURATION_NEEDED
+/// 4: TCB_OUT_OF_DATE
+/// 5: TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
+/// 6: TCB_REVOKED
+/// 7: TCB_UNRECOGNIZED
+/// 8: TCB_TD_RELAUNCH_ADVISED
+/// 9: TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED
+
 /**
  * @title Verified Output struct
  * @notice The output returned by the contract upon successful verification of the quote
  * @param quoteVersion The version of the quote
- * @param tee The TEE type of the quote
+ * @param quoteBodyType The quote body type, 1. SGX Enclave Report, 2. TD1.0 Report, 3. TD1.5 Report
  * @param tcbStatus The TCB status of the quote
  * @param fmspcBytes The FMSPC values
  * @param quoteBody This can either be the Local ISV Report or TD10 Report, depending on the TEE type
@@ -112,8 +134,8 @@ struct PCKCertTCB {
  */
 struct Output {
     uint16 quoteVersion; // serialized as BE, for EVM compatibility
-    bytes4 tee;
-    TCBStatus tcbStatus;
+    uint16 quoteBodyType; // serialized as BE, for EVM compatibility
+    uint8 tcbStatus;
     bytes6 fmspcBytes;
     bytes quoteBody;
     string[] advisoryIDs;

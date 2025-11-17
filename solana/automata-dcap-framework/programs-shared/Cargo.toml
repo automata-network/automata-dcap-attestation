@@ -1,0 +1,13 @@
+[package]
+name = "programs_shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { workspace = true }
+sha2 = "0.10.8"
+x509-parser = { git = "https://github.com/automata-network/x509-parser.git", branch = "solana-patch" }
+anyhow = { version = "1.0.93" }
+
+# zkvm verifier dependencies
+dcap_ecdsa_sp1 = { path = "../programs/dcap_ecdsa_sp1", features = ["no-entrypoint"] }

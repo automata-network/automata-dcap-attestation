@@ -2,9 +2,12 @@ name: Foundry Build CI/CD
 
 on: 
     push:
-        branches: [main, development]
+        branches: 
+          - main
     pull_request:
-        branches: [main]
+        branches:
+          - main
+          - 'v*'
 
     workflow_dispatch:
 
@@ -20,8 +23,12 @@ jobs:
       run:
         working-directory: evm
 
+    env:
+      DCAP_RISCZERO_IMAGE_ID: ${{ vars.DCAP_RISCZERO_IMAGE_ID }}
+      DCAP_SP1_VKEY: ${{ vars.DCAP_SP1_VKEY }}
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 

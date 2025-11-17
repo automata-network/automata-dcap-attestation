@@ -1,0 +1,33 @@
+[package]
+name = "automata-dcap-qpl"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+anyhow = { workspace = true }
+automata-dcap-evm-bindings = { workspace = true }
+pccs-reader-rs = { workspace = true }
+automata-dcap-network-registry = { workspace = true }
+automata-dcap-utils = { workspace = true }
+tokio = { workspace = true }
+alloy = { workspace = true, features = ["full"] }
+hex = { workspace = true }
+libloading = "0.8"
+openssl = "0.10"
+reqwest = "0.11"
+serde = { workspace = true }
+serde_json = { workspace = true }
+indexmap = { version = "2.0", features = ["serde"] }
+urlencoding = "2.1"
+lazy_static = "1.5"
+
+[features]
+default = []
+
+[dev-dependencies]

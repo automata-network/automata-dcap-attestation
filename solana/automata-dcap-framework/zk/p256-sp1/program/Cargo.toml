@@ -1,0 +1,10 @@
+[package]
+version = "0.1.0"
+name = "dcap-p256-sp1-program"
+edition = "2021"
+
+[dependencies]
+sp1-zkvm = { workspace = true }
+dcap-rs = { workspace = true }
+dcap-p256-zk-lib = { workspace = true, features = ["program"] }
+borsh = { workspace = true }

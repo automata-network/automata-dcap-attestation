@@ -5,7 +5,10 @@ libs = ['lib']
 script = 'forge-script'
 test = 'forge-test'
 cache_path  = 'cache_forge'
-fs_permissions = [{ access = "read-write", path = "./"}]
+fs_permissions = [
+    { access = "read", path = "./forge-test/assets"},
+    { access = "read-write", path = "../rust-crates/libraries/network-registry/deployment/current"}
+]
 remappings = [
     "solady/=lib/automata-on-chain-pccs/lib/solady/src/",
     "p256-verifier/=lib/automata-on-chain-pccs/lib/p256-verifier/src/",
@@ -27,7 +30,7 @@ ffi = true
 
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}" }
-holesky = { key = "${ETHERSCAN_API_KEY}" }
+hoodi = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 optimism_sepolia = { key = "${ETHERSCAN_API_KEY}" }
 arbitrum_sepolia = { key = "${ETHERSCAN_API_KEY}" }
@@ -41,4 +44,4 @@ optimism = { key = "${ETHERSCAN_API_KEY}" }
 arbitrum = { key = "${ETHERSCAN_API_KEY}" }
 world = { key = "${ETHERSCAN_API_KEY}" }
 bsc = { key = "${ETHERSCAN_API_KEY}" }
-polygon_pos = { key = "${ETHERSCAN_API_KEY}" }
+polygon_pos = { key = "${ETHERSCAN_API_KEY}", chain = 137 }

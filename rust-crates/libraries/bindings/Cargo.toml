@@ -1,0 +1,9 @@
+[package]
+name = "automata-dcap-evm-bindings"
+version = { workspace = true }
+edition = { workspace = true }
+build = "build.rs"
+
+[dependencies]
+alloy = { version = "1.0.41", features = ["providers", "rpc-types", "rpc-types-eth"] }
+serde = { version = "1.0", features = ["derive"] }

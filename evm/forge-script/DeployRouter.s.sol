@@ -11,25 +11,21 @@ import "./utils/DeploymentConfig.sol";
 import "./utils/Multichain.sol";
 
 contract DeployRouter is DeploymentConfig, Multichain {
-
-    address enclaveIdDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataEnclaveIdentityDao");
-    address enclaveIdHelperAddr = readContractAddress(ProjectType.PCCS, "EnclaveIdentityHelper");
-    address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
-    address tcbDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataFmspcTcbDao");
-    address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
-    address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
-    address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
-    address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
-
     address owner = vm.envAddress("OWNER");
 
-    bool useMultichain = vm.envBool("MULTICHAIN");
+    function run() public checkPccsHasDeployed multichain {
+        // Read contract addresses after multichain fork is active
+        address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
+        address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
+        address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
+        address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
+        address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
+        address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
 
-    function run() public checkPccsHasDeployed {
         vm.startBroadcast(owner);
 
         PCCSRouter router = new PCCSRouter{salt: PCCS_ROUTER_SALT}(
-            owner, enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+            owner, tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
         console2.log("Deployed PCCSRouter to", address(router));
         writeToJson("PCCSRouter", address(router));
@@ -38,12 +34,46 @@ contract DeployRouter is DeploymentConfig, Multichain {
     }
 
     function updateConfig() public {
+        // Read contract addresses
+        address pckHelperAddr = readContractAddress(ProjectType.PCCS, "PCKHelper");
+        address tcbHelperAddr = readContractAddress(ProjectType.PCCS, "FmspcTcbHelper");
+        address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelper");
+        address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDao");
+        address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDao");
+        address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDao");
+
         vm.startBroadcast(owner);
 
         PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
         router.setConfig(
-            enclaveIdDaoAddr, tcbDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
+            tcbEvalDaoAddr, pcsDaoAddr, pckDaoAddr, pckHelperAddr, crlHelperAddr, tcbHelperAddr
         );
+
+        vm.stopBroadcast();
+    }
+
+    function updateVersionedDaoConfig(
+        uint32 tcbEvaluataionDataNumber
+    ) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        address qeIdDaoAddr = readVersionedContractAddress(
+            "AutomataEnclaveIdentityDaoVersioned",
+            tcbEvaluataionDataNumber
+        );
+        address fmspcTcbDaoAddr = readVersionedContractAddress(
+            "AutomataFmspcTcbDaoVersioned",
+            tcbEvaluataionDataNumber
+        );
+
+        bool tcbEvalCheck = tcbEvaluataionDataNumber == IVersionedDao(fmspcTcbDaoAddr).TCB_EVALUATION_NUMBER()
+            && tcbEvaluataionDataNumber == IVersionedDao(qeIdDaoAddr).TCB_EVALUATION_NUMBER();
+        
+        require(tcbEvalCheck, "TCB Evaluation Data Number Mismatch");
+
+        vm.startBroadcast(owner);
+
+        router.setQeIdDaoVersionedAddr(tcbEvaluataionDataNumber, qeIdDaoAddr);
+        router.setFmspcTcbDaoVersionedAddr(tcbEvaluataionDataNumber, fmspcTcbDaoAddr);
 
         vm.stopBroadcast();
     }
@@ -57,7 +87,18 @@ contract DeployRouter is DeploymentConfig, Multichain {
         vm.stopBroadcast();
     }
 
-    function grantAccessToStorage() public multichain(useMultichain) {
+    function toggleRestriction(bool enable) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+
+        vm.broadcast(owner);
+        if (enable) {
+            router.enableCallerRestriction();
+        } else {
+            router.disableCallerRestriction();
+        }
+    }
+
+    function grantAccessToStorage() public multichain {
         vm.startBroadcast(owner);
 
         console.log("Checking PCCSRouter access to AutomataDaoStorage on chain: ", block.chainid);

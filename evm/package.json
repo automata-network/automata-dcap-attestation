@@ -1,0 +1,32 @@
+{
+  "name": "@automata-network/automata-dcap-attestation",
+  "version": "1.1.0",
+  "description": "Automata DCAP Attestation Solidity contracts for EVM chains",
+  "main": "index.js",
+  "files": [
+    "contracts/**/*.sol",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "echo 'Publishing contracts only'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/automata-network/automata-dcap-attestation.git",
+    "directory": "evm"
+  },
+  "keywords": [
+    "solidity",
+    "dcap",
+    "attestation",
+    "automata",
+    "ethereum",
+    "smart-contracts"
+  ],
+  "author": "Automata Network",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/automata-network/automata-dcap-attestation/issues"
+  },
+  "homepage": "https://github.com/automata-network/automata-dcap-attestation#readme"
+}
