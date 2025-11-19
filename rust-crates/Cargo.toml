@@ -44,14 +44,13 @@ env_logger = "0.10"
 log = "0.4"
 
 # Ethereum/EVM dependencies
-alloy = { version = "1.0.41", features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
+alloy = { version = "1.0.41", default-features = false }
 
 # DCAP dependencies
 dcap-rs = { path = "libraries/dcap-rs" }
 x509-parser = "0.16"
 
-# zkVM unified crate (includes both risc0 and sp1 by default)
-# you need to explicitly enable the "pico" feature and build with nightly Rust to use Pico zkVM
+# zkVM unified crate
 automata-dcap-zkvm = { path = "libraries/zkvm" }
 
 # Internal workspace crates

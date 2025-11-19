@@ -16,7 +16,7 @@ anyhow = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 dcap-rs = { workspace = true }
-alloy = { workspace = true }
+alloy = { workspace = true, default-features = false, features = ["sol-types"] }
 
 # WASM dependencies (optional)
 wasm-bindgen = { version = "0.2.99", optional = true }

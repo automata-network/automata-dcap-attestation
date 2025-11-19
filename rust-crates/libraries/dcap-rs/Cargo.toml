@@ -41,7 +41,7 @@ features = [ "std", "p256", "x509" ]
 pccs-reader-rs = { workspace = true }
 tokio = { workspace = true }
 automata-dcap-network-registry = { workspace = true }
-alloy = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 
 [features]
 default = ["full"]

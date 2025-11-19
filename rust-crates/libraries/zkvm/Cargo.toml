@@ -26,7 +26,7 @@ hex = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 x509-parser = { workspace = true }
-alloy = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 automata-dcap-utils = { workspace = true }
 automata-dcap-network-registry = { path = "../network-registry" }
 pccs-reader-rs = { path = "../pccs-reader" }

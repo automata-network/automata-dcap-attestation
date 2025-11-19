@@ -16,7 +16,7 @@ pccs-reader-rs = { workspace = true }
 automata-dcap-network-registry = { workspace = true }
 automata-dcap-utils = { workspace = true }
 tokio = { workspace = true }
-alloy = { workspace = true, features = ["full"] }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 hex = { workspace = true }
 libloading = "0.8"
 openssl = "0.10"
