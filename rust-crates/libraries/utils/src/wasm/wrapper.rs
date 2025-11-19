@@ -15,6 +15,7 @@ pub struct QuoteWrapper {
     pub body_size: u32,
     pub body: QuoteBody,
     pub signature: QuoteSignatureDataWrapper,
+    pub signature_len: u16,
 }
 
 /// Owned wrapper for QuoteHeader
@@ -51,9 +52,12 @@ pub struct QuoteCertDataWrapper {
 /// Convert borrowed Quote to owned QuoteWrapper for serialization
 impl<'a> From<&Quote<'a>> for QuoteWrapper {
     fn from(quote: &Quote<'a>) -> Self {
+        let quote_version = quote.header.version.get();
+        let sig_version = if quote_version < 4 { 3 } else { 4 };
+
         QuoteWrapper {
             header: QuoteHeaderWrapper {
-                version: quote.header.version.get(),
+                version: quote_version,
                 attestation_key_type: quote.header.attestation_key_type.get(),
                 tee_type: quote.header.tee_type,
                 qe_svn: quote.header.qe_svn.get(),
@@ -76,6 +80,7 @@ impl<'a> From<&Quote<'a>> for QuoteWrapper {
                     cert_data: quote.signature.cert_data.cert_data.to_vec(),
                 },
             },
+            signature_len: quote.signature.byte_len(sig_version) as u16,
         }
     }
 }
