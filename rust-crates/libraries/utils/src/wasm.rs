@@ -24,26 +24,26 @@ use crate::{parser, Version};
 // WASM Bindings - Wrappers around existing utils functions
 // =============================================================================
 
-// /// Parse verified output bytes with version awareness
-// ///
-// /// This is a WASM wrapper around `parser::parse_output()` that supports both v1.0 and v1.1 formats.
-// ///
-// /// # Arguments
-// /// * `output_bytes` - Raw verified output bytes
-// /// * `version` - Version indicator (0 = v1.0, 1 = v1.1)
-// ///
-// /// # Returns
-// /// `true` if the output can be parsed successfully, `false` otherwise
-// #[wasm_bindgen]
-// pub fn parse_verified_output(output_bytes: &[u8], version: u8) -> bool {
-//     let version = match version {
-//         0 => Version::V1_0,
-//         1 => Version::V1_1,
-//         _ => return false,
-//     };
+/// Parse verified output bytes with version awareness
+///
+/// This is a WASM wrapper around `parser::parse_output()` that supports both v1.0 and v1.1 formats.
+///
+/// # Arguments
+/// * `output_bytes` - Raw verified output bytes
+/// * `version_str` - Version indicator ("v1.0" or "v1.1")
+///
+/// # Returns
+/// `true` if the output can be parsed successfully, `false` otherwise
+#[wasm_bindgen]
+pub fn parse_verified_output(output_bytes: &[u8], version_str: &str) -> JsValue {
+    let version = version_str
+        .parse::<Version>()
+        .expect("Invalid version string");
 
-//     parser::parse_output(output_bytes, version).is_ok()
-// }
+    let output =
+        parser::parse_output(output_bytes, version).expect("Failed to parse verified output");
+    serde_wasm_bindgen::to_value(&output).unwrap()
+}
 
 // =============================================================================
 // Quote Parsing Functions
@@ -165,7 +165,11 @@ mod tests {
                 println!("Found v3 quote at index {}", idx);
                 println!("{}", quote);
             } else {
-                println!("Failed to parse quote at index {}: {}", idx, quote_bytes_parsed.err().unwrap());
+                println!(
+                    "Failed to parse quote at index {}: {}",
+                    idx,
+                    quote_bytes_parsed.err().unwrap()
+                );
             }
         }
     }
@@ -184,7 +188,11 @@ mod tests {
                 println!("Found v4 quote at index {}", idx);
                 println!("{}", quote);
             } else {
-                println!("Failed to parse quote at index {}: {}", idx, quote_bytes_parsed.err().unwrap());
+                println!(
+                    "Failed to parse quote at index {}: {}",
+                    idx,
+                    quote_bytes_parsed.err().unwrap()
+                );
             }
         }
     }
