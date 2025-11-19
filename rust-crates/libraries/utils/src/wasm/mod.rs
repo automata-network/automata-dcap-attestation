@@ -12,6 +12,8 @@
 
 #![cfg(feature = "wasm")]
 
+mod wrapper;
+
 use core::panic;
 
 use anyhow::{bail, Result};
@@ -19,6 +21,7 @@ use serde_wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
 use crate::{parser, Version};
+use wrapper::QuoteWrapper;
 
 // =============================================================================
 // WASM Bindings - Wrappers around existing utils functions
@@ -33,7 +36,7 @@ use crate::{parser, Version};
 /// * `version_str` - Version indicator ("v1.0" or "v1.1")
 ///
 /// # Returns
-/// `true` if the output can be parsed successfully, `false` otherwise
+/// Serialized `VerifiedOutput` as a `JsValue`
 #[wasm_bindgen]
 pub fn parse_verified_output(output_bytes: &[u8], version_str: &str) -> JsValue {
     let version = version_str
@@ -49,17 +52,22 @@ pub fn parse_verified_output(output_bytes: &[u8], version_str: &str) -> JsValue 
 // Quote Parsing Functions
 // =============================================================================
 
-// /// Parse quote bytes - WASM wrapper around `parser::parse_quote()`
-// ///
-// /// # Arguments
-// /// * `quote_bytes` - Raw quote bytes
-// ///
-// /// # Returns
-// /// `true` if the quote can be parsed successfully, `false` otherwise
-// #[wasm_bindgen]
-// pub fn parse_quote_js(quote_bytes: &[u8]) -> bool {
-//     parser::parse_quote(quote_bytes).is_ok()
-// }
+/// Parse quote bytes - WASM wrapper around `parser::parse_quote()`
+///
+/// # Arguments
+/// * `quote_bytes` - Raw quote bytes
+///
+/// # Returns
+/// Serialized `QuoteWrapper` as a `JsValue`
+#[wasm_bindgen]
+pub fn parse_quote_js(quote_bytes: &[u8]) -> JsValue {
+    let quote = parser::parse_quote(quote_bytes).expect("Failed to parse quote");
+
+    // Convert to owned wrapper for serialization
+    let quote_wrapper = QuoteWrapper::from(&quote);
+
+    serde_wasm_bindgen::to_value(&quote_wrapper).unwrap()
+}
 
 // =============================================================================
 // Quote Location Functions
