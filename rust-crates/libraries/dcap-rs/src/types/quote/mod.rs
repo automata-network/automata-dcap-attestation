@@ -108,6 +108,31 @@ impl<'a> Quote<'a> {
             signature: quote_signature,
         })
     }
+
+    /// Calculate the total byte length of the quote structure
+    ///
+    /// This returns the exact number of bytes that this quote occupies in its serialized form.
+    /// Useful for extracting the exact quote bytes from a larger buffer.
+    pub fn byte_len(&self) -> usize {
+        let mut total = 0;
+
+        // Quote header (48 bytes)
+        total += std::mem::size_of::<QuoteHeader>();
+
+        // For version 5+, body type (2 bytes) and body size (4 bytes) are explicit
+        if self.header.version.get() > 4 {
+            total += 2; // body_type
+            total += 4; // body_size
+        }
+
+        // Quote body size (depends on body type)
+        total += self.body_size as usize;
+
+        // Signature data
+        total += self.signature.byte_len(self.header.version.get());
+
+        total
+    }
 }
 
 impl<'a> std::fmt::Display for Quote<'a> {

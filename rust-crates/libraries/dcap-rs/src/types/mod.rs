@@ -1,6 +1,7 @@
 use alloy_sol_types::SolValue;
 use anyhow::Result;
 use quote::QuoteBody;
+use serde::{Deserialize, Serialize};
 
 use super::types::report::{EnclaveReportBody, Td10ReportBody, Td15ReportBody};
 
@@ -23,11 +24,12 @@ const TD15_REPORT_LEN: usize = 648; // TD15_REPORT
 // [quote_vesion][quote_body_type][tcb_status][fmspc][quote_body_raw_bytes][abi-encoded string array
 // of tcb_advisory_ids] 2 bytes + 2 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384;
 // TD10_REPORT = 584; TD15_REPORT = 648) + var total: 11 + (384 or 584 or 648) + var bytes
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerifiedOutput {
     pub quote_version: u16,
     pub quote_body_type: u16,
     pub tcb_status: u8,
+    #[serde(with = "crate::utils::serde_arrays")]
     pub fmspc: [u8; 6],
     pub quote_body: QuoteBody,
     pub advisory_ids: Option<Vec<String>>,

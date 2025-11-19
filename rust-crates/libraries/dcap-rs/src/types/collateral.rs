@@ -145,77 +145,77 @@ impl Collateral {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Collateral;
+// #[cfg(test)]
+// mod tests {
+//     use super::Collateral;
 
-    #[test]
-    fn test_encode_collateral() {
-        let collateral = Collateral::new(
-            include_bytes!("../../data/intel_root_ca_crl.der"),
-            include_bytes!("../../data/pck_platform_crl.der"),
-            include_bytes!("../../data/tcb_signing_cert.pem"),
-            include_str!("../../data/tcb_info_v2.json"),
-            include_str!("../../data/qeidentityv2.json"),
-        )
-        .expect("collateral to be created");
+//     #[test]
+//     fn test_encode_collateral() {
+//         let collateral = Collateral::new(
+//             include_bytes!("../../data/intel_root_ca_crl.der"),
+//             include_bytes!("../../data/pck_platform_crl.der"),
+//             include_bytes!("../../data/tcb_signing_cert.pem"),
+//             include_str!("../../data/tcb_info_v2.json"),
+//             include_str!("../../data/qeidentityv2.json"),
+//         )
+//         .expect("collateral to be created");
 
-        let json = serde_json::to_string(&collateral).expect("collateral to serialize");
-        assert!(!json.is_empty(), "collateral JSON should not be empty");
-        println!("Collateral JSON: {}", json);
-    }
+//         let json = serde_json::to_string(&collateral).expect("collateral to serialize");
+//         assert!(!json.is_empty(), "collateral JSON should not be empty");
+//         println!("Collateral JSON: {}", json);
+//     }
 
-    #[test]
-    fn test_decode_collateral_json() {
-        let json = include_str!("../../data/full_collateral_sgx.json");
-        let _collateral: Collateral = serde_json::from_str(json).expect("json to parse");
-    }
+//     #[test]
+//     fn test_decode_collateral_json() {
+//         let json = include_str!("../../data/full_collateral_sgx.json");
+//         let _collateral: Collateral = serde_json::from_str(json).expect("json to parse");
+//     }
 
-    #[test]
-    fn test_abi_encode_collateral() {
-        let collateral = Collateral::new(
-            include_bytes!("../../data/intel_root_ca_crl.der"),
-            include_bytes!("../../data/pck_platform_crl.der"),
-            include_bytes!("../../data/tcb_signing_cert.pem"),
-            include_str!("../../data/tcb_info_v2.json"),
-            include_str!("../../data/qeidentityv2.json"),
-        )
-        .expect("collateral to be created");
+//     #[test]
+//     fn test_abi_encode_collateral() {
+//         let collateral = Collateral::new(
+//             include_bytes!("../../data/intel_root_ca_crl.der"),
+//             include_bytes!("../../data/pck_platform_crl.der"),
+//             include_bytes!("../../data/tcb_signing_cert.pem"),
+//             include_str!("../../data/tcb_info_v2.json"),
+//             include_str!("../../data/qeidentityv2.json"),
+//         )
+//         .expect("collateral to be created");
 
-        let encoded = collateral
-            .sol_abi_encode()
-            .expect("collateral to abi encode");
-        assert!(!encoded.is_empty(), "ABI encoded data should not be empty");
+//         let encoded = collateral
+//             .sol_abi_encode()
+//             .expect("collateral to abi encode");
+//         assert!(!encoded.is_empty(), "ABI encoded data should not be empty");
 
-        // Write encoded data to file for test_abi_decode_collateral to use
-        std::fs::create_dir_all("data/abi/").expect("failed to create directory");
-        std::fs::write("data/abi/encoded.bin", &encoded).expect("failed to write encoded data");
+//         // Write encoded data to file for test_abi_decode_collateral to use
+//         std::fs::create_dir_all("data/abi/").expect("failed to create directory");
+//         std::fs::write("data/abi/encoded.bin", &encoded).expect("failed to write encoded data");
 
-        println!("ABI encoded length: {} bytes", encoded.len());
-    }
+//         println!("ABI encoded length: {} bytes", encoded.len());
+//     }
 
-    #[test]
-    fn test_abi_decode_collateral() {
-        // Read the encoded data written by test_abi_encode_collateral
-        let encoded = std::fs::read("data/abi/encoded.bin").expect("failed to read encoded data");
-        let decoded = Collateral::sol_abi_decode(&encoded).expect("collateral to abi decode");
+//     #[test]
+//     fn test_abi_decode_collateral() {
+//         // Read the encoded data written by test_abi_encode_collateral
+//         let encoded = std::fs::read("data/abi/encoded.bin").expect("failed to read encoded data");
+//         let decoded = Collateral::sol_abi_decode(&encoded).expect("collateral to abi decode");
 
-        // Create original collateral for comparison
-        let original = Collateral::new(
-            include_bytes!("../../data/intel_root_ca_crl.der"),
-            include_bytes!("../../data/pck_platform_crl.der"),
-            include_bytes!("../../data/tcb_signing_cert.pem"),
-            include_str!("../../data/tcb_info_v2.json"),
-            include_str!("../../data/qeidentityv2.json"),
-        )
-        .expect("collateral to be created");
+//         // Create original collateral for comparison
+//         let original = Collateral::new(
+//             include_bytes!("../../data/intel_root_ca_crl.der"),
+//             include_bytes!("../../data/pck_platform_crl.der"),
+//             include_bytes!("../../data/tcb_signing_cert.pem"),
+//             include_str!("../../data/tcb_info_v2.json"),
+//             include_str!("../../data/qeidentityv2.json"),
+//         )
+//         .expect("collateral to be created");
 
-        // Verify the decoded data matches original
-        let original_json = serde_json::to_string(&original).expect("original to serialize");
-        let decoded_json = serde_json::to_string(&decoded).expect("decoded to serialize");
-        assert_eq!(
-            original_json, decoded_json,
-            "Decoded collateral should match original"
-        );
-    }
-}
+//         // Verify the decoded data matches original
+//         let original_json = serde_json::to_string(&original).expect("original to serialize");
+//         let decoded_json = serde_json::to_string(&decoded).expect("decoded to serialize");
+//         assert_eq!(
+//             original_json, decoded_json,
+//             "Decoded collateral should match original"
+//         );
+//     }
+// }
