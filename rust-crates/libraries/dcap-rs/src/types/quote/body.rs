@@ -6,7 +6,7 @@ use crate::types::report::{EnclaveReportBody, Td10ReportBody, Td15ReportBody};
 use super::{SGX_TEE_TYPE, TDX_TEE_TYPE};
 
 /// Body of the Quote data structure.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum QuoteBody {
     SgxQuoteBody(EnclaveReportBody),
     Td10QuoteBody(Td10ReportBody),
