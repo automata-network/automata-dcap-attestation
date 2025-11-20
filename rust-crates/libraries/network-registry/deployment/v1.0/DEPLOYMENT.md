@@ -15,9 +15,9 @@
 | Polygon Amoy | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://amoy.polygonscan.com/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 | Base Sepolia | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://sepolia.basescan.org/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 | Arbitrum Sepolia | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://sepolia.arbiscan.io/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
-| Ethereum Hoodi | [0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36](https://hoodi.etherscan.io/address/0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36) |
+| Ethereum Hoodi | [0x399c1927C72A3913B10f399D383ae4Ff1083aC24](https://hoodi.etherscan.io/address/0x399c1927C72A3913B10f399D383ae4Ff1083aC24) |
 | Automata Testnet | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://explorer-testnet.ata.network/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
-| Ethereum Sepolia | [0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36](https://sepolia.etherscan.io/address/0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36) |
+| Ethereum Sepolia | [0x399c1927C72A3913B10f399D383ae4Ff1083aC24](https://sepolia.etherscan.io/address/0x399c1927C72A3913B10f399D383ae4Ff1083aC24) |
 | Optimism Sepolia | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://sepolia-optimistic.etherscan.io/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 
 #### Mainnet
@@ -48,9 +48,9 @@
 | Polygon Amoy | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://amoy.polygonscan.com/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 | Base Sepolia | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://sepolia.basescan.org/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 | Arbitrum Sepolia | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://sepolia.arbiscan.io/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
-| Ethereum Hoodi | [0x45CF7485A0D394130153a3630EA0729999511C2e](https://hoodi.etherscan.io/address/0x45CF7485A0D394130153a3630EA0729999511C2e) |
+| Ethereum Hoodi | [0xb6d715f2f630314cDC1EdE1a550F14822c38b245](https://hoodi.etherscan.io/address/0xb6d715f2f630314cDC1EdE1a550F14822c38b245) |
 | Automata Testnet | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://explorer-testnet.ata.network/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
-| Ethereum Sepolia | [0x45CF7485A0D394130153a3630EA0729999511C2e](https://sepolia.etherscan.io/address/0x45CF7485A0D394130153a3630EA0729999511C2e) |
+| Ethereum Sepolia | [0xb6d715f2f630314cDC1EdE1a550F14822c38b245](https://sepolia.etherscan.io/address/0xb6d715f2f630314cDC1EdE1a550F14822c38b245) |
 | Optimism Sepolia | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://sepolia-optimistic.etherscan.io/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 
 #### Mainnet
