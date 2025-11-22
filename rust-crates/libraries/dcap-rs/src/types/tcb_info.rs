@@ -524,7 +524,7 @@ impl TcbStatus {
     }
 }
 
-/// Returns true if all the pck componenets are >= all the tcb level components and
+/// Returns true if all the pck components are >= all the tcb level components and
 /// the pck pcesvn is >= the tcb level pcesvn.
 fn pck_in_tcb_level(level: &TcbLevel, pck_extension: &SgxPckExtension) -> bool {
     const SVN_LENGTH: usize = 16;
