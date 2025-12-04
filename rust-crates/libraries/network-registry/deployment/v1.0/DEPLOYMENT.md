@@ -24,7 +24,7 @@
 
 | Network | Address |
 |---------|----------|
-| Ethereum Mainnet | [0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36](https://etherscan.io/address/0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36) |
+| Ethereum Mainnet | [0x399c1927C72A3913B10f399D383ae4Ff1083aC24](https://etherscan.io/address/0x399c1927C72A3913B10f399D383ae4Ff1083aC24) |
 | Optimism | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://optimistic.etherscan.io/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 | BNB Smart Chain | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://bscscan.com/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 | Unichain Mainnet | [0xF5A8DaC7d155d29d04f9D19C09FCA95D7D65694B](https://uniscan.xyz/address/0xF5A8DaC7d155d29d04f9D19C09FCA95D7D65694B) |
@@ -57,7 +57,7 @@
 
 | Network | Address |
 |---------|----------|
-| Ethereum Mainnet | [0x45CF7485A0D394130153a3630EA0729999511C2e](https://etherscan.io/address/0x45CF7485A0D394130153a3630EA0729999511C2e) |
+| Ethereum Mainnet | [0xb6d715f2f630314cDC1EdE1a550F14822c38b245](https://etherscan.io/address/0xb6d715f2f630314cDC1EdE1a550F14822c38b245) |
 | Optimism | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://optimistic.etherscan.io/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 | BNB Smart Chain | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://bscscan.com/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 | Unichain Mainnet | [0xa1a9322390aE81CF1C24A0D13bdC8Eb26e8A25E6](https://uniscan.xyz/address/0xa1a9322390aE81CF1C24A0D13bdC8Eb26e8A25E6) |
