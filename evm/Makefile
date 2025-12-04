@@ -1,10 +1,11 @@
 # Configuration
 VERIFIER ?= etherscan
-VERIFIER_URL ?= 
+VERIFIER_URL ?=
 SIMULATED ?=
 KEYSTORE_PATH ?= keystores/dcap_prod
 PRIVATE_KEY ?=
-QUOTE_VERIFIER_VERSION ?= 
+QUOTE_VERIFIER_VERSION ?=
+DEPLOYMENT_DIR ?= ../rust-crates/libraries/network-registry/deployment/current
 
 # Required environment variables check
 check_env:
@@ -53,8 +54,8 @@ deploy-router: check_env get_owner
 
 setup-router: check_env get_owner
 ifndef SIMULATED
-	@storageaddr=$$(jq -r ".AutomataDaoStorage" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	routeraddr=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
+	@storageaddr=$$(jq -r ".AutomataDaoStorage" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	routeraddr=$$(jq -r ".PCCSRouter" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/dcap.json); \
 	if [ "$$storageaddr" != "null" ] && [ "$$routeraddr" != "null" ]; then \
 		echo "Granting PCCSRouter authorization to call PCCS Storage..."; \
 		cast send $$storageaddr \
@@ -111,22 +112,22 @@ deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
 	@echo "Deployment completed"
 
 verify-all: check_env get_owner_env
-	@if [ ! -f deployment/$(CHAIN_ID)/dcap.json ]; then \
+	@if [ ! -f $(DEPLOYMENT_DIR)/$(CHAIN_ID)/dcap.json ]; then \
 		echo "Deployment not found."; \
 		exit 1; \
 	fi
 	@echo "Determining P256 Verifier address..."
 	@P256_ADDRESS_VAL=$$(forge script P256Configuration --rpc-url $(RPC_URL) --sig "simulateVerify()" -vv | awk '/P256Verifier address:/ { print $$NF; exit }'); \
 	echo "Using P256 Verifier address: $$P256_ADDRESS_VAL"; \
-	ROUTER_ADDR=$$(jq -r ".PCCSRouter" deployment/$(CHAIN_ID)/dcap.json); \
-	PCS_DAO_ADDR=$$(jq -r ".AutomataPcsDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	PCK_DAO_ADDR=$$(jq -r ".AutomataPckDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	TCB_EVAL_DAO_ADDR=$$(jq -r ".AutomataTcbEvalDao" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	X509_HELPER_ADDR=$$(jq -r ".PCKHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	CRL_HELPER_ADDR=$$(jq -r ".X509CRLHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
-	FMSPC_TCB_HELPER_ADDR=$$(jq -r ".FmspcTcbHelper" deployment/$(CHAIN_ID)/onchain_pccs.json); \
+	ROUTER_ADDR=$$(jq -r ".PCCSRouter" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/dcap.json); \
+	PCS_DAO_ADDR=$$(jq -r ".AutomataPcsDao" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	PCK_DAO_ADDR=$$(jq -r ".AutomataPckDao" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	TCB_EVAL_DAO_ADDR=$$(jq -r ".AutomataTcbEvalDao" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	X509_HELPER_ADDR=$$(jq -r ".PCKHelper" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	CRL_HELPER_ADDR=$$(jq -r ".X509CRLHelper" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	FMSPC_TCB_HELPER_ADDR=$$(jq -r ".FmspcTcbHelper" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
 	for contract in PCCSRouter AutomataDcapAttestationFee V3QuoteVerifier V4QuoteVerifier; do \
-		addr=$$(jq -r ".$$contract" deployment/$(CHAIN_ID)/dcap.json); \
+		addr=$$(jq -r ".$$contract" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/dcap.json); \
 		current_encoded_args=""; \
 		current_contract_path_name=""; \
 		if [ "$$addr" != "null" ]; then \
@@ -226,6 +227,7 @@ help:
 	@echo "  VERIFIER_URL           Custom verifier API URL"
 	@echo "  ETHERSCAN_API_KEY      API key for contract verification"
 	@echo "  SIMULATED              Simulate deployment (default: false)"
+	@echo "  DEPLOYMENT_DIR         Deployment directory (default: ../rust-crates/libraries/network-registry/deployment/current)"
 	@echo ""
 	@echo "Example usage:"
 	@echo "  make deploy-all RPC_URL=xxx"
