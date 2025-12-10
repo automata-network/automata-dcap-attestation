@@ -135,7 +135,7 @@ pub fn verify_dcap_quote(
 
     assert!(
         sgx_tcb_status != TcbStatus::Revoked || tdx_tcb_status != TcbStatus::Revoked,
-        "FMPSC TCB Revoked"
+        "FMSPC TCB Revoked"
     );
 
     let advisory_ids = if advisory_ids.is_empty() {
@@ -361,7 +361,7 @@ pub fn verify_quote_enclave_source(
         .zip(qe_identity_attributes_bytes)
         .any(|(masked, identity)| masked != identity)
     {
-        bail!("qe attrtibutes mismatch");
+        bail!("qe attributes mismatch");
     }
 
     // Compare misc_select values

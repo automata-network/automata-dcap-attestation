@@ -107,7 +107,7 @@ pub mod automata_dcap_verifier {
         let signature_bytes = quote.signature.qe_report_signature;
         let signature = Signature::from_slice(signature_bytes).unwrap();
 
-        let normalized_siganture = match signature.normalize_s() {
+        let normalized_signature = match signature.normalize_s() {
             Some(s) => s.to_bytes(),
             None => signature.to_bytes(),
         }
@@ -118,7 +118,7 @@ pub mod automata_dcap_verifier {
             &ix,
             &quote.signature.qe_report_body.as_bytes(),
             &compressed_pck_pkey,
-            &normalized_siganture,
+            &normalized_signature,
         )?;
 
         quote.signature.verify_qe_report().map_err(|e| {
@@ -156,7 +156,7 @@ pub mod automata_dcap_verifier {
 
         let signature = Signature::from_slice(&quote.signature.isv_signature).unwrap();
 
-        let normalized_siganture = match signature.normalize_s() {
+        let normalized_signature = match signature.normalize_s() {
             Some(s) => s.to_bytes(),
             None => signature.to_bytes(),
         }
@@ -173,7 +173,7 @@ pub mod automata_dcap_verifier {
             &ix,
             &data,
             &compressed_attestation_key,
-            &normalized_siganture,
+            &normalized_signature,
         )?;
 
         let verified_output = &mut ctx.accounts.verified_output;
@@ -261,7 +261,7 @@ pub mod automata_dcap_verifier {
             .zip(qe_identity.attributes_bytes())
             .any(|(masked, identity)| masked != identity)
         {
-            msg!("qe attrtibutes mismatch");
+            msg!("qe attributes mismatch");
             return Err(DcapVerifierError::InvalidQuote.into());
         }
 
@@ -328,7 +328,7 @@ pub mod automata_dcap_verifier {
         let tbs = &x509.tbs_certificate;
 
         let (not_before, not_after) = get_certificate_validity(tbs);
-        let serial_nuber = get_certificate_serial(tbs);
+        let serial_number = get_certificate_serial(tbs);
 
         // First, check the validity range for each certificate
         let cert_validity = now >= not_before && now <= not_after;
@@ -359,7 +359,7 @@ pub mod automata_dcap_verifier {
             );
             let crl_size = crl_account.cert_data_size as usize;
             let crl_data = &crl_account.cert_data[0..crl_size];
-            if check_certificate_revocation(&serial_nuber, crl_data).is_err() {
+            if check_certificate_revocation(&serial_number, crl_data).is_err() {
                 msg!("Certificate at index {} revoked", certificate_index);
                 return Err(DcapVerifierError::RevokedCertificate.into());
             }
