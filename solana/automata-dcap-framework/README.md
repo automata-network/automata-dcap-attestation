@@ -1,7 +1,7 @@
 # Solana DCAP Attestation
 
 
-Solana DCAP Attestation framework enables you to verify DCAP quote on Solana Chain.
+Solana DCAP Attestation framework enables you to verify DCAP quotes on the Solana chain.
 
 ## Architecture
 The Solana DCAP Attestation Framework provides a comprehensive solution for verifying Intel SGX DCAP (Data Center Attestation Primitives) quotes on the Solana blockchain. The architecture consists of these key components:
@@ -39,7 +39,7 @@ This architecture enables secure, on-chain attestation verification while handli
 
 > ℹ️ **NOTE:**
 > 
-> This is a simplified sequence diagram showing the Automata Solana Onchain PCCS program as a single entity. In reality, the PCCS program derives corresponding PDAs to store collaterals for each DAOs (Data Access Object), e.g. an FMSPC TCB PDA representing FMSPC TCB DAO and etc...
+> This is a simplified sequence diagram showing the Automata Solana Onchain PCCS program as a single entity. In reality, the PCCS program derives corresponding PDAs to store collaterals for each DAO (Data Access Object), e.g. an FMSPC TCB PDA representing FMSPC TCB DAO and etc...
 > 
 
 ```mermaid
@@ -116,7 +116,7 @@ sequenceDiagram
 ```
 
 
-## How to test on localnet ?
+## How to test on localnet?
 
 In order to test on localnet, please make sure you have the essential tools installed. The tools required are
 - Solana CLI (Min required version is 2.2.1)
@@ -143,7 +143,7 @@ anchor build
 anchor deploy
 ```
 
-4. Once you have deployed the program, it is necessary for you to upload the required collateral to the PCCS program. The SDK provides with a PCCS Client, please refer to that and upload collateral.
+4. Once you have deployed the program, it is necessary for you to upload the required collateral to the PCCS program. The SDK provides a PCCS Client, please refer to that and upload collateral.
 
 5. Once you have uploaded required collateral you can call the `verify_dcap` quote function from the SDK.
 
@@ -153,6 +153,6 @@ anchor deploy
 anchor test
 ```
 
-## Why is it only available in LOCALNET ?
+## Why is it only available in LOCALNET?
 
 At the moment of writing this, the `secp256r1` pre-compile is only available in localnet and is not available in `devnet` and `testnet`.

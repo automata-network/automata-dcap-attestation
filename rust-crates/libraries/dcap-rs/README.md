@@ -20,7 +20,7 @@ This library supports verification of the following quotes:
 
 ## zkVM Patches
 
-zkVM programs provide patches, which are simply modified Rust crates that can help reducing execution cycle costs in the VM.
+zkVM programs provide patches, which are simply modified Rust crates that can help reduce execution cycle costs in the VM.
 
 We have tested `dcap-rs` with both RiscZero and SP1 zkVMs, and we would happily work with more zkVMs in the future.
 
@@ -33,7 +33,7 @@ Patches applied:
 - `sha2`
 - `p256`
 
-Make sure to include the following patches into your Guest's `cargo.toml`.
+Make sure to include the following patches into your Guest's `Cargo.toml`.
 
 ```
 [patch.crates-io]
@@ -51,7 +51,7 @@ Patches applied:
 - `sha2`
 - `p256`
 
-Make sure to include the following patches into your workspace `cargo.toml`.
+Make sure to include the following patches into your workspace `Cargo.toml`.
 
 ```
 [patch.crates-io]
@@ -68,12 +68,12 @@ Patches applied:
 - `crypto-bigint`
 - `sha2`
 
-Make sure to include the following patches into your workspace `cargo.toml`.
+Make sure to include the following patches into your workspace `Cargo.toml`.
 
 ```
 [patch.crates-io]
 sha2 = { git = "https://github.com/brevis-network/hashes", branch = "pico-patch-v1.0.1-sha2-v0.10.8" }
-crypto-bigint = { git = "  https://github.com/brevis-network/crypto-bigint", branch = "pico-patch-v1.0.0-bigint-v0.6.0" }
+crypto-bigint = { git = "https://github.com/brevis-network/crypto-bigint", branch = "pico-patch-v1.0.0-bigint-v0.6.0" }
 ```
 
 Click [here](https://pico-docs.brevis.network/integrating-coprocessors/function-level.html#list-of-patches) to learn more about Pico zkVM Patches.
