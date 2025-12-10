@@ -6,9 +6,15 @@
     "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
   },
   "lib/risc0-ethereum": {
-    "rev": "0e450a773165d86292875ab73bad40954f71c544"
+    "tag": {
+      "name": "v3.0.1",
+      "rev": "365e7b2db4f620fa256580c27558d2623362b9ae"
+    }
   },
   "lib/sp1-contracts": {
-    "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"
+    "tag": {
+      "name": "v5.0.0",
+      "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"
+    }
   }
 }
