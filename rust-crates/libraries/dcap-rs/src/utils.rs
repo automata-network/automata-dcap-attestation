@@ -89,6 +89,67 @@ pub mod u32_hex {
     }
 }
 
+/// Serde helper module for zerocopy::little_endian::U16
+pub mod serde_little_endian_u16 {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use zerocopy::little_endian;
+
+    pub fn serialize<S>(value: &little_endian::U16, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        value.get().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<little_endian::U16, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = u16::deserialize(deserializer)?;
+        Ok(little_endian::U16::new(value))
+    }
+}
+
+/// Serde helper module for zerocopy::little_endian::U32
+pub mod serde_little_endian_u32 {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use zerocopy::little_endian;
+
+    pub fn serialize<S>(value: &little_endian::U32, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        value.get().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<little_endian::U32, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = u32::deserialize(deserializer)?;
+        Ok(little_endian::U32::new(value))
+    }
+}
+
+/// Serde helper module for small byte arrays (specifically [u8; 6] for FMSPC)
+pub mod serde_arrays {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(value: &[u8; 6], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        value.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 6], D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        <[u8; 6]>::deserialize(deserializer)
+    }
+}
+
 pub mod cert_chain_processor {
     use x509_cert::{
         certificate::CertificateInner,

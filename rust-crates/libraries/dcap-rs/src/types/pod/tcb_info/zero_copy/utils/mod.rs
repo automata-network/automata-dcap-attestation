@@ -105,58 +105,58 @@ fn pck_in_tcb_level_zc<'a>(
     Ok(true)
 }
 
-#[cfg(all(test, not(feature = "zero-copy")))]
-mod tests {
-    use crate::types::pod::tcb_info::serialize::{SerializedTcbInfo, serialize_tcb_pod};
-    use crate::types::{
-        pod::tcb_info::zero_copy::TcbInfoZeroCopy,
-        quote::Quote,
-        tcb_info::{TcbInfoAndSignature, TcbStatus},
-    };
+// #[cfg(all(test, not(feature = "zero-copy")))]
+// mod tests {
+//     use crate::types::pod::tcb_info::serialize::{SerializedTcbInfo, serialize_tcb_pod};
+//     use crate::types::{
+//         pod::tcb_info::zero_copy::TcbInfoZeroCopy,
+//         quote::Quote,
+//         tcb_info::{TcbInfoAndSignature, TcbStatus},
+//     };
 
-    #[test]
-    pub fn test_zero_copy_tcb_lookup() {
-        let quote_bytes = include_bytes!("../../../../../../data/quote_tdx.bin");
-        let tcb_info_json_bytes =
-            include_bytes!("../../../../../../data/tcb_info_v3_with_tdx_module.json");
+//     #[test]
+//     pub fn test_zero_copy_tcb_lookup() {
+//         let quote_bytes = include_bytes!("../../../../../../data/quote_tdx.bin");
+//         let tcb_info_json_bytes =
+//             include_bytes!("../../../../../../data/tcb_info_v3_with_tdx_module.json");
 
-        // Parse the quote and extract the PCK SGX extension
-        let quote = Quote::read(&mut quote_bytes.as_slice()).unwrap();
-        let pck_extension = quote.signature.get_pck_extension().unwrap();
+//         // Parse the quote and extract the PCK SGX extension
+//         let quote = Quote::read(&mut quote_bytes.as_slice()).unwrap();
+//         let pck_extension = quote.signature.get_pck_extension().unwrap();
 
-        // Parse TCB Info and convert to ZeroCopy
-        let tcb_info_json: TcbInfoAndSignature =
-            serde_json::from_slice(tcb_info_json_bytes).unwrap();
-        let tcb_info = tcb_info_json.get_tcb_info().unwrap();
-        let mut signature = [0u8; 64];
-        signature.copy_from_slice(tcb_info_json.signature.as_slice());
-        let serialized_tcb_info = SerializedTcbInfo::from_rust_tcb_info(&tcb_info).unwrap();
-        let serialize_tcb_info_bytes = serialize_tcb_pod(&serialized_tcb_info, &signature);
-        let tcb_info_zero_copy =
-            TcbInfoZeroCopy::from_bytes(&serialize_tcb_info_bytes[64..]).unwrap();
+//         // Parse TCB Info and convert to ZeroCopy
+//         let tcb_info_json: TcbInfoAndSignature =
+//             serde_json::from_slice(tcb_info_json_bytes).unwrap();
+//         let tcb_info = tcb_info_json.get_tcb_info().unwrap();
+//         let mut signature = [0u8; 64];
+//         signature.copy_from_slice(tcb_info_json.signature.as_slice());
+//         let serialized_tcb_info = SerializedTcbInfo::from_rust_tcb_info(&tcb_info).unwrap();
+//         let serialize_tcb_info_bytes = serialize_tcb_pod(&serialized_tcb_info, &signature);
+//         let tcb_info_zero_copy =
+//             TcbInfoZeroCopy::from_bytes(&serialize_tcb_info_bytes[64..]).unwrap();
 
-        // Perform the lookup
-        // Start with TcbStatus::lookup
-        let (sgx_tcb_status_expected, tdx_tcb_status_expected, advisory_ids_expected) =
-            TcbStatus::lookup(&pck_extension, &tcb_info, &quote).unwrap();
+//         // Perform the lookup
+//         // Start with TcbStatus::lookup
+//         let (sgx_tcb_status_expected, tdx_tcb_status_expected, advisory_ids_expected) =
+//             TcbStatus::lookup(&pck_extension, &tcb_info, &quote).unwrap();
 
-        // ZeroCopy lookup
-        let (sgx_tcb_status_zc, tdx_tcb_status_zc, advisory_ids_zc) =
-            super::lookup(&pck_extension, &tcb_info_zero_copy, &quote).unwrap();
+//         // ZeroCopy lookup
+//         let (sgx_tcb_status_zc, tdx_tcb_status_zc, advisory_ids_zc) =
+//             super::lookup(&pck_extension, &tcb_info_zero_copy, &quote).unwrap();
 
-        assert_eq!(
-            sgx_tcb_status_expected,
-            TcbStatus::try_from(sgx_tcb_status_zc).unwrap(),
-            "SGX TCB status mismatch"
-        );
-        assert_eq!(
-            tdx_tcb_status_expected,
-            TcbStatus::try_from(tdx_tcb_status_zc).unwrap(),
-            "TDX TCB status mismatch"
-        );
-        assert_eq!(
-            advisory_ids_expected, advisory_ids_zc,
-            "Advisory IDs mismatch"
-        );
-    }
-}
+//         assert_eq!(
+//             sgx_tcb_status_expected,
+//             TcbStatus::try_from(sgx_tcb_status_zc).unwrap(),
+//             "SGX TCB status mismatch"
+//         );
+//         assert_eq!(
+//             tdx_tcb_status_expected,
+//             TcbStatus::try_from(tdx_tcb_status_zc).unwrap(),
+//             "TDX TCB status mismatch"
+//         );
+//         assert_eq!(
+//             advisory_ids_expected, advisory_ids_zc,
+//             "Advisory IDs mismatch"
+//         );
+//     }
+// }

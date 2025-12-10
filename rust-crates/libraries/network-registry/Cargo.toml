@@ -14,7 +14,7 @@ include = [
 ]
 
 [dependencies]
-alloy = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 anyhow = { workspace = true }
 automata-dcap-evm-bindings = { workspace = true }
 automata-dcap-utils = { workspace = true }

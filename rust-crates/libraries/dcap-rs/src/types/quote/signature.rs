@@ -162,6 +162,61 @@ impl<'a> QuoteSignatureData<'a> {
 
         Ok(())
     }
+
+    /// Calculate the total byte length of the signature data structure
+    ///
+    /// This returns the exact number of bytes that this signature data occupies,
+    /// including all fields and the signature length prefix.
+    pub fn byte_len(&self, version: u16) -> usize {
+        // Signature length field (4 bytes)
+        let mut total = 4;
+
+        // ISV signature (64 bytes)
+        total += 64;
+
+        // Attestation public key (64 bytes)
+        total += 64;
+
+        if version == 3 {
+            // V3 format:
+            // QE report body
+            total += std::mem::size_of::<EnclaveReportBody>();
+
+            // QE report signature (64 bytes)
+            total += 64;
+
+            // Auth data size (2 bytes)
+            total += 2;
+
+            // Auth data
+            total += self.auth_data.len();
+
+            // Cert data (type: 2 bytes, size: 4 bytes, data: cert_data_size bytes)
+            total += 2 + 4 + self.cert_data.cert_data.len();
+        } else {
+            // V4+ format:
+            // Cert data header (type: 2 bytes, size: 4 bytes)
+            total += 2 + 4;
+
+            // Cert data contains: QE report + QE signature + auth data size + auth data + nested cert data
+            // QE report body
+            total += std::mem::size_of::<EnclaveReportBody>();
+
+            // QE report signature (64 bytes)
+            total += 64;
+
+            // Auth data size (2 bytes)
+            total += 2;
+
+            // Auth data
+            total += self.auth_data.len();
+
+            // Nested cert data (type: 2 bytes, size: 4 bytes, data: cert_data_size bytes)
+            total += 2 + 4 + self.cert_data.cert_data.len();
+        }
+
+        total
+    }
 }
 
 impl<'a> std::fmt::Display for QuoteSignatureData<'a> {

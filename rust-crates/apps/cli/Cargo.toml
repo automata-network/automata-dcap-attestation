@@ -16,7 +16,7 @@ clap = { workspace = true }
 hex = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 serde = { workspace = true, optional = true }
-alloy = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 dotenvy = { workspace = true }
 env_logger = { workspace = true }
 log = { workspace = true }

@@ -1,10 +1,12 @@
+use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 use zerocopy::little_endian;
 
 // sgx_report.h in linux-sgx repository by Intel.
 const SGX_CPUSVN_SIZE: usize = 16;
 const SGX_HASH_SIZE: usize = 32;
 
-#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes)]
+#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
 #[repr(C)]
 pub struct EnclaveReportBody {
     // (0) CPU Security Version
@@ -13,6 +15,7 @@ pub struct EnclaveReportBody {
 
     // (16) Selector for which fields are defined in SSA.MISC
     // uint32_t misc_select;
+    #[serde(with = "crate::utils::serde_little_endian_u32")]
     pub misc_select: little_endian::U32,
 
     // (20) Reserved1 for future use
@@ -45,22 +48,27 @@ pub struct EnclaveReportBody {
 
     // (192) Enclave Configuration Security Version
     // uint8_t configid[64];
+    #[serde(with = "BigArray")]
     _config_id: [u8; 64],
 
     // (256) Enclave product ID
     // uint16_t isvprodid;
+    #[serde(with = "crate::utils::serde_little_endian_u16")]
     pub isv_prod_id: little_endian::U16,
 
     // (258) Enclave security version
     // uint16_t isvsvn;
+    #[serde(with = "crate::utils::serde_little_endian_u16")]
     pub isv_svn: little_endian::U16,
 
     // (260) Enclave configuration security version
     // uint16_t configsvn;
+    #[serde(with = "crate::utils::serde_little_endian_u16")]
     _config_svn: little_endian::U16,
 
     // (262) Reserved4 for future use
     // uint8_t reserved4[42];
+    #[serde(with = "BigArray")]
     _reserved_4: [u8; 42],
 
     // (304) Enclave family ID
@@ -69,6 +77,7 @@ pub struct EnclaveReportBody {
 
     // (320) User Report data
     // sgx_report_data_t report_data;
+    #[serde(with = "BigArray")]
     pub user_report_data: [u8; 64],
     // Total 384 bytes
 }
@@ -86,7 +95,7 @@ impl TryFrom<[u8; std::mem::size_of::<EnclaveReportBody>()]> for EnclaveReportBo
     }
 }
 
-#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes)]
+#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Td10ReportBody {
     // (0) Describes the TCB of TDX.
@@ -95,10 +104,12 @@ pub struct Td10ReportBody {
 
     // (16) Measurement of the TDX Module.
     // uint8_t mrseam[48];
+    #[serde(with = "BigArray")]
     pub mr_seam: [u8; 48],
 
     // (64) Measurement of the TDX Module Signer.
     // uint8_t mrsignerseam[48];
+    #[serde(with = "BigArray")]
     pub mr_signer_seam: [u8; 48],
 
     // (112) TDX Attributes.
@@ -116,40 +127,49 @@ pub struct Td10ReportBody {
 
     // (136) Measurement of the initial contents of the TD.
     // uint8_t mrtd[48];
+    #[serde(with = "BigArray")]
     pub mr_td: [u8; 48],
 
     // (184) Software-defined ID for non-owner-defined configuration of the TD,
     // e.g., runtime or OS configuration.
     // uint8_t mrconfigid[48];
+    #[serde(with = "BigArray")]
     pub mr_config_id: [u8; 48],
 
-    // (232) Software-defined ID for the TD’s owner.
+    // (232) Software-defined ID for the TD's owner.
     // uint8_t mrowner[48];
+    #[serde(with = "BigArray")]
     pub mr_owner: [u8; 48],
 
     // (280) Software-defined ID for owner-defined configuration of the TD,
     // e.g., specific to the workload rather than the runtime or OS.
     // uint8_t mrownerconfig[48];
+    #[serde(with = "BigArray")]
     pub mr_owner_config: [u8; 48],
 
     // (328) Measurement of the Root of Trust for Measurement (RTM) for the TD.
     // uint8_t rtmr0[48];
+    #[serde(with = "BigArray")]
     pub rtm_r0: [u8; 48],
 
     // (376) Measurement of the Root of Trust for Measurement (RTM) for the TD.
     // uint8_t rtmr1[48];
+    #[serde(with = "BigArray")]
     pub rtm_r1: [u8; 48],
 
     // (424) Measurement of the Root of Trust for Measurement (RTM) for the TD.
     // uint8_t rtmr2[48];
+    #[serde(with = "BigArray")]
     pub rtm_r2: [u8; 48],
 
     // (472) Measurement of the Root of Trust for Measurement (RTM) for the TD.
     // uint8_t rtmr3[48];
+    #[serde(with = "BigArray")]
     pub rtm_r3: [u8; 48],
 
     // (520) User Report Data.
     // sgx_report_data_t report_data;
+    #[serde(with = "BigArray")]
     pub user_report_data: [u8; 64],
     // Total 584 bytes
 }
@@ -165,7 +185,7 @@ impl TryFrom<[u8; std::mem::size_of::<Td10ReportBody>()]> for Td10ReportBody {
     }
 }
 
-#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes)]
+#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Td15ReportBody {
     pub td_report: Td10ReportBody,
@@ -175,6 +195,7 @@ pub struct Td15ReportBody {
     pub tee_tcb_svn2: [u8; 16],
 
     /// (600) Measurement of the initial contents of the Migration TD
+    #[serde(with = "BigArray")]
     pub mr_service_td: [u8; 48], // Total 648 bytes
 }
 

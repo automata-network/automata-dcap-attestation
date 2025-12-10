@@ -19,6 +19,7 @@ x509-cert    	= { version = "0.2.5" }
 asn1            = { version = "0.17.0" }
 serde        	= { version = "1.0", features = ["derive"] }
 serde_json   	= { version = "1.0.125", features = ["raw_value"] }
+serde-big-array = { version = "0.5" }
 chrono       	= { version = "0.4.38", features = ["serde"]}
 time         	= { version = "0.3.36" }
 zerocopy        = { version = "0.7.34", features = ["derive"]}
@@ -40,7 +41,7 @@ features = [ "std", "p256", "x509" ]
 pccs-reader-rs = { workspace = true }
 tokio = { workspace = true }
 automata-dcap-network-registry = { workspace = true }
-alloy = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 
 [features]
 default = ["full"]

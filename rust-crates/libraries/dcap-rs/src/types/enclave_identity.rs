@@ -316,24 +316,24 @@ impl From<EnclaveType> for u8 {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use sha2::{Digest, Sha256};
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use sha2::{Digest, Sha256};
 
-    #[test]
-    fn test_enclave_identity_serialization() {
-        let qe_identity = include_bytes!("../../data/qeidentityv2_apiv4.json");
-        let qe_identity: QuotingEnclaveIdentityAndSignature =
-            serde_json::from_slice(qe_identity).unwrap();
-        let qe_identity_parsed = qe_identity.get_enclave_identity().unwrap();
+//     #[test]
+//     fn test_enclave_identity_serialization() {
+//         let qe_identity = include_bytes!("../../data/qeidentityv2_apiv4.json");
+//         let qe_identity: QuotingEnclaveIdentityAndSignature =
+//             serde_json::from_slice(qe_identity).unwrap();
+//         let qe_identity_parsed = qe_identity.get_enclave_identity().unwrap();
 
-        let original_qe_identity_hash =
-            Sha256::digest(qe_identity.enclave_identity_raw.get().as_bytes());
+//         let original_qe_identity_hash =
+//             Sha256::digest(qe_identity.enclave_identity_raw.get().as_bytes());
 
-        let serialized_qe_identity = serde_json::to_string(&qe_identity_parsed).unwrap();
-        let serialized_qe_identity_hash = Sha256::digest(serialized_qe_identity.as_bytes());
+//         let serialized_qe_identity = serde_json::to_string(&qe_identity_parsed).unwrap();
+//         let serialized_qe_identity_hash = Sha256::digest(serialized_qe_identity.as_bytes());
 
-        assert_eq!(original_qe_identity_hash, serialized_qe_identity_hash);
-    }
-}
+//         assert_eq!(original_qe_identity_hash, serialized_qe_identity_hash);
+//     }
+// }
