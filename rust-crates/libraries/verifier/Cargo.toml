@@ -10,7 +10,7 @@ license.workspace = true
 # Workspace dependencies
 anyhow.workspace = true
 thiserror.workspace = true
-alloy.workspace = true
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 tokio.workspace = true
 hex.workspace = true
 serde.workspace = true

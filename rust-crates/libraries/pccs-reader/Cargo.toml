@@ -10,7 +10,7 @@ edition = { workspace = true }
 serde = { workspace = true }
 hex = { workspace = true }
 serde_json = { workspace = true }
-alloy = { workspace = true, features = ["full"] }
+alloy = { workspace = true, features = ["full", "node-bindings", "rpc-types", "rpc-types-eth", "contract"] }
 anyhow = { workspace = true }
 x509-parser = "0.15.1"
 tokio = { workspace = true }

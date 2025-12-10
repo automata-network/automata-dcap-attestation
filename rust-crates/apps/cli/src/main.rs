@@ -414,19 +414,19 @@ async fn main() -> Result<()> {
 
                 match function {
                     QplFunction::SgxQlGetQuoteConfig(args) => {
-                        handle_quote_config(provider, args).await?
+                        handle_quote_config(provider, dcap_version, args).await?
                     }
                     QplFunction::SgxQlGetQuoteVerificationCollateral(args) => {
-                        handle_quote_collateral(provider, args).await?
+                        handle_quote_collateral(provider, dcap_version, args).await?
                     }
                     QplFunction::TdxQlGetQuoteVerificationCollateral(args) => {
-                        handle_tdx_collateral(provider, args).await?
+                        handle_tdx_collateral(provider, dcap_version, args).await?
                     }
                     QplFunction::SgxQlGetQveIdentity(args) => {
-                        handle_qve_identity(provider, args).await?
+                        handle_qve_identity(provider, dcap_version, args).await?
                     }
                     QplFunction::SgxQlGetRootCaCrl(args) => {
-                        handle_root_ca_crl(provider, args).await?
+                        handle_root_ca_crl(provider, dcap_version, args).await?
                     }
                 }
             }
@@ -843,6 +843,7 @@ fn handle_inspect(
 
 async fn handle_quote_config<P: Provider + Send + Sync + 'static>(
     provider: P,
+    deployment_version: Version,
     args: QuoteConfigArgs,
 ) -> Result<()> {
     let join = task::spawn_blocking(move || -> Result<()> {
@@ -875,7 +876,7 @@ async fn handle_quote_config<P: Provider + Send + Sync + 'static>(
 
         sgx_ql_get_quote_config(
             &provider,
-            None,
+            Some(deployment_version),
             pck_cert_id,
             data_source,
             args.collateral_version,
@@ -892,6 +893,7 @@ async fn handle_quote_config<P: Provider + Send + Sync + 'static>(
 
 async fn handle_quote_collateral<P: Provider + Send + Sync + 'static>(
     provider: P,
+    deployment_version: Version,
     args: QuoteCollateralArgs,
 ) -> Result<()> {
     let join = task::spawn_blocking(move || -> Result<()> {
@@ -901,7 +903,7 @@ async fn handle_quote_collateral<P: Provider + Send + Sync + 'static>(
 
         sgx_ql_get_quote_verification_collateral(
             &provider,
-            None,
+            Some(deployment_version),
             fmspc,
             pck_ca,
             data_source,
@@ -920,6 +922,7 @@ async fn handle_quote_collateral<P: Provider + Send + Sync + 'static>(
 
 async fn handle_tdx_collateral<P: Provider + Send + Sync + 'static>(
     provider: P,
+    deployment_version: Version,
     args: QuoteCollateralArgs,
 ) -> Result<()> {
     let join = task::spawn_blocking(move || -> Result<()> {
@@ -929,7 +932,7 @@ async fn handle_tdx_collateral<P: Provider + Send + Sync + 'static>(
 
         tdx_ql_get_quote_verification_collateral(
             &provider,
-            None,
+            Some(deployment_version),
             fmspc,
             pck_ca,
             data_source,
@@ -948,13 +951,14 @@ async fn handle_tdx_collateral<P: Provider + Send + Sync + 'static>(
 
 async fn handle_qve_identity<P: Provider + Send + Sync + 'static>(
     provider: P,
+    deployment_version: Version,
     args: CollateralBasicArgs,
 ) -> Result<()> {
     let join = task::spawn_blocking(move || -> Result<()> {
         let data_source: DataSource = args.source.into();
         sgx_ql_get_qve_identity(
             &provider,
-            None,
+            Some(deployment_version),
             data_source,
             args.collateral_version,
             args.pccs_url,
@@ -969,13 +973,14 @@ async fn handle_qve_identity<P: Provider + Send + Sync + 'static>(
 
 async fn handle_root_ca_crl<P: Provider + Send + Sync + 'static>(
     provider: P,
+    deployment_version: Version,
     args: CollateralBasicArgs,
 ) -> Result<()> {
     let join = task::spawn_blocking(move || -> Result<()> {
         let data_source: DataSource = args.source.into();
         sgx_ql_get_root_ca_crl(
             &provider,
-            None,
+            Some(deployment_version),
             data_source,
             args.collateral_version,
             args.pccs_url,

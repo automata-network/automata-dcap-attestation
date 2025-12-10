@@ -13,7 +13,7 @@ supported = ["v1.0", "v1.1"]
 name = "v1.0"
 description = "Legacy deployment version with non-versioned DAOs"
 # Historical deployments can be loaded from URL or local copy
-deployment_url = "https://github.com/automata-network/automata-dcap-attestation/tree/v1.0.1/evm/deployment"
+deployment_url = "https://github.com/automata-network/automata-dcap-attestation/tree/v1.0/evm/deployment"
 
 # Version 1.1 Configuration (CURRENT)
 [versions.v1_1]

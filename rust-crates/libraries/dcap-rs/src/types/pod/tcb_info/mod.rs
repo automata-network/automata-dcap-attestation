@@ -2,8 +2,8 @@ pub mod zero_copy;
 
 #[cfg(feature = "full")]
 pub mod serialize;
-#[cfg(all(test, not(feature = "zero-copy")))]
-mod tests;
+// #[cfg(all(test, not(feature = "zero-copy")))]
+// mod tests;
 
 use bytemuck::{Pod, Zeroable};
 

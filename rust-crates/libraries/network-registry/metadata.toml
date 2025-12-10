@@ -186,6 +186,14 @@ rpc_endpoints = ["https://sepolia.optimism.io", "https://optimism-sepolia.drpc.o
 gas_price_hint_wei = 3_000
 block_explorers = ["https://sepolia-optimistic.etherscan.io/"]
 
+[tempo_testnet]
+name = "Tempo Testnet"
+chain_id = 42429
+testnet = true
+rpc_endpoints = ["https://rpc.testnet.tempo.xyz"]
+gas_price_hint_wei = 3_000
+block_explorers = ["https://scout.tempo.xyz/", "https://explore.tempo.xyz/"]
+
 # Default network configuration
 [default]
 network_key = "automata_testnet"
