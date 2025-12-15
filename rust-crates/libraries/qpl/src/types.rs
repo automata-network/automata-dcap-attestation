@@ -218,7 +218,7 @@ pub enum SgxQlConfigVersion {
 // typedef struct _sgx_ql_pck_cert_id_t
 // {
 //     uint8_t *p_qe3_id;                     ///< The QE_ID used to identify the platform for PCK Cert Retrieval
-//     uint32_t qe3_id_size;                  ///< The Size of hte QE_ID (currenlty 16 bytes)
+//     uint32_t qe3_id_size;                  ///< The Size of hte QE_ID (currently 16 bytes)
 //     sgx_cpu_svn_t *p_platform_cpu_svn;     ///< Pointer to the platform's raw CPUSVN
 //     sgx_isv_svn_t *p_platform_pce_isv_svn; ///< Pointer to the platform's raw PCE ISVSVN
 //     uint8_t *p_encrypted_ppid;             ///< Pointer to the encrypted PPID (Optional)
