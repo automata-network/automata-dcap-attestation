@@ -7,7 +7,6 @@
 </div>
 
 # Automata DCAP Attestation
-[![Automata DCAP Attestation](https://img.shields.io/badge/Power%20By-Automata-orange.svg)](https://github.com/automata-network)
 
 ## Table of Contents
 - [Summary](#summary)
@@ -49,15 +48,15 @@ The Rust workspace provides a comprehensive toolkit for Intel DCAP quote verific
 
 ## Automata DCAP Attestation on EVM
 
-> ### Audit Reports:
->
-> - [2025-02 Automata Onchain PCCS and DCAP EVM Contract Audit by Trail of Bits](https://github.com/trailofbits/publications/blob/master/reviews/2025-02-automata-dcap-attestation-onchain-pccs-securityreview.pdf)
->
-> Comprehensive audit targeted both Automata Onchain PCCS and Automata DCAP EVM contracts based on the [v1.0](https://github.com/automata-network/automata-dcap-attestation/releases/tag/v1.0.0) release.
->
-> - [2025-10 Jovay-TEE-Verifier Audit by OpenZeppelin](https://github.com/jovaynetwork/jovay-docs/blob/main/security-reports/202510/Jovay-TEE-Verifier-Audit-2025.10.pdf)
->
-> Jovay TEE implemented its own TEE Verifier contract, which is dependent on Automata DCAP Contract. Although, the exact commit of the codebase is undisclosed, the report mentioned the use of V5 Quote Verifier and raised issues regarding collateral timestamp validity check in the PCCS Router. This issue [has been fixed](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0) as part of the current v1.1 release.
+### Audit Reports:
+
+- [2025-02 Automata Onchain PCCS and DCAP EVM Contract Audit by Trail of Bits](https://github.com/trailofbits/publications/blob/master/reviews/2025-02-automata-dcap-attestation-onchain-pccs-securityreview.pdf)
+
+Comprehensive audit targeted both Automata Onchain PCCS and Automata DCAP EVM contracts based on the [v1.0](https://github.com/automata-network/automata-dcap-attestation/releases/tag/v1.0.0) release.
+
+- [2025-10 Jovay-TEE-Verifier Audit by OpenZeppelin](https://github.com/jovaynetwork/jovay-docs/blob/main/security-reports/202510/Jovay-TEE-Verifier-Audit-2025.10.pdf)
+
+Jovay TEE implemented its own TEE Verifier contract, which is dependent on Automata DCAP Contract. Although, the exact commit of the codebase is undisclosed, the report mentioned the use of V5 Quote Verifier and raised issues regarding collateral timestamp validity check in the PCCS Router. This issue [has been fixed](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0) as part of the current v1.1 release.
 
 It consists of three smart contracts:
 
@@ -85,6 +84,6 @@ Automata DCAP Attestation contract implements two attestation methods available 
 >
 > The Solana programs are not audited for production use.
 
-> [ℹ️ **NOTE:**]
+> ℹ️ **NOTE:**
 >
 > We are currently working on full-fledged DCAP Attestation for the Solana ecosystem, which consists of both the Quote Verifiers and PCCS programs. You can learn more about it [here](./solana/automata-dcap-framework/README.md).
