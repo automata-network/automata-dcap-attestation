@@ -898,13 +898,13 @@ fn get_intel_pcs_subscription_key() -> Result<String, Quote3Error> {
     match std::env::var(INTEL_PCS_SUBSCRIPTION_KEY_ENV) {
         Ok(v) => {
             if v.is_empty() {
-                println!("[Auotmata DCAP QPL] pleause configure the intel pcs subscription key");
+                println!("[Automata DCAP QPL] pleause configure the intel pcs subscription key");
                 return Err(Quote3Error::SgxQlErrorPlatformLibUnavailable);
             }
             Ok(v)
         }
         Err(_) => {
-            println!("[Auotmata DCAP QPL] pleause configure the intel pcs subscription key");
+            println!("[Automata DCAP QPL] pleause configure the intel pcs subscription key");
             Err(Quote3Error::SgxQlErrorPlatformLibUnavailable)
         }
     }
