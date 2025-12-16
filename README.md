@@ -81,7 +81,8 @@ See the [EVM integration guide](./evm/README.md) for contract integration and de
 
 ### Solana Integration
 
-> **Note:** The Solana programs are currently in development and available for localnet testing only.
+> [!NOTE]
+> The Solana programs are currently in development and available for localnet testing only.
 
 See the [Solana DCAP framework documentation](./solana/automata-dcap-framework/README.md) for architecture details and testing instructions.
 
@@ -116,8 +117,7 @@ See the [Solana DCAP framework documentation](./solana/automata-dcap-framework/R
 | Feb 2025 | Trail of Bits | Automata Onchain PCCS & Automata DCAP Attestation EVM (v1.0) | [View](https://github.com/trailofbits/publications/blob/master/reviews/2025-02-automata-dcap-attestation-onchain-pccs-securityreview.pdf) |
 | Oct 2025 | OpenZeppelin | Jovay TEE Verifier (uses Automata DCAP Attestation) | [View](https://github.com/jovaynetwork/jovay-docs/blob/main/security-reports/202510/Jovay-TEE-Verifier-Audit-2025.10.pdf) |
 
-> [!NOTE]
-> The OpenZeppelin audit identified a PCCS Router timestamp validity issue, which [has been fixed](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0) in v1.1.
+- The OpenZeppelin audit identified a PCCS Router timestamp validity issue, which [has been fixed](https://github.com/automata-network/automata-dcap-attestation/pull/52/commits/62466820089a124ac872e6cedbae2a4cdae416b0) in v1.1.
 
 > [!CAUTION]
 > The Solana programs are not audited for production use.
