@@ -7,7 +7,6 @@
 </div>
 
 # Automata DCAP Rust Library Workspace
-[![Automata DCAP Rust Library Workspace](https://img.shields.io/badge/Power%20By-Automata-orange.svg)](https://github.com/automata-network)
 
 ## Table of Contents
 - [Summary](#summary)

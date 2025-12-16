@@ -155,7 +155,8 @@ MULTICHAIN=true make deploy-verifier QUOTE_VERIFIER_VERSION=5
 MULTICHAIN=true make deploy-all-verifiers
 ```
 
-> ℹ️ **NOTE**: When using `MULTICHAIN=true`, you don't need to set `RPC_URL`.
+> [!TIP]
+> When using `MULTICHAIN=true`, you don't need to set `RPC_URL`.
 
 #### Add QuoteVerifier(s) to the Entrypoint contract:
 
@@ -163,7 +164,8 @@ MULTICHAIN=true make deploy-all-verifiers
 make config-verifier RPC_URL=<rpc-url> QUOTE_VERIFIER_VERSION=<ver>
 ```
 
-> ℹ️ **NOTE**: This command automatically grants the Quote Verifier read access to the PCCS Router.
+> [!NOTE]
+> This command automatically grants the Quote Verifier read access to the PCCS Router.
 
 
 #### Explicitly Granting or Revoking the access privilege for the specified caller address to the PCCS Router
