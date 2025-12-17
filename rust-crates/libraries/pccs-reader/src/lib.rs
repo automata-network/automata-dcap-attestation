@@ -38,7 +38,7 @@ const TCB_VERSION: u32 = 3;
 
 fn collateral_is_outdated(eid: &str, collateral_name: &str) -> bool {
     let json_data: Value =
-        serde_json::from_str(&eid).expect("unable to convert collateral fo json");
+        serde_json::from_str(&eid).expect("unable to convert collateral to json");
 
     let next_update_str = json_data[&collateral_name]["nextUpdate"]
         .as_str()

@@ -183,8 +183,7 @@ abstract contract PCCSSetupBase is Test {
             }
         }
 
-        // Solady JSONParserLib does not provide a method where I can convert a hexstring to bytes
-        // i am sad
+        // Solady JSONParserLib does not provide a method to convert a hexstring to bytes
         tcbInfoJson.signature = stdJson.readBytes(tcbInfoData, ".signature");
     }
 
@@ -208,8 +207,7 @@ abstract contract PCCSSetupBase is Test {
             }
         }
 
-        // Solady JSONParserLib does not provide a method where I can convert a hexstring to bytes
-        // i am sad
+        // Solady JSONParserLib does not provide a method to convert a hexstring to bytes
         identityJson.signature = stdJson.readBytes(idData, ".signature");
     }
 
@@ -233,8 +231,7 @@ abstract contract PCCSSetupBase is Test {
             }
         }
 
-        // Solady JSONParserLib does not provide a method where I can convert a hexstring to bytes
-        // i am sad
+        // Solady JSONParserLib does not provide a method to convert a hexstring to bytes
         tcbEvalJson.signature = stdJson.readBytes(tcbEvalData, ".signature");
     }
 

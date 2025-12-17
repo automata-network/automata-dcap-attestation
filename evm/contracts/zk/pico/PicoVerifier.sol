@@ -6,12 +6,12 @@ import {Verifier} from "./Groth16Verifier.sol";
 
 /// @title Pico Verifier
 /// @author Brevis Network
-/// @notice This contracts implements a solidity verifier for Pico.
+/// @notice This contract implements a Solidity verifier for Pico.
 contract PicoVerifier is Verifier, IPicoVerifier {
     /// @notice Thrown when the proof is invalid.
     error InvalidProof();
 
-    /// @notice Hashes the public values to a field elements inside Bn254.
+    /// @notice Hashes the public values to a field element inside Bn254.
     /// @param publicValues The public values.
     function hashPublicValues(
         bytes calldata publicValues

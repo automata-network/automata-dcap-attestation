@@ -12,7 +12,7 @@ pragma solidity ^0.8.0;
 contract Verifier {
     
     /// Some of the provided public input values are larger than the field modulus.
-    /// @dev Public input elements are not automatically reduced, as this is can be
+    /// @dev Public input elements are not automatically reduced, as this can be
     /// a dangerous source of bugs.
     error PublicInputNotInField();
 
@@ -121,7 +121,7 @@ contract Verifier {
         } 
     }
 
-    /// Invertsion in Fp.
+    /// Inversion in Fp.
     /// @notice Returns a number x such that a * x = 1 in Fp.
     /// @notice The input does not need to be reduced.
     /// @notice Reverts with ProofInvalid() if the inverse does not exist
