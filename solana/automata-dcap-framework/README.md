@@ -37,10 +37,9 @@ This architecture enables secure, on-chain attestation verification while handli
 
 ## Detailed: Quote Verification Flow
 
-> ℹ️ **NOTE:**
+> [!NOTE]
 > 
-> This is a simplified sequence diagram showing the Automata Solana Onchain PCCS program as a single entity. In reality, the PCCS program derives corresponding PDAs to store collaterals for each DAO (Data Access Object), e.g. an FMSPC TCB PDA representing FMSPC TCB DAO and etc...
-> 
+> This is a simplified sequence diagram showing the Automata Onchain PCCS Solana program as a single entity. In reality, the PCCS program derives corresponding PDAs to store collaterals for each DAO (Data Access Object), e.g. an FMSPC TCB PDA representing FMSPC TCB DAO and etc...
 
 ```mermaid
 sequenceDiagram
