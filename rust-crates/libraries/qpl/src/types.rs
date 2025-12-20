@@ -21,7 +21,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_PLATFORM_LIB_UNAVAILABLE = SGX_QL_MK_ERROR(0x000e),       ///< Unable to find the platform library with the dependent APIs.  Not fatal.
 //     SGX_QL_ATT_KEY_NOT_INITIALIZED = SGX_QL_MK_ERROR(0x000f),        ///< The attestation key doesn't exist or has not been certified.
 //     SGX_QL_ATT_KEY_CERT_DATA_INVALID = SGX_QL_MK_ERROR(0x0010),      ///< The certification data retrieved from the platform library is invalid.
-//     SGX_QL_NO_PLATFORM_CERT_DATA = SGX_QL_MK_ERROR(0x0011),          ///< The platform library doesn't have any platfrom cert data.
+//     SGX_QL_NO_PLATFORM_CERT_DATA = SGX_QL_MK_ERROR(0x0011),          ///< The platform library doesn't have any platform cert data.
 //     SGX_QL_OUT_OF_EPC = SGX_QL_MK_ERROR(0x0012),                     ///< Not enough memory in the EPC to load the enclave.
 //     SGX_QL_ERROR_REPORT = SGX_QL_MK_ERROR(0x0013),                   ///< There was a problem verifying an SGX REPORT.
 //     SGX_QL_ENCLAVE_LOST = SGX_QL_MK_ERROR(0x0014),                   ///< Interfacing to the enclave failed due to a power transition.
