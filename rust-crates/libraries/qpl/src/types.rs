@@ -222,7 +222,7 @@ pub enum SgxQlConfigVersion {
 //     sgx_cpu_svn_t *p_platform_cpu_svn;     ///< Pointer to the platform's raw CPUSVN
 //     sgx_isv_svn_t *p_platform_pce_isv_svn; ///< Pointer to the platform's raw PCE ISVSVN
 //     uint8_t *p_encrypted_ppid;             ///< Pointer to the encrypted PPID (Optional)
-//     uint32_t encrypted_ppid_size;          ///< Size of encrytped PPID.
+//     uint32_t encrypted_ppid_size;          ///< Size of encrypted PPID.
 //     uint8_t crypto_suite;                  ///< Crypto algorithm used to encrypt the PPID
 //     uint16_t pce_id;                       ///< Identifies the PCE-Version used to generate the encrypted PPID.
 // }sgx_ql_pck_cert_id_t;
