@@ -1,0 +1,28 @@
+syntax = "proto3";
+option go_package="./sp1_proto";
+
+package artifact;
+
+service ArtifactStore {
+    rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
+}
+
+message CreateArtifactRequest {
+    bytes signature = 1;
+    ArtifactType artifact_type = 2;
+}
+
+enum ArtifactType {
+    UnspecifiedArtifactType = 0;
+    /// A program artifact.
+    Program = 1;
+    /// A stdin artifact.
+    Stdin = 2;
+    /// A proof artifact.
+    Proof = 3;
+}
+
+message CreateArtifactResponse {
+    string artifact_uri = 1;
+    string artifact_presigned_url = 2;
+}

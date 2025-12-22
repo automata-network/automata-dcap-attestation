@@ -1,0 +1,73 @@
+name: SDK Compile Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'go-sdk/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'rust-crates/libraries/network-registry/**'
+      - 'deployment/**'
+  pull_request:
+    branches:
+      - main
+      - 'v*'
+    paths:
+      - 'go-sdk/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'rust-crates/libraries/network-registry/**'
+      - 'deployment/**'
+  workflow_dispatch:
+
+jobs:
+  go-build:
+    name: Go SDK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./go-sdk/... -v
+
+  rust-network-registry:
+    name: Rust Network Registry
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: rust-crates/libraries/network-registry
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test
