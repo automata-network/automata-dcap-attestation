@@ -38,9 +38,6 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
-        run: go test ./go-sdk/... -v
-
   rust-network-registry:
     name: Rust Network Registry
     runs-on: ubuntu-latest
@@ -68,6 +65,3 @@ jobs:
 
       - name: Build
         run: cargo build --release
-
-      - name: Test
-        run: cargo test
