@@ -8,7 +8,7 @@ The verification process leverages dedicated quote verifiers to attest hardware 
 
 ---
 
-## Table of Content
+## Table of Contents
 1. [Overview](#1-overview)
 2. [Quote Structure](#2-quote-structure)
 3. [Quote Verification](#3-quote-verification)
