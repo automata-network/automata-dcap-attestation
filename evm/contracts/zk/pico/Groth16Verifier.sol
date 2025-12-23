@@ -257,7 +257,7 @@ contract Verifier {
     /// with coordinates (x0 + x1 ⋅ i, y0 + y1 ⋅ i). 
     /// @notice The point at infinity is encoded as (0,0,0,0) and compressed to (0,0).
     /// @param x0 The real part of the X coordinate.
-    /// @param x1 The imaginary poart of the X coordinate.
+    /// @param x1 The imaginary part of the X coordinate.
     /// @param y0 The real part of the Y coordinate.
     /// @param y1 The imaginary part of the Y coordinate.
     /// @return c0 The first half of the compresed point (x0 with two signal bits).
