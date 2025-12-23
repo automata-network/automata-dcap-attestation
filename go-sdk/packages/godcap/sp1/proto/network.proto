@@ -1,0 +1,135 @@
+syntax = "proto3";
+option go_package="./sp1_proto";
+
+package network;
+
+service ProverNetwork {
+  rpc GetNonce(GetNonceRequest) returns (GetNonceResponse);
+  rpc RequestProof(RequestProofRequest) returns (RequestProofResponse);
+  rpc GetProofRequestStatus(GetProofRequestStatusRequest) returns (GetProofRequestStatusResponse);
+}
+
+message GetNonceRequest {
+    bytes address = 1;
+}
+
+message GetNonceResponse {
+    uint64 nonce = 1;
+}
+
+message RequestProofRequestBody {
+    /// The account nonce of the sender.
+    uint64 nonce = 1;
+    /// The verification key hash of the program.
+    bytes vk_hash = 2;
+    /// The version of the prover to use.
+    string version = 3;
+    /// The mode for the request.
+    ProofMode mode = 4;
+    /// The strategy for fulfiller assignment.
+    FulfillmentStrategy strategy = 5;
+    /// The stdin resource identifier.
+    string stdin_uri = 6;
+    /// The deadline for the request.
+    uint64 deadline = 7;
+    /// The cycle limit for the request.
+    uint64 cycle_limit = 8;
+}
+
+message RequestProofRequest {
+    /// The message format of the body.
+    MessageFormat format = 1;
+    /// The signature of the sender.
+    bytes signature = 2;
+    /// The body of the request.
+    optional RequestProofRequestBody body = 3;
+}
+
+enum ProofMode {
+    UnspecifiedProofMode = 0;
+    /// The core proof mode.
+    Core = 1;
+    /// The compressed proof mode.
+    Compressed = 2;
+    /// The plonk proof mode.
+    Plonk = 3;
+    /// The groth16 proof mode.
+    Groth16 = 4;
+}
+
+enum FulfillmentStrategy {
+    UnspecifiedFulfillmentStrategy = 0;
+    /// The hosted fulfillment strategy. Uses Succinct's on-demand prover to fulfill requests.
+    Hosted = 1;
+    /// The reserved fulfillment strategy. Uses an already existing agreement with a
+    /// fulfiller to fulfill requests.
+    Reserved = 2;
+    /// The auction fulfillment strategy. Uses a decentralized proof contest to
+    /// fulfill requests.
+    Auction = 3;
+}
+
+enum MessageFormat {
+    /// Unspecified message format.
+    UnspecifiedMessageFormat = 0;
+    /// The message is in binary format.
+    Binary = 1;
+    /// The message is in JSON format.
+    Json = 2;
+}
+
+message RequestProofResponse {
+    bytes tx_hash = 1;
+    optional RequestProofResponseBody body = 2;
+}
+
+message RequestProofResponseBody {
+    bytes request_id = 1;
+}
+
+message GetProofRequestStatusRequest {
+  bytes request_id = 1;
+}
+
+message GetProofRequestStatusResponse {
+  /// The fulfillment status of the request.
+  FulfillmentStatus fulfillment_status = 1;
+  /// The execution status of the request.
+  ExecutionStatus execution_status = 2;
+  /// The transaction hash of the request.
+  bytes request_tx_hash = 3;
+  /// The deadline of the request. A request should be ignored if it is past
+  /// its deadline.
+  uint64 deadline = 4;
+  /// The optional transaction hash of the proof fulfill. Only included if the
+  /// request has a fulfillment status of FULFILLED.
+  optional bytes fulfill_tx_hash = 5;
+  /// The optional proof URI, where you can download the result of the request.
+  /// Only included if the request has a fulfillment status of FULFILLED.
+  optional string proof_uri = 6;
+  /// The optional public values hash from the execution of the request. Only
+  /// included if the request has an execution status of EXECUTED.
+  optional bytes public_values_hash = 7;
+}
+
+enum FulfillmentStatus {
+  UnspecifiedFulfillmentStatus = 0;
+  /// The request has been requested.
+  Requested = 1;
+  /// The request has been assigned to a fulfiller.
+  Assigned = 2;
+  /// The request has been fulfilled.
+  Fulfilled = 3;
+  /// The request cannot be fulfilled.
+  Unfulfillable = 4;
+}
+
+enum ExecutionStatus {
+  UnspecifiedExecutionStatus = 0;
+  /// The request has not been executed.
+  Unexecuted = 1;
+  /// The request has been executed.
+  Executed = 2;
+  /// The request cannot be executed.
+  Unexecutable = 3;
+}

@@ -1,0 +1,198 @@
+{
+  "eth_mainnet": {
+    "name": "Ethereum Mainnet",
+    "chain_id": 1,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/eth"],
+    "gas_price_hint_wei": 400000000,
+    "block_explorers": ["https://etherscan.io"]
+  },
+  "op_mainnet": {
+    "name": "Optimism",
+    "chain_id": 10,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/op"],
+    "gas_price_hint_wei": 5000,
+    "block_explorers": ["https://optimistic.etherscan.io/"]
+  },
+  "bnb_mainnet": {
+    "name": "BNB Smart Chain",
+    "chain_id": 56,
+    "testnet": false,
+    "rpc_endpoints": ["https://bsc-dataseed.bnbchain.org", "https://bsc.drpc.org"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://bscscan.com/"]
+  },
+  "bnb_testnet": {
+    "name": "BNB Testnet",
+    "chain_id": 97,
+    "testnet": true,
+    "rpc_endpoints": ["https://data-seed-prebsc-1-s1.bnbchain.org:8545", "https://bsc-testnet.drpc.org", "https://bsc-testnet-rpc.publicnode.com"],
+    "gas_price_hint_wei": 10000000000,
+    "block_explorers": ["https://testnet.bscscan.com/"]
+  },
+  "unichain_mainnet": {
+    "name": "Unichain Mainnet",
+    "chain_id": 130,
+    "testnet": false,
+    "rpc_endpoints": ["https://mainnet.unichain.org", "https://1rpc.io/unichain"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://uniscan.xyz/", "https://unichain.blockscout.com/"]
+  },
+  "polygon_mainnet": {
+    "name": "Polygon",
+    "chain_id": 137,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/matic"],
+    "gas_price_hint_wei": 28000000000,
+    "block_explorers": ["https://polygonscan.com/"]
+  },
+  "world_mainnet": {
+    "name": "World Chain",
+    "chain_id": 480,
+    "testnet": false,
+    "rpc_endpoints": ["https://worldchain-mainnet.g.alchemy.com/public"],
+    "gas_price_hint_wei": 100616,
+    "block_explorers": ["https://worldscan.org/"]
+  },
+  "hyperevm_testnet": {
+    "name": "HyperEVM Testnet",
+    "chain_id": 998,
+    "testnet": true,
+    "rpc_endpoints": ["https://rpc.hyperliquid-testnet.xyz/evm"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://testnet.purrsec.com/"]
+  },
+  "hyperevm_mainnet": {
+    "name": "HyperEVM Mainnet",
+    "chain_id": 999,
+    "testnet": false,
+    "rpc_endpoints": ["https://rpc.hyperliquid.xyz/evm", "https://1rpc.io/hyperliquid"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://hyperevmscan.io/", "https://www.hyperscan.com/", "https://purrsec.com/"]
+  },
+  "unichain_sepolia": {
+    "name": "Unichain Sepolia",
+    "chain_id": 1301,
+    "testnet": true,
+    "rpc_endpoints": ["https://sepolia.unichain.org"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://sepolia.uniscan.xyz/", "https://unichain-sepolia.blockscout.com/"]
+  },
+  "world_sepolia": {
+    "name": "World Chain Sepolia",
+    "chain_id": 4801,
+    "testnet": true,
+    "rpc_endpoints": ["https://worldchain-sepolia.drpc.org", "https://4801.rpc.thirdweb.com"],
+    "gas_price_hint_wei": 250,
+    "block_explorers": ["https://sepolia.worldscan.org/"]
+  },
+  "base_mainnet": {
+    "name": "Base",
+    "chain_id": 8453,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/base"],
+    "gas_price_hint_wei": 1900000,
+    "block_explorers": ["https://basescan.org/"]
+  },
+  "arbitrum_mainnet": {
+    "name": "Arbitrum One",
+    "chain_id": 42161,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/arb"],
+    "gas_price_hint_wei": 10000000,
+    "block_explorers": ["https://arbiscan.io/"]
+  },
+  "tempo_testnet": {
+    "name": "Tempo Testnet",
+    "chain_id": 42429,
+    "testnet": true,
+    "rpc_endpoints": ["https://rpc.testnet.tempo.xyz"],
+    "gas_price_hint_wei": 3000,
+    "block_explorers": ["https://scout.tempo.xyz/", "https://explore.tempo.xyz/"]
+  },
+  "avax_fuji": {
+    "name": "Avalanche Fuji",
+    "chain_id": 43113,
+    "testnet": true,
+    "rpc_endpoints": ["https://api.avax-test.network/ext/bc/C/rpc"],
+    "gas_price_hint_wei": 2,
+    "block_explorers": ["https://testnet.snowtrace.io/"]
+  },
+  "avax_mainnet": {
+    "name": "Avalanche C-Chain",
+    "chain_id": 43114,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/avax/c"],
+    "gas_price_hint_wei": 1500000000,
+    "block_explorers": ["https://snowtrace.io/"]
+  },
+  "automata_mainnet": {
+    "name": "Automata Mainnet",
+    "chain_id": 65536,
+    "testnet": false,
+    "rpc_endpoints": ["https://1rpc.io/ata", "https://rpc.ata.network"],
+    "gas_price_hint_wei": 300,
+    "block_explorers": ["https://explorer.ata.network/"]
+  },
+  "polygon_amoy": {
+    "name": "Polygon Amoy",
+    "chain_id": 80002,
+    "testnet": true,
+    "rpc_endpoints": ["https://rpc-amoy.polygon.technology", "https://polygon-amoy.drpc.org", "https://polygon-bor-amoy-rpc.publicnode.com"],
+    "gas_price_hint_wei": 26000000015,
+    "block_explorers": ["https://amoy.polygonscan.com/"]
+  },
+  "base_sepolia": {
+    "name": "Base Sepolia",
+    "chain_id": 84532,
+    "testnet": true,
+    "rpc_endpoints": ["https://sepolia.base.org", "https://base-sepolia.drpc.org"],
+    "gas_price_hint_wei": 200000000,
+    "block_explorers": ["https://sepolia.basescan.org/"]
+  },
+  "arbitrum_sepolia": {
+    "name": "Arbitrum Sepolia",
+    "chain_id": 421614,
+    "testnet": true,
+    "rpc_endpoints": ["https://sepolia-rollup.arbitrum.io/rpc", "https://arbitrum-sepolia.drpc.org"],
+    "gas_price_hint_wei": 100000000,
+    "block_explorers": ["https://sepolia.arbiscan.io/"]
+  },
+  "eth_hoodi": {
+    "name": "Ethereum Hoodi",
+    "chain_id": 560048,
+    "testnet": true,
+    "rpc_endpoints": ["https://rpc.hoodi.ethpandaops.io", "https://1rpc.io/hoodi"],
+    "gas_price_hint_wei": 200000000000,
+    "block_explorers": ["https://hoodi.etherscan.io/"]
+  },
+  "automata_testnet": {
+    "name": "Automata Testnet",
+    "chain_id": 1398243,
+    "testnet": true,
+    "rpc_endpoints": ["https://1rpc.io/ata/testnet", "https://rpc-testnet.ata.network"],
+    "gas_price_hint_wei": 300,
+    "block_explorers": ["https://explorer-testnet.ata.network/"],
+    "dcap_portal": "0x9BA04Db4c99C661f3831285e2f480d9381E5D4E8"
+  },
+  "eth_sepolia": {
+    "name": "Ethereum Sepolia",
+    "chain_id": 11155111,
+    "testnet": true,
+    "rpc_endpoints": ["https://1rpc.io/sepolia", "https://rpc.sepolia.ethpandaops.io", "https://sepolia.drpc.org"],
+    "gas_price_hint_wei": 700000000,
+    "block_explorers": ["https://sepolia.etherscan.io/"]
+  },
+  "op_sepolia": {
+    "name": "Optimism Sepolia",
+    "chain_id": 11155420,
+    "testnet": true,
+    "rpc_endpoints": ["https://sepolia.optimism.io", "https://optimism-sepolia.drpc.org"],
+    "gas_price_hint_wei": 3000,
+    "block_explorers": ["https://sepolia-optimistic.etherscan.io/"]
+  },
+  "default": {
+    "network_key": "automata_testnet"
+  }
+}
