@@ -14,7 +14,7 @@ These identifiers are required parameters for SNARK proof verifications, to show
 
 The [ImageID](https://dev.risczero.com/terminology#image-id) currently for the DCAP RiscZero Guest Program is 0x58fd3069a6965c9382f6d0c0e7a4a1590520c37df5ecc832e571150305a82aff.
 
-The [VKEY](https://docs.succinct.xyz/verification/onchain/solidity-sdk.html?#finding-your-program-vkey) currently for the DCAP SP1 Program is
+The [VKEY](https://docs.succinct.xyz/docs/sp1/verification/solidity-sdk#finding-your-program-vkey) currently for the DCAP SP1 Program is
 0x0021feaf3f6c78429dac7756fac5cfed39b606e34603443409733e13a1cf06cc.
 
 ---
