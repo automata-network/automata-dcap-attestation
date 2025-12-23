@@ -30,7 +30,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_UNABLE_TO_GENERATE_QE_REPORT = SGX_QL_MK_ERROR(0x0017),   ///< The QE was unable to generate its own report targeting the application enclave either
 //                                                                      ///< because the QE doesn't support this feature there is an enclave compatibility issue.
 //                                                                      ///< Please call again with the p_qe_report_info to NULL.
-//     SGX_QL_KEY_CERTIFCATION_ERROR = SGX_QL_MK_ERROR(0x0018),         ///< Caused when the provider library returns an invalid TCB (too high).
+//     SGX_QL_KEY_CERTIFICATION_ERROR = SGX_QL_MK_ERROR(0x0018),         ///< Caused when the provider library returns an invalid TCB (too high).
 //     SGX_QL_NETWORK_ERROR = SGX_QL_MK_ERROR(0x0019),                  ///< Network error when retrieving PCK certs
 //     SGX_QL_MESSAGE_ERROR = SGX_QL_MK_ERROR(0x001a),                  ///< Message error when retrieving PCK certs
 //     SGX_QL_NO_QUOTE_COLLATERAL_DATA = SGX_QL_MK_ERROR(0x001b),       ///< The platform does not have the quote verification collateral data available.

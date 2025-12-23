@@ -21,7 +21,7 @@ const TD10_REPORT_LEN: usize = 584; // TD10_REPORT
 const TD15_REPORT_LEN: usize = 648; // TD15_REPORT
 
 // serialization:
-// [quote_vesion][quote_body_type][tcb_status][fmspc][quote_body_raw_bytes][abi-encoded string array
+// [quote_version][quote_body_type][tcb_status][fmspc][quote_body_raw_bytes][abi-encoded string array
 // of tcb_advisory_ids] 2 bytes + 2 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384;
 // TD10_REPORT = 584; TD15_REPORT = 648) + var total: 11 + (384 or 584 or 648) + var bytes
 #[derive(Debug, Serialize, Deserialize)]
