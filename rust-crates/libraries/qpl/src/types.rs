@@ -59,7 +59,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_TCB_REVOKED = SGX_QL_MK_ERROR(0x0032),
 //     SGX_QL_TCB_CONFIGURATION_NEEDED = SGX_QL_MK_ERROR(0x0033),
 //     SGX_QL_UNABLE_TO_GET_COLLATERAL = SGX_QL_MK_ERROR(0x0034),
-//     SGX_QL_ERROR_INVALID_PRIVILEGE = SGX_QL_MK_ERROR(0x0035),        ///< No enough privilege to perform the operation
+//     SGX_QL_ERROR_INVALID_PRIVILEGE = SGX_QL_MK_ERROR(0x0035),        ///< Not enough privilege to perform the operation
 //     SGX_QL_NO_QVE_IDENTITY_DATA = SGX_QL_MK_ERROR(0x0037),           ///< The platform does not have the QVE identity data available.
 //     SGX_QL_CRL_UNSUPPORTED_FORMAT = SGX_QL_MK_ERROR(0x0038),
 //     SGX_QL_QEIDENTITY_CHAIN_ERROR = SGX_QL_MK_ERROR(0x0039),
