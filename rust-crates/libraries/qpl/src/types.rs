@@ -293,7 +293,7 @@ pub union SgxQlQveCollateralVersion {
 //         uint32_t version;           ///< 'version' is the backward compatible legacy representation
 //         struct {                    ///< For PCS V1 and V2 APIs, the major_version = 1 and minor_version = 0 and
 //             uint16_t major_version; ///< the CRLs will be formatted in PEM. For PCS V3 APIs, the major_version = 3 and the
-//             uint16_t minor_version; ///< minor_version can be either 0 or 1. minor_verion of 0 indicates the CRL’s are formatted
+//             uint16_t minor_version; ///< minor_version can be either 0 or 1. minor_version of 0 indicates the CRL’s are formatted
 //                                     ///< in Base16 encoded DER.  A minor version of 1 indicates the CRL’s are formatted in raw binary DER.
 //         };
 //     };
