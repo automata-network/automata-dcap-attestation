@@ -37,7 +37,7 @@ function verifyAndAttestWithZkProof(
     bytes output,
     uint8 zkCoProcessor,
     bytes proof,
-    bytes32 programIdentifier
+    bytes32 programIdentifier,
     uint32 tcbEvalDataNumber
 );
 ```
