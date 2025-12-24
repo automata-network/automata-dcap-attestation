@@ -270,7 +270,7 @@ pub(crate) fn upsert_enclave_identity<P: Provider>(
             println!("Error: {:?}", err);
         }
     }
-
+    let id = U256::from(enclave_id as u32);
     let enclave_identity: EnclaveIdentity = serde_json::from_str(enclave_identity_str).unwrap();
     // Jiaquan: we cannot use serde lib to deserialize the enclave_identity_str, because in v4 struct, an inner struct is also indexmap here
     // Need to have a better implementation here
