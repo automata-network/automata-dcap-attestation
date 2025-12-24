@@ -138,6 +138,6 @@ After successful verification, the attestation contract generates a serialized o
 - bytes[] quote body (either Local ISV Report or TD10 Report, depending on the specified TEE)
 - string[] TCB Advisory IDs (abi encoded)
 
-These values are then forwarded to downstream applications, which it will have the final decision on whether to consider the input quote to be fully compliant with their own security policy.
+These values are then forwarded to downstream applications, which will have the final decision on whether to consider the input quote to be fully compliant with their own security policy.
 
 ---
