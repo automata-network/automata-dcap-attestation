@@ -270,18 +270,7 @@ pub(crate) fn upsert_enclave_identity<P: Provider>(
             println!("Error: {:?}", err);
         }
     }
-    let id = U256::from(enclave_id as u32);
-    let version = if collateral_version == "v1" {
-        U256::from(1u32)
-    } else if collateral_version == "v2" {
-        U256::from(2u32)
-    } else if collateral_version == "v3" {
-        U256::from(3u32)
-    } else if collateral_version == "v4" {
-        U256::from(4u32)
-    } else {
-        U256::from(3u32) // use v3 as default dcap attestation version
-    };
+
     let enclave_identity: EnclaveIdentity = serde_json::from_str(enclave_identity_str).unwrap();
     // Jiaquan: we cannot use serde lib to deserialize the enclave_identity_str, because in v4 struct, an inner struct is also indexmap here
     // Need to have a better implementation here
