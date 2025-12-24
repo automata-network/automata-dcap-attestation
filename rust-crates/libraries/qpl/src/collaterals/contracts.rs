@@ -15,6 +15,10 @@ fn get_gas_price(network: &Network) -> u128 {
     network.gas_price_hint_wei().unwrap_or(10000u128)
 }
 
+/// Parse collateral version string to U256
+///
+/// Converts version strings like "v1", "v2", "v3", "v4" to their numeric U256 equivalents.
+/// Defaults to version 3 if an unknown version is provided.
 fn parse_collateral_version(collateral_version: &str) -> U256 {
     match collateral_version {
         "v1" => U256::from(1u32),
