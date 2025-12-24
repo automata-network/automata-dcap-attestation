@@ -15,6 +15,16 @@ fn get_gas_price(network: &Network) -> u128 {
     network.gas_price_hint_wei().unwrap_or(10000u128)
 }
 
+fn parse_collateral_version(collateral_version: &str) -> U256 {
+    match collateral_version {
+        "v1" => U256::from(1u32),
+        "v2" => U256::from(2u32),
+        "v3" => U256::from(3u32),
+        "v4" => U256::from(4u32),
+        _ => U256::from(3u32), // use v3 as default dcap attestation version
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn upsert_pck_cert<P: Provider>(
     provider: &P,
