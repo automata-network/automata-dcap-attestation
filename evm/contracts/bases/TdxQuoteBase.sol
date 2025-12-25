@@ -9,7 +9,8 @@ import {
     TDXModuleIdentity
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {TD10ReportBody, TD15ReportBody} from "../utils/TDReportParser.sol";
-import {PCKCertTCB} from "../types/CommonStruct.sol";
+import {PCKCertTCB, AuthData} from "../types/CommonStruct.sol";
+import {BELE} from "../utils/BELE.sol";
 
 import "./QuoteVerifierBase.sol";
 import "./tcb/TCBInfoV3Base.sol";
