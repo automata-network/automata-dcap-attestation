@@ -99,6 +99,19 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
 
     /**
      * @dev Shared AuthData parsing logic for V4 and V5 quote formats
+     *
+     * Format (V4/V5):
+     * [0:64] bytes: ecdsa256BitSignature
+     * [64:128] bytes: ecdsaAttestationKey
+     * [128:130] bytes: qeReportCertType (must be 6)
+     * [130:134] bytes: qeReportCertSize (X)
+     * [134:518] bytes: qeReport
+     * [518:582] bytes: qeReportSignature
+     * [582:584] bytes: qeAuthDataSize (Y)
+     * [584:584+Y] bytes: qeAuthData
+     * [584+Y:586+Y] bytes: pckCertType (must be 5)
+     * [586+Y:590+Y] bytes: certSize (Z)
+     * [590+Y:590+Y+Z] bytes: certData
      */
     function _parseAuthDataV4V5(bytes calldata rawAuthData)
         internal
