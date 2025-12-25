@@ -84,7 +84,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthDataV4V5(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, rawQuoteBody, authData);
         }
