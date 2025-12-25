@@ -97,6 +97,9 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         return (false, tdxModuleIdentity);
     }
 
+    /**
+     * @dev Shared AuthData parsing logic for V4 and V5 quote formats
+     */
     function _parseAuthDataV4V5(bytes calldata rawAuthData)
         internal
         view
