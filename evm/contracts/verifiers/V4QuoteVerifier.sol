@@ -84,7 +84,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthDataV4V5(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, rawQuoteBody, authData);
         }
@@ -192,66 +192,5 @@ contract V4QuoteVerifier is TdxQuoteBase {
             advisoryIDs: tcbLevels[tcbLevelSelected].advisoryIDs
         });
         serialized = serializeOutput(output);
-    }
-
-    /**
-     * @dev set visibility to internal because this can be reused by V5 or above QuoteVerifiers
-     *
-     * [0:64] bytes: ecdsa256BitSignature
-     * [64:128] bytes: ecdsaAttestationKey
-     * [128:130] bytes: qeReportCertType
-     * [130:134] bytes: qeReportCertSize (X)
-     * NOTE: the calculations below assume qeReportCertType == 6
-     * [134:518] bytes: qeReport
-     * [518:582] bytes: qeReportSignature
-     * [582:584] bytes: qeAuthDataSize (Y)
-     * [584:584+Y] bytes: qeAuthData
-     * [584+Y:586+Y] bytes: pckCertType
-     * NOTE: the calculations below assume pckCertType == 5
-     * [586+Y:590+Y] bytes: certSize (Z)
-     * [590+Y:590+Y+Z] bytes: certData
-     */
-    function _parseAuthData(bytes calldata rawAuthData)
-        private
-        view
-        returns (bool success, AuthData memory authData)
-    {
-        authData.ecdsa256BitSignature = rawAuthData[0:64];
-        authData.ecdsaAttestationKey = rawAuthData[64:128];
-
-        uint256 qeReportCertType = BELE.leBytesToBeUint(rawAuthData[128:130]);
-        if (qeReportCertType != 6) {
-            return (false, authData);
-        }
-        uint256 qeReportCertSize = BELE.leBytesToBeUint(rawAuthData[130:134]);
-        authData.qeReportSignature = rawAuthData[518:582];
-
-        uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
-        uint256 offset = 584;
-        authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
-        offset += qeAuthDataSize;
-
-        uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
-        if (certType != 5) {
-            return (false, authData);
-        }
-
-        offset += 2;
-        uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
-        offset += 4;
-        bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
-        offset += certDataSize;
-
-        if (offset - 134 != qeReportCertSize) {
-            return (false, authData);
-        }
-
-        authData.qeReport = rawAuthData[134:518];
-
-        (success, authData.certification) =
-            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
-        if (!success) {
-            return (false, authData);
-        }
     }
 }

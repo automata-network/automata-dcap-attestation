@@ -177,53 +177,9 @@ contract V5QuoteVerifier is TdxQuoteBase {
             return (false, ADS, 0, 0, authData);
         }
 
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthDataV4V5(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, 0, 0, authData);
-        }
-    }
-
-    function _parseAuthData(bytes calldata rawAuthData)
-        private
-        view
-        returns (bool success, AuthData memory authData)
-    {
-        authData.ecdsa256BitSignature = rawAuthData[0:64];
-        authData.ecdsaAttestationKey = rawAuthData[64:128];
-
-        uint256 qeReportCertType = BELE.leBytesToBeUint(rawAuthData[128:130]);
-        if (qeReportCertType != 6) {
-            return (false, authData);
-        }
-        uint256 qeReportCertSize = BELE.leBytesToBeUint(rawAuthData[130:134]);
-        authData.qeReportSignature = rawAuthData[518:582];
-
-        uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
-        uint256 offset = 584;
-        authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
-        offset += qeAuthDataSize;
-
-        uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
-        if (certType != 5) {
-            return (false, authData);
-        }
-
-        offset += 2;
-        uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
-        offset += 4;
-        bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
-        offset += certDataSize;
-
-        if (offset - 134 != qeReportCertSize) {
-            return (false, authData);
-        }
-
-        authData.qeReport = rawAuthData[134:518];
-
-        (success, authData.certification) =
-            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
-        if (!success) {
-            return (false, authData);
         }
     }
 
