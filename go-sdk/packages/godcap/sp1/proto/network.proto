@@ -7,6 +7,8 @@ service ProverNetwork {
   rpc GetNonce(GetNonceRequest) returns (GetNonceResponse);
   rpc RequestProof(RequestProofRequest) returns (RequestProofResponse);
   rpc GetProofRequestStatus(GetProofRequestStatusRequest) returns (GetProofRequestStatusResponse);
+  rpc GetProofRequestParams(GetProofRequestParamsRequest) returns (GetProofRequestParamsResponse);
+  rpc GetProversByUptime(GetProversByUptimeRequest) returns (GetProversByUptimeResponse);
 }
 
 message GetNonceRequest {
@@ -34,6 +36,31 @@ message RequestProofRequestBody {
     uint64 deadline = 7;
     /// The cycle limit for the request.
     uint64 cycle_limit = 8;
+    /// The gas limit for the request. If 0, the cycle_limit is used.
+    uint64 gas_limit = 9;
+    /// The minimum period a request can be in auction in seconds. Zero indicates no minimum.
+    uint64 min_auction_period = 10;
+    /// The whitelist of provers that can bid and prove this request. An empty list indicates that
+    /// any prover can participate.
+    repeated bytes whitelist = 11;
+    /// The domain separator bytes for the request.
+    bytes domain = 12;
+    /// The auctioneer address.
+    bytes auctioneer = 13;
+    /// The executor address.
+    bytes executor = 14;
+    /// The verifier address.
+    bytes verifier = 15;
+    /// The optional public values hash.
+    optional bytes public_values_hash = 16;
+    /// The base fee for the request (string with 18 decimals).
+    string base_fee = 17;
+    /// The max price per prover gas unit for the request (string with 18 decimals).
+    string max_price_per_pgu = 18;
+    /// The variant of the transaction.
+    TransactionVariant variant = 19;
+    /// The treasury address.
+    bytes treasury = 20;
 }
 
 message RequestProofRequest {
@@ -76,6 +103,17 @@ enum MessageFormat {
     Binary = 1;
     /// The message is in JSON format.
     Json = 2;
+}
+
+enum TransactionVariant {
+    RequestVariant = 0;
+    BidVariant = 1;
+    SettleVariant = 2;
+    ExecuteVariant = 3;
+    FulfillVariant = 4;
+    DelegateVariant = 5;
+    TransferVariant = 6;
+    WithdrawVariant = 7;
 }
 
 message RequestProofResponse {
@@ -132,4 +170,36 @@ enum ExecutionStatus {
   Executed = 2;
   /// The request cannot be executed.
   Unexecutable = 3;
+}
+
+message GetProofRequestParamsRequest {
+    /// The mode for the request.
+    ProofMode mode = 1;
+}
+
+message GetProofRequestParamsResponse {
+    /// The domain separator bytes.
+    bytes domain = 1;
+    /// The default auctioneer address.
+    bytes auctioneer = 2;
+    /// The default executor address.
+    bytes executor = 3;
+    /// The default verifier address.
+    bytes verifier = 4;
+    /// The default max price per prover gas unit (string with 18 decimals).
+    string max_price_per_pgu = 5;
+    /// The base fee for the specified proof mode (string with 18 decimals).
+    string base_fee = 6;
+    /// The default treasury address.
+    bytes treasury = 7;
+}
+
+message GetProversByUptimeRequest {
+    /// Whether to only return high availability provers.
+    bool high_availability_only = 1;
+}
+
+message GetProversByUptimeResponse {
+    /// The provers that have historically had reliable uptime.
+    repeated bytes provers = 1;
 }

@@ -6,4 +6,4 @@ package sp1
 // * protoc-gen-go-grpc: `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`
 
 //go:generate rm -fr sp1_proto
-//go:generate protoc --proto_path=proto --go_out . --go-grpc_out . network.proto artifact.proto
+//go:generate protoc --experimental_allow_proto3_optional --proto_path=proto --go_out . --go-grpc_out . network.proto artifact.proto
