@@ -40,6 +40,7 @@ type Config struct {
 	PollIntervalSecs int    `json:"poll_interval_secs"`
 	Version          string `json:"version"`
 	CycleLimit       uint64 `json:"cycle_limit"`
+	GasLimit         uint64 `json:"gas_limit"`
 	Timeout          uint64 `json:"timeout"`
 
 	Strategy sp1_proto.FulfillmentStrategy `json:"strategy"`
@@ -65,7 +66,10 @@ func (c *Config) Init() error {
 		c.Version = "v5.2.1"
 	}
 	if c.CycleLimit == 0 {
-		c.CycleLimit = 1_000_000_000_000 // Mainnet default
+		c.CycleLimit = 1_000_000_000_000
+	}
+	if c.GasLimit == 0 {
+		c.GasLimit = 1_000_000_000
 	}
 	if c.Timeout == 0 {
 		c.Timeout = 14400

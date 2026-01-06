@@ -166,7 +166,7 @@ func (c *Client) CreateProof(ctx context.Context, programVkHash common.Hash, std
 		StdinUri:         stdinUrl,
 		Deadline:         uint64(time.Now().Unix()) + c.cfg.Timeout,
 		CycleLimit:       c.cfg.CycleLimit,
-		GasLimit:         1_000_000_000,
+		GasLimit:         c.cfg.GasLimit,
 		MinAuctionPeriod: 0,
 		Whitelist:        whitelist,
 		Domain:           auctionParams.Domain,
