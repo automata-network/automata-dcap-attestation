@@ -1740,7 +1740,6 @@ dependencies = [
  "automata-dcap-evm-bindings",
  "automata-dcap-network-registry",
  "automata-dcap-utils",
- "automata-dcap-zkvm",
  "hex",
  "serde",
  "serde_json",

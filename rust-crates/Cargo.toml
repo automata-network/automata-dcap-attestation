@@ -51,7 +51,7 @@ dcap-rs = { path = "libraries/dcap-rs" }
 x509-parser = "0.16"
 
 # zkVM unified crate
-automata-dcap-zkvm = { path = "libraries/zkvm" }
+automata-dcap-zkvm = { path = "libraries/zkvm", default-features = false }
 
 # Internal workspace crates
 automata-dcap-cli = { path = "apps/cli" }
