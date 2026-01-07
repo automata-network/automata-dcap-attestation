@@ -10,7 +10,7 @@ use x509_verify::VerifyingKey;
 use crate::utils::Expireable;
 
 /// TrustStore is a specialized PKI (Public Key Infrastructure) implementation designed for SGX
-/// attestation verification. It manages certificate chains, validates signatures, aand enforces
+/// attestation verification. It manages certificate chains, validates signatures, and enforces
 /// revocation checking to establish secure chains of trust from Intel's root certificates to
 /// attestation data.
 pub struct TrustStore {

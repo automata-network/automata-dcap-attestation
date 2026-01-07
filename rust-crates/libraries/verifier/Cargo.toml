@@ -20,4 +20,3 @@ serde_json.workspace = true
 automata-dcap-evm-bindings = { workspace = true }
 automata-dcap-network-registry = { workspace = true }
 automata-dcap-utils = { workspace = true }
-automata-dcap-zkvm = { workspace = true }

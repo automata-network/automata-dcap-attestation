@@ -21,7 +21,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_PLATFORM_LIB_UNAVAILABLE = SGX_QL_MK_ERROR(0x000e),       ///< Unable to find the platform library with the dependent APIs.  Not fatal.
 //     SGX_QL_ATT_KEY_NOT_INITIALIZED = SGX_QL_MK_ERROR(0x000f),        ///< The attestation key doesn't exist or has not been certified.
 //     SGX_QL_ATT_KEY_CERT_DATA_INVALID = SGX_QL_MK_ERROR(0x0010),      ///< The certification data retrieved from the platform library is invalid.
-//     SGX_QL_NO_PLATFORM_CERT_DATA = SGX_QL_MK_ERROR(0x0011),          ///< The platform library doesn't have any platfrom cert data.
+//     SGX_QL_NO_PLATFORM_CERT_DATA = SGX_QL_MK_ERROR(0x0011),          ///< The platform library doesn't have any platform cert data.
 //     SGX_QL_OUT_OF_EPC = SGX_QL_MK_ERROR(0x0012),                     ///< Not enough memory in the EPC to load the enclave.
 //     SGX_QL_ERROR_REPORT = SGX_QL_MK_ERROR(0x0013),                   ///< There was a problem verifying an SGX REPORT.
 //     SGX_QL_ENCLAVE_LOST = SGX_QL_MK_ERROR(0x0014),                   ///< Interfacing to the enclave failed due to a power transition.
@@ -30,7 +30,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_UNABLE_TO_GENERATE_QE_REPORT = SGX_QL_MK_ERROR(0x0017),   ///< The QE was unable to generate its own report targeting the application enclave either
 //                                                                      ///< because the QE doesn't support this feature there is an enclave compatibility issue.
 //                                                                      ///< Please call again with the p_qe_report_info to NULL.
-//     SGX_QL_KEY_CERTIFCATION_ERROR = SGX_QL_MK_ERROR(0x0018),         ///< Caused when the provider library returns an invalid TCB (too high).
+//     SGX_QL_KEY_CERTIFICATION_ERROR = SGX_QL_MK_ERROR(0x0018),         ///< Caused when the provider library returns an invalid TCB (too high).
 //     SGX_QL_NETWORK_ERROR = SGX_QL_MK_ERROR(0x0019),                  ///< Network error when retrieving PCK certs
 //     SGX_QL_MESSAGE_ERROR = SGX_QL_MK_ERROR(0x001a),                  ///< Message error when retrieving PCK certs
 //     SGX_QL_NO_QUOTE_COLLATERAL_DATA = SGX_QL_MK_ERROR(0x001b),       ///< The platform does not have the quote verification collateral data available.
@@ -59,7 +59,7 @@ use std::ffi::{c_char, CString};
 //     SGX_QL_TCB_REVOKED = SGX_QL_MK_ERROR(0x0032),
 //     SGX_QL_TCB_CONFIGURATION_NEEDED = SGX_QL_MK_ERROR(0x0033),
 //     SGX_QL_UNABLE_TO_GET_COLLATERAL = SGX_QL_MK_ERROR(0x0034),
-//     SGX_QL_ERROR_INVALID_PRIVILEGE = SGX_QL_MK_ERROR(0x0035),        ///< No enough privilege to perform the operation
+//     SGX_QL_ERROR_INVALID_PRIVILEGE = SGX_QL_MK_ERROR(0x0035),        ///< Not enough privilege to perform the operation
 //     SGX_QL_NO_QVE_IDENTITY_DATA = SGX_QL_MK_ERROR(0x0037),           ///< The platform does not have the QVE identity data available.
 //     SGX_QL_CRL_UNSUPPORTED_FORMAT = SGX_QL_MK_ERROR(0x0038),
 //     SGX_QL_QEIDENTITY_CHAIN_ERROR = SGX_QL_MK_ERROR(0x0039),
@@ -218,11 +218,11 @@ pub enum SgxQlConfigVersion {
 // typedef struct _sgx_ql_pck_cert_id_t
 // {
 //     uint8_t *p_qe3_id;                     ///< The QE_ID used to identify the platform for PCK Cert Retrieval
-//     uint32_t qe3_id_size;                  ///< The Size of hte QE_ID (currently 16 bytes)
+//     uint32_t qe3_id_size;                  ///< The Size of the QE_ID (currently 16 bytes)
 //     sgx_cpu_svn_t *p_platform_cpu_svn;     ///< Pointer to the platform's raw CPUSVN
 //     sgx_isv_svn_t *p_platform_pce_isv_svn; ///< Pointer to the platform's raw PCE ISVSVN
 //     uint8_t *p_encrypted_ppid;             ///< Pointer to the encrypted PPID (Optional)
-//     uint32_t encrypted_ppid_size;          ///< Size of encrytped PPID.
+//     uint32_t encrypted_ppid_size;          ///< Size of encrypted PPID.
 //     uint8_t crypto_suite;                  ///< Crypto algorithm used to encrypt the PPID
 //     uint16_t pce_id;                       ///< Identifies the PCE-Version used to generate the encrypted PPID.
 // }sgx_ql_pck_cert_id_t;
@@ -293,7 +293,7 @@ pub union SgxQlQveCollateralVersion {
 //         uint32_t version;           ///< 'version' is the backward compatible legacy representation
 //         struct {                    ///< For PCS V1 and V2 APIs, the major_version = 1 and minor_version = 0 and
 //             uint16_t major_version; ///< the CRLs will be formatted in PEM. For PCS V3 APIs, the major_version = 3 and the
-//             uint16_t minor_version; ///< minor_version can be either 0 or 1. minor_verion of 0 indicates the CRL’s are formatted
+//             uint16_t minor_version; ///< minor_version can be either 0 or 1. minor_version of 0 indicates the CRL’s are formatted
 //                                     ///< in Base16 encoded DER.  A minor version of 1 indicates the CRL’s are formatted in raw binary DER.
 //         };
 //     };

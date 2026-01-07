@@ -11,7 +11,7 @@ name = "automata_dcap_zkvm"
 path = "src/lib.rs"
 
 [features]
-default = ["risc0", "sp1", "pico"]
+default = []
 risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:boundless-market"]
 sp1 = ["dep:sp1-sdk"]
 pico = ["dep:pico-sdk", "dep:num", "dep:num-bigint", "dep:p3-field"]
