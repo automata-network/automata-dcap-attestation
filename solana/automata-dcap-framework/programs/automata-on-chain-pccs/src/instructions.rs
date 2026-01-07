@@ -10,13 +10,13 @@ use programs_shared::zk::ZkvmSelector;
 pub const MAX_CERT_DATA_SIZE: usize = 4096;
 pub const TCB_INFO_MAX_SIZE: usize = 8096;
 
-/// All Instructions require the use of zkVM program to verify secp256r1 signatures.
+/// All instructions require the use of a zkVM program to verify secp256r1 signatures.
 /// Solana secp256r1 program requires the entirety of the collateral data to be placed in the 
 /// transaction, which is well above the maximum transaction size.
 
 /// Instruction to create a data buffer account
 /// The data buffer account is used temporarily to hold data
-/// for all PCCS Collaerals.
+/// for all PCCS collaterals.
 /// This data is then transferred to its corresponding PDAs upon successful verification.
 #[derive(Accounts)]
 #[instruction(

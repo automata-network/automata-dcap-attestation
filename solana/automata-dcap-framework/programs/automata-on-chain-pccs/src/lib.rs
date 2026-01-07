@@ -471,7 +471,7 @@ pub mod automata_on_chain_pccs {
 
         let (subject_tbs_digest, subject_tbs) = get_crl_tbs_and_digest(crl_data);
 
-        // We cam match digest here for X509 Certificates here as an additional check
+        // We can match digest here for X509 Certificates here as an additional check
         require!(
             subject_tbs_digest == ctx.accounts.data_buffer.signed_digest,
             PccsError::InvalidDigest
