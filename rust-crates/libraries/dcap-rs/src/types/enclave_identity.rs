@@ -74,7 +74,7 @@ pub struct EnclaveIdentity {
     /// Version of the structure.
     pub version: u32,
 
-    /// The time the Enclave Identity Information was created. The time shalle be in UTC
+    /// The time the Enclave Identity Information was created. The time shall be in UTC
     /// and the encoding shall be compliant to ISO 8601 standard (YYYY-MM-DDhh:mm:ssZ)
     pub issue_date: chrono::DateTime<Utc>,
 
