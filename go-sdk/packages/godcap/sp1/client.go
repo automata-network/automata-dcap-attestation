@@ -40,6 +40,7 @@ type Config struct {
 	PollIntervalSecs int    `json:"poll_interval_secs"`
 	Version          string `json:"version"`
 	CycleLimit       uint64 `json:"cycle_limit"`
+	GasLimit         uint64 `json:"gas_limit"`
 	Timeout          uint64 `json:"timeout"`
 
 	Strategy sp1_proto.FulfillmentStrategy `json:"strategy"`
@@ -50,7 +51,7 @@ func (c *Config) Init() error {
 		c.Rpc = os.Getenv("PROVER_NETWORK_RPC")
 	}
 	if c.Rpc == "" {
-		c.Rpc = "https://rpc.production.succinct.xyz/"
+		c.Rpc = "https://rpc.mainnet.succinct.xyz"
 	}
 	if c.PrivateKey == "" {
 		c.PrivateKey = os.Getenv("NETWORK_PRIVATE_KEY")
@@ -62,16 +63,19 @@ func (c *Config) Init() error {
 		c.PollIntervalSecs = 5
 	}
 	if c.Version == "" {
-		c.Version = "v4.0.0-rc.3"
+		c.Version = "v5.2.1"
 	}
 	if c.CycleLimit == 0 {
-		c.CycleLimit = 150_000_000
+		c.CycleLimit = 1_000_000_000_000
+	}
+	if c.GasLimit == 0 {
+		c.GasLimit = 1_000_000_000
 	}
 	if c.Timeout == 0 {
 		c.Timeout = 14400
 	}
 	if c.Strategy == sp1_proto.FulfillmentStrategy_UnspecifiedFulfillmentStrategy {
-		c.Strategy = sp1_proto.FulfillmentStrategy_Hosted
+		c.Strategy = sp1_proto.FulfillmentStrategy_Auction
 	}
 	return nil
 }

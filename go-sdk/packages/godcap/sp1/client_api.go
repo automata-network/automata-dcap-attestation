@@ -36,6 +36,45 @@ func (c *Client) RpcGetNonce(ctx context.Context) (uint64, error) {
 	return res.Nonce, nil
 }
 
+// AuctionParams holds the default auction parameters fetched from the network.
+type AuctionParams struct {
+	Domain         []byte
+	Auctioneer     []byte
+	Executor       []byte
+	Verifier       []byte
+	Treasury       []byte
+	MaxPricePerPgu string
+	BaseFee        string
+}
+
+// RpcGetProofRequestParams retrieves the default auction parameters for a given proof mode.
+func (c *Client) RpcGetProofRequestParams(ctx context.Context, mode sp1_proto.ProofMode) (*AuctionParams, error) {
+	res, err := c.conn.GetProofRequestParams(ctx, &sp1_proto.GetProofRequestParamsRequest{Mode: mode})
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+	return &AuctionParams{
+		Domain:         res.Domain,
+		Auctioneer:     res.Auctioneer,
+		Executor:       res.Executor,
+		Verifier:       res.Verifier,
+		Treasury:       res.Treasury,
+		MaxPricePerPgu: res.MaxPricePerPgu,
+		BaseFee:        res.BaseFee,
+	}, nil
+}
+
+// RpcGetProversByUptime retrieves the list of provers by uptime for the whitelist.
+func (c *Client) RpcGetProversByUptime(ctx context.Context, highAvailabilityOnly bool) ([][]byte, error) {
+	res, err := c.conn.GetProversByUptime(ctx, &sp1_proto.GetProversByUptimeRequest{
+		HighAvailabilityOnly: highAvailabilityOnly,
+	})
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+	return res.Provers, nil
+}
+
 // CreateProofRequest represents a request to create a proof.
 type CreateProofRequest struct {
 	/// The signature of the message.
@@ -101,19 +140,43 @@ func (c *Client) CreateProof(ctx context.Context, programVkHash common.Hash, std
 	}
 	logex.Infof("account=%v, nonce: %v", c.Public(), nonce)
 
+	// Fetch auction parameters from the network
+	auctionParams, err := c.RpcGetProofRequestParams(ctx, mode)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+
+	// Fetch whitelist of provers by uptime
+	whitelist, err := c.RpcGetProversByUptime(ctx, false)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+
 	stdinUrl, err := c.CreateArtifact(ctx, sp1_proto.ArtifactType_Stdin, stdin.Bincode())
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
+
 	reqBody := &sp1_proto.RequestProofRequestBody{
-		Nonce:      nonce,
-		Version:    fmt.Sprintf("sp1-%v", c.cfg.Version),
-		VkHash:     programVkHash[:],
-		Mode:       mode,
-		Strategy:   c.cfg.Strategy,
-		StdinUri:   stdinUrl,
-		Deadline:   uint64(time.Now().Unix()) + c.cfg.Timeout,
-		CycleLimit: c.cfg.CycleLimit,
+		Nonce:            nonce,
+		Version:          fmt.Sprintf("sp1-%v", c.cfg.Version),
+		VkHash:           programVkHash[:],
+		Mode:             mode,
+		Strategy:         c.cfg.Strategy,
+		StdinUri:         stdinUrl,
+		Deadline:         uint64(time.Now().Unix()) + c.cfg.Timeout,
+		CycleLimit:       c.cfg.CycleLimit,
+		GasLimit:         c.cfg.GasLimit,
+		MinAuctionPeriod: 0,
+		Whitelist:        whitelist,
+		Domain:           auctionParams.Domain,
+		Auctioneer:       auctionParams.Auctioneer,
+		Executor:         auctionParams.Executor,
+		Verifier:         auctionParams.Verifier,
+		Treasury:         auctionParams.Treasury,
+		BaseFee:          auctionParams.BaseFee,
+		MaxPricePerPgu:   auctionParams.MaxPricePerPgu,
+		Variant:          sp1_proto.TransactionVariant_RequestVariant,
 	}
 	reqBodyMsg, err := proto.Marshal(reqBody)
 	if err != nil {
