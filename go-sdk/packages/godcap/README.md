@@ -10,6 +10,9 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+> [!WARNING]
+> Go DCAP is still under development, and not production ready. Please use with caution.
+
 With Go DCAP, you can request ZK proofs of a quote verification from ZK Prover Network, then verify directly on-chain in native Go.
 
 # Features
