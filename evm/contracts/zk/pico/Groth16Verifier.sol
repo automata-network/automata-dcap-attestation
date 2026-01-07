@@ -224,7 +224,7 @@ contract Verifier {
     /// Decompress a G1 point.
     /// @notice Reverts with InvalidProof if the input does not represent a valid point.
     /// @notice The point at infinity is encoded as (0,0) and compressed to 0.
-    /// @param c The compresed point (x with one signal bit).
+    /// @param c The compressed point (x with one signal bit).
     /// @return x The X coordinate in Fp.
     /// @return y The Y coordinate in Fp.
     function decompress_g1(uint256 c) internal view returns (uint256 x, uint256 y) {
