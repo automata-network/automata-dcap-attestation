@@ -136,7 +136,7 @@ pub enum Quote3Error {
     SgxQlErrorInvalidReport = 0xe015,
     SgxQlErrorEnclaveLoadError = 0xe016,
     SgxQlErrorUnableToGenerateQeReport = 0xe017,
-    SgxQlErrorKeyCertifcationError = 0xe018,
+    SgxQlErrorKeyCertificationError = 0xe018,
     SgxQlErrorNetworkError = 0xe019,
     SgxQlErrorMessageError = 0xe01a,
     SgxQlErrorNoQuoteCollateralData = 0xe01b,
