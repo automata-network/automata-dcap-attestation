@@ -4,7 +4,7 @@
 //! It wraps the existing Rust utilities with WASM-friendly interfaces that serialize results to JavaScript.
 //!
 //! ## Features
-//! - Parse verified outputs (version-aware, supporting v1.0 and v1.1)
+//! - Parse verified output bytes (version-aware, supporting v1.0 and v1.1)
 //! - Parse quotes
 //! - Locate quotes within transaction data
 //!

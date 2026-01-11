@@ -3,7 +3,7 @@
 //! This crate provides common functionality used across the DCAP ecosystem, including:
 //! - Version management for DCAP deployments
 //! - Quote parsing and handling utilities
-//! - Data structure parsers for verified outputs
+//! - Data structure parsers for verified output bytes
 //! - WASM bindings for JavaScript interop (when `wasm` feature is enabled)
 
 /// Quote reading and hex parsing utilities.
