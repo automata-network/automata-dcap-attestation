@@ -29,7 +29,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         bytes memory rawBody = rawQuote[HEADER_LENGTH:HEADER_LENGTH + ENCLAVE_REPORT_LENGTH];
 
         VerificationResult memory result =
-            _verifyQuoteIntegrity(4, tcbEvalNumber, SGX_TEE, rawHeader, rawBody, authData);
+            _verifyQuoteIntegrity(3, tcbEvalNumber, SGX_TEE, rawHeader, rawBody, authData);
         if (!result.success) {
             return (false, bytes(result.reason));
         }
