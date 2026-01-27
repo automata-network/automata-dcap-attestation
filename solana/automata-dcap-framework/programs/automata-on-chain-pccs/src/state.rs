@@ -24,10 +24,10 @@ pub struct PckCertificate {
     /// The digest of the certificate
     pub digest: [u8; 32],
 
-    /// The ValidtyNotBefore timestamp of the certificate
+    /// The ValidityNotBefore timestamp of the certificate
     pub validity_not_before: i64,
 
-    /// The ValidtyNotAfter timestamp of the certificate
+    /// The ValidityNotAfter timestamp of the certificate
     pub validity_not_after: i64,
 
     /// Serial number of the certificate
@@ -42,10 +42,10 @@ pub struct PcsCertificate {
     /// Certificate data
     pub cert_data: [u8; crate::instructions::MAX_CERT_DATA_SIZE],
 
-    /// The ValidtyNotBefore timestamp of the certificate
+    /// The ValidityNotBefore timestamp of the certificate
     pub validity_not_before: i64,
 
-    /// The ValidtyNotAfter timestamp of the certificate
+    /// The ValidityNotAfter timestamp of the certificate
     /// This field is optional for CRLs
     pub validity_not_after: i64,
 
