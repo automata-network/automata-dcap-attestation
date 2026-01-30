@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 anchor-client = { version = "0.31.0", features = ["async"] }
-## We are pinning these dependnecies as their latest version require
+## We are pinning these dependencies as their latest version require
 ## Rust 1.81.0 as minimum version. And at the time of this writing,
 ## Solana only supports Rust 1.79.0
 base64ct = "=1.6.0"
