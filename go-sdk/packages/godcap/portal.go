@@ -36,7 +36,7 @@ var (
 	ErrInsufficientFunds       = logex.Define("InsufficientFunds")
 	DcapError                  = map[string]string{
 		"0x1356a63b": "AutomataDcapAttestation: BP_Not_Valid()",
-		"0x1a72054d": "AutomataDcapAttestation: Insufficient_Funds()",
+		"0x9bb42d4b": "AutomataDcapAttestation: Insufficient_Funds()",
 		"0xc40a532b": "AutomataDcapAttestation: Withdrawal_Failed()",
 	}
 )
@@ -95,7 +95,6 @@ func WithNetwork(network *registry.Network) DcapPortalOption {
 		return nil
 	}
 }
-
 
 func WithPrivateKey(key string) DcapPortalOption {
 	return func(ctx context.Context, p *DcapPortal) error {
