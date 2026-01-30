@@ -48,6 +48,7 @@ deploy-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv
 	@echo "PCCSRouter deployed"
@@ -79,6 +80,7 @@ deploy-attestation: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv
 	@echo "AutomataDCAPAttestationFee deployed"
@@ -94,6 +96,7 @@ else
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv
 	@echo "QuoteVerifierV$(QUOTE_VERIFIER_VERSION) deployed"
@@ -164,6 +167,7 @@ config-zk: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "configureZk(uint8,address,bytes32)" \
@@ -178,6 +182,7 @@ config-verifier: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "configVerifier(uint256)" \
@@ -190,6 +195,7 @@ config-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
 		$(if $(SIMULATED),, --broadcast) \
+		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
 		$(if $(LEGACY), --legacy) \
 		-vv \
 		--sig "setAuthorizedCaller(address,bool)" \
