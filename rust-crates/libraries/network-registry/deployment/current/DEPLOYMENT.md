@@ -12,6 +12,7 @@
 | HyperEVM Testnet | [0x1828C18Cd39D8a81c9F4f5d83E7E986bff3C2991](https://testnet.purrsec.com/address/0x1828C18Cd39D8a81c9F4f5d83E7E986bff3C2991) |
 | Unichain Sepolia | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://sepolia.uniscan.xyz/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
 | World Chain Sepolia | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://sepolia.worldscan.org/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
+| MegaETH Testnet | [0xF5A8DaC7d155d29d04f9D19C09FCA95D7D65694B](https://megaeth-testnet-v2.blockscout.com/address/0xF5A8DaC7d155d29d04f9D19C09FCA95D7D65694B) |
 | Tempo Testnet | [0x1828C18Cd39D8a81c9F4f5d83E7E986bff3C2991](https://scout.tempo.xyz/address/0x1828C18Cd39D8a81c9F4f5d83E7E986bff3C2991) |
 | Avalanche Fuji | [0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36](https://testnet.snowtrace.io/address/0x75A2BafFfb2096990246F1a2dA65801Ea2A00b36) |
 | Polygon Amoy | [0xa4615C2a260413878241ff7605AD9577feB356A5](https://amoy.polygonscan.com/address/0xa4615C2a260413878241ff7605AD9577feB356A5) |
@@ -49,6 +50,7 @@
 | HyperEVM Testnet | [0x660D5101ff7f995477e5E70EA405A254Cd9cDA7c](https://testnet.purrsec.com/address/0x660D5101ff7f995477e5E70EA405A254Cd9cDA7c) |
 | Unichain Sepolia | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://sepolia.uniscan.xyz/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
 | World Chain Sepolia | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://sepolia.worldscan.org/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
+| MegaETH Testnet | [0xa1a9322390aE81CF1C24A0D13bdC8Eb26e8A25E6](https://megaeth-testnet-v2.blockscout.com/address/0xa1a9322390aE81CF1C24A0D13bdC8Eb26e8A25E6) |
 | Tempo Testnet | [0x660D5101ff7f995477e5E70EA405A254Cd9cDA7c](https://scout.tempo.xyz/address/0x660D5101ff7f995477e5E70EA405A254Cd9cDA7c) |
 | Avalanche Fuji | [0x45CF7485A0D394130153a3630EA0729999511C2e](https://testnet.snowtrace.io/address/0x45CF7485A0D394130153a3630EA0729999511C2e) |
 | Polygon Amoy | [0xB270cD8550DA117E3accec36A90c4b0b48daD342](https://amoy.polygonscan.com/address/0xB270cD8550DA117E3accec36A90c4b0b48daD342) |
@@ -95,6 +97,7 @@
 | HyperEVM Testnet | [0x733141E56b0Fe934B1843393AA14E180e8A8C0F8](https://testnet.purrsec.com/address/0x733141E56b0Fe934B1843393AA14E180e8A8C0F8) |
 | Unichain Sepolia | [0xcF614258C68730D8cB9713AcAe425875D1FDb370](https://sepolia.uniscan.xyz/address/0xcF614258C68730D8cB9713AcAe425875D1FDb370) |
 | World Chain Sepolia | [0xcF614258C68730D8cB9713AcAe425875D1FDb370](https://sepolia.worldscan.org/address/0xcF614258C68730D8cB9713AcAe425875D1FDb370) |
+| MegaETH Testnet | [0x989255E6Bf4d2AE19e503eeF0E7DeD04d38D5a62](https://megaeth-testnet-v2.blockscout.com/address/0x989255E6Bf4d2AE19e503eeF0E7DeD04d38D5a62) |
 | Tempo Testnet | [0x733141E56b0Fe934B1843393AA14E180e8A8C0F8](https://scout.tempo.xyz/address/0x733141E56b0Fe934B1843393AA14E180e8A8C0F8) |
 | Avalanche Fuji | [0x8e1EA521a6A4832A0c3763D75ED4b8017cfB5424](https://testnet.snowtrace.io/address/0x8e1EA521a6A4832A0c3763D75ED4b8017cfB5424) |
 | Polygon Amoy | [0xcF614258C68730D8cB9713AcAe425875D1FDb370](https://amoy.polygonscan.com/address/0xcF614258C68730D8cB9713AcAe425875D1FDb370) |
@@ -168,6 +171,7 @@
 | HyperEVM Testnet | [0x150b0AaFe6Dc6C9BC2B5e399eAB0c3bA795f5b84](https://testnet.purrsec.com/address/0x150b0AaFe6Dc6C9BC2B5e399eAB0c3bA795f5b84) |
 | Unichain Sepolia | [0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56](https://sepolia.uniscan.xyz/address/0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56) |
 | World Chain Sepolia | [0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56](https://sepolia.worldscan.org/address/0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56) |
+| MegaETH Testnet | [0x0f3c5B8b9da297EFFea8745bedAA37f9671166bD](https://megaeth-testnet-v2.blockscout.com/address/0x0f3c5B8b9da297EFFea8745bedAA37f9671166bD) |
 | Tempo Testnet | [0x150b0AaFe6Dc6C9BC2B5e399eAB0c3bA795f5b84](https://scout.tempo.xyz/address/0x150b0AaFe6Dc6C9BC2B5e399eAB0c3bA795f5b84) |
 | Avalanche Fuji | [0x5dF358463632A8eEA0bdeF87f011F032e984b7ef](https://testnet.snowtrace.io/address/0x5dF358463632A8eEA0bdeF87f011F032e984b7ef) |
 | Polygon Amoy | [0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56](https://amoy.polygonscan.com/address/0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56) |
@@ -205,6 +209,7 @@
 | HyperEVM Testnet | [0xEAaDc9036069B00b3bbB20A93AF8601768AA6e3A](https://testnet.purrsec.com/address/0xEAaDc9036069B00b3bbB20A93AF8601768AA6e3A) |
 | Unichain Sepolia | [0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0](https://sepolia.uniscan.xyz/address/0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0) |
 | World Chain Sepolia | [0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0](https://sepolia.worldscan.org/address/0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0) |
+| MegaETH Testnet | [0xeA9A65A523D6e173b825841A8278d2448dEecFb1](https://megaeth-testnet-v2.blockscout.com/address/0xeA9A65A523D6e173b825841A8278d2448dEecFb1) |
 | Tempo Testnet | [0xEAaDc9036069B00b3bbB20A93AF8601768AA6e3A](https://scout.tempo.xyz/address/0xEAaDc9036069B00b3bbB20A93AF8601768AA6e3A) |
 | Avalanche Fuji | [0xa0DE0E975599347A76FF9A3baC59d686fE89b73C](https://testnet.snowtrace.io/address/0xa0DE0E975599347A76FF9A3baC59d686fE89b73C) |
 | Polygon Amoy | [0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0](https://amoy.polygonscan.com/address/0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0) |
@@ -242,6 +247,7 @@
 | HyperEVM Testnet | [0x08cCA3ACC7545e74d3009a3eD233398F2CEa7aeD](https://testnet.purrsec.com/address/0x08cCA3ACC7545e74d3009a3eD233398F2CEa7aeD) |
 | Unichain Sepolia | [0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF](https://sepolia.uniscan.xyz/address/0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF) |
 | World Chain Sepolia | [0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF](https://sepolia.worldscan.org/address/0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF) |
+| MegaETH Testnet | [0xfC4140d90b3Ee14D3Fe557Be3B1f552F383C7dEE](https://megaeth-testnet-v2.blockscout.com/address/0xfC4140d90b3Ee14D3Fe557Be3B1f552F383C7dEE) |
 | Tempo Testnet | [0x08cCA3ACC7545e74d3009a3eD233398F2CEa7aeD](https://scout.tempo.xyz/address/0x08cCA3ACC7545e74d3009a3eD233398F2CEa7aeD) |
 | Avalanche Fuji | [0xF39e8c4a51d925b156E2A94d370A9D22e37846E8](https://testnet.snowtrace.io/address/0xF39e8c4a51d925b156E2A94d370A9D22e37846E8) |
 | Polygon Amoy | [0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF](https://amoy.polygonscan.com/address/0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF) |
@@ -315,6 +321,7 @@
 | HyperEVM Testnet | [0xE12B93916e8db0C2304B31dA85D1Da303507aA0d](https://testnet.purrsec.com/address/0xE12B93916e8db0C2304B31dA85D1Da303507aA0d) |
 | Unichain Sepolia | [0x62E8Cd513B12F248804123f7ed12A0601B79FBAc](https://sepolia.uniscan.xyz/address/0x62E8Cd513B12F248804123f7ed12A0601B79FBAc) |
 | World Chain Sepolia | [0x62E8Cd513B12F248804123f7ed12A0601B79FBAc](https://sepolia.worldscan.org/address/0x62E8Cd513B12F248804123f7ed12A0601B79FBAc) |
+| MegaETH Testnet | [0xcB1f19e9F477E1Fe98c349F57023C317033976D9](https://megaeth-testnet-v2.blockscout.com/address/0xcB1f19e9F477E1Fe98c349F57023C317033976D9) |
 | Tempo Testnet | [0xE12B93916e8db0C2304B31dA85D1Da303507aA0d](https://scout.tempo.xyz/address/0xE12B93916e8db0C2304B31dA85D1Da303507aA0d) |
 | Avalanche Fuji | [0xBF3268Dcee73EfDe149d206ebB856380C6EeD374](https://testnet.snowtrace.io/address/0xBF3268Dcee73EfDe149d206ebB856380C6EeD374) |
 | Polygon Amoy | [0x62E8Cd513B12F248804123f7ed12A0601B79FBAc](https://amoy.polygonscan.com/address/0x62E8Cd513B12F248804123f7ed12A0601B79FBAc) |
@@ -352,6 +359,7 @@
 | HyperEVM Testnet | [0x35c8680C8E5D275D08BF50A76A702a327dA4dB82](https://testnet.purrsec.com/address/0x35c8680C8E5D275D08BF50A76A702a327dA4dB82) |
 | Unichain Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.uniscan.xyz/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
 | World Chain Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.worldscan.org/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
+| MegaETH Testnet | [0x0353eFD9c0e0b208442c62Bd7Dd704d456C4FF3d](https://megaeth-testnet-v2.blockscout.com/address/0x0353eFD9c0e0b208442c62Bd7Dd704d456C4FF3d) |
 | Tempo Testnet | [0x35c8680C8E5D275D08BF50A76A702a327dA4dB82](https://scout.tempo.xyz/address/0x35c8680C8E5D275D08BF50A76A702a327dA4dB82) |
 | Avalanche Fuji | [0xb1D89Fd867A1D6a122ed88c092163281c2474111](https://testnet.snowtrace.io/address/0xb1D89Fd867A1D6a122ed88c092163281c2474111) |
 | Polygon Amoy | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://amoy.polygonscan.com/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
@@ -389,6 +397,7 @@
 | HyperEVM Testnet | [0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6](https://testnet.purrsec.com/address/0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6) |
 | Unichain Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.uniscan.xyz/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
 | World Chain Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.worldscan.org/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
+| MegaETH Testnet | [0x8b77798BABc976f0b4739B0e859e6f2F1dE269C9](https://megaeth-testnet-v2.blockscout.com/address/0x8b77798BABc976f0b4739B0e859e6f2F1dE269C9) |
 | Tempo Testnet | [0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6](https://scout.tempo.xyz/address/0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6) |
 | Avalanche Fuji | [0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4](https://testnet.snowtrace.io/address/0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4) |
 | Polygon Amoy | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://amoy.polygonscan.com/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
@@ -432,6 +441,7 @@
 | HyperEVM Testnet | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://testnet.purrsec.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | Unichain Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://sepolia.uniscan.xyz/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | World Chain Sepolia | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://sepolia.worldscan.org/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
+| MegaETH Testnet | [0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4](https://megaeth-testnet-v2.blockscout.com/address/0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4) |
 | Tempo Testnet | [0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4](https://scout.tempo.xyz/address/0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4) |
 | Avalanche Fuji | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://testnet.snowtrace.io/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
 | Polygon Amoy | [0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F](https://amoy.polygonscan.com/address/0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F) |
@@ -469,6 +479,7 @@
 | HyperEVM Testnet | [0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2](https://testnet.purrsec.com/address/0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2) |
 | Unichain Sepolia | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://sepolia.uniscan.xyz/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
 | World Chain Sepolia | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://sepolia.worldscan.org/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |
+| MegaETH Testnet | [0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB](https://megaeth-testnet-v2.blockscout.com/address/0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB) |
 | Tempo Testnet | [0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2](https://scout.tempo.xyz/address/0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2) |
 | Avalanche Fuji | [0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B](https://testnet.snowtrace.io/address/0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B) |
 | Polygon Amoy | [0xaf2a0D5473062b36E2dE986DA09d945EB26d492B](https://amoy.polygonscan.com/address/0xaf2a0D5473062b36E2dE986DA09d945EB26d492B) |

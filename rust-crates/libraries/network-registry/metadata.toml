@@ -194,13 +194,21 @@ rpc_endpoints = ["https://rpc.testnet.tempo.xyz"]
 gas_price_hint_wei = 3_000
 block_explorers = ["https://scout.tempo.xyz/", "https://explore.tempo.xyz/"]
 
+[megaeth_testnet]
+name = "MegaETH Testnet"
+chain_id = 6343
+testnet = true
+rpc_endpoints = ["https://carrot.megaeth.com/rpc"]
+gas_price_hint_wei = 100_000_000_000
+block_explorers = ["https://megaeth-testnet-v2.blockscout.com/"]
+
 [megaeth_mainnet]
 name = "MegaETH Mainnet"
 chain_id = 4326
 testnet = false
 rpc_endpoints = ["https://mainnet.megaeth.com/rpc"]
 gas_price_hint_wei = 100_000_000_000
-block_explorers = ["https://mega.etherscan.io/"]
+block_explorers = ["https://mega.etherscan.io/", "https://megaeth.blockscout.com/"]
 
 # Default network configuration
 [default]
