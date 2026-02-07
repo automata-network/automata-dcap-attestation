@@ -199,7 +199,7 @@ name = "MegaETH Testnet"
 chain_id = 6343
 testnet = true
 rpc_endpoints = ["https://carrot.megaeth.com/rpc"]
-gas_price_hint_wei = 100_000_000_000
+gas_price_hint_wei = 1_000_000
 block_explorers = ["https://megaeth-testnet-v2.blockscout.com/"]
 
 [megaeth_mainnet]
@@ -207,7 +207,7 @@ name = "MegaETH Mainnet"
 chain_id = 4326
 testnet = false
 rpc_endpoints = ["https://mainnet.megaeth.com/rpc"]
-gas_price_hint_wei = 100_000_000_000
+gas_price_hint_wei = 1_000_000
 block_explorers = ["https://mega.etherscan.io/", "https://megaeth.blockscout.com/"]
 
 # Default network configuration
