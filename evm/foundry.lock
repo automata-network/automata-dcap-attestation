@@ -1,6 +1,18 @@
 {
+  "evm/lib/forge-std": {
+    "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
+  },
+  "evm/lib/risc0-ethereum": {
+    "rev": "365e7b2db4f620fa256580c27558d2623362b9ae"
+  },
+  "evm/lib/sp1-contracts": {
+    "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"
+  },
   "lib/automata-on-chain-pccs": {
-    "rev": "eab638d56625fd2fe1b9cae60d34a0f164239ba1"
+    "tag": {
+      "name": "v1.1.1",
+      "rev": "734b5242d68998da4fd764b042e27e15f75bd289"
+    }
   },
   "lib/forge-std": {
     "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
