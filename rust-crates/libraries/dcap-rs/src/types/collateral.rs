@@ -128,9 +128,9 @@ impl Collateral {
             CollateralSol::abi_decode_params(encoded)?;
 
         let mut pem_chain = String::new();
-        let tcb_pem = Pem::new(String::from("CERTIFICATE"), chain_bytes[0].to_vec().clone());
+        let tcb_pem = Pem::new(String::from("CERTIFICATE"), chain_bytes[0].to_vec());
 
-        let root_pem = Pem::new(String::from("CERTIFICATE"), chain_bytes[1].to_vec().clone());
+        let root_pem = Pem::new(String::from("CERTIFICATE"), chain_bytes[1].to_vec());
 
         pem_chain.push_str(&encode(&tcb_pem));
         pem_chain.push_str(&encode(&root_pem));
