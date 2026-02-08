@@ -6,6 +6,7 @@
 pico_sdk::entrypoint!(main);
 
 use std::time::{Duration, SystemTime};
+use tiny_keccak::{Hasher, Keccak};
 
 use automata_dcap_zkvm::GuestInput;
 use dcap_rs::{
@@ -54,6 +55,12 @@ pub fn main() {
 
     let serial_output = output.to_vec();
 
+    // Get the hash of the quote
+    let mut keccak = Keccak::v256();
+    keccak.update(input.raw_quote.as_slice());
+    let mut hash = [0u8; 32];
+    keccak.finalize(&mut hash);
+
     // Build the journal output
     // Format:
     // - serial_output_len (2 bytes BE)
@@ -65,6 +72,7 @@ pub fn main() {
     // - sgx_tcb_signing_cert_hash
     // - sgx_intel_root_ca_crl_hash
     // - sgx_pck_crl_hash
+    // - quote_hash
     let mut program_output: Vec<u8> = vec![];
     let output_len: u16 = serial_output.len() as u16;
 
@@ -77,6 +85,7 @@ pub fn main() {
     program_output.extend_from_slice(&sgx_tcb_signing_cert_hash);
     program_output.extend_from_slice(&sgx_intel_root_ca_crl_hash);
     program_output.extend_from_slice(&sgx_pck_crl_hash);
+    program_output.extend_from_slice(&hash);
 
     // Commit the output to the public values
     commit_bytes(&program_output);

@@ -11,6 +11,7 @@ edition = "2021"
 sp1-zkvm = { version = "^5.2.1" }
 dcap-rs = { path = "../../../../../dcap-rs" }
 automata-dcap-zkvm = { path = "../../../..", default-features = false, features = ["guest"] }
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 # SP1-specific crypto patches
 [patch.crates-io]

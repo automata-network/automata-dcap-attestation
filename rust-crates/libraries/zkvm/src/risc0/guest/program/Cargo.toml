@@ -11,6 +11,7 @@ edition = "2021"
 risc0-zkvm = { version = "^3.0.3", default-features = false, features = ["std", "unstable"] }
 dcap-rs = { path = "../../../../../dcap-rs" }
 automata-dcap-zkvm = { path = "../../../..", default-features = false, features = ["guest"] }
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 # RISC0-specific crypto patches
 [patch.crates-io]
