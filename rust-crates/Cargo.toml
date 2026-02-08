@@ -16,7 +16,11 @@ members = [
     "libraries/pccs-reader",
     "libraries/qpl",
     "libraries/zkvm",
-    "libraries/verifier"
+    "libraries/verifier",
+
+    # zkVM build wrapper crates
+    "libraries/zkvm/methods/sp1",
+    "libraries/zkvm/methods/risc0"
 ]
 
 [workspace.package]

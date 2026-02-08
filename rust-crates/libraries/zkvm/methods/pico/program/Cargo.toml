@@ -9,8 +9,8 @@ edition = "2021"
 
 [dependencies]
 pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6" }
-dcap-rs = { path = "../../../../../dcap-rs" }
-automata-dcap-zkvm = { path = "../../../..", default-features = false, features = ["guest"] }
+dcap-rs = { path = "../../../../dcap-rs" }
+automata-dcap-zkvm = { path = "../../..", default-features = false, features = ["guest"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 # Pico-specific crypto patches

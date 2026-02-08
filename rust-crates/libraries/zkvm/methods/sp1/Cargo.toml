@@ -1,0 +1,12 @@
+[package]
+name = "dcap-sp1-methods"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "src/lib.rs"
+
+[build-dependencies]
+sp1-build = "^5.2.0"
+automata-dcap-utils = { workspace = true }
+anyhow = { workspace = true }
