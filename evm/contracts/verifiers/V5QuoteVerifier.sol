@@ -37,8 +37,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-        pccsRouter.getFmspcTcbV3(
+        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) = pccsRouter.getFmspcTcbV3(
             header.teeType == SGX_TEE ? TcbId.SGX : TcbId.TDX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber
         );
 
@@ -100,8 +99,15 @@ contract V5QuoteVerifier is TdxQuoteBase {
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
                 bool configurationNeeded;
-                (success, reason, relaunchAdvised, configurationNeeded) =
-                    _checkForRelaunch(teeTcbSvn2, result.qeTcbStatus, sgxStatus, tdxStatus, tdxModuleStatus, tcbLevels, tdxModuleIdentities);
+                (success, reason, relaunchAdvised, configurationNeeded) = _checkForRelaunch(
+                    teeTcbSvn2,
+                    result.qeTcbStatus,
+                    sgxStatus,
+                    tdxStatus,
+                    tdxModuleStatus,
+                    tcbLevels,
+                    tdxModuleIdentities
+                );
                 if (!success) {
                     return (false, bytes(reason));
                 }
@@ -177,7 +183,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
             return (false, ADS, 0, 0, authData);
         }
 
-        (success, authData) = _parseAuthDataV4V5(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, 0, 0, authData);
         }
@@ -228,7 +234,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
         success = true;
-        
+
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
             if (sgxStatus != TCBStatus.TCB_OUT_OF_DATE && sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED) {
                 if (
@@ -251,8 +257,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                             (success, matchingModuleIdentity) =
                                 findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
                             if (!success) {
-                                return
-                                    (false, TDRF, false, false);
+                                return (false, TDRF, false, false);
                             }
 
                             TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];

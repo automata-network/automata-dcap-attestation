@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { TcbId } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {TcbId} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import "../bases/QuoteVerifierBase.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 import "../types/Errors.sol";
@@ -35,11 +35,8 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        (TCBLevelsObj[] memory tcbLevels,,) = pccsRouter.getFmspcTcbV3(
-            TcbId.SGX,
-            bytes6(pckTcb.fmspcBytes), 
-            result.tcbEvalNumber
-        );
+        (TCBLevelsObj[] memory tcbLevels,,) =
+            pccsRouter.getFmspcTcbV3(TcbId.SGX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber);
         TCBStatus tcbStatus;
         bool statusFound;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
@@ -93,7 +90,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, authData);
         }
@@ -113,9 +110,10 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
      * [580+Y:584+Y] bytes: certSize (Z)
      * [584+Y:584+Y+Z] bytes: certData
      */
-    function _parseAuthData(bytes calldata rawAuthData)
-        private
+    function parseAuthData(bytes calldata rawAuthData)
+        internal
         view
+        override
         returns (bool success, AuthData memory authData)
     {
         authData.ecdsa256BitSignature = rawAuthData[0:64];

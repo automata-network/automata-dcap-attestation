@@ -44,12 +44,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
     function _parseV4Quote(Header calldata header, bytes calldata quote)
         private
         view
-        returns (
-            bool success,
-            string memory reason,
-            bytes memory rawQuoteBody,
-            AuthData memory authData
-        )
+        returns (bool success, string memory reason, bytes memory rawQuoteBody, AuthData memory authData)
     {
         bytes4 teeType = header.teeType;
         (success, reason) = validateHeader(header, quote.length, teeType == SGX_TEE || teeType == TDX_TEE);
@@ -84,7 +79,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthDataV4V5(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, rawQuoteBody, authData);
         }
@@ -96,8 +91,9 @@ contract V4QuoteVerifier is TdxQuoteBase {
         bytes memory rawQuoteBody,
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
-        VerificationResult memory result =
-            _verifyQuoteIntegrity(4, tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+        VerificationResult memory result = _verifyQuoteIntegrity(
+            4, tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData
+        );
         if (!result.success) {
             return (false, bytes(result.reason));
         }
@@ -140,8 +136,9 @@ contract V4QuoteVerifier is TdxQuoteBase {
         bytes memory rawQuoteBody,
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
-        VerificationResult memory result =
-            _verifyQuoteIntegrity(4, tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+        VerificationResult memory result = _verifyQuoteIntegrity(
+            4, tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData
+        );
         if (!result.success) {
             return (false, bytes(result.reason));
         }
