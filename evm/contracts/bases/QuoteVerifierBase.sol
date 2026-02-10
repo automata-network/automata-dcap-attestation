@@ -37,13 +37,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
         public
         view
-        virtual
         override
         returns (bool success, bytes memory output)
     {
         uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
         uint256 offset = 2 + outputLength;
-        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH > outputBytes.length) {
             return (false, bytes(OUTS));
         }
         bytes memory errorMessage;
