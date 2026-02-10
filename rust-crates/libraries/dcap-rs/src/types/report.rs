@@ -190,7 +190,7 @@ impl TryFrom<[u8; std::mem::size_of::<Td10ReportBody>()]> for Td10ReportBody {
 pub struct Td15ReportBody {
     pub td_report: Td10ReportBody,
 
-    /// (584) Describes the current TCB of TDX. This value may will be different than TEE_TCB_SVN by
+    /// (584) Describes the current TCB of TDX. This value may be different than TEE_TCB_SVN by
     /// loading a new version of the TDX Module using the TD Preserving update capability)
     pub tee_tcb_svn2: [u8; 16],
 
