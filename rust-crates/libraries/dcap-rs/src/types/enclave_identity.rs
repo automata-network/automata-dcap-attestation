@@ -86,7 +86,7 @@ pub struct EnclaveIdentity {
     /// TCB Info, QE Identity, QVE Identity. The tcbEvaluationDataNumber update is synchronized across TCB info for all
     /// flavours of SGX CPUs (Family-Model-Stepping-Platform-CustomSKU) and QE/QVE Identity.
     /// This sequence number allows users to easily determine when a particular TCB Info/QE Identity/QVE Identity
-    /// superseedes another TCB Info/QE Identity/QVE Identity (value: current TCB Recovery event number stored in the database).
+    /// supersedes another TCB Info/QE Identity/QVE Identity (value: current TCB Recovery event number stored in the database).
     pub tcb_evaluation_data_number: u32,
 
     /// Base 16-encoded string representing miscselect "golden" value (upon applying mask).
