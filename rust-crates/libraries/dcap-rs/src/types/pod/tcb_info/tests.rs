@@ -329,7 +329,7 @@ fn test_tcb_v3_tdx_bytemuck() {
     let parsed_tcb_info_hash = Sha256::digest(parsed_tcb_info_string.as_bytes());
     assert_eq!(
         original_tcb_info_hash, parsed_tcb_info_hash,
-        "Parsed TcbInfoV2 hash does not match original"
+        "Parsed TcbInfoV3 TDX hash does not match original"
     );
 
     // Test ZeroCopy for TcbV3 TDX
