@@ -31,7 +31,7 @@ pragma solidity ^0.8.0;
 
 // TCBCH - TCB Content Hash mismatch
 // QEIDCH - QE Identity Content Hash mismatch
-// ROOTH - Root CA hash mismtach
+// ROOTH - Root CA hash mismatch
 // SIGNH - TCB Signing CA hash mismatch
 // ROOTCRLH - Root CA CRL hash mismatch
 // PCKCRLM - PCK CA CRL missing
