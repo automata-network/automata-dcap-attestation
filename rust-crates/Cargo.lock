@@ -1721,14 +1721,11 @@ dependencies = [
  "alloy",
  "anyhow",
  "dcap-rs",
- "getrandom 0.2.16",
  "hex",
  "proc-macro2",
  "quote",
  "serde",
- "serde-wasm-bindgen",
  "toml",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -1745,6 +1742,20 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.17",
  "tokio",
+]
+
+[[package]]
+name = "automata-dcap-wasm"
+version = "1.1.1"
+dependencies = [
+ "anyhow",
+ "automata-dcap-utils",
+ "dcap-rs",
+ "getrandom 0.2.16",
+ "hex",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "automata-dcap-utils"
+name = "automata-dcap-wasm"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
@@ -7,18 +7,18 @@ homepage = { workspace = true }
 license = { workspace = true }
 
 [lib]
-name = "automata_dcap_utils"
+name = "automata_dcap_wasm"
 path = "src/lib.rs"
-crate-type = ["rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
+automata-dcap-utils = { workspace = true }
 anyhow = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 dcap-rs = { workspace = true }
-alloy = { workspace = true, default-features = false, features = ["sol-types"] }
 
-[build-dependencies]
-toml = "0.8"
-proc-macro2 = "1.0"
-quote = "1.0"
+# WASM dependencies
+wasm-bindgen = "0.2.99"
+serde-wasm-bindgen = "0.6.5"
+getrandom = { version = "0.2", features = ["js"] }

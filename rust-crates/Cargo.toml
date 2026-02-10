@@ -11,6 +11,7 @@ members = [
 
     # Refactored crates
     "libraries/utils",
+    "libraries/wasm",
     "libraries/bindings",
     "libraries/network-registry",
     "libraries/pccs-reader",
@@ -60,6 +61,7 @@ automata-dcap-zkvm = { path = "libraries/zkvm", default-features = false }
 # Internal workspace crates
 automata-dcap-cli = { path = "apps/cli" }
 automata-dcap-utils = { path = "libraries/utils" }
+automata-dcap-wasm = { path = "libraries/wasm" }
 automata-dcap-evm-bindings = { path = "libraries/bindings" }
 automata-dcap-network-registry = { path = "libraries/network-registry" }
 pccs-reader-rs = { path = "libraries/pccs-reader" }
