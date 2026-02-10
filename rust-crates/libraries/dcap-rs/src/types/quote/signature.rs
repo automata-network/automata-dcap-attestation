@@ -11,7 +11,7 @@ use super::{CertificationKeyType, PckCertChainData};
 
 /// Signature data for SGX Quotes
 ///
-/// In the intel docs, this is A 4.4: "ECDSA 256-bit Quote Signature Data Structure"
+/// In the Intel docs, this is A 4.4: "ECDSA 256-bit Quote Signature Data Structure"
 ///
 /// This can be used to validate that the quoting enclave itself is valid, and then that
 /// the quoting enclave has signed the ISV enclave report.
