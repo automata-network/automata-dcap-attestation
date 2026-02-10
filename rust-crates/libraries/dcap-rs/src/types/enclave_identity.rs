@@ -83,7 +83,7 @@ pub struct EnclaveIdentity {
     pub next_update: chrono::DateTime<Utc>,
 
     /// A monotonically increasing sequence number changed when Intel updates the content of the TCB evaluation data set:
-    /// TCB Info, QE Identity, QVE Identity. The tcbEvaluationDataNumber update is synchronized across TCB infor for all
+    /// TCB Info, QE Identity, QVE Identity. The tcbEvaluationDataNumber update is synchronized across TCB info for all
     /// flavours of SGX CPUs (Family-Model-Stepping-Platform-CustomSKU) and QE/QVE Identity.
     /// This sequence number allows users to easily determine when a particular TCB Info/QE Identity/QVE Identity
     /// superseedes another TCB Info/QE Identity/QVE Identity (value: current TCB Recovery event number stored in the database).
