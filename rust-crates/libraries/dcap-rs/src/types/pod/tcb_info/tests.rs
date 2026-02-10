@@ -325,7 +325,7 @@ fn test_tcb_v3_tdx_bytemuck() {
     let original_tcb_info_hash =
         Sha256::digest(tcb_info_and_signature.tcb_info_raw.get().as_bytes());
     let parsed_tcb_info_string = serde_json::to_string(&parsed_tcb_info)
-        .expect("Failed to serialize parsed TcbInfoV3 SGX to JSON string");
+        .expect("Failed to serialize parsed TcbInfoV3 TDX to JSON string");
     let parsed_tcb_info_hash = Sha256::digest(parsed_tcb_info_string.as_bytes());
     assert_eq!(
         original_tcb_info_hash, parsed_tcb_info_hash,
