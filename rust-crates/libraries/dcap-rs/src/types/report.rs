@@ -122,7 +122,7 @@ pub struct Td10ReportBody {
 
     // (128) XFAM (eXtended Features Available Mask) is defined as a 64b bitmap,
     // which has the same format as XCR0 or IA32_XSS MSR.
-    // uint8_t xfam[8§];
+    // uint8_t xfam[8];
     pub xfam: [u8; 8],
 
     // (136) Measurement of the initial contents of the TD.
