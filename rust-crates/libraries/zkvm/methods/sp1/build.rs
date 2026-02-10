@@ -54,7 +54,7 @@ fn main() {
 
 fn get_target_version() -> Result<Version, anyhow::Error> {
     match env::var("DCAP_VERSION") {
-        Ok(v) => Version::from_str(&v),
+        Ok(v) => Version::from_str(&v).map_err(|e| anyhow::anyhow!("{}", e)),
         Err(_) => Ok(Version::V1_1),
     }
 }
