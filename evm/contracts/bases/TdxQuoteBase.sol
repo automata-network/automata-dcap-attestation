@@ -9,7 +9,8 @@ import {
     TDXModuleIdentity
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {TD10ReportBody, TD15ReportBody} from "../utils/TDReportParser.sol";
-import {PCKCertTCB} from "../types/CommonStruct.sol";
+import {PCKCertTCB, AuthData} from "../types/CommonStruct.sol";
+import {BELE} from "../utils/BELE.sol";
 
 import "./QuoteVerifierBase.sol";
 import "./tcb/TCBInfoV3Base.sol";
@@ -94,5 +95,73 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         }
 
         return (false, tdxModuleIdentity);
+    }
+
+    /**
+     * @dev Shared AuthData parsing logic for V4 and V5 quote formats
+     *
+     * Format (V4/V5):
+     * [0:64] bytes: ecdsa256BitSignature
+     * [64:128] bytes: ecdsaAttestationKey
+     * [128:130] bytes: qeReportCertType (must be 6)
+     * [130:134] bytes: qeReportCertSize (X)
+     * [134:518] bytes: qeReport
+     * [518:582] bytes: qeReportSignature
+     * [582:584] bytes: qeAuthDataSize (Y)
+     * [584:584+Y] bytes: qeAuthData
+     * [584+Y:586+Y] bytes: pckCertType (must be 5)
+     * [586+Y:590+Y] bytes: certSize (Z)
+     * [590+Y:590+Y+Z] bytes: certData
+     */
+    function _parseAuthDataV4V5(bytes calldata rawAuthData)
+        internal
+        view
+        returns (bool success, AuthData memory authData)
+    {
+        // Common signature and key fields (always at the beginning)
+        authData.ecdsa256BitSignature = rawAuthData[0:64];
+        authData.ecdsaAttestationKey = rawAuthData[64:128];
+
+        // QE Report Certificate Type validation (V4/V5 specific)
+        uint256 qeReportCertType = BELE.leBytesToBeUint(rawAuthData[128:130]);
+        if (qeReportCertType != 6) {
+            return (false, authData);
+        }
+        uint256 qeReportCertSize = BELE.leBytesToBeUint(rawAuthData[130:134]);
+        authData.qeReportSignature = rawAuthData[518:582];
+
+        // QE Auth Data parsing
+        uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
+        uint256 offset = 584;
+        authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
+        offset += qeAuthDataSize;
+
+        // PCK Certificate Type validation
+        uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
+        if (certType != 5) {
+            return (false, authData);
+        }
+
+        // PCK Certificate Data parsing
+        offset += 2;
+        uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
+        offset += 4;
+        bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
+        offset += certDataSize;
+
+        // Validate total size consistency
+        if (offset - 134 != qeReportCertSize) {
+            return (false, authData);
+        }
+
+        // QE Report extraction (after validation)
+        authData.qeReport = rawAuthData[134:518];
+
+        // Get PCK collateral from router
+        (success, authData.certification) =
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
+        if (!success) {
+            return (false, authData);
+        }
     }
 }
