@@ -40,12 +40,14 @@ QuoteVerifiers, which are contracts responsible for verifying Intel DCAP quotes,
 - **Authorization Setup:**  
   Before a QuoteVerifier can access PCCS data, its address must be added to the `_authorized` mapping by calling `setAuthorized`. This ensures that the QuoteVerifier is recognized as allowed to load data from the PCCS.
 
-- **Invocation of Methods:**  
-  Once authorized, QuoteVerifiers can call the read functions (e.g., `getQeIdentity`, `getFmspcTcbV2`, etc.) to:
-  - Retrieve attested identity data from the `EnclaveIdentityDao`.
-  - Load TCB information via `FmspcTcbDao` with necessary decoding performed within the router.
+- **Invocation of Methods:**
+  Once authorized, QuoteVerifiers can call the read functions to retrieve collaterals. In v1.1, the router uses **versioned DAOs** (`EnclaveIdentityDaoVersioned`, `FmspcTcbDaoVersioned`) keyed by `tcbEval` (TCB Evaluation Data Number), along with the `TcbEvalDao` which provides the early and standard TCB evaluation data numbers. Key functions include:
+  - `getQeIdentity(id, pcsApiVersion, tcbEval)` — Retrieve attested QE identity data from the versioned `EnclaveIdentityDaoVersioned`.
+  - `getFmspcTcbV2(fmspc, tcbEval)` — Load TCB Levels from versioned `FmspcTcbDaoVersioned` (TCB Info v2 format).
+  - `getFmspcTcbV3(id, fmspc, tcbEval)` — Load TCB Levels, TDX Module, and TDX Module Identities from versioned `FmspcTcbDaoVersioned` (TCB Info v3 format, used by V3, V4 and V5 verifiers).
+  - `getEarlyTcbEvaluationDataNumber(id)` / `getStandardTcbEvaluationDataNumber(id)` — Query the `TcbEvalDao` for the early or standard TCB evaluation data number for a given TCB ID.
   - Fetch PCK certificate details or certificate revocation lists (CRL) from the corresponding DAO contracts.
-  
+
   These methods internally:
   - Verify that data is still valid by checking timestamps using the `_loadDataIfNotExpired` function.
   - Return decoded and formatted data to be used by the QuoteVerifier for further verification.

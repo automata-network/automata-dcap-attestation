@@ -49,18 +49,20 @@ This repository uses a **unified Rust workspace** with smart defaults:
 
 **Applications:**
 - `apps/cli`: Unified `automata-dcap` CLI (quote verification, collateral detection, network management, zkVM proof generation)
+- `libraries/zkvm/methods`: Source code of zkVM guest programs for RISC Zero, SP1 and Pico. 
 
 **Core Libraries:**
-- `crates/dcap-rs`: Pure Rust implementation of Intel's DCAP Quote Verification Library (QVL) for V3 SGX and V4 TDX/SGX quotes
-- `crates/verifier`: High-level verification APIs that orchestrate quote verification workflows for both onchain and zkVM-based attestation
-- `crates/zkvm`: zkVM proof generation framework with unified trait-based architecture supporting RISC Zero, SP1, and Pico platforms
+- `libraries/dcap-rs`: Pure Rust implementation of Intel's DCAP Quote Verification Library (QVL) for V3 SGX and V4 TDX/SGX quotes
+- `libraries/verifier`: High-level verification APIs that orchestrate quote verification workflows for both onchain and zkVM-based attestation
+- `libraries/zkvm`: zkVM proof generation framework with unified trait-based architecture supporting RISC Zero, SP1, and Pico platforms
 
 **Support Libraries:**
-- `crates/pccs-reader`: Reader for decoding collaterals from Automata Onchain PCCS and detecting missing collaterals for a given quote
-- `crates/qpl`: Quote Provider Library (QPL) wrapper for fetching collaterals from Intel PCS, local PCCS, or Automata Onchain PCCS
-- `crates/network-registry`: Network configuration registry managing deployment addresses and contract ABIs across multiple chains and versions
-- `crates/utils`: Common utilities including version-aware type generation and helper functions shared across the workspace
-- `crates/bindings`: Auto-generated Rust bindings for EVM contract interfaces (regenerated via build script)
+- `libraries/pccs-reader`: Reader for decoding collaterals from Automata Onchain PCCS and detecting missing collaterals for a given quote
+- `libraries/qpl`: Quote Provider Library (QPL) wrapper for fetching collaterals from Intel PCS, local PCCS, or Automata Onchain PCCS
+- `libraries/network-registry`: Network configuration registry managing deployment addresses and contract ABIs across multiple chains and versions
+- `libraries/utils`: Common utilities including version-aware type generation and helper functions shared across the workspace
+- `libraries/bindings`: Auto-generated Rust bindings for EVM contract interfaces (regenerated via build script)
+- `libraries/wasm`: WebAssembly bindings for DCAP quote parsing and verified output parsing, enabling browser and JavaScript integrations via `wasm-bindgen`
 
 **Contract Interfaces:**
 - `contracts/`: Solidity contract interfaces for Automata Onchain PCCS and Automata DCAP Attestation to generate Rust bindings
@@ -73,7 +75,7 @@ Whenever the Solidity ABI changes, regenerate the bindings from the repository r
 AUTOMATA_UPDATE_BINDINGS=1 cargo build -p automata-dcap-evm-bindings
 ```
 
-This runs `forge build` and writes fresh bindings into `crates/dcap-evm-bindings/src/bindings`.
+This runs `forge build` and writes fresh bindings into `libraries/bindings/src/bindings`.
 To enforce drift checks locally or in CI, run:
 
 ```bash
