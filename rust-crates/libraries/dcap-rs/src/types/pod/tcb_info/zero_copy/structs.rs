@@ -1,7 +1,7 @@
 // src/types/pod/tcb_info/zero_copy/structs.rs
 
 use super::error::ZeroCopyError;
-use super::iterators::*; // Will define iterators later
+use super::iterators::*;
 use crate::types::pod::tcb_info::{
     TcbComponentHeader, TcbInfoHeader, TcbLevelHeader, TdxModuleIdentityHeader, TdxModulePodData,
     TdxTcbLevelHeader,
