@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use p3_field::PrimeField;
+use ff::PrimeField as _;
 use pico_sdk::client::{DefaultProverClient, KoalaBearProverClient};
 use pico_sdk::HashableKey;
 
@@ -32,8 +32,9 @@ impl ZkVmProver for PicoProver {
 
         // Emulate first to get public buffer
         println!("Emulating program...");
-        let (cycles, public_buffer) = client.emulate(stdin_builder.clone());
-        log::info!("EVM Emulation Cycles: {}", cycles);
+        let (reports, public_buffer) = client.emulate(stdin_builder.clone());
+        let cycles = reports.last().map(|r| r.current_cycle).unwrap_or(0);
+        log::info!("EVM Emulation Cycles: {:?}", cycles);
 
         // Generate proof if not in dev mode
         if std::env::var("DEV_MODE").is_err() || std::env::var("DEV_MODE").unwrap().is_empty() {
@@ -122,7 +123,8 @@ impl ZkVmProver for PicoProver {
         let vk_digest_bn254 = vk.hash_bn254();
 
         // Convert to bytes
-        let vk_bytes = vk_digest_bn254.as_canonical_biguint().to_bytes_be();
+        let repr = vk_digest_bn254.value.to_repr();
+        let vk_bytes = num_bigint::BigUint::from_bytes_le(repr.as_ref()).to_bytes_be();
 
         // Pad to 32 bytes
         let mut result = [0u8; 32];

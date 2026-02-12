@@ -25,7 +25,7 @@ host = [
 # Host-side proving features (each implicitly requires host deps)
 risc0 = ["host", "dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:boundless-market"]
 sp1 = ["host", "dep:sp1-sdk"]
-pico = ["host", "dep:pico-sdk", "dep:num", "dep:num-bigint", "dep:p3-field"]
+pico = ["host", "dep:pico-sdk", "dep:num", "dep:num-bigint", "dep:ff"]
 
 [dependencies]
 # Minimal dependencies (always included - required for guest feature)
@@ -60,9 +60,9 @@ boundless-market = { version = "~1.0", optional = true }
 sp1-sdk = { version = "^5.2.0", optional = true }
 
 # Pico specific dependencies (feature-gated)
-pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6", optional = true }
+pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.2.2", optional = true }
 num = { version = "0.4.3", optional = true }
 num-bigint = { version = "0.4.6", optional = true }
-p3-field = { git = "https://github.com/brevis-network/Plonky3.git", rev = "a4d376b", optional = true }
+ff = { version = "0.13", optional = true }
 
 # Logging dependencies (now non-optional, moved to common dependencies above)

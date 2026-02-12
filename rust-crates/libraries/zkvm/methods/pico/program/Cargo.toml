@@ -8,7 +8,7 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6" }
+pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.2.2" }
 dcap-rs = { path = "../../../../dcap-rs" }
 automata-dcap-zkvm = { path = "../../..", default-features = false, features = ["guest"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }

@@ -21,7 +21,8 @@ members = [
 
     # zkVM build wrapper crates
     "libraries/zkvm/methods/sp1",
-    "libraries/zkvm/methods/risc0"
+    "libraries/zkvm/methods/risc0",
+    "libraries/zkvm/methods/pico"
 ]
 
 [workspace.package]
