@@ -613,7 +613,7 @@ pub fn sgx_ql_get_quote_verification_collateral<P: Provider>(
         let req_url = format!(
             "{}/sgx/certification/{}/pckcrl?ca={}",
             pccs_url,
-            collateral_version.clone(),
+            collateral_version,
             pck_ca.clone()
         );
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -1087,7 +1087,7 @@ pub fn tdx_ql_get_quote_verification_collateral<P: Provider>(
                 pck_crl.as_str(),
                 tcb_info_str.as_str(),
                 enclave_id,
-                collateral_version.clone(),
+                collateral_version,
                 qe_identity_str.as_str(),
                 enclave_identity_issuer_chains_str.as_str(),
                 all_verification_collateral,
@@ -1230,7 +1230,7 @@ pub fn sgx_ql_get_qve_identity<P: Provider>(
                 provider,
                 network,
                 EnclaveID::QVE,
-                collateral_version.clone(),
+                collateral_version,
                 &qve_identity_str,
                 &issuer_chains_str,
                 None,
