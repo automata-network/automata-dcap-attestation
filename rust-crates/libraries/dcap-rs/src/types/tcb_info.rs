@@ -516,7 +516,7 @@ impl TcbStatus {
 
             let matched_tcb_level = match_tdx_tcb(td_report, tcb_info, index)?;
             tdx_tcb_status = matched_tcb_level.tcb_status;
-            advisory_ids = matched_tcb_level.advisory_ids.clone().unwrap_or_default();
+            advisory_ids = matched_tcb_level.advisory_ids.unwrap_or_default();
         }
 
         // Return the final status determination as a tuple
