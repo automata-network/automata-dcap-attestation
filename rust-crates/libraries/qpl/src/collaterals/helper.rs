@@ -410,7 +410,7 @@ pub fn sgx_ql_get_quote_config<P: Provider>(
         let req_url = format!(
             "{}/sgx/certification/{}/pckcert",
             pccs_url,
-            collateral_version.clone(),
+            collateral_version,
         );
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -595,7 +595,7 @@ pub fn sgx_ql_get_quote_verification_collateral<P: Provider>(
             pck_crl,
             tcb_info_str,
             enclave_id,
-            collateral_version.clone(),
+            collateral_version,
             enclave_identity_str,
             enclave_identity_issuer_chains_str,
             all_verification_collateral,
