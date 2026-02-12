@@ -1175,7 +1175,7 @@ pub fn sgx_ql_get_qve_identity<P: Provider>(
             provider,
             network,
             EnclaveID::QVE,
-            collateral_version.clone(),
+            collateral_version,
             &qve_identity_str,
             &issuer_chains_str,
             None,
