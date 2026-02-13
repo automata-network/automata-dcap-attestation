@@ -34,7 +34,7 @@ impl TrustStore {
     ///
     /// # Parameters
     /// * `current_time` - Time reference for validity checks
-    /// * `roots` - Initial set of trusted root certificates
+    /// * `trusted_certs` - Initial set of trusted root certificates
     ///
     /// # Security Considerations
     /// * The provided roots establish the foundation of trust
