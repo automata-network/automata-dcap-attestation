@@ -37,7 +37,7 @@ impl TrustStore {
     /// * `trusted_certs` - Initial set of trusted root certificates
     ///
     /// # Security Considerations
-    /// * The provided roots establish the foundation of trust
+    /// * The provided trusted_certs establish the foundation of trust
     /// * Current_time must come from a secure source on production systems
     pub fn new(
         current_time: SystemTime,
