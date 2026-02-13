@@ -303,10 +303,10 @@ func (p *DcapPortal) VerifyAndAttestOnChain(opts *bind.TransactOpts, rawQuote []
 // GenerateZkProof generates zero-knowledge proof for the given quote.
 // Returns error if zkproof client is not initialized or proof generation fails.
 //
-// Note: EnableZkProof() should be called before using this function.
+// Note: WithZkProof() option should be passed to NewDcapPortal before using this function.
 func (p *DcapPortal) GenerateZkProof(ctx context.Context, ty zkdcap.ZkType, quote []byte) (*zkdcap.ZkProof, error) {
 	if p.zkProof == nil {
-		return nil, logex.NewErrorf("DcapPortal should call EnableZkProof() frist")
+		return nil, logex.NewErrorf("WithZkProof() option should be passed to NewDcapPortal first")
 	}
 	parser := parser.NewQuoteParser(quote)
 	collateral, err := zkdcap.NewCollateralFromQuoteParser(ctx, parser, p.pccs)
