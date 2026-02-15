@@ -289,7 +289,7 @@ enum QplCommands {
     Status {
         /// Filter networks by type
         #[arg(long, value_enum, default_value = "all")]
-        filter: StatusFilter,
+        filter: NetworkFilter,
     },
     /// Inspect which collaterals are missing for a quote
     Check {
