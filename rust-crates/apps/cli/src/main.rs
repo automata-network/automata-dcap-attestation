@@ -164,7 +164,7 @@ enum VerifyCommands {
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
-enum StatusFilter {
+enum NetworkFilter {
     Mainnet,
     Testnet,
     All,
