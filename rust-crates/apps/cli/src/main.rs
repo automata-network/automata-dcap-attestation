@@ -177,13 +177,6 @@ enum SourceArg {
     All,
 }
 
-#[derive(Copy, Clone, Debug, ValueEnum)]
-enum NetworkFilter {
-    Mainnet,
-    Testnet,
-    All,
-}
-
 impl From<SourceArg> for DataSource {
     fn from(value: SourceArg) -> Self {
         match value {
@@ -360,18 +353,8 @@ async fn main() -> Result<()> {
 
     println!("Using DCAP deployment version: {}", dcap_version);
 
-    // Create provider with smart network resolution and validation
-    let provider = get_provider_from_network_params(&cli, dcap_version).await?;
-
-    // Extract network from provider with the specified deployment version
-    let network = if let Some(network) = &cli.network {
-        Network::by_key(network, Some(dcap_version)).context(format!(
-            "Network '{}' not found for DCAP version {}",
-            network, dcap_version
-        ))?
-    } else {
-        Network::from_provider(&provider, Some(dcap_version)).await?
-    };
+    // Create provider and resolve network in a single operation
+    let (provider, network) = get_provider_and_network(&cli, dcap_version).await?;
 
     // Parse quote from global arguments if provided
     let quote_bytes = match (&cli.quote_path, &cli.quote_hex) {
@@ -386,12 +369,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Qpl { command } => match command {
             QplCommands::Status { filter } => {
-                let network_filter = match filter {
-                    StatusFilter::Mainnet => NetworkFilter::Mainnet,
-                    StatusFilter::Testnet => NetworkFilter::Testnet,
-                    StatusFilter::All => NetworkFilter::All,
-                };
-                handle_collateral_status(network_filter, dcap_version).await?
+                handle_collateral_status(filter, dcap_version).await?
             }
             QplCommands::Check { all_networks } => {
                 if let Some(filter) = all_networks {
@@ -675,10 +653,12 @@ async fn handle_collateral_status(filter: NetworkFilter, version: Version) -> Re
     Ok(())
 }
 
-/// Creates a provider from CLI arguments with smart network resolution and validation
-async fn get_provider_from_network_params(cli: &Cli, version: Version) -> Result<impl Provider> {
-    use Network;
-
+/// Creates a provider from CLI arguments with smart network resolution and validation.
+/// Returns both the provider and the resolved network to avoid duplicate resolution.
+async fn get_provider_and_network(
+    cli: &Cli,
+    version: Version,
+) -> Result<(impl Provider, &'static Network)> {
     match (&cli.network, &cli.rpc_url) {
         // Case A: Both --network and --rpc-url provided - validate chain_id
         (Some(network_key), Some(custom_rpc)) => {
