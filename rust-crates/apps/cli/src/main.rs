@@ -703,7 +703,7 @@ async fn get_provider_from_network_params(cli: &Cli, version: Version) -> Result
                 queried_chain_id
             );
 
-            Ok(provider)
+            Ok((provider, network))
         }
 
         // Case B: Only --rpc-url provided - auto-detect network
@@ -725,7 +725,7 @@ async fn get_provider_from_network_params(cli: &Cli, version: Version) -> Result
                 network.chain_id
             );
 
-            Ok(provider)
+            Ok((provider, network))
         }
 
         // Case C: Only --network provided
@@ -741,7 +741,7 @@ async fn get_provider_from_network_params(cli: &Cli, version: Version) -> Result
                 network.chain_id
             );
 
-            Ok(provider)
+            Ok((provider, network))
         }
 
         // Case D: Neither provided - use default network
@@ -757,7 +757,7 @@ async fn get_provider_from_network_params(cli: &Cli, version: Version) -> Result
                 network.chain_id
             );
 
-            Ok(provider)
+            Ok((provider, network))
         }
     }
 }
