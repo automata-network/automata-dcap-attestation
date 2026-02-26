@@ -74,7 +74,9 @@ pub use sp1::{run as run_sp1_command, Sp1Command, Sp1ProveArgs, Sp1Prover};
 
 #[cfg(feature = "pico")]
 pub use pico::{
-    run as run_pico_command, PicoCommand, PicoGenerateEvmInputsArgs, PicoProveArgs, PicoProver,
+    run as run_pico_command, PicoCommand, PicoProveArgs, PicoProveStrategy,
+    PicoLocalProveArgs, PicoMarketplaceProveArgs, PicoProver,
+    MarketplaceConfig, PicoConfig, ProvingStrategy,
 };
 
 // ============================================================================
