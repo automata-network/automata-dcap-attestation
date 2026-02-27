@@ -210,6 +210,14 @@ rpc_endpoints = ["https://mainnet.megaeth.com/rpc"]
 gas_price_hint_wei = 1_000_000
 block_explorers = ["https://mega.etherscan.io/", "https://megaeth.blockscout.com/"]
 
+[story_aeneid]
+name = "Story Aeneid Testnet"
+chain_id = 1315
+testnet = true
+rpc_endpoints = ["https://aeneid.storyrpc.io"]
+gas_price_hint_wei = 30_000_000_000
+block_explorers = ["https://aeneid.storyscan.io/"]
+
 # Default network configuration
 [default]
 network_key = "automata_testnet"
