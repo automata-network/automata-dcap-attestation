@@ -3,10 +3,6 @@ use async_trait::async_trait;
 use ff::PrimeField as _;
 use pico_sdk::client::{DefaultProverClient, KoalaBearProverClient};
 use pico_sdk::HashableKey;
-use pico_vm::{
-    compiler::riscv::program::Program, configs::stark_config::KoalaBearPoseidon2,
-    emulator::stdin::EmulatorStdin,
-};
 
 use super::config::{PicoConfig, ProvingStrategy};
 use super::proving::{prove_local, prove_with_marketplace};
@@ -69,15 +65,8 @@ impl ZkVmProver for PicoProver {
                 // EmulatorStdinBuilder, not raw application bytes. It deserializes
                 // this builder on its end before passing data to the guest program.
                 // Example: https://github.com/brevis-network/pico-proving-service/blob/396f24d165b47d0759b157db7288c20e6318b171/bin/gen_input_example.rs#L68-L81
-                
-                let mut marketplace_stdin_builder =
-                    EmulatorStdin::<Program, Vec<u8>>::new_builder::<KoalaBearPoseidon2>();
-                marketplace_stdin_builder.write_slice(input_bytes);
-                let serialized_stdin = bincode::serialize(&marketplace_stdin_builder)
+                let serialized_stdin = bincode::serialize(&stdin_builder)
                     .context("Failed to serialize EmulatorStdinBuilder for marketplace proving")?;
-
-                // let serialized_stdin = bincode::serialize(&stdin_builder)
-                //     .context("Failed to serialize EmulatorStdinBuilder for marketplace proving")?;
 
                 prove_with_marketplace(
                     self.elf,
