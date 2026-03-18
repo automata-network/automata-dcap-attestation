@@ -1158,7 +1158,7 @@ async fn handle_quote(
 }
 
 fn decode_hex_exact(input: &str, expected_len: usize, label: &str) -> Result<Vec<u8>> {
-    let bytes = hex::decode(input)?;
+    let bytes = hex::decode(input.trim_start_matches("0x"))?;
     if bytes.len() != expected_len {
         bail!(
             "{} must be {} bytes (got {})",
