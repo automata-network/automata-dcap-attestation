@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CACHE_DIR="$PROJECT_ROOT/crates/network-registry/deployment/cache"
+CACHE_DIR="$PROJECT_ROOT/libraries/network-registry/deployment/cache"
 
 echo "Cleaning deployment cache..."
 
