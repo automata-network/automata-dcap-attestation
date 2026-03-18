@@ -95,6 +95,12 @@ contract V5QuoteVerifier is TdxQuoteBase {
 
             tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
 
+            // QE convergence must happen before the relaunch check,
+            // so that relaunch status (if set) is the final output.
+            // This is safe because relaunch conditions require QE to NOT be OutOfDate,
+            // meaning QE convergence is a no-op whenever relaunch is triggered.
+            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
+
             if (quoteBodySize == TD_REPORT15_LENGTH) {
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
@@ -116,8 +122,6 @@ contract V5QuoteVerifier is TdxQuoteBase {
                         configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
                 }
             }
-
-            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
         }
 
         Output memory output = Output({
