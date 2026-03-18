@@ -14,7 +14,7 @@ use crate::CertificateAuthority;
 use crate::shared::{get_certificate_tbs_and_digest, get_issuer_common_name};
 
 /// Intel PCK Certificate Data Access Object Module
-/// This method provides methods to upload and retrieve PCK certificates from the Onchain PCCS program.
+/// This module provides methods to upload and retrieve PCK certificates from the Onchain PCCS program.
 
 impl<S: Clone + Deref<Target = impl Signer>> PccsClient<S> {
 
