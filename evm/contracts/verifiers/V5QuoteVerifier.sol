@@ -55,7 +55,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                     break;
                 }
             }
-            if (sgxStatus == TCBStatus.TCB_REVOKED) {
+            if (!statusFound || sgxStatus == TCBStatus.TCB_REVOKED) {
                 return (false, bytes(TCBR));
             }
             sgxStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, sgxStatus);
