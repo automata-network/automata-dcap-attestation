@@ -484,7 +484,6 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// Additionally, TDX quotes also check the TCB Status based on the TCB of the TDX module.
     ///
     /// # Parameters
-    /// - `quote`: The parsed Quote object to verify
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
     /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `quote`: The parsed Quote object to verify
