@@ -88,7 +88,6 @@ pub fn verify_input(input: Input) -> [u8; 96] {
     //  - For Identity, it is the SHA256 hash of the Borsh serialized Identity Body
     // - SHA256 hash of the data that is signed
     // - SHA256 hash of the issuer certificate tbs
-    // - SHA256 hash of the issuer CRL tbs (if any, otherwise it contains 32 bytes of 0s)
     let subject_tbs_hash: [u8; 32] = Sha256::digest(&tbs).into();
 
     let issuer_tbs_hash: [u8; 32] =
