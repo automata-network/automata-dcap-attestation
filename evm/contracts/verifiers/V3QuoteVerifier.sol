@@ -46,7 +46,7 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes(TCBR));
+            return (false, bytes(TCBR));
         }
 
         tcbStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tcbStatus);
