@@ -81,7 +81,7 @@ pub fn verify_input(input: Input) -> [u8; 96] {
     assert!(verified, "Signature verification failed");
 
     // generate the output
-    // the output is a 128-byte data consists of
+    // the output is a 96-byte data consists of
     // - SHA256 fingerprint of the data stored onchain
     //  - For X509 certificates, it is the SHA256 hash of the entire X509 Certificate data encoded in DER format
     //  - For TCBInfo, it is the SHA256 hash of the Borsh serialized TCBInfo
