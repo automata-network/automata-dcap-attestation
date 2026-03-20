@@ -1,0 +1,14 @@
+# Allow duplicate symbols on Linux targets.
+#
+# Required because risc0-zkvm-platform and pico-sdk both export #[no_mangle]
+# guest syscall symbols (sys_panic, sys_rand, sys_bigint, etc.) that are
+# never called on host. These only apply to host targets - guest compilation
+# (riscv32im-*) is unaffected.
+#
+# macOS doesn't need this due to two-level namespace linking.
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-Wl,--allow-multiple-definition"]
+
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-Wl,--allow-multiple-definition"]

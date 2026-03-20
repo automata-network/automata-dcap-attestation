@@ -55,6 +55,7 @@ pub fn display_proof_result(
         hex::encode(&parsed_output.root_crl_hash)
     );
     println!("PCK CRL Hash: {}", hex::encode(&parsed_output.pck_crl_hash));
+    println!("Quote Hash: {}", hex::encode(&parsed_output.quote_hash));
 
     println!("\nJournal: {}", hex::encode(journal));
     println!("{}: {}", proof_label, hex::encode(proof_bytes));

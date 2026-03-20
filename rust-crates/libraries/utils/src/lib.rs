@@ -4,7 +4,6 @@
 //! - Version management for DCAP deployments
 //! - Quote parsing and handling utilities
 //! - Data structure parsers for verified output bytes
-//! - WASM bindings for JavaScript interop (when `wasm` feature is enabled)
 
 /// Quote reading and hex parsing utilities.
 pub mod quote;
@@ -12,9 +11,6 @@ pub mod quote;
 pub mod parser;
 /// Version type for DCAP deployments (auto-generated).
 pub mod version;
-/// WASM bindings for DCAP quote parsing (requires `wasm` feature).
-#[cfg(feature = "wasm")]
-pub mod wasm;
 
 // Re-export commonly used types
 pub use version::Version;

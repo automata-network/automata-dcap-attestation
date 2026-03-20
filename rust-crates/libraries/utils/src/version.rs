@@ -14,9 +14,7 @@ pub enum Version {
 }
 impl Version {
     #[doc = r" Get all supported versions"]
-    pub fn all() -> Vec<Version> {
-        vec![Version::V1_0, Version::V1_1]
-    }
+    pub fn all() -> Vec<Version> { vec![Version::V1_0, Version::V1_1] }
     #[doc = r#" Get the version string (e.g., "v1.0")"#]
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -40,9 +38,7 @@ impl Version {
     }
 }
 impl fmt::Display for Version {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.as_str()) }
 }
 impl FromStr for Version {
     type Err = anyhow::Error;

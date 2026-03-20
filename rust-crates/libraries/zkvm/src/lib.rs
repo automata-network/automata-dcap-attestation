@@ -6,11 +6,13 @@
 //!
 //! # Features
 //!
+//! - `guest` - Minimal feature for zkVM guest programs (input/output types only)
+//! - `host` - Host-side dependencies (enabled by default)
 //! - `risc0` - Enable RISC Zero backend
 //! - `sp1` - Enable Succinct SP1 backend
 //! - `pico` - Enable Pico backend (v1.1+ only)
 //!
-//! # Example
+//! # Example (Host)
 //!
 //! ```no_run
 //! use automata_dcap_zkvm::{ZkVm, Version, generate_input};
@@ -28,11 +30,19 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Example (Guest)
+//!
+//! ```ignore
+//! use automata_dcap_zkvm::common::inputs::{GuestInput, GuestInputSolType};
+//!
+//! let input = GuestInput::sol_abi_decode(&input_bytes);
+//! ```
 
 // Shared modules (always available)
 pub mod common;
 
-// zkVM-specific modules (feature-gated)
+// zkVM-specific modules (feature-gated, requires host)
 // Each zkVM module contains versioned guest programs under guest/v1_x/
 #[cfg(feature = "risc0")]
 pub mod risc0;
@@ -43,12 +53,17 @@ pub mod sp1;
 #[cfg(feature = "pico")]
 pub mod pico;
 
-// Re-export commonly used types and functions
+// Re-export commonly used types and functions (host-only)
+#[cfg(feature = "host")]
 pub use automata_dcap_utils::Version;
+#[cfg(feature = "host")]
 pub use common::{
     display_proof_result, generate_input, parse_output, prepare_guest_input, ParsedOutput,
     ProofArtifact, QuoteMetadata, ZkVm, ZkVmProver,
 };
+
+// Re-export guest types (always available)
+pub use common::inputs::{GuestInput, GuestInputSolType};
 
 // Re-export zkVM CLI commands for apps/cli integration
 #[cfg(feature = "risc0")]
@@ -59,11 +74,13 @@ pub use sp1::{run as run_sp1_command, Sp1Command, Sp1ProveArgs, Sp1Prover};
 
 #[cfg(feature = "pico")]
 pub use pico::{
-    run as run_pico_command, PicoCommand, PicoGenerateEvmInputsArgs, PicoProveArgs, PicoProver,
+    run as run_pico_command, PicoCommand, PicoProveArgs, PicoProveStrategy,
+    PicoLocalProveArgs, PicoMarketplaceProveArgs, PicoProver,
+    MarketplaceConfig, PicoConfig, ProvingStrategy,
 };
 
 // ============================================================================
-// Version-Aware Helper Functions
+// Version-Aware Helper Functions (Host-only)
 // ============================================================================
 
 /// Retrieves the guest program ELF binary for a specific DCAP version and zkVM backend.
@@ -82,6 +99,7 @@ pub use pico::{
 /// Returns an error if:
 /// - The requested zkVM feature is not enabled at compile time
 /// - Pico is requested for v1.0 (not supported)
+#[cfg(feature = "host")]
 pub fn get_elf(version: Version, zkvm: ZkVm) -> anyhow::Result<&'static [u8]> {
     match (version, zkvm) {
         // v1.0 ELFs

@@ -15,6 +15,20 @@ fn get_gas_price(network: &Network) -> u128 {
     network.gas_price_hint_wei().unwrap_or(10000u128)
 }
 
+/// Parse collateral version string to U256
+///
+/// Converts version strings like "v1", "v2", "v3", "v4" to their numeric U256 equivalents.
+/// Defaults to version 3 if an unknown version is provided.
+fn parse_collateral_version(collateral_version: &str) -> U256 {
+    match collateral_version {
+        "v1" => U256::from(1u32),
+        "v2" => U256::from(2u32),
+        "v3" => U256::from(3u32),
+        "v4" => U256::from(4u32),
+        _ => U256::from(3u32), // use v3 as default dcap attestation version
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn upsert_pck_cert<P: Provider>(
     provider: &P,
@@ -271,17 +285,7 @@ pub(crate) fn upsert_enclave_identity<P: Provider>(
         }
     }
     let id = U256::from(enclave_id as u32);
-    let version = if collateral_version == "v1" {
-        U256::from(1u32)
-    } else if collateral_version == "v2" {
-        U256::from(2u32)
-    } else if collateral_version == "v3" {
-        U256::from(3u32)
-    } else if collateral_version == "v4" {
-        U256::from(4u32)
-    } else {
-        U256::from(3u32) // use v3 as default dcap attestation version
-    };
+    let version = parse_collateral_version(&collateral_version);
     let enclave_identity: EnclaveIdentity = serde_json::from_str(enclave_identity_str).unwrap();
     // Jiaquan: we cannot use serde lib to deserialize the enclave_identity_str, because in v4 struct, an inner struct is also indexmap here
     // Need to have a better implementation here

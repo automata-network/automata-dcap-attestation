@@ -416,14 +416,15 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
     /// The chain verification itself is performed off-chain using a ZKVM (Zero-Knowledge Virtual Machine) proof.
     ///
     /// # Parameters:
+    /// - `quote`: The parsed Quote object to verify
     /// - `quote_buffer_pubkey`: The public key of the buffer account containing the quote data
     /// - `verified_output_pubkey`: The public key of the VerifiedOutput account
     /// - `zkvm_verifier_program`: The public key of the ZKVM verifier program
     /// - `zkvm_selector`: The ZKVM selector (currently only supports RiscZero)
-    /// - `proof_bytes`: The SNARK proof bytes for the PCK certificate chain verification
+    /// - `proofs`: The SNARK proof bytes for the PCK certificate chain verification (one proof per certificate)
     ///
     /// # Returns:
-    /// - `Result<Signature>`: The transaction signature for this verification step,
+    /// - `Result<[Signature; 3]>`: The transaction signatures for each certificate verification step,
     ///   or an error if verification fails
     async fn verify_pck_cert_chain(
         &self,

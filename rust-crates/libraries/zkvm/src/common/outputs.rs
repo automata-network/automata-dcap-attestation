@@ -36,6 +36,8 @@ pub fn parse_output(output: &[u8], version: Version) -> Result<ParsedOutput> {
     let root_crl_hash = output[offset..offset + 32].to_vec();
     offset += 32;
     let pck_crl_hash = output[offset..offset + 32].to_vec();
+    offset += 32;
+    let quote_hash = output[offset..offset + 32].to_vec();
 
     Ok(ParsedOutput {
         verified_output,
@@ -46,6 +48,7 @@ pub fn parse_output(output: &[u8], version: Version) -> Result<ParsedOutput> {
         signing_cert_hash,
         root_crl_hash,
         pck_crl_hash,
+        quote_hash
     })
 }
 
@@ -59,6 +62,7 @@ pub struct ParsedOutput {
     pub signing_cert_hash: Vec<u8>,
     pub root_crl_hash: Vec<u8>,
     pub pck_crl_hash: Vec<u8>,
+    pub quote_hash: Vec<u8>
 }
 
 /// Proof artifact that can be serialized to JSON

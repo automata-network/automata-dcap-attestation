@@ -37,13 +37,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
     function verifyZkOutput(bytes calldata outputBytes, uint32 tcbEvalNumber)
         public
         view
-        virtual
         override
         returns (bool success, bytes memory output)
     {
         uint16 outputLength = uint16(bytes2(outputBytes[0:2]));
         uint256 offset = 2 + outputLength;
-        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH != outputBytes.length) {
+        if (offset + VERIFIED_OUTPUT_COLLATERAL_HASHES_LENGTH > outputBytes.length) {
             return (false, bytes(OUTS));
         }
         bytes memory errorMessage;
@@ -73,12 +72,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             result.reason = QEF;
             return result;
         }
-        result.success =
-            verifyQeReportData(
-                qeReport.reportData, 
-                authData.ecdsaAttestationKey, 
-                authData.qeAuthData
-            );
+        result.success = verifyQeReportData(qeReport.reportData, authData.ecdsaAttestationKey, authData.qeAuthData);
         if (!result.success) {
             result.reason = QEVE;
             return result;
@@ -86,7 +80,8 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         // Step 1: Fetch QEIdentity to validate TCB of the QE
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
-        (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, pcsApiVersion, qeReport, tcbEvalNumber);
+        (result.success, result.qeTcbStatus) =
+            fetchQeIdentityAndCheckQeReport(id, pcsApiVersion, qeReport, tcbEvalNumber);
         if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
             result.reason = QEIDVE;
             return result;
@@ -143,6 +138,75 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         valid = true;
     }
 
+    /**
+     * @dev Shared AuthData parsing logic for V4+ quote formats
+     * @dev V3QuoteVerifier overrides this function to implement V3 specific parsing
+     *
+     * Format (V4/V5):
+     * [0:64] bytes: ecdsa256BitSignature
+     * [64:128] bytes: ecdsaAttestationKey
+     * [128:130] bytes: qeReportCertType (must be 6)
+     * [130:134] bytes: qeReportCertSize (X)
+     * [134:518] bytes: qeReport
+     * [518:582] bytes: qeReportSignature
+     * [582:584] bytes: qeAuthDataSize (Y)
+     * [584:584+Y] bytes: qeAuthData
+     * [584+Y:586+Y] bytes: pckCertType (must be 5)
+     * [586+Y:590+Y] bytes: certSize (Z)
+     * [590+Y:590+Y+Z] bytes: certData
+     */
+    function parseAuthData(bytes calldata rawAuthData)
+        internal
+        view
+        virtual
+        returns (bool success, AuthData memory authData)
+    {
+        // Common signature and key fields (always at the beginning)
+        authData.ecdsa256BitSignature = rawAuthData[0:64];
+        authData.ecdsaAttestationKey = rawAuthData[64:128];
+
+        // QE Report Certificate Type validation (V4/V5 specific)
+        uint256 qeReportCertType = BELE.leBytesToBeUint(rawAuthData[128:130]);
+        if (qeReportCertType != 6) {
+            return (false, authData);
+        }
+        uint256 qeReportCertSize = BELE.leBytesToBeUint(rawAuthData[130:134]);
+        authData.qeReportSignature = rawAuthData[518:582];
+
+        // QE Auth Data parsing
+        uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
+        uint256 offset = 584;
+        authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
+        offset += qeAuthDataSize;
+
+        // PCK Certificate Type validation
+        uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
+        if (certType != 5) {
+            return (false, authData);
+        }
+
+        // PCK Certificate Data parsing
+        offset += 2;
+        uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
+        offset += 4;
+        bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
+        offset += certDataSize;
+
+        // Validate total size consistency
+        if (offset - 134 != qeReportCertSize) {
+            return (false, authData);
+        }
+
+        // QE Report extraction (after validation)
+        authData.qeReport = rawAuthData[134:518];
+
+        // Get PCK collateral from router
+        (success, authData.certification) = getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
+        if (!success) {
+            return (false, authData);
+        }
+    }
+
     function parseEnclaveReport(bytes memory rawEnclaveReport)
         internal
         pure
@@ -166,11 +230,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         success = true;
     }
 
-    function fetchQeIdentityAndCheckQeReport(EnclaveId id, uint256 pcsApiVersion, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
-        internal
-        view
-        returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
-    {
+    function fetchQeIdentityAndCheckQeReport(
+        EnclaveId id,
+        uint256 pcsApiVersion,
+        EnclaveReport memory qeReport,
+        uint32 tcbEvalNumber
+    ) internal view returns (bool success, EnclaveIdTcbStatus qeTcbStatus) {
         IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, pcsApiVersion, tcbEvalNumber);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
@@ -260,13 +325,17 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumberWithTimestamp(tcbId, timestamp);
         }
 
-        bytes32 expectedTcbInfoContentHash =
-            pccsRouter.getFmspcTcbContentHashWithTimestamp(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber, timestamp);
+        // PCS API V4 returns TcbInfo v3, regardless of quote version
+        uint32 tcbInfoVersion = 3;
+        bytes32 expectedTcbInfoContentHash = pccsRouter.getFmspcTcbContentHashWithTimestamp(
+            tcbId, fmspc, tcbInfoVersion, tcbEvalNumber, timestamp
+        );
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
             return (false, bytes(TCBCH));
         }
 
-        uint32 pcsApiVersion = quoteVersion < 4 ? 3 : 4;
+        // Using PCS API V4 regardless of quote version
+        uint32 pcsApiVersion = 4;
         bytes32 expectedIdentityContentHash = pccsRouter.getQeIdentityContentHashWithTimestamp(
             isSGX ? EnclaveId.QE : EnclaveId.TD_QE, pcsApiVersion, tcbEvalNumber, timestamp
         );
@@ -293,21 +362,21 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         // - one of the PCK CAs has a CRL stored on-chain
         // - the hash of the on-chain CRL matches with the CRL hash in the zkOutput
 
-        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp)
-        );
+        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter)
+            .staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp));
 
-        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp)
-        );
+        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter)
+            .staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp));
 
         bytes32 expectedPlatformCrlHash;
         bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
             expectedPlatformCrlHash = abi.decode(platformRet, (bytes32));
-        } else if (processorSuccess) {
+        }
+        if (processorSuccess) {
             expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
-        } else {
+        }
+        if (!platformSuccess && !processorSuccess) {
             // Both Processor and Platform PCKs not found
             return (false, bytes(PCKCRLM));
         }

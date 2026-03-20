@@ -37,8 +37,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-        pccsRouter.getFmspcTcbV3(
+        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) = pccsRouter.getFmspcTcbV3(
             header.teeType == SGX_TEE ? TcbId.SGX : TcbId.TDX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber
         );
 
@@ -56,7 +55,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                     break;
                 }
             }
-            if (sgxStatus == TCBStatus.TCB_REVOKED) {
+            if (!statusFound || sgxStatus == TCBStatus.TCB_REVOKED) {
                 return (false, bytes(TCBR));
             }
             sgxStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, sgxStatus);
@@ -96,12 +95,25 @@ contract V5QuoteVerifier is TdxQuoteBase {
 
             tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
 
+            // QE convergence must happen before the relaunch check,
+            // so that relaunch status (if set) is the final output.
+            // This is safe because relaunch conditions require QE to NOT be OutOfDate,
+            // meaning QE convergence is a no-op whenever relaunch is triggered.
+            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
+
             if (quoteBodySize == TD_REPORT15_LENGTH) {
                 // Relaunch check (TD 1.5 only)
                 bool relaunchAdvised;
                 bool configurationNeeded;
-                (success, reason, relaunchAdvised, configurationNeeded) =
-                    _checkForRelaunch(teeTcbSvn2, result.qeTcbStatus, sgxStatus, tdxStatus, tdxModuleStatus, tcbLevels, tdxModuleIdentities);
+                (success, reason, relaunchAdvised, configurationNeeded) = _checkForRelaunch(
+                    teeTcbSvn2,
+                    result.qeTcbStatus,
+                    sgxStatus,
+                    tdxStatus,
+                    tdxModuleStatus,
+                    tcbLevels,
+                    tdxModuleIdentities
+                );
                 if (!success) {
                     return (false, bytes(reason));
                 }
@@ -110,8 +122,6 @@ contract V5QuoteVerifier is TdxQuoteBase {
                         configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
                 }
             }
-
-            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
         }
 
         Output memory output = Output({
@@ -177,53 +187,9 @@ contract V5QuoteVerifier is TdxQuoteBase {
             return (false, ADS, 0, 0, authData);
         }
 
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = parseAuthData(quote[offset:offset + localAuthDataSize]);
         if (!success) {
             return (false, ADF, 0, 0, authData);
-        }
-    }
-
-    function _parseAuthData(bytes calldata rawAuthData)
-        private
-        view
-        returns (bool success, AuthData memory authData)
-    {
-        authData.ecdsa256BitSignature = rawAuthData[0:64];
-        authData.ecdsaAttestationKey = rawAuthData[64:128];
-
-        uint256 qeReportCertType = BELE.leBytesToBeUint(rawAuthData[128:130]);
-        if (qeReportCertType != 6) {
-            return (false, authData);
-        }
-        uint256 qeReportCertSize = BELE.leBytesToBeUint(rawAuthData[130:134]);
-        authData.qeReportSignature = rawAuthData[518:582];
-
-        uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
-        uint256 offset = 584;
-        authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
-        offset += qeAuthDataSize;
-
-        uint16 certType = uint16(BELE.leBytesToBeUint(rawAuthData[offset:offset + 2]));
-        if (certType != 5) {
-            return (false, authData);
-        }
-
-        offset += 2;
-        uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
-        offset += 4;
-        bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
-        offset += certDataSize;
-
-        if (offset - 134 != qeReportCertSize) {
-            return (false, authData);
-        }
-
-        authData.qeReport = rawAuthData[134:518];
-
-        (success, authData.certification) =
-            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
-        if (!success) {
-            return (false, authData);
         }
     }
 
@@ -272,7 +238,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         TDXModuleIdentity[] memory tdxModuleIdentities
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
         success = true;
-        
+
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
             if (sgxStatus != TCBStatus.TCB_OUT_OF_DATE && sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED) {
                 if (
@@ -295,8 +261,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                             (success, matchingModuleIdentity) =
                                 findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
                             if (!success) {
-                                return
-                                    (false, TDRF, false, false);
+                                return (false, TDRF, false, false);
                             }
 
                             TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];
