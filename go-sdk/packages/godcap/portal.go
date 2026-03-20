@@ -306,7 +306,7 @@ func (p *DcapPortal) VerifyAndAttestOnChain(opts *bind.TransactOpts, rawQuote []
 // Note: WithZkProof() should be called before using this function.
 func (p *DcapPortal) GenerateZkProof(ctx context.Context, ty zkdcap.ZkType, quote []byte) (*zkdcap.ZkProof, error) {
 	if p.zkProof == nil {
-		return nil, logex.NewErrorf("DcapPortal should call EnableZkProof() frist")
+		return nil, logex.NewErrorf("DcapPortal should call WithZkProof() first")
 	}
 	parser := parser.NewQuoteParser(quote)
 	collateral, err := zkdcap.NewCollateralFromQuoteParser(ctx, parser, p.pccs)
