@@ -58,7 +58,9 @@ pub fn concatenate_output(
     subject_tbs_digest: &[u8],
     issuer_tbs_digest: &[u8],
 ) -> Vec<u8> {
-    let mut output = Vec::with_capacity(96);
+    let mut output = Vec::with_capacity(
+    fingerprint.len() + subject_tbs_digest.len() + issuer_tbs_digest.len()
+);
     output.extend_from_slice(fingerprint);
     output.extend_from_slice(subject_tbs_digest);
     output.extend_from_slice(issuer_tbs_digest);
