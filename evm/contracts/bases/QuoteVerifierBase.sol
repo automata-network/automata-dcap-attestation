@@ -372,9 +372,11 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         bytes32 expectedProcessorCrlHash;
         if (platformSuccess) {
             expectedPlatformCrlHash = abi.decode(platformRet, (bytes32));
-        } else if (processorSuccess) {
+        }
+        if (processorSuccess) {
             expectedProcessorCrlHash = abi.decode(processorRet, (bytes32));
-        } else {
+        }
+        if (!platformSuccess && !processorSuccess) {
             // Both Processor and Platform PCKs not found
             return (false, bytes(PCKCRLM));
         }

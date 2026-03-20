@@ -113,7 +113,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
             }
         }
         if (!statusFound || tcbStatus == TCBStatus.TCB_REVOKED) {
-            return (statusFound, bytes(TCBR));
+            return (false, bytes(TCBR));
         }
 
         tcbStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tcbStatus);
