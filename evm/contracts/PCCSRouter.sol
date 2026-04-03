@@ -19,6 +19,15 @@ interface IVersionedDao {
     function TCB_EVALUATION_NUMBER() external view returns (uint32);
 }
 
+interface ICollateralVersioning {
+    function collateralVersion(bytes32 key) external view returns (uint256 version);
+
+    function hasChanged(bytes32 key, uint256 sinceVersion)
+        external
+        view
+        returns (bool changed, uint256 currentVersion);
+}
+
 /**
  * @title Automata PCCS Router
  * @dev contracts wanting to read collaterals from On-Chain PCCS
@@ -241,6 +250,98 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         returns (bytes32 contentHash)
     {
         contentHash = _getQeIdentityContentHash(id, pcsApiVersion, tcbEval, block.timestamp);
+    }
+
+    function getFmspcTcbVersion(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (uint256 ver)
+    {
+        address versionedDao = fmspcTcbDaoVersionedAddr[tcbEval];
+        if (versionedDao == address(0)) {
+            revert FmspcTcbExpiredOrNotFound(id, version);
+        }
+
+        FmspcTcbDao versionedTcbDao = FmspcTcbDao(versionedDao);
+        bytes32 versionedKey = versionedTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
+        ver = ICollateralVersioning(versionedDao).collateralVersion(versionedKey);
+    }
+
+    function getQeIdentityVersion(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (uint256 ver)
+    {
+        address versionedDao = qeIdDaoVersionedAddr[tcbEval];
+        if (versionedDao == address(0)) {
+            revert QEIdentityExpiredOrNotFound(id, pcsApiVersion);
+        }
+
+        EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
+        bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), pcsApiVersion);
+        ver = ICollateralVersioning(versionedDao).collateralVersion(versionedKey);
+    }
+
+    function getPcsCollateralVersion(CA ca, bool isCrl)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (uint256 ver)
+    {
+        PcsDao pcsDao = PcsDao(pcsDaoAddr);
+        bytes32 key = pcsDao.PCS_KEY(ca, isCrl);
+        ver = ICollateralVersioning(pcsDaoAddr).collateralVersion(key);
+    }
+
+    function hasFmspcTcbChanged(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval, uint256 sinceVersion)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (bool changed, uint256 currentVersion)
+    {
+        address versionedDao = fmspcTcbDaoVersionedAddr[tcbEval];
+        if (versionedDao == address(0)) {
+            revert FmspcTcbExpiredOrNotFound(id, version);
+        }
+
+        FmspcTcbDao versionedTcbDao = FmspcTcbDao(versionedDao);
+        bytes32 versionedKey = versionedTcbDao.FMSPC_TCB_KEY(uint8(id), fmspc, version);
+        (changed, currentVersion) = ICollateralVersioning(versionedDao).hasChanged(versionedKey, sinceVersion);
+    }
+
+    function hasQeIdentityChanged(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval, uint256 sinceVersion)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (bool changed, uint256 currentVersion)
+    {
+        address versionedDao = qeIdDaoVersionedAddr[tcbEval];
+        if (versionedDao == address(0)) {
+            revert QEIdentityExpiredOrNotFound(id, pcsApiVersion);
+        }
+
+        EnclaveIdentityDao versionedEnclaveIdDao = EnclaveIdentityDao(versionedDao);
+        bytes32 versionedKey = versionedEnclaveIdDao.ENCLAVE_ID_KEY(uint256(id), pcsApiVersion);
+        (changed, currentVersion) = ICollateralVersioning(versionedDao).hasChanged(versionedKey, sinceVersion);
+    }
+
+    function hasPcsCollateralChanged(CA ca, bool isCrl, uint256 sinceVersion)
+        external
+        view
+        override
+        onlyAuthorized
+        returns (bool changed, uint256 currentVersion)
+    {
+        PcsDao pcsDao = PcsDao(pcsDaoAddr);
+        bytes32 key = pcsDao.PCS_KEY(ca, isCrl);
+        (changed, currentVersion) = ICollateralVersioning(pcsDaoAddr).hasChanged(key, sinceVersion);
     }
 
     function getQeIdentityContentHashWithTimestamp(
