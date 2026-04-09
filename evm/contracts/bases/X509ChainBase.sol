@@ -113,7 +113,7 @@ abstract contract X509ChainBase is P256Verifier {
                 break;
             }
 
-            certNotExpired = block.timestamp > current.validityNotBefore && block.timestamp < current.validityNotAfter;
+            certNotExpired = block.timestamp >= current.validityNotBefore && block.timestamp <= current.validityNotAfter;
             if (!certNotExpired) {
                 break;
             }

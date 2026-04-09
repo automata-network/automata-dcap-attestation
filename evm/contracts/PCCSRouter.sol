@@ -73,7 +73,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
     event SetCallerAuthorization(address caller, bool authorized);
     event UpdateCallerRestriction(bool restricted);
     event UpdateConfig(
-        address pcs, address pck, address x509, address x509Crl, address tcbHelper
+        address tcbEval, address pcs, address pck, address x509, address x509Crl, address tcbHelper
     );
     event UpdateQeIdDaoVersionedAddr(uint32 tcbEval, address addr);
     event UpdateFmspcTcbDaoVersionedAddr(uint32 tcbEval, address addr);
@@ -155,7 +155,7 @@ contract PCCSRouter is IPCCSRouter, Ownable {
         crlHelperAddr = _x509Crl;
         fmspcTcbHelperAddr = _tcbHelper;
 
-        emit UpdateConfig(_pcs, _pck, _x509, _x509Crl, _tcbHelper);
+        emit UpdateConfig(_tcbEval, _pcs, _pck, _x509, _x509Crl, _tcbHelper);
     }
 
     function getEarlyTcbEvaluationDataNumber(TcbId id) external view override onlyAuthorized returns (uint32) {
