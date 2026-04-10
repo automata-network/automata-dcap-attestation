@@ -460,21 +460,18 @@ impl SgxQlQveCollateral {
 
     pub fn print(&self) {
         println!("[Automata DCAP QPL] ---SgxQlQveCollateral---");
-        #[allow(clippy::useless_transmute)]
+        let tee_type = self.tee_type;
         let version = unsafe {
-            if self.tee_type == 0x0 {
-                format!("{}", std::mem::transmute::<u32, u32>(self.version.version))
+            if tee_type == 0x0 {
+                let v = self.version.version;
+                v.to_string()
             } else {
-                format!(
-                    "major {}, minor {}, ",
-                    std::mem::transmute::<u16, u16>(self.version.versions.major_version),
-                    std::mem::transmute::<u16, u16>(self.version.versions.minor_version),
-                )
+                let major = self.version.versions.major_version;
+                let minor = self.version.versions.minor_version;
+                format!("major {}, minor {}, ", major, minor)
             }
         };
         println!("[Automata DCAP QPL]  version: {:?}", version);
-        #[allow(clippy::useless_transmute)]
-        let tee_type = unsafe { std::mem::transmute::<u32, u32>(self.tee_type) };
         println!("[Automata DCAP QPL]  tee_type: {:?}", tee_type);
 
         println!(

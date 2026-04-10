@@ -610,19 +610,13 @@ impl<S: Clone + Deref<Target = impl Signer>> VerifierClient<S> {
         let quote_body = match verified_output_account.tee_type {
             SGX_TEE_TYPE => QuoteBody::SgxQuoteBody(
                 EnclaveReportBody::try_from(
-                    TryInto::<[u8; std::mem::size_of::<EnclaveReportBody>()]>::try_into(
-                        verified_output_account.quote_body.clone(),
-                    )
-                    .unwrap(),
+                    verified_output_account.quote_body.clone().try_into().unwrap(),
                 )
                 .unwrap(),
             ),
             TDX_TEE_TYPE => QuoteBody::Td10QuoteBody(
                 Td10ReportBody::try_from(
-                    TryInto::<[u8; std::mem::size_of::<Td10ReportBody>()]>::try_into(
-                        verified_output_account.quote_body.clone(),
-                    )
-                    .unwrap(),
+                    verified_output_account.quote_body.clone().try_into().unwrap(),
                 )
                 .unwrap(),
             ),
