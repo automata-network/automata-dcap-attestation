@@ -66,69 +66,90 @@ abstract contract X509ChainBase is P256Verifier {
     {
         require(certs.length == PCK_CERT_CHAIN_LENGTH, "Invalid PCK certificate chain length");
 
-        X509CRLHelper crlHelper = X509CRLHelper(crlHelperAddr);
-        bool certRevoked;
-        bool certNotExpired;
-        bool verified;
-        bool certChainCanBeTrusted;
-        for (uint256 i = 0; i < PCK_CERT_CHAIN_LENGTH; i++) {
-            X509CertObj memory current = certs[i];
-            X509CertObj memory issuer;
-            bytes memory crl;
-            if (i == PCK_CERT_CHAIN_LENGTH - 1) {
-                // the last cert must be the root CA
-                issuer = certs[i];
-                bytes32 issuerPubKeyHash = keccak256(issuer.subjectPublicKey);
-                certChainCanBeTrusted = issuerPubKeyHash == ROOTCA_PUBKEY_HASH;
-                if (!certChainCanBeTrusted) {
-                    break;
-                }
-            } else {
-                issuer = certs[i + 1];
-                if (i == PCK_CERT_CHAIN_LENGTH - 2) {
-                    crl = pccsRouter.getCrl(CA.ROOT);
-                } else if (i == 0) {
-                    string memory issuerName = current.issuerCommonName;
-                    if (LibString.eq(issuerName, PLATFORM_ISSUER_NAME)) {
-                        crl = pccsRouter.getCrl(CA.PLATFORM);
-                    } else if (LibString.eq(issuerName, PROCESSOR_ISSUER_NAME)) {
-                        crl = pccsRouter.getCrl(CA.PROCESSOR);
-                    } else {
-                        return false;
-                    }
-                }
-            }
+        X509CertObj memory leaf = certs[0];
+        X509CertObj memory intermediate = certs[1];
+        X509CertObj memory root = certs[2];
 
-            bytes memory issuerSubjectKeyIdentifier = issuer.subjectKeyIdentifier;
+        // Stage 1: Root is anchored by the hardcoded Intel pubkey hash.
+        // The root's self-signature is intentionally not re-verified: the pubkey is
+        // pinned by hash, so a root with any other pubkey cannot pass, and a root
+        // with the real pubkey cannot have its signature forged regardless.
+        if (keccak256(root.subjectPublicKey) != ROOTCA_PUBKEY_HASH) return false;
+        if (!_isInValidity(root)) return false;
 
-            if (crl.length > 0) {
-                // check issuer subject key identifier against crl authority key identifier
-                bytes memory crlAuthorityKeyIdentifier = crlHelper.getAuthorityKeyIdentifier(crl);
-                if (!BytesUtils.compareBytes(issuerSubjectKeyIdentifier, crlAuthorityKeyIdentifier)) {
-                    return false;
-                }
-                certRevoked = crlHelper.serialNumberIsRevoked(current.serialNumber, crl);
-            }
-            if (certRevoked) {
-                break;
-            }
+        // Stage 2: Intermediate must be issued by Root and must not be revoked by Root CRL.
+        (bool rootCrlOk, bytes memory rootCrl) = _tryGetCrl(pccsRouter, CA.ROOT);
+        if (!rootCrlOk) return false;
+        if (!_verifyIssued(intermediate, root, rootCrl, crlHelperAddr)) return false;
 
-            certNotExpired = block.timestamp >= current.validityNotBefore && block.timestamp <= current.validityNotAfter;
-            if (!certNotExpired) {
-                break;
-            }
-
-            {
-                bytes memory currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
-                if (BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)) {
-                    verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
-                }
-                if (!verified) {
-                    break;
-                }
-            }
+        // Stage 3: Leaf must be issued by either Platform or Processor PCK CA.
+        // The specific CA is selected by the leaf's issuerCommonName.
+        bool leafCrlOk;
+        bytes memory leafCrl;
+        if (LibString.eq(leaf.issuerCommonName, PLATFORM_ISSUER_NAME)) {
+            (leafCrlOk, leafCrl) = _tryGetCrl(pccsRouter, CA.PLATFORM);
+        } else if (LibString.eq(leaf.issuerCommonName, PROCESSOR_ISSUER_NAME)) {
+            (leafCrlOk, leafCrl) = _tryGetCrl(pccsRouter, CA.PROCESSOR);
+        } else {
+            return false;
         }
-        return !certRevoked && certNotExpired && verified && certChainCanBeTrusted;
+        if (!leafCrlOk) return false;
+        if (!_verifyIssued(leaf, intermediate, leafCrl, crlHelperAddr)) return false;
+
+        return true;
+    }
+
+    /// @dev Verifies that `current` was issued by `issuer`: validity, AKI/SKI binding,
+    /// CRL consistency, non-revocation, and (critically) the ECDSA signature.
+    /// Every layer unconditionally runs the signature check — this closes the
+    /// "AKI mismatch silently skips signature" bypass from the previous loop form.
+    function _verifyIssued(
+        X509CertObj memory current,
+        X509CertObj memory issuer,
+        bytes memory issuerCrl,
+        address crlHelperAddr
+    ) private view returns (bool) {
+        if (!_isInValidity(current)) return false;
+
+        // AKI/SKI must be non-empty and match.
+        // Non-empty check is essential: BytesUtils.compareBytes("", "") returns true,
+        // which would otherwise let a cert missing the extension bypass identity binding.
+        if (!_keyIdMatches(issuer.subjectKeyIdentifier, current.authorityKeyIdentifier)) return false;
+
+        X509CRLHelper crlHelper = X509CRLHelper(crlHelperAddr);
+
+        // CRL must be signed by the issuer (binds CRL to the cert chain).
+        bytes memory crlAki = crlHelper.getAuthorityKeyIdentifier(issuerCrl);
+        if (!BytesUtils.compareBytes(issuer.subjectKeyIdentifier, crlAki)) return false;
+
+        if (crlHelper.serialNumberIsRevoked(current.serialNumber, issuerCrl)) return false;
+
+        return ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
+    }
+
+    function _isInValidity(X509CertObj memory cert) private view returns (bool) {
+        return block.timestamp >= cert.validityNotBefore && block.timestamp <= cert.validityNotAfter;
+    }
+
+    function _keyIdMatches(bytes memory ski, bytes memory aki) private pure returns (bool) {
+        if (ski.length == 0 || aki.length == 0) return false;
+        return BytesUtils.compareBytes(ski, aki);
+    }
+
+    /// @dev Wraps pccsRouter.getCrl(ca) in a staticcall so that a missing or expired
+    /// CRL surfaces as (false, "") instead of bubbling up the revert and DOS-ing the
+    /// entire verifyQuote transaction. Callers treat `ok == false` as "reject this chain".
+    function _tryGetCrl(IPCCSRouter pccsRouter, CA ca)
+        private
+        view
+        returns (bool ok, bytes memory crl)
+    {
+        (bool success, bytes memory ret) = address(pccsRouter).staticcall(
+            abi.encodeWithSelector(IPCCSRouter.getCrl.selector, ca)
+        );
+        if (!success) return (false, bytes(""));
+        crl = abi.decode(ret, (bytes));
+        ok = crl.length > 0;
     }
 
     function _parsePck(address pckHelperAddr, bytes memory pckDer)
