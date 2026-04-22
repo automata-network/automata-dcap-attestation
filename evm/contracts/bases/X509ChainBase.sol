@@ -72,6 +72,10 @@ abstract contract X509ChainBase is P256Verifier {
         bool verified;
         bool certChainCanBeTrusted;
         for (uint256 i = 0; i < PCK_CERT_CHAIN_LENGTH; i++) {
+            // Reset per-iteration so that a skipped signature check in this round
+            // cannot inherit a `true` from the previous iteration.
+            verified = false;
+
             X509CertObj memory current = certs[i];
             X509CertObj memory issuer;
             bytes memory crl;
@@ -104,7 +108,13 @@ abstract contract X509ChainBase is P256Verifier {
             if (crl.length > 0) {
                 // check issuer subject key identifier against crl authority key identifier
                 bytes memory crlAuthorityKeyIdentifier = crlHelper.getAuthorityKeyIdentifier(crl);
-                if (!BytesUtils.compareBytes(issuerSubjectKeyIdentifier, crlAuthorityKeyIdentifier)) {
+                // Reject empty key identifiers explicitly: BytesUtils.compareBytes("", "")
+                // returns true, which would otherwise let a cert/CRL missing the
+                // extension bypass the issuer-binding check.
+                if (
+                    issuerSubjectKeyIdentifier.length == 0 || crlAuthorityKeyIdentifier.length == 0
+                        || !BytesUtils.compareBytes(issuerSubjectKeyIdentifier, crlAuthorityKeyIdentifier)
+                ) {
                     return false;
                 }
                 certRevoked = crlHelper.serialNumberIsRevoked(current.serialNumber, crl);
@@ -120,7 +130,13 @@ abstract contract X509ChainBase is P256Verifier {
 
             {
                 bytes memory currentAuthorityKeyIdentifier = current.authorityKeyIdentifier;
-                if (BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)) {
+                // Require both key identifiers to be non-empty before matching:
+                // an attacker-supplied cert could otherwise omit AKI/SKI extensions
+                // and pass the compareBytes check via the "" == "" edge case.
+                if (
+                    issuerSubjectKeyIdentifier.length > 0 && currentAuthorityKeyIdentifier.length > 0
+                        && BytesUtils.compareBytes(issuerSubjectKeyIdentifier, currentAuthorityKeyIdentifier)
+                ) {
                     verified = ecdsaVerify(sha256(current.tbs), current.signature, issuer.subjectPublicKey);
                 }
                 if (!verified) {
