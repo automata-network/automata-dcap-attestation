@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {console2} from "forge-std/console2.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
+import {AutomataDaoStorageV2} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorageV2.sol";
 
 import "../contracts/PCCSRouter.sol";
 import "./utils/Salt.sol";
@@ -60,10 +61,16 @@ contract DeployRouter is DeploymentConfig, Multichain {
             "AutomataEnclaveIdentityDaoVersioned",
             tcbEvaluataionDataNumber
         );
-        address fmspcTcbDaoAddr = readVersionedContractAddress(
-            "AutomataFmspcTcbDaoVersioned",
+        address fmspcTcbDaoAddr = readVersionedContractAddressIfExists(
+            "AutomataFmspcTcbDaoVersionedV2",
             tcbEvaluataionDataNumber
         );
+        if (fmspcTcbDaoAddr == address(0)) {
+            fmspcTcbDaoAddr = readVersionedContractAddress(
+                "AutomataFmspcTcbDaoVersioned",
+                tcbEvaluataionDataNumber
+            );
+        }
 
         bool tcbEvalCheck = tcbEvaluataionDataNumber == IVersionedDao(fmspcTcbDaoAddr).TCB_EVALUATION_NUMBER()
             && tcbEvaluataionDataNumber == IVersionedDao(qeIdDaoAddr).TCB_EVALUATION_NUMBER();
@@ -118,4 +125,29 @@ contract DeployRouter is DeploymentConfig, Multichain {
 
         vm.stopBroadcast();
     } 
+
+    function grantAccessToStorageV2() public multichain {
+        address storageV2Addr = readContractAddressIfExists(ProjectType.PCCS, "AutomataDaoStorageV2");
+        if (storageV2Addr == address(0)) {
+            console2.log("Skip grantAccessToStorageV2(): AutomataDaoStorageV2 not deployed");
+            return;
+        }
+
+        vm.startBroadcast(owner);
+
+        console.log("Checking PCCSRouter access to AutomataDaoStorageV2 on chain: ", block.chainid);
+
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        AutomataDaoStorageV2 storageContract = AutomataDaoStorageV2(storageV2Addr);
+
+        bool authorized = storageContract.isAuthorizedCaller(address(router));
+        if (!authorized) {
+            storageContract.setCallerAuthorization(address(router), true);
+            console2.log("PCCSRouter granted access to AutomataDaoStorageV2");
+        } else {
+            console2.log("PCCSRouter already has access to AutomataDaoStorageV2");
+        }
+
+        vm.stopBroadcast();
+    }
 }
