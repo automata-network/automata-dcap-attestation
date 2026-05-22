@@ -61,10 +61,17 @@ contract DeployRouter is DeploymentConfig, Multichain {
             "AutomataEnclaveIdentityDaoVersioned",
             tcbEvaluataionDataNumber
         );
+        // Prefer V3 → V2 → V1 (the latest generation always wins).
         address fmspcTcbDaoAddr = readVersionedContractAddressIfExists(
-            "AutomataFmspcTcbDaoVersionedV2",
+            "AutomataFmspcTcbDaoVersionedV3",
             tcbEvaluataionDataNumber
         );
+        if (fmspcTcbDaoAddr == address(0)) {
+            fmspcTcbDaoAddr = readVersionedContractAddressIfExists(
+                "AutomataFmspcTcbDaoVersionedV2",
+                tcbEvaluataionDataNumber
+            );
+        }
         if (fmspcTcbDaoAddr == address(0)) {
             fmspcTcbDaoAddr = readVersionedContractAddress(
                 "AutomataFmspcTcbDaoVersioned",
