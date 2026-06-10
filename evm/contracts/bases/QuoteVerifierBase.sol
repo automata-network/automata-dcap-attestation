@@ -88,6 +88,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
         (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, pcsApiVersion, qeReport, tcbEvalNumber);
         if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
+            result.success = false;
             result.reason = QEIDVE;
             return result;
         }
