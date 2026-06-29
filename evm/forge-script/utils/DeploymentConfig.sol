@@ -51,6 +51,33 @@ abstract contract DeploymentConfig is Script {
         contractAddress = stdJson.readAddress(jsonStr, string.concat(".", contractName));
     }
 
+    function readContractAddressIfExists(ProjectType project, string memory contractName)
+        internal
+        view
+        returns (address contractAddress)
+    {
+        string memory dir = string.concat(
+            vm.projectRoot(),
+            "/",
+            "../rust-crates/libraries/network-registry/deployment/current/",
+            vm.toString(block.chainid)
+        );
+        if (!vm.exists(dir)) {
+            return address(0);
+        }
+        string memory jsonStr;
+        if (project == ProjectType.PCCS) {
+            jsonStr = vm.readFile(string.concat(dir, "/", "onchain_pccs.json"));
+        } else if (project == ProjectType.DCAP) {
+            jsonStr = vm.readFile(string.concat(dir, "/", "dcap.json"));
+        }
+
+        string memory key = string.concat(".", contractName);
+        if (vm.keyExists(jsonStr, key)) {
+            contractAddress = stdJson.readAddress(jsonStr, key);
+        }
+    }
+
     function readVersionedContractAddress(string memory contractName, uint32 version) internal view returns (address contractAddress) {
         string memory deploymentDir =
             string.concat(vm.projectRoot(), 
@@ -71,6 +98,29 @@ abstract contract DeploymentConfig is Script {
                 string.concat(contractName, "_tcbeval_", vm.toString(version))
             )
         );
+    }
+
+    function readVersionedContractAddressIfExists(string memory contractName, uint32 version)
+        internal
+        view
+        returns (address contractAddress)
+    {
+        string memory deploymentDir = string.concat(
+            vm.projectRoot(),
+            "/",
+            "../rust-crates/libraries/network-registry/deployment/current/",
+            vm.toString(block.chainid),
+            "/",
+            "onchain_pccs.json"
+        );
+        if (!vm.exists(deploymentDir)) {
+            return address(0);
+        }
+        string memory jsonStr = vm.readFile(deploymentDir);
+        string memory key = string.concat(".", string.concat(contractName, "_tcbeval_", vm.toString(version)));
+        if (vm.keyExists(jsonStr, key)) {
+            contractAddress = stdJson.readAddress(jsonStr, key);
+        }
     }
 
     function writeToJson(string memory contractName, address contractAddress) internal {

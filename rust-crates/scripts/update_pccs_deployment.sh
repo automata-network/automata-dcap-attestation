@@ -323,9 +323,9 @@ main() {
     
     for chain_id in "${chain_ids_to_update[@]}"; do
         if update_chain_deployment "$chain_id" "$BRANCH_OR_COMMIT"; then
-            ((success_count++))
+            success_count=$((success_count + 1))
         else
-            ((error_count++))
+            error_count=$((error_count + 1))
         fi
     done
     
