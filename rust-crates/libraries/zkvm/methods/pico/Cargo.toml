@@ -1,0 +1,11 @@
+[package]
+name = "dcap-pico-methods"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+path = "src/lib.rs"
+
+[build-dependencies]
+automata-dcap-utils = { workspace = true }
+anyhow = { workspace = true }

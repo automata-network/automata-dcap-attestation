@@ -50,4 +50,18 @@ contract AttestationScript is DeploymentConfig, Multichain {
         vm.broadcast(owner);
         AutomataDcapAttestationFee(attestationAddr).setZkConfiguration(ZkCoProcessorType(zk), config);
     }
+
+    function addZkProgramId(uint8 zk, bytes32 programId) public {
+        address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
+
+        vm.broadcast(owner);
+        AutomataDcapAttestationFee(attestationAddr).updateProgramIdentifier(ZkCoProcessorType(zk), programId);
+    }
+
+    function removeZkProgramId(uint8 zk, bytes32 programId) public {
+        address attestationAddr = readContractAddress(ProjectType.DCAP, "AutomataDcapAttestationFee");
+
+        vm.broadcast(owner);
+        AutomataDcapAttestationFee(attestationAddr).removeProgramIdentifier(ZkCoProcessorType(zk), programId);
+    }
 }

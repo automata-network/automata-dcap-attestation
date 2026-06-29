@@ -1,11 +1,15 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use p3_field::PrimeField;
+use ff::PrimeField as _;
 use pico_sdk::client::{DefaultProverClient, KoalaBearProverClient};
 use pico_sdk::HashableKey;
 
-use crate::{common::{ZkVmProver, ZkVm}, get_elf, Version};
-use super::config::PicoConfig;
+use super::config::{PicoConfig, ProvingStrategy};
+use super::proving::{prove_local, prove_with_marketplace};
+use crate::{
+    common::{ZkVm, ZkVmProver},
+    get_elf, Version,
+};
 
 /// Pico zkVM prover implementation
 pub struct PicoProver {
@@ -23,91 +27,56 @@ impl ZkVmProver for PicoProver {
     }
 
     async fn prove(&self, config: &Self::Config, input_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
-        // Initialize the prover client
+        // Always emulate locally first to get journal (this is fast)
         let client = DefaultProverClient::new(self.elf);
 
-        // Initialize new stdin builder
         let mut stdin_builder = client.new_stdin_builder();
         stdin_builder.write_slice(input_bytes);
 
-        // Emulate first to get public buffer
         println!("Emulating program...");
-        let (cycles, public_buffer) = client.emulate(stdin_builder.clone());
-        log::info!("EVM Emulation Cycles: {}", cycles);
+        let (reports, public_buffer) = client.emulate(stdin_builder.clone());
+        let cycles = reports.last().map(|r| r.current_cycle).unwrap_or(0);
+        log::info!("EVM Emulation Cycles: {:?}", cycles);
 
-        // Generate proof if not in dev mode
-        if std::env::var("DEV_MODE").is_err() || std::env::var("DEV_MODE").unwrap().is_empty() {
-            println!("Begin proving with Pico zkVM (field: {})", config.field_type);
-            
-            // Check if trusted setup is needed (vm_pk exists)
-            let proving_key_path = config.artifacts_path.join("vm_pk");
-            let need_setup = !proving_key_path.exists();
-
-            if need_setup {
-                println!("Performing trusted setup (first time)...");
-            } else {
-                log::info!("Using existing proving key at {:?}", proving_key_path);
-            }
-            
-            client
-                .prove_evm(
-                    stdin_builder,
-                    need_setup,
-                    config.artifacts_path.clone(),
-                    &config.field_type,
-                )
-                .context("Failed to generate Pico proof")?;
-
-            log::info!("Proof generated successfully");
-        } else {
-            println!("DEV_MODE enabled, skipping proof generation");
-        }
-
-        // Parse the journal (public buffer)
+        // Parse the journal from the public buffer
         let journal = parse_public_buffer(&public_buffer)?;
 
-        // Read and encode proof from proof.data
-        let proof_data_path = config.artifacts_path.join("proof.data");
-        let proof_bytes = if proof_data_path.exists() {
-            let proof_data = std::fs::read_to_string(&proof_data_path)
-                .context("Failed to read proof.data")?;
+        // Check if DEV_MODE is set — if so, skip proving entirely
+        if std::env::var("DEV_MODE").is_ok() && !std::env::var("DEV_MODE").unwrap().is_empty() {
+            println!("DEV_MODE enabled, skipping proof generation");
+            return Ok((journal, vec![]));
+        }
 
-            // Parse comma-separated hex strings
-            let hex_strings: Vec<&str> = proof_data.split(',').collect();
+        println!("Begin proving with strategy: {:?}", config.proving_strategy);
 
-            if hex_strings.len() < 8 {
-                anyhow::bail!(
-                    "Invalid proof.data: expected at least 8 values, got {}",
-                    hex_strings.len()
-                );
+        // Dispatch to the appropriate proving strategy
+        let proof_bytes = match config.proving_strategy {
+            ProvingStrategy::Local => prove_local(self.elf, input_bytes, config).await?,
+            ProvingStrategy::Marketplace => {
+                let marketplace_config = config.marketplace.as_ref().context(
+                    "Marketplace config must be provided when using marketplace strategy",
+                )?;
+
+                // Compute VK and public values digest for the marketplace request
+                let vk = self.compute_vk()?;
+                let pv_digest = compute_public_values_digest(&public_buffer);
+
+                // The Brevis proving service expects inputs as a bincode-serialized
+                // EmulatorStdinBuilder, not raw application bytes. It deserializes
+                // this builder on its end before passing data to the guest program.
+                // Example: https://github.com/brevis-network/pico-proving-service/blob/396f24d165b47d0759b157db7288c20e6318b171/bin/gen_input_example.rs#L68-L81
+                let serialized_stdin = bincode::serialize(&stdin_builder)
+                    .context("Failed to serialize EmulatorStdinBuilder for marketplace proving")?;
+
+                prove_with_marketplace(
+                    self.elf,
+                    &serialized_stdin,
+                    vk,
+                    pv_digest,
+                    marketplace_config,
+                )
+                .await?
             }
-
-            // Take first 8 values (the proof), last 2 are witness
-            let proof_values = &hex_strings[0..8];
-
-            // Encode as uint256[8]: just concatenate 8 * 32 bytes
-            let mut encoded = Vec::with_capacity(8 * 32);
-
-            // Concatenate the 8 proof values (each already 32 bytes)
-            for hex_str in proof_values {
-                let hex_str = hex_str.trim().trim_start_matches("0x");
-                let bytes = hex::decode(hex_str)
-                    .context("Failed to decode proof hex string")?;
-
-                if bytes.len() != 32 {
-                    anyhow::bail!(
-                        "Invalid proof value: expected 32 bytes, got {}",
-                        bytes.len()
-                    );
-                }
-
-                encoded.extend_from_slice(&bytes);
-            }
-
-            encoded
-        } else {
-            log::warn!("proof.data not found, returning empty proof");
-            Vec::new()
         };
 
         Ok((journal, proof_bytes))
@@ -122,7 +91,8 @@ impl ZkVmProver for PicoProver {
         let vk_digest_bn254 = vk.hash_bn254();
 
         // Convert to bytes
-        let vk_bytes = vk_digest_bn254.as_canonical_biguint().to_bytes_be();
+        let repr = vk_digest_bn254.value.to_repr();
+        let vk_bytes = num_bigint::BigUint::from_bytes_le(repr.as_ref()).to_bytes_be();
 
         // Pad to 32 bytes
         let mut result = [0u8; 32];
@@ -135,8 +105,44 @@ impl ZkVmProver for PicoProver {
     /// The current circuit version
     /// As specified in <https://github.com/brevis-network/pico/blob/main/Cargo.toml>
     fn circuit_version() -> String {
-        "v1.1.6".to_string()
+        "v1.2.2".to_string()
     }
+}
+
+impl PicoProver {
+    /// Compute the 32-byte verification key hash for this ELF program.
+    ///
+    /// This is the BN254-friendly VK digest that the BrevisMarket contract uses
+    /// to identify which program is being proven.
+    fn compute_vk(&self) -> Result<[u8; 32]> {
+        let client = KoalaBearProverClient::new(self.elf);
+        let vk = client.riscv_vk();
+        let vk_digest_bn254 = vk.hash_bn254();
+
+        let repr = vk_digest_bn254.value.to_repr();
+        let vk_bytes = num_bigint::BigUint::from_bytes_le(repr.as_ref()).to_bytes_be();
+
+        let mut result = [0u8; 32];
+        result[1..].copy_from_slice(&vk_bytes);
+        Ok(result)
+    }
+}
+
+/// Compute a SHA-256 digest of the public values buffer, masked to 253 bits
+/// for BN254 scalar field compatibility.
+///
+/// This matches the Brevis proving service's computation:
+/// <https://github.com/brevis-network/pico-proving-service/blob/396f24d/src/cost_estimation.rs#L73-L75>
+///
+/// The BrevisMarket contract uses this digest to tie a proof request
+/// to specific expected outputs, preventing provers from submitting
+/// proofs for different inputs.
+fn compute_public_values_digest(public_buffer: &[u8]) -> [u8; 32] {
+    use sha2::{Sha256, Digest};
+    let mut result: [u8; 32] = Sha256::digest(public_buffer).into();
+    // Clear top 3 bits (bits 255, 254, 253) to fit in BN254 scalar field
+    result[0] &= 0x1F;
+    result
 }
 
 /// Parse the public buffer to extract the journal

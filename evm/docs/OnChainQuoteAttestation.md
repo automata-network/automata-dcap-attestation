@@ -1,6 +1,6 @@
 # `AutomataDcapAttestation` On Chain Verification Workflow
 
-This document provides a high-level overview of the full on-chain verification workflow, covering V3 SGX, V4 SGX and TDX quotes. 
+This document provides a high-level overview of the full on-chain verification workflow, covering V3 SGX, V4 SGX and TDX, and V5 SGX and TDX quotes.
 
 We advise reading through the code and refer to [Intel's official documentation](https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/) for a deep dive into the technical details about DCAP Quote Verification.
 
@@ -26,7 +26,7 @@ The on-chain workflow is designed to:
     - PCK Certificate Chain Verification
     - Verification of attestation signature
     - TCB Check using FMSPC TCB Info
-    - (V4 TDX Quotes only): TCB Check using TDX Module
+    - (V4/V5 TDX Quotes only): TCB Check using TDX Module
     - Determines the final TCB Status by converging all TCB Statuses from various components.
 - Generate structured output indicating the verification result along with essential attestation metadata.
 
@@ -41,7 +41,7 @@ The on-chain workflow is designed to:
     - Body: Local ISV Enclave Report
     - V3Quote Auth Data contains the attestation key and signature, QE Report, QE signature and Certification Data.
         - Currently only supports Certification Data of type 5, which contains the full PCK Certificate Chain.
-- **Definition:** Detailed in `contracts/types/V3Structs.sol`.
+- **Definition:** Detailed in `contracts/types/CommonStruct.sol`.
 
 ### 2.2. V4 Quote Structure
 - **Characteristics:**
@@ -50,7 +50,19 @@ The on-chain workflow is designed to:
     - Body: Depending on the TEE type, SGX: Local ISV Enclave Report; TDX: TD10 Report
     - V4Quote Auth Data, contains the attestation key and signature and QE Report Certification data.
         - The QE Report Certification Data must be of type 6, which contains the QE Enclave Report, QE Signature and Type 5 Certification Data.
-- **Definition:** Explained in `contracts/types/V4Structs.sol`.
+- **Definition:** Explained in `contracts/types/CommonStruct.sol` and `contracts/types/TDXStruct.sol`.
+
+### 2.3. V5 Quote Structure
+- **Characteristics:**
+    - Header
+        - Information about the quote version, attestation key type, TEE type, Intel QE Vendor ID etc.
+    - Body: Prefixed with a `quoteBodyType` (uint16) and `quoteBodySize` (uint32) to identify the report format. Depending on the TEE type and body type:
+        - SGX: Local ISV Enclave Report
+        - TDX: TD10 Report or TD15 Report
+    - V5Quote Auth Data, same structure as V4, contains the attestation key and signature and QE Report Certification data.
+        - The QE Report Certification Data must be of type 6, which contains the QE Enclave Report, QE Signature and Type 5 Certification Data.
+- **Implementation:** `contracts/verifiers/V5QuoteVerifier.sol`.
+- **Definition:** Types are defined in `contracts/types/CommonStruct.sol` and `contracts/types/TDXStruct.sol`.
 
 ---
 
@@ -61,6 +73,7 @@ The on-chain workflow is designed to:
 - **Forwarding:** Based on the quote version, the contract routes the verification:
   - **V3 SGX Quotes:** Processed by `V3QuoteVerifier`.
   - **V4 SGX and TDX Quotes:** Processed by `V4QuoteVerifier`.
+  - **V5 SGX and TDX Quotes:** Processed by `V5QuoteVerifier`.
 
 ### 3.2. Verification Process
 
@@ -133,9 +146,11 @@ After successful verification, the attestation contract generates a serialized o
   - 4: TCB_OUT_OF_DATE,
   - 5: TCB_OUT_OF_DATE_CONFIGURATION_NEEDED,
   - 6: TCB_REVOKED,
-  - 7: TCB_UNRECOGNIZED
+  - 7: TCB_UNRECOGNIZED,
+  - 8: TCB_TD_RELAUNCH_ADVISED,
+  - 9: TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED
 - bytes6 fmspc
-- bytes[] quote body (either Local ISV Report or TD10 Report, depending on the specified TEE)
+- bytes[] quote body (either Local ISV Report, TD10 Report, or TD15 Report, depending on the specified TEE and quote version)
 - string[] TCB Advisory IDs (abi encoded)
 
 These values are then forwarded to downstream applications, which will have the final decision on whether to consider the input quote to be fully compliant with their own security policy.

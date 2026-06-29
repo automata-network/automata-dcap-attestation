@@ -2,6 +2,9 @@
 VERIFIER ?= etherscan
 VERIFIER_URL ?=
 SIMULATED ?=
+SKIP ?=
+LEGACY ?=
+GAS_PRICE ?=
 KEYSTORE_PATH ?= keystores/dcap_prod
 PRIVATE_KEY ?=
 UNLOCKED ?=
@@ -56,8 +59,9 @@ deploy-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv
 	@echo "PCCSRouter deployed"
 
@@ -102,8 +106,9 @@ deploy-attestation: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv
 	@echo "AutomataDCAPAttestationFee deployed"
 
@@ -119,8 +124,9 @@ else
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv
 	@echo "QuoteVerifierV$(QUOTE_VERIFIER_VERSION) deployed"
 endif
@@ -131,7 +137,7 @@ deploy-all-verifiers: check_env get_owner
 	echo "Deploying verifiers for versions: $$SUPPORTED_VERSIONS"; \
 	for version in $$SUPPORTED_VERSIONS; do \
 		echo "=== Deploying V$$version QuoteVerifier ==="; \
-		make deploy-verifier QUOTE_VERIFIER_VERSION=$$version OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY) || exit 1; \
+		make deploy-verifier QUOTE_VERIFIER_VERSION=$$version OWNER=$(OWNER) ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) RPC_URL=$(RPC_URL) PRIVATE_KEY=$(PRIVATE_KEY) KEYSTORE_PATH=$(KEYSTORE_PATH) KEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD) SIMULATED=$(SIMULATED) LEGACY=$(LEGACY) GAS_PRICE=$(GAS_PRICE) || exit 1; \
 	done
 
 deploy-all: deploy-router setup-router deploy-attestation deploy-all-verifiers
@@ -191,8 +197,9 @@ config-zk: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv \
 		--sig "configureZk(uint8,address,bytes32)" \
 		$(if $(ZKVM_SELECTOR), $(ZKVM_SELECTOR), $(error ZKVM_SELECTOR is not set)) \
@@ -207,8 +214,9 @@ config-verifier: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv \
 		--sig "configVerifier(uint256)" \
 		$(if $(QUOTE_VERIFIER_VERSION), $(QUOTE_VERIFIER_VERSION), $(error QUOTE_VERIFIER_VERSION is not set)) \
@@ -221,8 +229,9 @@ config-router: check_env get_owner
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
 		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
-		$(if $(filter true,$(SIMULATED)),,--skip-simulation) \
+		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
+		$(if $(GAS_PRICE), --gas-price $(GAS_PRICE)) \
 		-vv \
 		--sig "setAuthorizedCaller(address,bool)" \
 		$(if $(CALLER_ADDRESS), $(CALLER_ADDRESS), $(error CALLER_ADDRESS is not set)) \
@@ -259,6 +268,9 @@ help:
 	@echo "  VERIFIER_URL           Custom verifier API URL"
 	@echo "  ETHERSCAN_API_KEY      API key for contract verification"
 	@echo "  SIMULATED              Simulate deployment (default: false)"
+	@echo "  SKIP                   Skip simulation (default: false). Ignored if SIMULATED=true"
+	@echo "  LEGACY                 Use legacy transaction format (default: false)"
+	@echo "  GAS_PRICE              Gas price for transactions (e.g. 1000000000). Only used if provided"
 	@echo "  DEPLOYMENT_DIR         Deployment directory (default: ../rust-crates/libraries/network-registry/deployment/current)"
 	@echo ""
 	@echo "Example usage:"

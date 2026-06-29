@@ -1,10 +1,56 @@
+//! Input generation and decoding for zkVM guest programs.
+//!
+//! This module provides:
+//! - `GuestInput` and `GuestInputSolType` - Always available for guest programs
+//! - `generate_input` - Host-only function for creating inputs
+
 use alloy_sol_types::{sol, SolType};
-use anyhow::{Context, Result};
-use automata_dcap_utils::Version;
 use dcap_rs::types::collateral::Collateral;
 
+#[cfg(feature = "host")]
+use anyhow::{Context, Result};
+#[cfg(feature = "host")]
+use automata_dcap_utils::Version;
+
+// ============================================================================
+// Guest Types (always available)
+// ============================================================================
+
 /// Solidity ABI type definition for v1.1 input: (bytes collateral, bytes quote, uint64 timestamp)
-type GuestInputSolType = sol!((bytes, bytes, uint64));
+pub type GuestInputSolType = sol!((bytes, bytes, uint64));
+
+/// Input structure for zkVM guest programs.
+///
+/// Contains all data needed to verify a DCAP quote inside a zkVM.
+#[derive(Debug)]
+pub struct GuestInput {
+    /// Collateral data (certificates, CRLs, TCB info, QE identity)
+    pub collateral: Collateral,
+    /// Raw quote bytes
+    pub raw_quote: Vec<u8>,
+    /// Verification timestamp (seconds since Unix epoch)
+    pub timestamp: u64,
+}
+
+impl GuestInput {
+    /// Decode a GuestInput from Solidity ABI-encoded bytes.
+    ///
+    /// This is the inverse of the host-side `generate_input` function (v1.1 format).
+    pub fn sol_abi_decode(encoded: &[u8]) -> Self {
+        let (collateral_encoded, raw_quote, timestamp) =
+            GuestInputSolType::abi_decode_params(encoded).unwrap();
+        let collateral = Collateral::sol_abi_decode(&collateral_encoded).unwrap();
+        Self {
+            collateral,
+            raw_quote: raw_quote.to_vec(),
+            timestamp,
+        }
+    }
+}
+
+// ============================================================================
+// Host-only Functions
+// ============================================================================
 
 /// Generate version-aware zkVM input bytes from quote and collaterals
 ///
@@ -16,6 +62,7 @@ type GuestInputSolType = sol!((bytes, bytes, uint64));
 ///
 /// # Returns
 /// Serialized input bytes ready for zkVM proving
+#[cfg(feature = "host")]
 pub fn generate_input(
     quote: &[u8],
     collaterals: &pccs_reader_rs::Collaterals,
@@ -29,6 +76,7 @@ pub fn generate_input(
 }
 
 /// Generate v1.1 input using Solidity ABI encoding
+#[cfg(feature = "host")]
 fn generate_input_v1_1(
     quote: &[u8],
     collaterals: &pccs_reader_rs::Collaterals,
@@ -63,6 +111,7 @@ fn generate_input_v1_1(
 /// Generate v1.0 input using custom binary format
 ///
 /// Format: timestamp(8 LE) + quote_len(4 LE) + collateral_len(4 LE) + quote + collateral
+#[cfg(feature = "host")]
 fn generate_input_v1_0(
     quote: &[u8],
     collaterals: &pccs_reader_rs::Collaterals,
@@ -92,6 +141,7 @@ fn generate_input_v1_0(
 /// Serialize collaterals for v1.0 guest program
 ///
 /// Reference: dcap-zkvm-cli/dcap-bonsai-cli/src/main.rs:322-363
+#[cfg(feature = "host")]
 fn serialize_collateral_v1_0(
     collaterals: &pccs_reader_rs::Collaterals,
     pck_type: PckType,
@@ -141,6 +191,7 @@ fn serialize_collateral_v1_0(
 /// Detect PCK certificate type (Platform or Processor) from quote
 ///
 /// Reference: dcap-zkvm-cli/dcap-sp1-cli/src/parser.rs:14-44
+#[cfg(feature = "host")]
 fn detect_pck_type(quote: &[u8]) -> Result<PckType> {
     use x509_parser::prelude::*;
 
@@ -191,6 +242,7 @@ fn detect_pck_type(quote: &[u8]) -> Result<PckType> {
 }
 
 /// PCK certificate type
+#[cfg(feature = "host")]
 #[derive(Debug, Clone, Copy)]
 enum PckType {
     Platform,

@@ -46,7 +46,7 @@ contract ExampleDcapContract {
     }
 
     // SNARK Attestation example
-    // ZkCoProcessorType can either be RiscZero or Succinct
+    // ZkCoProcessorType can be RiscZero, Succinct, or Pico
     function attestWithSnark(
         bytes calldata output,
         ZkCoProcessorType zkvm,

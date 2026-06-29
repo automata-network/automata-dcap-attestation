@@ -46,12 +46,12 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         }
     }
 
-     /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
-    function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities)
-        internal
-        pure
-        returns (bool, TCBStatus, bytes memory, bytes8)
-    {
+    /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
+    function checkTdxModuleTcbStatus(
+        bytes16 teeTcbSvn,
+        TDXModule memory tdxModule,
+        TDXModuleIdentity[] memory tdxModuleIdentities
+    ) internal pure returns (bool, TCBStatus, bytes memory, bytes8) {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
         bytes memory expectedMrSignerSeam = tdxModule.mrsigner;

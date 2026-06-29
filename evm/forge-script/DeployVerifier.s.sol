@@ -37,7 +37,8 @@ contract DeployVerifier is DeploymentConfig, P256Configuration, Multichain {
         version = uint16(vm.envUint("QUOTE_VERIFIER_VERSION"));
 
         address router = readContractAddress(ProjectType.DCAP, "PCCSRouter");
-        bytes32 salt = verifierSalt(version);
+        // Use a different salt to avoid CREATE2 collision with the existing deployment
+        bytes32 salt = keccak256(abi.encodePacked(verifierSalt(version), p256Verifier));
 
         vm.startBroadcast(owner);
         address verifier = deployVerifierForVersion(version, salt, p256Verifier, router);

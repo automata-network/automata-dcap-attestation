@@ -9,9 +9,11 @@ interface IPicoVerifier {
     /// @param riscvVkey The verification key for the RISC-V program.
     /// @param publicValues The public values encoded as bytes.
     /// @param proof The proof of the riscv program execution in the Pico.
-    function verifyPicoProof(
-        bytes32 riscvVkey,
-        bytes calldata publicValues,
-        uint256[8] calldata proof
-    ) external view;
+    function verifyPicoProof(bytes32 riscvVkey, bytes calldata publicValues, uint256[8] calldata proof) external view;
+
+    /// @notice Verifies a proof with given public values hash and riscv verification key.
+    /// @param riscvVkey The verification key for the RISC-V program.
+    /// @param publicValuesHash The hash of bytes-encoded public values.
+    /// @param proof The proof of the riscv program execution in the Pico.
+    function verifyPicoProof(bytes32 riscvVkey, bytes32 publicValuesHash, uint256[8] calldata proof) external view;
 }
