@@ -7,6 +7,7 @@ LEGACY ?=
 GAS_PRICE ?=
 KEYSTORE_PATH ?= keystores/dcap_prod
 PRIVATE_KEY ?=
+UNLOCKED ?=
 QUOTE_VERIFIER_VERSION ?=
 DEPLOYMENT_DIR ?= ../rust-crates/libraries/network-registry/deployment/current
 
@@ -25,12 +26,18 @@ endif
 
 # Get the Owner's Wallet Address
 get_owner:
+ifdef UNLOCKED
+ifndef OWNER
+	$(error OWNER is not set. Please set OWNER when UNLOCKED=true)
+endif
+else
 ifdef PRIVATE_KEY
 	$(eval OWNER := $(shell cast wallet address --private-key $(PRIVATE_KEY)))
 else
 	$(eval $(if $(KEYSTORE_PASSWORD),,KEYSTORE_PASSWORD := $(shell read -s -p "Enter keystore password: " pwd; echo $$pwd)))
 	$(eval OWNER := $(shell cast wallet address --keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD) \
 		|| (echo "Improper wallet configuration"; exit 1)))
+endif
 endif
 	@echo "\nWallet Owner: $(OWNER)"
 
@@ -48,8 +55,9 @@ deploy-router: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script DeployRouter \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
@@ -60,13 +68,26 @@ deploy-router: check_env get_owner
 setup-router: check_env get_owner
 ifndef SIMULATED
 	@storageaddr=$$(jq -r ".AutomataDaoStorage" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
+	storagev2addr=$$(jq -r ".AutomataDaoStorageV2 // empty" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/onchain_pccs.json); \
 	routeraddr=$$(jq -r ".PCCSRouter" $(DEPLOYMENT_DIR)/$(CHAIN_ID)/dcap.json); \
 	if [ "$$storageaddr" != "null" ] && [ "$$routeraddr" != "null" ]; then \
 		echo "Granting PCCSRouter authorization to call PCCS Storage..."; \
 		cast send $$storageaddr \
 			--rpc-url $(RPC_URL) \
+			$(if $(UNLOCKED), --unlocked --from $(OWNER), \
 			$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-			--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+			--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
+			"setCallerAuthorization(address,bool)" \
+			$$routeraddr \
+			true; \
+	fi; \
+	if [ -n "$$storagev2addr" ] && [ "$$routeraddr" != "null" ]; then \
+		echo "Granting PCCSRouter authorization to call PCCS Storage V2..."; \
+		cast send $$storagev2addr \
+			--rpc-url $(RPC_URL) \
+			$(if $(UNLOCKED), --unlocked --from $(OWNER), \
+			$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
+			--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 			"setCallerAuthorization(address,bool)" \
 			$$routeraddr \
 			true; \
@@ -81,8 +102,9 @@ deploy-attestation: check_env get_owner
 		forge script AttestationScript \
 		--sig "deployEntrypoint()" \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
@@ -98,8 +120,9 @@ else
 	@OWNER=$(OWNER) QUOTE_VERIFIER_VERSION=$(QUOTE_VERIFIER_VERSION) \
 		forge script DeployVerifier \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
@@ -170,8 +193,9 @@ config-zk: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
@@ -186,8 +210,9 @@ config-verifier: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script AttestationScript \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
@@ -200,8 +225,9 @@ config-router: check_env get_owner
 	@OWNER=$(OWNER) \
 		forge script DeployRouter \
 		$(if $(MULTICHAIN),,--rpc-url $(RPC_URL)) \
+		$(if $(UNLOCKED), --unlocked --sender $(OWNER), \
 		$(if $(PRIVATE_KEY), --private-key $(PRIVATE_KEY), \
-		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD)) \
+		--keystore $(KEYSTORE_PATH) --password $(KEYSTORE_PASSWORD))) \
 		$(if $(SIMULATED),, --broadcast) \
 		$(if $(filter true,$(SIMULATED)),,$(if $(filter true,$(SKIP)),--skip-simulation)) \
 		$(if $(LEGACY), --legacy) \
