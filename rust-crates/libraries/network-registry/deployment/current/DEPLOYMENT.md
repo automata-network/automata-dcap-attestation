@@ -275,6 +275,17 @@
 | Avalanche C-Chain | [0xF39e8c4a51d925b156E2A94d370A9D22e37846E8](https://snowtrace.io/address/0xF39e8c4a51d925b156E2A94d370A9D22e37846E8) |
 | Automata Mainnet | [0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF](https://explorer.ata.network/address/0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF) |
 
+#### TCB Evaluation Data Number 21
+
+##### Testnet
+
+| Network | Address |
+|---------|----------|
+| BNB Testnet | [0xd32150c2e5c7952f311aa00d2827F5B7e6f6Cf36](https://testnet.bscscan.com/address/0xd32150c2e5c7952f311aa00d2827F5B7e6f6Cf36) |
+| Base Sepolia | [0xd32150c2e5c7952f311aa00d2827F5B7e6f6Cf36](https://sepolia.basescan.org/address/0xd32150c2e5c7952f311aa00d2827F5B7e6f6Cf36) |
+| Ethereum Hoodi | [0x1649dd096557f5d2c317127F81F31Df98c43D6D4](https://hoodi.etherscan.io/address/0x1649dd096557f5d2c317127F81F31Df98c43D6D4) |
+| Ethereum Sepolia | [0x1649dd096557f5d2c317127F81F31Df98c43D6D4](https://sepolia.etherscan.io/address/0x1649dd096557f5d2c317127F81F31Df98c43D6D4) |
+
 ### AutomataFmspcTcbDaoVersioned
 
 #### TCB Evaluation Data Number 17
@@ -355,7 +366,7 @@
 
 | Network | Address |
 |---------|----------|
-| BNB Testnet | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://testnet.bscscan.com/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
+| BNB Testnet | [0x69f305EE9385EB6224DB90BFe9Db2Ed4761948E3](https://testnet.bscscan.com/address/0x69f305EE9385EB6224DB90BFe9Db2Ed4761948E3) |
 | HyperEVM Testnet | [0x35c8680C8E5D275D08BF50A76A702a327dA4dB82](https://testnet.purrsec.com/address/0x35c8680C8E5D275D08BF50A76A702a327dA4dB82) |
 | Unichain Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.uniscan.xyz/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
 | World Chain Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.worldscan.org/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
@@ -363,11 +374,11 @@
 | Tempo Testnet | [0x35c8680C8E5D275D08BF50A76A702a327dA4dB82](https://scout.tempo.xyz/address/0x35c8680C8E5D275D08BF50A76A702a327dA4dB82) |
 | Avalanche Fuji | [0xb1D89Fd867A1D6a122ed88c092163281c2474111](https://testnet.snowtrace.io/address/0xb1D89Fd867A1D6a122ed88c092163281c2474111) |
 | Polygon Amoy | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://amoy.polygonscan.com/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
-| Base Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.basescan.org/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
+| Base Sepolia | [0x69f305EE9385EB6224DB90BFe9Db2Ed4761948E3](https://sepolia.basescan.org/address/0x69f305EE9385EB6224DB90BFe9Db2Ed4761948E3) |
 | Arbitrum Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia.arbiscan.io/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
-| Ethereum Hoodi | [0xfffe76eD615B23971591E3795B26F7A5e4064532](https://hoodi.etherscan.io/address/0xfffe76eD615B23971591E3795B26F7A5e4064532) |
+| Ethereum Hoodi | [0x74A0b849030BC8afaAfFf8F46126E3c13E365C7b](https://hoodi.etherscan.io/address/0x74A0b849030BC8afaAfFf8F46126E3c13E365C7b) |
 | Automata Testnet | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://explorer-testnet.ata.network/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
-| Ethereum Sepolia | [0xfffe76eD615B23971591E3795B26F7A5e4064532](https://sepolia.etherscan.io/address/0xfffe76eD615B23971591E3795B26F7A5e4064532) |
+| Ethereum Sepolia | [0x74A0b849030BC8afaAfFf8F46126E3c13E365C7b](https://sepolia.etherscan.io/address/0x74A0b849030BC8afaAfFf8F46126E3c13E365C7b) |
 | Optimism Sepolia | [0x43cdd3490785059423A17a90C1d8f46382C518D2](https://sepolia-optimistic.etherscan.io/address/0x43cdd3490785059423A17a90C1d8f46382C518D2) |
 
 ##### Mainnet
@@ -393,7 +404,7 @@
 
 | Network | Address |
 |---------|----------|
-| BNB Testnet | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://testnet.bscscan.com/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
+| BNB Testnet | [0x5538D00be5EA7515A61Cf731969895CAf54B236E](https://testnet.bscscan.com/address/0x5538D00be5EA7515A61Cf731969895CAf54B236E) |
 | HyperEVM Testnet | [0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6](https://testnet.purrsec.com/address/0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6) |
 | Unichain Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.uniscan.xyz/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
 | World Chain Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.worldscan.org/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
@@ -401,11 +412,11 @@
 | Tempo Testnet | [0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6](https://scout.tempo.xyz/address/0x0796d6e99fABA80Ff288023d84c6ACB0f55dE9C6) |
 | Avalanche Fuji | [0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4](https://testnet.snowtrace.io/address/0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4) |
 | Polygon Amoy | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://amoy.polygonscan.com/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
-| Base Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.basescan.org/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
+| Base Sepolia | [0x5538D00be5EA7515A61Cf731969895CAf54B236E](https://sepolia.basescan.org/address/0x5538D00be5EA7515A61Cf731969895CAf54B236E) |
 | Arbitrum Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia.arbiscan.io/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
-| Ethereum Hoodi | [0x896195161269D89961e493Fc60D45c3DA033326E](https://hoodi.etherscan.io/address/0x896195161269D89961e493Fc60D45c3DA033326E) |
+| Ethereum Hoodi | [0x34cE5cfD6472c5759cC9451ed2Cb13A0b2c8d1f3](https://hoodi.etherscan.io/address/0x34cE5cfD6472c5759cC9451ed2Cb13A0b2c8d1f3) |
 | Automata Testnet | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://explorer-testnet.ata.network/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
-| Ethereum Sepolia | [0x896195161269D89961e493Fc60D45c3DA033326E](https://sepolia.etherscan.io/address/0x896195161269D89961e493Fc60D45c3DA033326E) |
+| Ethereum Sepolia | [0x34cE5cfD6472c5759cC9451ed2Cb13A0b2c8d1f3](https://sepolia.etherscan.io/address/0x34cE5cfD6472c5759cC9451ed2Cb13A0b2c8d1f3) |
 | Optimism Sepolia | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://sepolia-optimistic.etherscan.io/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
 
 ##### Mainnet
@@ -424,6 +435,17 @@
 | Arbitrum One | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://arbiscan.io/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
 | Avalanche C-Chain | [0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4](https://snowtrace.io/address/0x2CC2834F3D918F6E46A06Cd62D09BDF9d67560b4) |
 | Automata Mainnet | [0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14](https://explorer.ata.network/address/0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14) |
+
+#### TCB Evaluation Data Number 21
+
+##### Testnet
+
+| Network | Address |
+|---------|----------|
+| BNB Testnet | [0x4e33c79c2F4E0159FB466f0343593f7687DdEA5F](https://testnet.bscscan.com/address/0x4e33c79c2F4E0159FB466f0343593f7687DdEA5F) |
+| Base Sepolia | [0x4e33c79c2F4E0159FB466f0343593f7687DdEA5F](https://sepolia.basescan.org/address/0x4e33c79c2F4E0159FB466f0343593f7687DdEA5F) |
+| Ethereum Hoodi | [0xf5536eB1Aa53CF9e1cfA11498749f151278D04bf](https://hoodi.etherscan.io/address/0xf5536eB1Aa53CF9e1cfA11498749f151278D04bf) |
+| Ethereum Sepolia | [0xf5536eB1Aa53CF9e1cfA11498749f151278D04bf](https://sepolia.etherscan.io/address/0xf5536eB1Aa53CF9e1cfA11498749f151278D04bf) |
 
 </details>
 

@@ -43,6 +43,8 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 	// Regex to extract TCB eval number from versioned DAO keys
 	versionedEnclaveIdRegex := regexp.MustCompile(`^AutomataEnclaveIdentityDaoVersioned_tcbeval_(\d+)$`)
 	versionedFmspcTcbRegex := regexp.MustCompile(`^AutomataFmspcTcbDaoVersioned_tcbeval_(\d+)$`)
+	versionedFmspcTcbV2Regex := regexp.MustCompile(`^AutomataFmspcTcbDaoVersionedV2_tcbeval_(\d+)$`)
+	fmspcTcbDaoV2 := make(map[uint32]common.Address)
 
 	for key, addrStr := range deployment {
 		addr := common.HexToAddress(addrStr)
@@ -72,6 +74,12 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
 				contracts.FmspcTcbDao.Versioned[uint32(evalNum)] = addr
 			}
+		case versionedFmspcTcbV2Regex.MatchString(key):
+			matches := versionedFmspcTcbV2Regex.FindStringSubmatch(key)
+			if len(matches) == 2 {
+				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
+				fmspcTcbDaoV2[uint32(evalNum)] = addr
+			}
 
 		// Non-versioned contracts
 		case key == "AutomataPcsDao":
@@ -81,6 +89,10 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 		case key == "AutomataTcbEvalDao":
 			contracts.TcbEvalDao = addr
 		}
+	}
+
+	for evalNum, addr := range fmspcTcbDaoV2 {
+		contracts.FmspcTcbDao.Versioned[evalNum] = addr
 	}
 
 	// If we have versioned entries, remove the sentinel 0 entry
