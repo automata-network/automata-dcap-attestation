@@ -873,6 +873,7 @@ fn collect_deployment_info(
                             // Extract PCCS contracts
                             let mut enclave_id_versioned = HashMap::new();
                             let mut fmspc_tcb_versioned = HashMap::new();
+                            let mut fmspc_tcb_versioned_v2 = HashMap::new();
                             let mut enclave_id_dao = None;
                             let mut fmspc_tcb_dao = None;
                             let mut tcb_eval_dao = None;
@@ -903,6 +904,16 @@ fn collect_deployment_info(
                                                 }
                                             }
                                         }
+                                        if let Some(num_str) = key.strip_prefix("AutomataFmspcTcbDaoVersionedV2_tcbeval_") {
+                                            if let Ok(num) = num_str.parse::<u32>() {
+                                                if let Some(addr) = value.as_str() {
+                                                    fmspc_tcb_versioned_v2.insert(num, addr.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    for (num, addr) in fmspc_tcb_versioned_v2 {
+                                        fmspc_tcb_versioned.insert(num, addr);
                                     }
                                     tcb_eval_dao = obj.get("AutomataTcbEvalDao")
                                         .and_then(|v| v.as_str())

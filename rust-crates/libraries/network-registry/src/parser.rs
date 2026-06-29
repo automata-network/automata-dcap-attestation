@@ -164,6 +164,7 @@ fn parse_deployment_for_chain(
 fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsContracts> {
     let mut enclave_id_versioned = HashMap::new();
     let mut fmspc_tcb_versioned = HashMap::new();
+    let mut fmspc_tcb_versioned_v2 = HashMap::new();
 
     // Determine if this version uses versioned DAOs by parsing the version string
     // This uses the Version enum which is auto-generated from version.toml
@@ -195,6 +196,19 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
                         fmspc_tcb_versioned.insert(num, addr);
                     }
                 }
+                if let Some(num_str) = key.strip_prefix("AutomataFmspcTcbDaoVersionedV2_tcbeval_") {
+                    if let Ok(num) = num_str.parse::<u32>() {
+                        let addr: Address = value
+                            .as_str()
+                            .ok_or_else(|| anyhow!("Invalid address string"))?
+                            .parse()?;
+                        fmspc_tcb_versioned_v2.insert(num, addr);
+                    }
+                }
+            }
+
+            for (num, addr) in fmspc_tcb_versioned_v2 {
+                fmspc_tcb_versioned.insert(num, addr);
             }
 
             // v1.1 must have TcbEvalDao
@@ -261,4 +275,51 @@ fn parse_dcap_contracts(json: &serde_json::Value) -> Result<DcapContracts> {
             .ok_or_else(|| anyhow!("Missing PCCSRouter"))?
             .parse()?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn parse_pccs_contracts_prefers_fmspc_tcb_dao_versioned_v2() {
+        let json = json!({
+            "AutomataFmspcTcbDaoVersioned_tcbeval_19": "0x1111111111111111111111111111111111111111",
+            "AutomataFmspcTcbDaoVersionedV2_tcbeval_19": "0x2222222222222222222222222222222222222222",
+            "AutomataEnclaveIdentityDaoVersioned_tcbeval_19": "0x3333333333333333333333333333333333333333",
+            "AutomataTcbEvalDao": "0x4444444444444444444444444444444444444444",
+            "AutomataPckDao": "0x5555555555555555555555555555555555555555",
+            "AutomataPcsDao": "0x6666666666666666666666666666666666666666"
+        });
+
+        let contracts = parse_pccs_contracts(&json, "v1.1").unwrap();
+
+        assert_eq!(
+            contracts.fmspc_tcb_dao.get_address(19).unwrap(),
+            "0x2222222222222222222222222222222222222222"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_pccs_contracts_falls_back_to_fmspc_tcb_dao_versioned() {
+        let json = json!({
+            "AutomataFmspcTcbDaoVersioned_tcbeval_19": "0x1111111111111111111111111111111111111111",
+            "AutomataEnclaveIdentityDaoVersioned_tcbeval_19": "0x3333333333333333333333333333333333333333",
+            "AutomataTcbEvalDao": "0x4444444444444444444444444444444444444444",
+            "AutomataPckDao": "0x5555555555555555555555555555555555555555",
+            "AutomataPcsDao": "0x6666666666666666666666666666666666666666"
+        });
+
+        let contracts = parse_pccs_contracts(&json, "v1.1").unwrap();
+
+        assert_eq!(
+            contracts.fmspc_tcb_dao.get_address(19).unwrap(),
+            "0x1111111111111111111111111111111111111111"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
 }
