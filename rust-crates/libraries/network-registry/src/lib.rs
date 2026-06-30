@@ -43,7 +43,7 @@ static METADATA_TOML: &str = include_str!("../metadata.toml");
 /// The key for the default network used when no specific network is requested.
 ///
 /// This points to the Automata testnet deployment.
-pub const DEFAULT_NETWORK_KEY: &str = "automata_testnet";
+pub const DEFAULT_NETWORK_KEY: &str = "eth_hoodi";
 
 // ============================================================================
 // Network Registry - Static Storage
