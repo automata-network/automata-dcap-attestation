@@ -41,13 +41,14 @@ pub mod types;
 pub mod utils;
 
 #[cfg(feature = "full")]
+use std::time::SystemTime;
+
+#[cfg(feature = "full")]
 use anyhow::{Context, anyhow, bail};
 #[cfg(feature = "full")]
 use chrono::{DateTime, Utc};
 #[cfg(feature = "full")]
 use p256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
-#[cfg(feature = "full")]
-use std::time::SystemTime;
 #[cfg(feature = "full")]
 use tdx::*;
 #[cfg(feature = "full")]
@@ -133,10 +134,7 @@ pub fn verify_dcap_quote(
     let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
         verify_tcb_status(&tcb_info, &pck_extension, &quote)?;
 
-    assert!(
-        sgx_tcb_status != TcbStatus::Revoked || tdx_tcb_status != TcbStatus::Revoked,
-        "FMSPC TCB Revoked"
-    );
+    ensure_quote_tcb_not_revoked(quote.header.tee_type, sgx_tcb_status, tdx_tcb_status)?;
 
     let advisory_ids = if advisory_ids.is_empty() {
         None
@@ -185,6 +183,28 @@ pub fn verify_dcap_quote(
         quote_body: quote.body,
         advisory_ids,
     })
+}
+
+#[cfg(feature = "full")]
+fn ensure_quote_tcb_not_revoked(
+    tee_type: u32,
+    sgx_tcb_status: TcbStatus,
+    tdx_tcb_status: TcbStatus,
+) -> anyhow::Result<()> {
+    // Intel QVL uses the SGX status for SGX quotes and the selected TDX status for TDX quotes;
+    // an SGX Revoked match alone does not terminate TDX verification:
+    // https://github.com/intel/confidential-computing.tee.dcap.qvl/blob/caedd7616d07409878d6daf5ba80f7418fec9c0d/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L217-L253
+    let quote_tcb_status = if tee_type == TDX_TEE_TYPE {
+        tdx_tcb_status
+    } else {
+        sgx_tcb_status
+    };
+
+    if quote_tcb_status == TcbStatus::Revoked {
+        bail!("FMSPC TCB Revoked");
+    }
+
+    Ok(())
 }
 
 #[cfg(feature = "full")]
@@ -438,8 +458,8 @@ pub fn verify_quote_signatures(quote: &Quote) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Ensure the latest tcb info is not revoked, and is either up to date or only needs a configuration
-/// change.
+/// Ensure the latest tcb info is not revoked, and is either up to date or only needs a
+/// configuration change.
 #[cfg(feature = "full")]
 pub fn verify_tcb_status(
     tcb_info: &TcbInfo,
@@ -469,4 +489,44 @@ pub fn verify_tcb_status(
     }
 
     TcbStatus::lookup(pck_extension, tcb_info, quote)
+}
+
+#[cfg(all(test, feature = "full"))]
+mod tests {
+    use super::*;
+    use crate::types::quote::SGX_TEE_TYPE;
+
+    #[test]
+    fn rejects_revoked_sgx_tcb_status() {
+        let result =
+            ensure_quote_tcb_not_revoked(SGX_TEE_TYPE, TcbStatus::Revoked, TcbStatus::Unspecified);
+
+        assert_eq!(result.unwrap_err().to_string(), "FMSPC TCB Revoked");
+    }
+
+    #[test]
+    fn allows_non_relevant_revoked_sgx_status_for_tdx_quote() {
+        // Mirrors Intel's SGX=Revoked, TDX=OutOfDate regression case:
+        // https://github.com/intel/confidential-computing.tee.dcap.qvl/blob/caedd7616d07409878d6daf5ba80f7418fec9c0d/Src/AttestationLibrary/test/UnitTests/QuoteVerifierTcbStatusUT.cpp#L103-L108
+        let result =
+            ensure_quote_tcb_not_revoked(TDX_TEE_TYPE, TcbStatus::Revoked, TcbStatus::OutOfDate);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn rejects_revoked_tdx_tcb_status() {
+        let result =
+            ensure_quote_tcb_not_revoked(TDX_TEE_TYPE, TcbStatus::UpToDate, TcbStatus::Revoked);
+
+        assert_eq!(result.unwrap_err().to_string(), "FMSPC TCB Revoked");
+    }
+
+    #[test]
+    fn rejects_when_both_tcb_statuses_are_revoked() {
+        let result =
+            ensure_quote_tcb_not_revoked(TDX_TEE_TYPE, TcbStatus::Revoked, TcbStatus::Revoked);
+
+        assert_eq!(result.unwrap_err().to_string(), "FMSPC TCB Revoked");
+    }
 }
