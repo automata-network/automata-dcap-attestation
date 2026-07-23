@@ -8,7 +8,8 @@ pub use helper::{
     sgx_ql_get_root_ca_crl, tdx_ql_get_quote_verification_collateral, upload_missing_collaterals,
 };
 pub use pccs_reader_rs::{
-    CollateralError, Collaterals, MissingCollateral, MissingCollateralReport, PccsReader,
+    CollateralError, Collaterals, MissingCollateral, MissingCollateralReport, PccsReadStrategy,
+    PccsReader,
 };
 
 use automata_dcap_network_registry::Network;

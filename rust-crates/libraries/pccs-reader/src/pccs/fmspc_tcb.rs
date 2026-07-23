@@ -2,6 +2,7 @@ use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_fmspc_tcb_dao::IFmspcTcbDao;
+use automata_dcap_evm_bindings::r#i_fmspc_tcb_dao::IFmspcTcbDao::TcbInfoJsonObj;
 use automata_dcap_network_registry::{ContractKind, Network};
 use automata_dcap_utils::Version;
 
@@ -41,6 +42,10 @@ pub(crate) async fn get_tcb_info_at_address<P: Provider>(
         .from(alloy::primitives::Address::ZERO)
         .call()
         .await?;
+    tcb_info_from_return(call_return)
+}
+
+pub(crate) fn tcb_info_from_return(call_return: TcbInfoJsonObj) -> Result<Vec<u8>> {
     let tcb_info_str = call_return.tcbInfoStr;
     let signature_bytes = call_return.signature;
 

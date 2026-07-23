@@ -2,6 +2,7 @@ use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_enclave_identity_dao::IEnclaveIdentityDao;
+use automata_dcap_evm_bindings::r#i_enclave_identity_dao::IEnclaveIdentityDao::EnclaveIdentityJsonObj;
 use automata_dcap_network_registry::{ContractKind, Network};
 use automata_dcap_utils::Version;
 
@@ -55,6 +56,10 @@ pub(crate) async fn get_enclave_identity_at_address<P: Provider>(
         .call()
         .await?;
 
+    enclave_identity_from_return(call_return)
+}
+
+pub(crate) fn enclave_identity_from_return(call_return: EnclaveIdentityJsonObj) -> Result<Vec<u8>> {
     let identity_str = call_return.identityStr;
     let signature_bytes = call_return.signature;
 

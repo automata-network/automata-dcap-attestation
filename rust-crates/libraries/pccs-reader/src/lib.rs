@@ -7,6 +7,7 @@
 
 /// Constants used throughout the PCCS reader, including CA names and TEE types.
 pub mod constants;
+mod multicall;
 /// PCCS data access modules for fetching TCB info, enclave identities, and certificates.
 pub mod pccs;
 /// Utilities for printing collateral data to files.
@@ -30,7 +31,7 @@ use chrono::{DateTime, Utc};
 /// This enum identifies the different certificate authorities in the Intel
 /// SGX/TDX certificate chain hierarchy.
 pub use pccs::pcs::CA;
-pub use reader::PccsReader;
+pub use reader::{PccsReadStrategy, PccsReader};
 use serde_json::Value;
 use std::future::Future;
 pub use types::{CollateralError, Collaterals, MissingCollateral, MissingCollateralReport};
@@ -117,12 +118,12 @@ pub async fn find_missing_collaterals_from_quote<P: Provider>(
 }
 
 #[derive(Debug)]
-struct QuoteCollateralRequirements {
-    qe_id_type: EnclaveIdType,
+pub(crate) struct QuoteCollateralRequirements {
+    pub(crate) qe_id_type: EnclaveIdType,
     qe_id_string: &'static str,
-    tcb_type: u8,
-    fmspc: String,
-    pck_type: CA,
+    pub(crate) tcb_type: u8,
+    pub(crate) fmspc: String,
+    pub(crate) pck_type: CA,
     pck_type_string: &'static str,
 }
 
@@ -218,6 +219,71 @@ async fn find_missing_collaterals_with_requirements<P: Provider>(
     print: bool,
     tcb_eval_num: Option<u32>,
 ) -> Result<Collaterals, CollateralError> {
+    let results = match reader.read_strategy() {
+        PccsReadStrategy::DirectConcurrent => {
+            read_collateral_results_direct(reader, &requirements, tcb_eval_num).await
+        }
+        PccsReadStrategy::Multicall3 { address } => {
+            multicall::read_collateral_results(reader, &requirements, tcb_eval_num, address).await
+        }
+    };
+    let CollateralReadResults {
+        root: root_result,
+        signing: signing_result,
+        pck: pck_result,
+        qe: qe_result,
+        tcb: tcb_result,
+    } = results;
+
+    let mut collaterals = Collaterals::default();
+    let mut missing = Vec::new();
+    process_root_result(root_result, print, &mut collaterals, &mut missing);
+    process_qe_identity_result(
+        qe_result,
+        requirements.qe_id_string,
+        print,
+        &mut collaterals,
+        &mut missing,
+    );
+    process_tcb_info_result(
+        tcb_result,
+        requirements.tcb_type,
+        requirements.fmspc.as_str(),
+        print,
+        &mut collaterals,
+        &mut missing,
+    );
+    process_signing_result(signing_result, print, &mut collaterals, &mut missing);
+    process_pck_result(
+        pck_result,
+        requirements.pck_type_string,
+        print,
+        &mut collaterals,
+        &mut missing,
+    );
+
+    if missing.is_empty() {
+        Ok(collaterals)
+    } else {
+        Err(CollateralError::Missing(MissingCollateralReport::new(
+            missing,
+        )))
+    }
+}
+
+pub(crate) struct CollateralReadResults {
+    pub(crate) root: anyhow::Result<(Vec<u8>, Vec<u8>)>,
+    pub(crate) signing: anyhow::Result<(Vec<u8>, Vec<u8>)>,
+    pub(crate) pck: anyhow::Result<(Vec<u8>, Vec<u8>)>,
+    pub(crate) qe: anyhow::Result<Vec<u8>>,
+    pub(crate) tcb: anyhow::Result<Vec<u8>>,
+}
+
+pub(crate) async fn read_collateral_results_direct<P: Provider>(
+    reader: &PccsReader<'_, P>,
+    requirements: &QuoteCollateralRequirements,
+    tcb_eval_num: Option<u32>,
+) -> CollateralReadResults {
     let provider = reader.provider();
     let network = reader.network();
     let pcs_dao_address = network.contracts.pccs.pcs_dao;
@@ -279,39 +345,12 @@ async fn find_missing_collaterals_with_requirements<P: Provider>(
     let (root_result, signing_result, pck_result, (qe_result, tcb_result)) =
         join_initial_reads(root_read, signing_read, pck_read, versioned_reads).await;
 
-    let mut collaterals = Collaterals::default();
-    let mut missing = Vec::new();
-    process_root_result(root_result, print, &mut collaterals, &mut missing);
-    process_qe_identity_result(
-        qe_result,
-        requirements.qe_id_string,
-        print,
-        &mut collaterals,
-        &mut missing,
-    );
-    process_tcb_info_result(
-        tcb_result,
-        requirements.tcb_type,
-        requirements.fmspc.as_str(),
-        print,
-        &mut collaterals,
-        &mut missing,
-    );
-    process_signing_result(signing_result, print, &mut collaterals, &mut missing);
-    process_pck_result(
-        pck_result,
-        requirements.pck_type_string,
-        print,
-        &mut collaterals,
-        &mut missing,
-    );
-
-    if missing.is_empty() {
-        Ok(collaterals)
-    } else {
-        Err(CollateralError::Missing(MissingCollateralReport::new(
-            missing,
-        )))
+    CollateralReadResults {
+        root: root_result,
+        signing: signing_result,
+        pck: pck_result,
+        qe: qe_result,
+        tcb: tcb_result,
     }
 }
 
@@ -831,5 +870,56 @@ mod test {
                 .unwrap();
 
         println!("{:?}", res);
+    }
+
+    #[tokio::test]
+    async fn multicall3_is_deployed_on_the_default_network() {
+        use alloy::providers::MULTICALL3_ADDRESS;
+
+        let provider = get_default_provider();
+        let code = provider
+            .get_code_at(MULTICALL3_ADDRESS)
+            .await
+            .expect("failed to read the Multicall3 deployment");
+        assert!(!code.is_empty(), "Multicall3 is not deployed");
+    }
+
+    #[tokio::test]
+    async fn test_v4_multicall3() {
+        let provider = get_default_provider();
+        let reader = PccsReader::from_provider(&provider, None)
+            .await
+            .unwrap()
+            .with_read_strategy(PccsReadStrategy::multicall3());
+        let result = reader
+            .find_missing_collaterals_from_quote(&load_quote("quotev4.hex"), false, None)
+            .await
+            .unwrap();
+
+        assert!(!result.tcb_info.is_empty());
+        assert!(!result.qe_identity.is_empty());
+        assert!(!result.root_ca.is_empty());
+        assert!(!result.tcb_signing_ca.is_empty());
+        assert!(!result.root_ca_crl.is_empty());
+        assert!(!result.pck_crl.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_v4_multicall3_with_known_network_and_evaluation_number() {
+        let provider = get_default_provider();
+        let network = Network::default_network(None).unwrap();
+        let reader = PccsReader::from_network(&provider, network)
+            .with_read_strategy(PccsReadStrategy::multicall3());
+        let result = reader
+            .find_missing_collaterals_from_quote(&load_quote("quotev4.hex"), false, Some(19))
+            .await
+            .unwrap();
+
+        assert!(!result.tcb_info.is_empty());
+        assert!(!result.qe_identity.is_empty());
+        assert!(!result.root_ca.is_empty());
+        assert!(!result.tcb_signing_ca.is_empty());
+        assert!(!result.root_ca_crl.is_empty());
+        assert!(!result.pck_crl.is_empty());
     }
 }

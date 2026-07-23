@@ -2,6 +2,7 @@ use alloy::primitives::Address;
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_pcs_dao::IPcsDao;
+use automata_dcap_evm_bindings::r#i_pcs_dao::IPcsDao::getCertificateByIdReturn;
 use automata_dcap_network_registry::Network;
 use automata_dcap_utils::Version;
 
@@ -20,7 +21,7 @@ impl CA {
     pub const PLATFORM: CA = CA::Platform;
     pub const SIGNING: CA = CA::Signing;
 
-    fn as_u8(self) -> u8 {
+    pub(crate) fn as_u8(self) -> u8 {
         self as u8
     }
 }
@@ -48,10 +49,11 @@ pub(crate) async fn get_certificate_by_id_at_address<P: Provider>(
         .call()
         .await?;
 
-    let cert = response.cert.to_vec();
-    let crl = response.crl.to_vec();
+    Ok(certificate_from_return(response))
+}
 
-    Ok((cert, crl))
+pub(crate) fn certificate_from_return(response: getCertificateByIdReturn) -> (Vec<u8>, Vec<u8>) {
+    (response.cert.to_vec(), response.crl.to_vec())
 }
 
 #[cfg(test)]

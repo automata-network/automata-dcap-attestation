@@ -1,4 +1,5 @@
-use alloy::providers::Provider;
+use alloy::primitives::Address;
+use alloy::providers::{Provider, MULTICALL3_ADDRESS};
 use anyhow::Result;
 use automata_dcap_network_registry::Network;
 use automata_dcap_utils::Version;
@@ -8,6 +9,28 @@ use crate::pccs::fmspc_tcb::get_tcb_info_at_address;
 use crate::pccs::pcs::{get_certificate_by_id_at_address, CA};
 use crate::{CollateralError, Collaterals};
 
+/// Selects how [`PccsReader`] executes a group of collateral reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PccsReadStrategy {
+    /// Sends independent `eth_call` requests concurrently.
+    #[default]
+    DirectConcurrent,
+    /// Sends the reads through a Multicall3 contract.
+    ///
+    /// A failed Multicall3 batch falls back to direct concurrent calls. A
+    /// failed call inside a successful batch is retried once as a direct call.
+    Multicall3 { address: Address },
+}
+
+impl PccsReadStrategy {
+    /// Uses Multicall3 at its standard cross-chain deployment address.
+    pub const fn multicall3() -> Self {
+        Self::Multicall3 {
+            address: MULTICALL3_ADDRESS,
+        }
+    }
+}
+
 /// Reusable reader for Automata on-chain PCCS collateral.
 ///
 /// A reader keeps the caller's provider and one resolved [`Network`]. Reusing
@@ -15,6 +38,7 @@ use crate::{CollateralError, Collaterals};
 pub struct PccsReader<'a, P: Provider> {
     provider: &'a P,
     network: Network,
+    read_strategy: PccsReadStrategy,
 }
 
 impl<'a, P: Provider> PccsReader<'a, P> {
@@ -29,7 +53,11 @@ impl<'a, P: Provider> PccsReader<'a, P> {
         let network = Network::from_provider(provider, deployment_version)
             .await?
             .clone();
-        Ok(Self { provider, network })
+        Ok(Self {
+            provider,
+            network,
+            read_strategy: PccsReadStrategy::default(),
+        })
     }
 
     /// Creates a reader from a network that the caller already selected.
@@ -40,7 +68,19 @@ impl<'a, P: Provider> PccsReader<'a, P> {
         Self {
             provider,
             network: network.clone(),
+            read_strategy: PccsReadStrategy::default(),
         }
+    }
+
+    /// Sets the strategy used for grouped collateral reads.
+    pub fn with_read_strategy(mut self, read_strategy: PccsReadStrategy) -> Self {
+        self.read_strategy = read_strategy;
+        self
+    }
+
+    /// Returns the strategy used for grouped collateral reads.
+    pub fn read_strategy(&self) -> PccsReadStrategy {
+        self.read_strategy
     }
 
     /// Returns the network used to resolve PCCS contract addresses.
@@ -151,5 +191,26 @@ mod tests {
 
         assert_eq!(reader.network().chain_id, network.chain_id);
         assert!(asserter.read_q().is_empty());
+    }
+
+    #[test]
+    fn direct_concurrent_is_the_default_strategy() {
+        let network = Network::default_network(None).unwrap();
+        let asserter = Asserter::new();
+        let provider = ProviderBuilder::new().connect_mocked_client(asserter);
+
+        let reader = PccsReader::from_network(&provider, network);
+
+        assert_eq!(reader.read_strategy(), PccsReadStrategy::DirectConcurrent);
+    }
+
+    #[test]
+    fn standard_multicall_address_is_available_as_a_convenience() {
+        assert_eq!(
+            PccsReadStrategy::multicall3(),
+            PccsReadStrategy::Multicall3 {
+                address: MULTICALL3_ADDRESS,
+            }
+        );
     }
 }

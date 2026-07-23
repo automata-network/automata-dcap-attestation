@@ -84,6 +84,21 @@ must ensure that the provider and `Network` refer to the same chain. Use
 `PccsReader::from_provider` when the reader should select and validate the
 registered network from the provider.
 
+Multicall3 batching is available as an opt-in strategy:
+
+```rust,no_run
+use pccs_reader_rs::{PccsReadStrategy, PccsReader};
+
+let reader = PccsReader::from_network(&provider, network)
+    .with_read_strategy(PccsReadStrategy::multicall3());
+```
+
+`DirectConcurrent` remains the default. The Multicall3 strategy uses the
+standard cross-chain Multicall3 address unless the caller supplies a different
+address with `PccsReadStrategy::Multicall3 { address }`. A failed batch falls
+back to direct concurrent calls. A failed call inside a successful batch is
+retried once as a direct call.
+
 ### Regenerating EVM bindings
 
 Whenever the Solidity ABI changes, regenerate the bindings from the repository root:
