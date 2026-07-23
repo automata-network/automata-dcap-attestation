@@ -53,6 +53,76 @@ contract DeployRouter is DeploymentConfig, Multichain {
         vm.stopBroadcast();
     }
 
+    /// @notice Switches the CRL-sensitive router components to V2 while leaving
+    /// the current TCB evaluation DAO unchanged. The rollout script replaces
+    /// that DAO and the versioned 20/21 mappings immediately afterwards.
+    function updateCrlV2Config() public {
+        address crlHelperAddr = readContractAddress(ProjectType.PCCS, "X509CRLHelperV2");
+        address pcsDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPcsDaoV2");
+        address pckDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataPckDaoV2");
+
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+
+        vm.startBroadcast(owner);
+        router.setConfig(
+            router.tcbEvalDaoAddr(),
+            pcsDaoAddr,
+            pckDaoAddr,
+            router.pckHelperAddr(),
+            crlHelperAddr,
+            router.fmspcTcbHelperAddr()
+        );
+        vm.stopBroadcast();
+    }
+
+    function updateCrlV2TcbEvalConfig() public {
+        address tcbEvalDaoAddr = readContractAddress(ProjectType.PCCS, "AutomataTcbEvalDaoCrlV2");
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+
+        vm.startBroadcast(owner);
+        router.setConfig(
+            tcbEvalDaoAddr,
+            router.pcsDaoAddr(),
+            router.pckDaoAddr(),
+            router.pckHelperAddr(),
+            router.crlHelperAddr(),
+            router.fmspcTcbHelperAddr()
+        );
+        vm.stopBroadcast();
+    }
+
+    function updateCrlV2VersionedDaoConfig(uint32 tcbEvaluationDataNumber) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+        address qeIdDaoAddr = readVersionedContractAddress(
+            "AutomataEnclaveIdentityDaoVersionedCrlV2",
+            tcbEvaluationDataNumber
+        );
+        address fmspcTcbDaoAddr = readVersionedContractAddress(
+            "AutomataFmspcTcbDaoVersionedV2CrlV2",
+            tcbEvaluationDataNumber
+        );
+
+        bool tcbEvalCheck = tcbEvaluationDataNumber == IVersionedDao(fmspcTcbDaoAddr).TCB_EVALUATION_NUMBER()
+            && tcbEvaluationDataNumber == IVersionedDao(qeIdDaoAddr).TCB_EVALUATION_NUMBER();
+        require(tcbEvalCheck, "TCB Evaluation Data Number Mismatch");
+
+        vm.startBroadcast(owner);
+        router.setQeIdDaoVersionedAddr(tcbEvaluationDataNumber, qeIdDaoAddr);
+        router.setFmspcTcbDaoVersionedAddr(tcbEvaluationDataNumber, fmspcTcbDaoAddr);
+        vm.stopBroadcast();
+    }
+
+    /// @notice Removes a retired evaluation number from both Router mappings.
+    /// Call this only after its last collateral has expired.
+    function retireVersionedDaoConfig(uint32 tcbEvaluationDataNumber) public {
+        PCCSRouter router = PCCSRouter(readContractAddress(ProjectType.DCAP, "PCCSRouter"));
+
+        vm.startBroadcast(owner);
+        router.setQeIdDaoVersionedAddr(tcbEvaluationDataNumber, address(0));
+        router.setFmspcTcbDaoVersionedAddr(tcbEvaluationDataNumber, address(0));
+        vm.stopBroadcast();
+    }
+
     function updateVersionedDaoConfig(
         uint32 tcbEvaluataionDataNumber
     ) public {
