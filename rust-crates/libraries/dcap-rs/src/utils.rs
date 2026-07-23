@@ -314,11 +314,14 @@ pub fn read_from_bytes<T: zerocopy::FromBytes>(bytes: &mut &[u8]) -> Option<T> {
     Some(front)
 }
 
-/// Removes a slice of `size` from the front of `bytes` and returns it
+/// Removes a slice of `size` from the front of `bytes` and returns it.
 ///
-/// Note: Caller must ensure that the slice is large enough
-pub fn read_bytes<'a>(bytes: &mut &'a [u8], size: usize) -> &'a [u8] {
+/// Returns `None` and leaves `bytes` unchanged if it is not long enough.
+pub fn read_bytes<'a>(bytes: &mut &'a [u8], size: usize) -> Option<&'a [u8]> {
+    if bytes.len() < size {
+        return None;
+    }
     let (front, rest) = bytes.split_at(size);
     *bytes = rest;
-    front
+    Some(front)
 }

@@ -60,8 +60,8 @@ impl TryFrom<[u8; std::mem::size_of::<QuoteHeader>()]> for QuoteHeader {
     type Error = anyhow::Error;
 
     fn try_from(value: [u8; std::mem::size_of::<QuoteHeader>()]) -> Result<Self, Self::Error> {
-        let quote_header =
-            <Self as zerocopy::FromBytes>::read_from(&value).expect("failed to read quote header");
+        let quote_header = <Self as zerocopy::FromBytes>::read_from(&value)
+            .ok_or_else(|| anyhow!("failed to read quote header"))?;
 
         if quote_header.version.get() < 3 || quote_header.version.get() > 5 {
             return Err(anyhow!(

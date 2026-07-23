@@ -17,6 +17,14 @@ fn cast_slice<T: Pod>(slice: &[u8]) -> Result<&T, ZeroCopyError> {
     bytemuck::try_from_bytes(slice).map_err(ZeroCopyError::from_bytemuck_error)
 }
 
+fn decode_hex_array<const N: usize>(value: &[u8]) -> Result<[u8; N], ZeroCopyError> {
+    let value = from_utf8(value).map_err(|_| ZeroCopyError::InvalidUtf8)?;
+    let bytes = hex::decode(value).map_err(|_| ZeroCopyError::InvalidHex)?;
+    bytes
+        .try_into()
+        .map_err(|_| ZeroCopyError::InvalidFieldLength)
+}
+
 // --- Top-Level ZeroCopy Struct ---
 
 #[derive(Debug, Copy, Clone)]
@@ -87,18 +95,12 @@ impl<'a> TcbInfoZeroCopy<'a> {
         self.header.next_update_timestamp
     }
     // Parses the hex string and returns the byte array
-    pub fn fmspc(&self) -> [u8; 6] {
-        hex::decode(from_utf8(&self.header.fmspc_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn fmspc(&self) -> Result<[u8; 6], ZeroCopyError> {
+        decode_hex_array(&self.header.fmspc_hex)
     }
     // Parses the hex string and returns the byte array
-    pub fn pce_id(&self) -> [u8; 2] {
-        hex::decode(from_utf8(&self.header.pce_id_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn pce_id(&self) -> Result<[u8; 2], ZeroCopyError> {
+        decode_hex_array(&self.header.pce_id_hex)
     }
     pub fn tcb_type(&self) -> u8 {
         self.header.tcb_type
@@ -145,23 +147,14 @@ impl<'a> TdxModulePodDataZeroCopy<'a> {
     pub fn new(data: &'a TdxModulePodData) -> Self {
         Self { data }
     }
-    pub fn mrsigner(&self) -> [u8; 48] {
-        hex::decode(from_utf8(&self.data.mrsigner_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn mrsigner(&self) -> Result<[u8; 48], ZeroCopyError> {
+        decode_hex_array(&self.data.mrsigner_hex)
     }
-    pub fn attributes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(&self.data.attributes_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes(&self) -> Result<[u8; 8], ZeroCopyError> {
+        decode_hex_array(&self.data.attributes_hex)
     }
-    pub fn attributes_mask(&self) -> [u8; 8] {
-        hex::decode(from_utf8(&self.data.attributes_mask_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_mask(&self) -> Result<[u8; 8], ZeroCopyError> {
+        decode_hex_array(&self.data.attributes_mask_hex)
     }
 }
 
@@ -284,23 +277,14 @@ impl<'a> TdxModuleIdentityZeroCopy<'a> {
             tcb_levels_section_payload: &payload[offset..offset + tcb_levels_len],
         })
     }
-    pub fn mrsigner(&self) -> [u8; 48] {
-        hex::decode(from_utf8(&self.header.mrsigner_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn mrsigner(&self) -> Result<[u8; 48], ZeroCopyError> {
+        decode_hex_array(&self.header.mrsigner_hex)
     }
-    pub fn attributes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(&self.header.attributes_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes(&self) -> Result<[u8; 8], ZeroCopyError> {
+        decode_hex_array(&self.header.attributes_hex)
     }
-    pub fn attributes_mask(&self) -> [u8; 8] {
-        hex::decode(from_utf8(&self.header.attributes_mask_hex).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_mask(&self) -> Result<[u8; 8], ZeroCopyError> {
+        decode_hex_array(&self.header.attributes_mask_hex)
     }
     pub fn id_str(&self) -> Result<&'a str, ZeroCopyError> {
         from_utf8(self.id_payload).map_err(|_| ZeroCopyError::InvalidUtf8)

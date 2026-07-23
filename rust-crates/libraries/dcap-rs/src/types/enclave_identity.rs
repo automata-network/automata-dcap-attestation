@@ -112,39 +112,24 @@ pub struct EnclaveIdentity {
 }
 
 impl EnclaveIdentity {
-    pub fn miscselect_bytes(&self) -> [u8; 4] {
-        hex::decode(&self.miscselect)
-            .expect("Failed to decode miscselect")
-            .try_into()
-            .expect("miscselect should be 4 bytes")
+    pub fn miscselect_bytes(&self) -> Result<[u8; 4]> {
+        decode_hex_array(&self.miscselect, "enclave identity miscselect")
     }
 
-    pub fn miscselect_mask_bytes(&self) -> [u8; 4] {
-        hex::decode(&self.miscselect_mask)
-            .expect("Failed to decode miscselect mask")
-            .try_into()
-            .expect("miscselect mask should be 4 bytes")
+    pub fn miscselect_mask_bytes(&self) -> Result<[u8; 4]> {
+        decode_hex_array(&self.miscselect_mask, "enclave identity miscselect mask")
     }
 
-    pub fn attributes_bytes(&self) -> [u8; 16] {
-        hex::decode(&self.attributes)
-            .expect("Failed to decode attributes")
-            .try_into()
-            .expect("attributes should be 16 bytes")
+    pub fn attributes_bytes(&self) -> Result<[u8; 16]> {
+        decode_hex_array(&self.attributes, "enclave identity attributes")
     }
 
-    pub fn attributes_mask_bytes(&self) -> [u8; 16] {
-        hex::decode(&self.attributes_mask)
-            .expect("Failed to decode attributes mask")
-            .try_into()
-            .expect("attributes mask should be 16 bytes")
+    pub fn attributes_mask_bytes(&self) -> Result<[u8; 16]> {
+        decode_hex_array(&self.attributes_mask, "enclave identity attributes mask")
     }
 
-    pub fn mrsigner_bytes(&self) -> [u8; 32] {
-        hex::decode(&self.mrsigner)
-            .expect("Failed to decode mrsigner")
-            .try_into()
-            .expect("mrsigner should be 32 bytes")
+    pub fn mrsigner_bytes(&self) -> Result<[u8; 32]> {
+        decode_hex_array(&self.mrsigner, "enclave identity mrsigner")
     }
 
     pub fn get_qe_tcb_status(&self, isv_svn: u16) -> QeTcbStatus {
@@ -160,15 +145,22 @@ impl EnclaveIdentity {
         pre_image.extend_from_slice(&[u8::from(self.id)]);
         pre_image.extend_from_slice(&self.version.to_be_bytes());
         pre_image.extend_from_slice(&self.tcb_evaluation_data_number.to_be_bytes());
-        pre_image.extend_from_slice(&self.miscselect_bytes());
-        pre_image.extend_from_slice(&self.miscselect_mask_bytes());
-        pre_image.extend_from_slice(&self.attributes_bytes());
-        pre_image.extend_from_slice(&self.attributes_mask_bytes());
-        pre_image.extend_from_slice(&self.mrsigner_bytes());
+        pre_image.extend_from_slice(&self.miscselect_bytes()?);
+        pre_image.extend_from_slice(&self.miscselect_mask_bytes()?);
+        pre_image.extend_from_slice(&self.attributes_bytes()?);
+        pre_image.extend_from_slice(&self.attributes_mask_bytes()?);
+        pre_image.extend_from_slice(&self.mrsigner_bytes()?);
         pre_image.extend_from_slice(&self.isvprodid.to_be_bytes());
         pre_image.extend_from_slice(serde_json::to_vec(&self.tcb_levels)?.as_slice());
         Ok(keccak::hash(&pre_image))
     }
+}
+
+fn decode_hex_array<const N: usize>(value: &str, field: &str) -> Result<[u8; N]> {
+    let bytes = hex::decode(value).with_context(|| format!("{field} is not valid hexadecimal"))?;
+    bytes
+        .try_into()
+        .map_err(|bytes: Vec<u8>| anyhow::anyhow!("{field} must be {N} bytes, got {}", bytes.len()))
 }
 
 /// Enclave TCB level

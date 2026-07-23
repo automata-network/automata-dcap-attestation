@@ -98,6 +98,12 @@ impl Collateral {
 
         // Encode certificate chain as ABI-encoded DER bytes array (of fixed size == 2)
         let tcb_issuer_chain = &self.tcb_info_and_qe_identity_issuer_chain;
+        if tcb_issuer_chain.len() != 2 {
+            anyhow::bail!(
+                "TCB info and QE identity issuer chain must contain exactly 2 certificates, got {}",
+                tcb_issuer_chain.len()
+            );
+        }
         let mut chain_bytes: [Vec<u8>; 2] = [vec![], vec![]];
         for (i, cert) in tcb_issuer_chain.iter().enumerate() {
             let cert_der = cert.to_der()?;

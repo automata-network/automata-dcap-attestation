@@ -8,6 +8,8 @@ pub enum ZeroCopyError {
     InvalidOffset,
     InvalidEnumValue,
     InvalidUtf8,
+    InvalidHex,
+    InvalidFieldLength,
     BytemuckError(PodCastError),
     // Add other specific errors as needed
 }
@@ -32,6 +34,8 @@ impl core::fmt::Display for ZeroCopyError {
             ZeroCopyError::InvalidUtf8 => {
                 write!(f, "Invalid UTF-8 sequence encountered in string data")
             },
+            ZeroCopyError::InvalidHex => write!(f, "Invalid hexadecimal field encountered"),
+            ZeroCopyError::InvalidFieldLength => write!(f, "Invalid decoded field length"),
             ZeroCopyError::BytemuckError(e) => write!(f, "Bytemuck PodCastError: {:?}", e),
         }
     }

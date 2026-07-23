@@ -1,21 +1,12 @@
 use crate::types::enclave_identity::QeTcbStatus;
 use crate::types::report::{Td10ReportBody, Td15ReportBody};
 use crate::types::tcb_info::{TcbInfo, TcbStatus, TdxModuleIdentity};
+use anyhow::Context;
 
 pub fn verify_tdx_module(
     tcb_info: &TcbInfo,
     td_report: &Td10ReportBody,
 ) -> anyhow::Result<TcbStatus> {
-    if tcb_info.tdx_module.is_none() {
-        return Err(anyhow::anyhow!("no tdx module found in tcb info"));
-    }
-
-    if tcb_info.tdx_module_identities.is_none() {
-        return Err(anyhow::anyhow!(
-            "no tdx module identities found in tcb info"
-        ));
-    }
-
     let (tdx_module_isv_svn, tdx_module_version) =
         (td_report.tee_tcb_svn[0], td_report.tee_tcb_svn[1]);
 
@@ -32,13 +23,16 @@ pub fn verify_tdx_module(
             &tdx_module_identity.attributes,
         )
     } else {
-        let tdx_module = tcb_info.tdx_module.as_ref().unwrap();
+        let tdx_module = tcb_info
+            .tdx_module
+            .as_ref()
+            .context("no base TDX module found in TCB info")?;
         (&tdx_module.mrsigner, &tdx_module.attributes)
     };
 
     // Convert mrsigner and attributes to the appropriate type
-    let mrsigner_bytes: [u8; 48] = hex::decode(mrsigner).unwrap().try_into().unwrap();
-    let attributes_bytes: [u8; 8] = hex::decode(attributes).unwrap().try_into().unwrap();
+    let mrsigner_bytes: [u8; 48] = decode_hex_array(mrsigner, "TDX module mrsigner")?;
+    let attributes_bytes: [u8; 8] = decode_hex_array(attributes, "TDX module attributes")?;
 
     // Check for mismatches with a single validation
     if mrsigner_bytes != td_report.mr_signer_seam {
@@ -73,12 +67,12 @@ pub fn check_for_relaunch(
     sgx_tcb_status: TcbStatus,
     tdx_tcb_status: TcbStatus,
     tdx_module_tcb_status: TcbStatus,
-) -> (bool, bool) {
+) -> anyhow::Result<(bool, bool)> {
     let mut relaunch_needed = false;
     let mut configuration_needed = false;
 
     if (qe_tcb_status != QeTcbStatus::OutOfDate
-        || qe_tcb_status != QeTcbStatus::OutOfDateConfigurationNeeded)
+        && qe_tcb_status != QeTcbStatus::OutOfDateConfigurationNeeded)
         && !is_out_of_date(sgx_tcb_status)
         && is_out_of_date(tdx_tcb_status)
         && is_out_of_date(tdx_module_tcb_status)
@@ -89,10 +83,10 @@ pub fn check_for_relaunch(
         let latest_tcb_level_tdx_svns = tcb_info
             .tcb_levels
             .first()
-            .unwrap()
+            .context("TCB info has no TCB levels")?
             .tcb
             .tdx_tcb_components()
-            .unwrap();
+            .context("latest TCB level has no TDX TCB components")?;
         let tdx_module_version = td_report.tee_tcb_svn2[1];
         let tdx_module_svns = td_report.tee_tcb_svn2;
 
@@ -103,9 +97,15 @@ pub fn check_for_relaunch(
                 relaunch_needed = true;
             }
         } else {
-            let tdx_module_identity =
-                find_tdx_module_identity(tdx_module_version, tcb_info).unwrap();
-            if tdx_module_svns[0] >= tdx_module_identity.tcb_levels[0].tcb.isvsvn
+            let tdx_module_identity = find_tdx_module_identity(tdx_module_version, tcb_info)
+                .with_context(|| {
+                    format!("no TDX module identity found for version {tdx_module_version}")
+                })?;
+            let latest_module_tcb_level = tdx_module_identity
+                .tcb_levels
+                .first()
+                .context("TDX module identity has no TCB levels")?;
+            if tdx_module_svns[0] >= latest_module_tcb_level.tcb.isvsvn
                 && tdx_module_svns[2] >= latest_tcb_level_tdx_svns[2]
             {
                 relaunch_needed = true;
@@ -113,7 +113,7 @@ pub fn check_for_relaunch(
         }
     }
 
-    (relaunch_needed, configuration_needed)
+    Ok((relaunch_needed, configuration_needed))
 }
 
 fn find_tdx_module_identity(
@@ -124,12 +124,18 @@ fn find_tdx_module_identity(
 
     let tdx_module_identity = tcb_info
         .tdx_module_identities
-        .as_ref()
-        .unwrap()
+        .as_ref()?
         .iter()
         .find(|identity| identity.id == tdx_module_identity_id);
 
     tdx_module_identity
+}
+
+fn decode_hex_array<const N: usize>(value: &str, field: &str) -> anyhow::Result<[u8; N]> {
+    let bytes = hex::decode(value).with_context(|| format!("{field} is not valid hexadecimal"))?;
+    bytes
+        .try_into()
+        .map_err(|bytes: Vec<u8>| anyhow::anyhow!("{field} must be {N} bytes, got {}", bytes.len()))
 }
 
 fn is_configuration_needed(tcb_status: TcbStatus) -> bool {

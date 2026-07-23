@@ -29,6 +29,10 @@
 //!
 //! let verified = verify_dcap_quote(SystemTime::now(), collateral, quote)?;
 //! ```
+#![cfg_attr(
+    not(test),
+    deny(clippy::expect_used, clippy::panic, clippy::unwrap_used)
+)]
 
 /// TDX-specific verification logic (feature-gated).
 #[cfg(feature = "full")]
@@ -69,6 +73,40 @@ use x509_cert::der::{Any, DecodePem};
 use x509_verify::VerifyingKey as X509VerifyingKey;
 #[cfg(feature = "full")]
 use zerocopy::AsBytes;
+
+/// Runtime policy applied after cryptographic quote verification.
+#[cfg(feature = "full")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DcapVerificationPolicy {
+    /// Permit an SGX enclave or TDX trust domain that has its debug bit set.
+    pub allow_debug: bool,
+    /// Permit a TDX 1.5 quote with a non-zero migration service TD measurement.
+    pub allow_service_td: bool,
+    /// Require the TDX `SEPT_VE_DISABLE` attribute.
+    pub require_sept_ve_disable: bool,
+    /// Require every reserved TDX attribute bit to be zero.
+    pub require_zero_reserved_attributes: bool,
+}
+
+#[cfg(feature = "full")]
+impl DcapVerificationPolicy {
+    /// Production policy equivalent to Intel's normal quote-verification policy.
+    pub const fn production() -> Self {
+        Self {
+            allow_debug: false,
+            allow_service_td: false,
+            require_sept_ve_disable: true,
+            require_zero_reserved_attributes: true,
+        }
+    }
+}
+
+#[cfg(feature = "full")]
+impl Default for DcapVerificationPolicy {
+    fn default() -> Self {
+        Self::production()
+    }
+}
 
 /// Intel SGX Root CA public key in PEM format.
 ///
@@ -115,6 +153,22 @@ pub fn verify_dcap_quote(
     collateral: Collateral,
     quote: Quote,
 ) -> anyhow::Result<VerifiedOutput> {
+    verify_dcap_quote_with_policy(
+        current_time,
+        collateral,
+        quote,
+        &DcapVerificationPolicy::production(),
+    )
+}
+
+/// Verifies an SGX or TDX DCAP quote and applies the supplied runtime policy.
+#[cfg(feature = "full")]
+pub fn verify_dcap_quote_with_policy(
+    current_time: SystemTime,
+    collateral: Collateral,
+    quote: Quote,
+    policy: &DcapVerificationPolicy,
+) -> anyhow::Result<VerifiedOutput> {
     // 1. Verify the integrity of the signature chain from the Quote to the Intel-issued PCK
     //    certificate, and that no keys in the chain have been revoked.
     use crate::types::quote::QuoteBody;
@@ -123,20 +177,17 @@ pub fn verify_dcap_quote(
     // 2. Verify the Quoting Enclave source and all signatures in the Quote.
     let qe_tcb_status = verify_quote(current_time, &collateral, &quote)?;
 
-    assert!(
-        qe_tcb_status != QeTcbStatus::Revoked,
-        "Quoting Enclave TCB Revoked"
-    );
+    reject_invalid_qe_tcb_status(qe_tcb_status)?;
 
     // 3. Verify the status of Intel SGX TCB described in the chain.
     let pck_extension = quote.signature.get_pck_extension()?;
     let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
         verify_tcb_status(&tcb_info, &pck_extension, &quote)?;
 
-    assert!(
-        sgx_tcb_status != TcbStatus::Revoked || tdx_tcb_status != TcbStatus::Revoked,
-        "FMSPC TCB Revoked"
-    );
+    reject_invalid_tcb_status("SGX platform", sgx_tcb_status)?;
+    if quote.header.tee_type == TDX_TEE_TYPE {
+        reject_invalid_tcb_status("TDX platform", tdx_tcb_status)?;
+    }
 
     let advisory_ids = if advisory_ids.is_empty() {
         None
@@ -148,8 +199,12 @@ pub fn verify_dcap_quote(
     let mut tcb_status;
     if quote.header.tee_type == TDX_TEE_TYPE {
         tcb_status = tdx_tcb_status;
-        let tdx_module_tcb_status =
-            verify_tdx_module(&tcb_info, quote.body.as_tdx_report_body().unwrap())?;
+        let td_report = quote
+            .body
+            .as_tdx_report_body()
+            .context("TDX quote does not contain a TDX report body")?;
+        let tdx_module_tcb_status = verify_tdx_module(&tcb_info, td_report)?;
+        reject_invalid_tcb_status("TDX module", tdx_module_tcb_status)?;
         tcb_status =
             TcbInfo::converge_tcb_status_with_tdx_module(tcb_status, tdx_module_tcb_status);
 
@@ -161,7 +216,7 @@ pub fn verify_dcap_quote(
                 sgx_tcb_status,
                 tdx_tcb_status,
                 tdx_module_tcb_status,
-            );
+            )?;
             if relaunch_needed {
                 if configuration_needed {
                     tcb_status = TcbStatus::RelaunchAdvisedConfigurationNeeded;
@@ -174,6 +229,8 @@ pub fn verify_dcap_quote(
         tcb_status = sgx_tcb_status;
     }
 
+    validate_quote_policy(&quote.body, policy)?;
+
     // 5. Converge platform TCB status with QE TCB status
     tcb_status = TcbInfo::converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status.into());
 
@@ -185,6 +242,84 @@ pub fn verify_dcap_quote(
         quote_body: quote.body,
         advisory_ids,
     })
+}
+
+#[cfg(feature = "full")]
+fn reject_invalid_tcb_status(component: &str, status: TcbStatus) -> anyhow::Result<()> {
+    match status {
+        TcbStatus::Revoked => bail!("{component} TCB is revoked"),
+        TcbStatus::Unspecified => bail!("{component} TCB status is unspecified"),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(feature = "full")]
+fn reject_invalid_qe_tcb_status(status: QeTcbStatus) -> anyhow::Result<()> {
+    match status {
+        QeTcbStatus::Revoked => bail!("quoting enclave TCB is revoked"),
+        QeTcbStatus::Unspecified => bail!("quoting enclave TCB status is unspecified"),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(feature = "full")]
+fn validate_quote_policy(
+    quote_body: &types::quote::QuoteBody,
+    policy: &DcapVerificationPolicy,
+) -> anyhow::Result<()> {
+    use types::quote::QuoteBody;
+
+    match quote_body {
+        QuoteBody::SgxQuoteBody(report) => {
+            if !policy.allow_debug && report.sgx_attributes[0] & 0x02 != 0 {
+                bail!("SGX debug mode is enabled");
+            }
+        },
+        QuoteBody::Td10QuoteBody(report) => validate_td_attributes(report.td_attributes, policy)?,
+        QuoteBody::Td15QuoteBody(report) => {
+            if !policy.allow_service_td && report.mr_service_td != [0; 48] {
+                bail!("TDX migration service TD measurement is not zero");
+            }
+            validate_td_attributes(report.td_report.td_attributes, policy)?;
+        },
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "full")]
+fn validate_td_attributes(
+    attributes: [u8; 8],
+    policy: &DcapVerificationPolicy,
+) -> anyhow::Result<()> {
+    const DEBUG: u8 = 0x01;
+    const SEPT_VE_DISABLE: u8 = 0x10;
+    const RESERVED_BIT_29: u8 = 0x20;
+    const PERFMON: u8 = 0x80;
+
+    if !policy.allow_debug && attributes[0] & DEBUG != 0 {
+        bail!("TDX debug mode is enabled");
+    }
+
+    if policy.require_zero_reserved_attributes
+        && (attributes[0] & !DEBUG != 0
+            || attributes[1] != 0
+            || attributes[2] != 0
+            || attributes[3] & 0x0f != 0
+            || attributes[3] & RESERVED_BIT_29 != 0
+            || attributes[4] != 0
+            || attributes[5] != 0
+            || attributes[6] != 0
+            || attributes[7] & !PERFMON != 0)
+    {
+        bail!("reserved TDX attribute bits are set");
+    }
+
+    if policy.require_sept_ve_disable && attributes[3] & SEPT_VE_DISABLE == 0 {
+        bail!("TDX SEPT_VE_DISABLE is not enabled");
+    }
+
+    Ok(())
 }
 
 #[cfg(feature = "full")]
@@ -216,7 +351,8 @@ fn verify_integrity(
     }
 
     let spki = x509_cert::spki::SubjectPublicKeyInfo::<Any, _>::from_pem(INTEL_ROOT_CA_PEM)?;
-    let intel_root_ca = X509VerifyingKey::try_from(spki).unwrap();
+    let intel_root_ca =
+        X509VerifyingKey::try_from(spki).context("invalid Intel root CA public key")?;
     intel_root_ca
         .verify(root_ca)
         .context("Root CA signature verification failed")?;
@@ -331,7 +467,7 @@ pub fn verify_quote_enclave_source(
     }
 
     // Compare the mr_signer values
-    let qe_identity_mr_signer_bytes: [u8; 32] = qe_identity.mrsigner_bytes();
+    let qe_identity_mr_signer_bytes: [u8; 32] = qe_identity.mrsigner_bytes()?;
     if qe_identity_mr_signer_bytes != quote.signature.qe_report_body.mr_signer {
         bail!(
             "invalid qe mrsigner, expected {} but got {}",
@@ -351,8 +487,9 @@ pub fn verify_quote_enclave_source(
 
     // Compare the attribute values
     let qe_report_attributes = quote.signature.qe_report_body.sgx_attributes;
-    let qe_identity_attributes_bytes: [u8; 16] = qe_identity.attributes_bytes();
-    let calculated_mask = qe_identity_attributes_bytes
+    let qe_identity_attributes_bytes: [u8; 16] = qe_identity.attributes_bytes()?;
+    let qe_identity_attributes_mask: [u8; 16] = qe_identity.attributes_mask_bytes()?;
+    let calculated_mask = qe_identity_attributes_mask
         .iter()
         .zip(qe_report_attributes.iter())
         .map(|(&mask, &attribute)| mask & attribute);
@@ -366,8 +503,9 @@ pub fn verify_quote_enclave_source(
 
     // Compare misc_select values
     let misc_select = quote.signature.qe_report_body.misc_select;
-    let qe_identity_misc_select_bytes: [u8; 4] = qe_identity.miscselect_bytes();
-    let calculated_mask = qe_identity_misc_select_bytes
+    let qe_identity_misc_select_bytes: [u8; 4] = qe_identity.miscselect_bytes()?;
+    let qe_identity_misc_select_mask: [u8; 4] = qe_identity.miscselect_mask_bytes()?;
+    let calculated_mask = qe_identity_misc_select_mask
         .iter()
         .zip(misc_select.as_bytes().iter())
         .map(|(&mask, &attribute)| mask & attribute);
@@ -448,9 +586,9 @@ pub fn verify_tcb_status(
 ) -> anyhow::Result<(TcbStatus, TcbStatus, Vec<String>)> {
     // Make sure the tcb_info matches the enclave's model/PCE version
 
-    let tcb_info_fmspc_bytes: [u8; 6] = tcb_info.fmspc_bytes();
+    let tcb_info_fmspc_bytes: [u8; 6] = tcb_info.fmspc_bytes()?;
 
-    let tcb_info_pce_id_bytes: [u8; 2] = tcb_info.pce_id_bytes();
+    let tcb_info_pce_id_bytes: [u8; 2] = tcb_info.pce_id_bytes()?;
 
     if pck_extension.fmspc != tcb_info_fmspc_bytes {
         return Err(anyhow::anyhow!(
@@ -469,4 +607,89 @@ pub fn verify_tcb_status(
     }
 
     TcbStatus::lookup(pck_extension, tcb_info, quote)
+}
+
+#[cfg(all(test, feature = "full"))]
+mod tests {
+    use super::*;
+    use crate::types::quote::{Quote, QuoteBody};
+
+    fn sample_tdx_body() -> QuoteBody {
+        let quote_bytes = hex::decode(include_str!("../../../samples/quotev4.hex").trim()).unwrap();
+        Quote::read(&mut quote_bytes.as_slice()).unwrap().body
+    }
+
+    fn sample_tdx_15_body() -> QuoteBody {
+        let quote_bytes = include_bytes!("../../../samples/quotev5.dat");
+        Quote::read(&mut quote_bytes.as_slice()).unwrap().body
+    }
+
+    #[test]
+    fn revoked_and_unspecified_statuses_return_errors_without_panicking() {
+        for status in [TcbStatus::Revoked, TcbStatus::Unspecified] {
+            let result =
+                std::panic::catch_unwind(|| reject_invalid_tcb_status("test component", status));
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_err());
+        }
+
+        for status in [QeTcbStatus::Revoked, QeTcbStatus::Unspecified] {
+            let result = std::panic::catch_unwind(|| reject_invalid_qe_tcb_status(status));
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_err());
+        }
+    }
+
+    #[test]
+    fn production_policy_rejects_invalid_tdx_attributes_without_panicking() {
+        let QuoteBody::Td10QuoteBody(sample_report) = sample_tdx_body() else {
+            panic!("sample quote must contain a TDX 1.0 body");
+        };
+
+        for attributes in [
+            [0x01, 0, 0, 0x10, 0, 0, 0, 0],
+            [0x02, 0, 0, 0x10, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+        ] {
+            let mut report = sample_report;
+            report.td_attributes = attributes;
+            let body = QuoteBody::Td10QuoteBody(report);
+            let result = std::panic::catch_unwind(|| {
+                validate_quote_policy(&body, &DcapVerificationPolicy::production())
+            });
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_err());
+        }
+    }
+
+    #[test]
+    fn policy_can_explicitly_allow_debug_tdx_quotes() {
+        let mut body = sample_tdx_body();
+        let QuoteBody::Td10QuoteBody(ref mut report) = body else {
+            panic!("sample quote must contain a TDX 1.0 body");
+        };
+        report.td_attributes = [0x01, 0, 0, 0x10, 0, 0, 0, 0];
+
+        let policy = DcapVerificationPolicy {
+            allow_debug: true,
+            ..DcapVerificationPolicy::production()
+        };
+        validate_quote_policy(&body, &policy).unwrap();
+    }
+
+    #[test]
+    fn production_policy_rejects_service_td_unless_explicitly_allowed() {
+        let body = sample_tdx_15_body();
+        let result = std::panic::catch_unwind(|| {
+            validate_quote_policy(&body, &DcapVerificationPolicy::production())
+        });
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_err());
+
+        let policy = DcapVerificationPolicy {
+            allow_service_td: true,
+            ..DcapVerificationPolicy::production()
+        };
+        validate_quote_policy(&body, &policy).unwrap();
+    }
 }
