@@ -145,7 +145,8 @@ impl Network {
                 };
 
                 // Check if this is a v1.0 deployment (has single entry with key 0)
-                let is_v1_0 = versioned_dao.versioned.len() == 1 && versioned_dao.versioned.contains_key(&0);
+                let is_v1_0 =
+                    versioned_dao.versioned.len() == 1 && versioned_dao.versioned.contains_key(&0);
 
                 let eval_num = if is_v1_0 {
                     // v1.0: Use the sentinel value 0 (non-versioned DAO)
@@ -158,8 +159,12 @@ impl Network {
                     if self.contracts.pccs.tcb_eval_dao.is_zero() {
                         return Err(anyhow!("Cannot resolve DAO version: TcbEvalDao not available and tcb_eval_num not provided"));
                     }
-                    let tcb_id = tcb_id.ok_or_else(|| anyhow!("tcb_id required when tcb_eval_num is None"))?;
-                    self.get_standard_tcb_eval_number(tcb_id).await?
+                    let tcb_id = tcb_id
+                        .ok_or_else(|| anyhow!("tcb_id required when tcb_eval_num is None"))?;
+                    let rpc_url = self.default_rpc_url().parse()?;
+                    let provider = ProviderBuilder::new().connect_http(rpc_url);
+                    self.resolve_tcb_evaluation_data_number(&provider, None, tcb_id)
+                        .await?
                 };
 
                 versioned_dao.get_address(eval_num)
@@ -167,18 +172,40 @@ impl Network {
         }
     }
 
-    async fn get_standard_tcb_eval_number(&self, tcb_id: u8) -> Result<u32> {
+    /// Resolves the TCB evaluation data number for versioned PCCS DAOs.
+    ///
+    /// Version 1.0 uses the sentinel value `0`. Version 1.1 uses the requested
+    /// value when present, otherwise this method reads `TcbEvalDao.standard`
+    /// through the caller's provider.
+    pub async fn resolve_tcb_evaluation_data_number<P: Provider>(
+        &self,
+        provider: &P,
+        requested_number: Option<u32>,
+        tcb_id: u8,
+    ) -> Result<u32> {
         use automata_dcap_evm_bindings::r#i_tcb_eval_dao::ITcbEvalDao;
 
-        let rpc_url = self.default_rpc_url().parse()?;
-        let provider = ProviderBuilder::new().connect_http(rpc_url);
+        if !self.version.uses_versioned_daos() {
+            return Ok(0);
+        }
 
-        let tcb_eval_dao = ITcbEvalDao::new(
-            self.contracts.pccs.tcb_eval_dao,
-            &provider,
-        );
+        if let Some(number) = requested_number {
+            return Ok(number);
+        }
 
-        let tcb_eval_number = tcb_eval_dao.standard(tcb_id).call().await?;
+        if self.contracts.pccs.tcb_eval_dao.is_zero() {
+            return Err(anyhow!(
+                "Cannot resolve DAO version: TcbEvalDao not available and tcb_eval_num not provided"
+            ));
+        }
+
+        let tcb_eval_dao = ITcbEvalDao::new(self.contracts.pccs.tcb_eval_dao, provider);
+
+        let tcb_eval_number = tcb_eval_dao
+            .standard(tcb_id)
+            .from(Address::ZERO)
+            .call()
+            .await?;
         Ok(tcb_eval_number)
     }
 
@@ -236,5 +263,62 @@ impl Network {
         let chain_id = provider.get_chain_id().await?;
         Network::by_chain_id(chain_id, version)
             .ok_or_else(|| anyhow!("Unsupported chain_id: {}", chain_id))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy::primitives::Bytes;
+    use alloy::providers::ProviderBuilder;
+    use alloy::sol_types::SolCall;
+    use alloy::transports::mock::Asserter;
+    use automata_dcap_evm_bindings::r#i_tcb_eval_dao::ITcbEvalDao::standardCall;
+
+    #[tokio::test]
+    async fn version_one_zero_uses_sentinel_without_rpc() {
+        let network = Network::all(Some(Version::V1_0)).first().unwrap();
+        let asserter = Asserter::new();
+        let provider = ProviderBuilder::new().connect_mocked_client(asserter.clone());
+
+        let number = network
+            .resolve_tcb_evaluation_data_number(&provider, None, 0)
+            .await
+            .unwrap();
+
+        assert_eq!(number, 0);
+        assert!(asserter.read_q().is_empty());
+    }
+
+    #[tokio::test]
+    async fn requested_number_skips_standard_rpc() {
+        let network = Network::default_network(None).unwrap();
+        let asserter = Asserter::new();
+        let provider = ProviderBuilder::new().connect_mocked_client(asserter.clone());
+
+        let number = network
+            .resolve_tcb_evaluation_data_number(&provider, Some(19), 1)
+            .await
+            .unwrap();
+
+        assert_eq!(number, 19);
+        assert!(asserter.read_q().is_empty());
+    }
+
+    #[tokio::test]
+    async fn standard_uses_the_callers_provider_once() {
+        let network = Network::default_network(None).unwrap();
+        let asserter = Asserter::new();
+        let encoded = standardCall::abi_encode_returns(&19);
+        asserter.push_success(&Bytes::from(encoded));
+        let provider = ProviderBuilder::new().connect_mocked_client(asserter.clone());
+
+        let number = network
+            .resolve_tcb_evaluation_data_number(&provider, None, 1)
+            .await
+            .unwrap();
+
+        assert_eq!(number, 19);
+        assert!(asserter.read_q().is_empty());
     }
 }
