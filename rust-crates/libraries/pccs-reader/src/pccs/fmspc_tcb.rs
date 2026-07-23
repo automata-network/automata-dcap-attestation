@@ -1,4 +1,4 @@
-use alloy::primitives::U256;
+use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_fmspc_tcb_dao::IFmspcTcbDao;
@@ -21,8 +21,17 @@ pub async fn get_tcb_info<P: Provider>(
         .resolve_contract_address(ContractKind::FmspcTcbDao, tcb_eval_num, Some(tcb_type))
         .await?;
 
-    let fmspc_tcb_dao_contract = IFmspcTcbDao::new(dao_address, provider);
+    get_tcb_info_at_address(provider, dao_address, tcb_type, fmspc, version).await
+}
 
+pub(crate) async fn get_tcb_info_at_address<P: Provider>(
+    provider: &P,
+    dao_address: Address,
+    tcb_type: u8,
+    fmspc: &str,
+    version: u32,
+) -> Result<Vec<u8>> {
+    let fmspc_tcb_dao_contract = IFmspcTcbDao::new(dao_address, provider);
     let call_return = fmspc_tcb_dao_contract
         .getTcbInfo(
             U256::from(tcb_type),

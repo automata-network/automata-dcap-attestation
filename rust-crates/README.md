@@ -65,6 +65,25 @@ This repository uses a **unified Rust workspace** with smart defaults:
 **Contract Interfaces:**
 - `contracts/`: Solidity contract interfaces for Automata Onchain PCCS and Automata DCAP Attestation to generate Rust bindings
 
+### Reusing a PCCS reader
+
+Applications that already selected a network can reuse `PccsReader` to avoid
+repeating `eth_chainId` before each collateral read:
+
+```rust,no_run
+use pccs_reader_rs::PccsReader;
+
+let reader = PccsReader::from_network(&provider, network);
+let collaterals = reader
+    .find_missing_collaterals_from_quote(&quote, false, None)
+    .await?;
+```
+
+`PccsReader::from_network` does not check the provider's chain ID. The caller
+must ensure that the provider and `Network` refer to the same chain. Use
+`PccsReader::from_provider` when the reader should select and validate the
+registered network from the provider.
+
 ### Regenerating EVM bindings
 
 Whenever the Solidity ABI changes, regenerate the bindings from the repository root:
