@@ -4,6 +4,10 @@
 //! collaterals from the Provisioning Certification Caching Service (PCCS). It can
 //! read quotes and identify missing or outdated collateral materials required for
 //! attestation verification.
+#![cfg_attr(
+    not(test),
+    deny(clippy::expect_used, clippy::panic, clippy::unwrap_used)
+)]
 
 /// Constants used throughout the PCCS reader, including CA names and TEE types.
 pub mod constants;
@@ -40,27 +44,34 @@ use x509_parser::prelude::*;
 const PCS_API_VERSION: u32 = 4; // Always use version 4 now
 const TCB_VERSION: u32 = 3;
 
-fn collateral_is_outdated(eid: &str, collateral_name: &str) -> bool {
-    let json_data: Value =
-        serde_json::from_str(&eid).expect("unable to convert collateral to json");
+fn collateral_is_outdated(
+    collateral: &str,
+    collateral_name: &str,
+) -> Result<bool, CollateralError> {
+    let json_data: Value = serde_json::from_str(collateral).map_err(|error| {
+        CollateralError::Validation(format!(
+            "{collateral_name} collateral is not valid JSON: {error}"
+        ))
+    })?;
 
-    let next_update_str = json_data[&collateral_name]["nextUpdate"]
-        .as_str()
-        .expect("field 'nextUpdate' is not found!");
+    let next_update_str = json_data
+        .get(collateral_name)
+        .and_then(|value| value.get("nextUpdate"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            CollateralError::Validation(format!(
+                "{collateral_name} collateral is missing nextUpdate"
+            ))
+        })?;
 
-    let next_update_time =
-        DateTime::parse_from_rfc3339(next_update_str).expect("Parsing 'nextUpdate' failed!");
+    let next_update_time = DateTime::parse_from_rfc3339(next_update_str).map_err(|error| {
+        CollateralError::Validation(format!(
+            "{collateral_name} collateral has an invalid nextUpdate value: {error}"
+        ))
+    })?;
 
     let current_time = Utc::now();
-    let outdated = current_time > next_update_time.with_timezone(&Utc);
-    if outdated {
-        println!(
-            "Collateral {} is outdated! nextUpdate: {}",
-            collateral_name, next_update_str
-        );
-    }
-
-    outdated
+    Ok(current_time > next_update_time.with_timezone(&Utc))
 }
 
 /// Finds missing or outdated collaterals required to verify an SGX or TDX quote.
@@ -160,7 +171,12 @@ impl QuoteCollateralRequirements {
         let pck_cert_chain = quote.signature.get_pck_cert_chain().map_err(|e| {
             CollateralError::Validation(format!("Failed to extract PCK cert chain: {}", e))
         })?;
-        let pck_issuer = pck_cert_chain.pck_cert_chain[0]
+        let pck_issuer = pck_cert_chain
+            .pck_cert_chain
+            .first()
+            .ok_or_else(|| {
+                CollateralError::Validation("PCK certificate chain is empty".to_string())
+            })?
             .tbs_certificate
             .issuer
             .to_string();
@@ -237,14 +253,14 @@ async fn find_missing_collaterals_with_requirements<P: Provider>(
 
     let mut collaterals = Collaterals::default();
     let mut missing = Vec::new();
-    process_root_result(root_result, print, &mut collaterals, &mut missing);
+    process_root_result(root_result, print, &mut collaterals, &mut missing)?;
     process_qe_identity_result(
         qe_result,
         requirements.qe_id_string,
         print,
         &mut collaterals,
         &mut missing,
-    );
+    )?;
     process_tcb_info_result(
         tcb_result,
         requirements.tcb_type,
@@ -252,15 +268,15 @@ async fn find_missing_collaterals_with_requirements<P: Provider>(
         print,
         &mut collaterals,
         &mut missing,
-    );
-    process_signing_result(signing_result, print, &mut collaterals, &mut missing);
+    )?;
+    process_signing_result(signing_result, print, &mut collaterals, &mut missing)?;
     process_pck_result(
         pck_result,
         requirements.pck_type_string,
         print,
         &mut collaterals,
         &mut missing,
-    );
+    )?;
 
     if missing.is_empty() {
         Ok(collaterals)
@@ -387,7 +403,7 @@ fn process_root_result(
     print: bool,
     collaterals: &mut Collaterals,
     missing: &mut Vec<MissingCollateral>,
-) {
+) -> Result<(), CollateralError> {
     match result {
         Ok((root, crl)) => {
             if root.is_empty() {
@@ -404,10 +420,14 @@ fn process_root_result(
                 ));
             } else {
                 if print {
-                    print_content("rootca.der", &root).unwrap();
-                    print_content("rootcrl.der", &crl).unwrap();
+                    print_content("rootca.der", &root).map_err(|error| {
+                        CollateralError::Validation(format!("failed to write rootca.der: {error}"))
+                    })?;
+                    print_content("rootcrl.der", &crl).map_err(|error| {
+                        CollateralError::Validation(format!("failed to write rootcrl.der: {error}"))
+                    })?;
                 }
-                let root_cert = parse_x509_der(&root);
+                let root_cert = parse_x509_der(&root)?;
                 if !root_cert.validity.is_valid() {
                     missing.push(MissingCollateral::PCS(
                         INTEL_ROOT_CA_CN.to_string(),
@@ -415,7 +435,7 @@ fn process_root_result(
                         false,
                     ));
                 } else {
-                    let root_ca_crl = parse_crl_der(&crl);
+                    let root_ca_crl = parse_crl_der(&crl)?;
                     if let Some(next_update) = root_ca_crl.next_update() {
                         let now = x509_parser::time::ASN1Time::now();
                         if next_update < now {
@@ -437,6 +457,7 @@ fn process_root_result(
             true,
         )),
     }
+    Ok(())
 }
 
 fn process_qe_identity_result(
@@ -445,12 +466,15 @@ fn process_qe_identity_result(
     print: bool,
     collaterals: &mut Collaterals,
     missing: &mut Vec<MissingCollateral>,
-) {
+) -> Result<(), CollateralError> {
     match result {
         Ok(qe_id_content) => {
-            let qe_id_str =
-                std::str::from_utf8(&qe_id_content).expect("QE identity is not valid UTF-8");
-            if collateral_is_outdated(qe_id_str, "enclaveIdentity") {
+            let qe_id_str = std::str::from_utf8(&qe_id_content).map_err(|error| {
+                CollateralError::Validation(format!(
+                    "QE identity collateral is not valid UTF-8: {error}"
+                ))
+            })?;
+            if collateral_is_outdated(qe_id_str, "enclaveIdentity")? {
                 missing.push(MissingCollateral::QEIdentity(
                     qe_id_string.to_string(),
                     PCS_API_VERSION,
@@ -458,7 +482,9 @@ fn process_qe_identity_result(
             } else {
                 if print {
                     let filename = format!("identity-{}-v{}.json", qe_id_string, PCS_API_VERSION);
-                    print_str_content(&filename, qe_id_str).unwrap();
+                    print_str_content(&filename, qe_id_str).map_err(|error| {
+                        CollateralError::Validation(format!("failed to write {filename}: {error}"))
+                    })?;
                 }
                 collaterals.qe_identity = qe_id_str.to_string();
             }
@@ -468,6 +494,7 @@ fn process_qe_identity_result(
             PCS_API_VERSION,
         )),
     }
+    Ok(())
 }
 
 fn process_tcb_info_result(
@@ -477,11 +504,15 @@ fn process_tcb_info_result(
     print: bool,
     collaterals: &mut Collaterals,
     missing: &mut Vec<MissingCollateral>,
-) {
+) -> Result<(), CollateralError> {
     match result {
         Ok(tcb_content) => {
-            let tcb_str = std::str::from_utf8(&tcb_content).expect("TCB info is not valid UTF-8");
-            if collateral_is_outdated(tcb_str, "tcbInfo") {
+            let tcb_str = std::str::from_utf8(&tcb_content).map_err(|error| {
+                CollateralError::Validation(format!(
+                    "TCB info collateral is not valid UTF-8: {error}"
+                ))
+            })?;
+            if collateral_is_outdated(tcb_str, "tcbInfo")? {
                 missing.push(MissingCollateral::FMSPCTCB(
                     tcb_type,
                     fmspc.to_string(),
@@ -491,11 +522,17 @@ fn process_tcb_info_result(
                 let tcb_type_string = match tcb_type {
                     0 => "sgx",
                     1 => "tdx",
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(CollateralError::Validation(format!(
+                            "unsupported TCB type {tcb_type}"
+                        )));
+                    }
                 };
                 if print {
                     let filename = format!("tcbinfo-{}-v{}.json", tcb_type_string, TCB_VERSION);
-                    print_str_content(&filename, tcb_str).unwrap();
+                    print_str_content(&filename, tcb_str).map_err(|error| {
+                        CollateralError::Validation(format!("failed to write {filename}: {error}"))
+                    })?;
                 }
                 collaterals.tcb_info = tcb_str.to_string();
             }
@@ -506,6 +543,7 @@ fn process_tcb_info_result(
             TCB_VERSION,
         )),
     }
+    Ok(())
 }
 
 fn process_signing_result(
@@ -513,7 +551,7 @@ fn process_signing_result(
     print: bool,
     collaterals: &mut Collaterals,
     missing: &mut Vec<MissingCollateral>,
-) {
+) -> Result<(), CollateralError> {
     match result {
         Ok((signing_ca, _)) => {
             if signing_ca.is_empty() {
@@ -523,7 +561,7 @@ fn process_signing_result(
                     false,
                 ));
             } else {
-                let signing_ca_cert = parse_x509_der(&signing_ca);
+                let signing_ca_cert = parse_x509_der(&signing_ca)?;
                 if !signing_ca_cert.validity.is_valid() {
                     missing.push(MissingCollateral::PCS(
                         INTEL_TCB_SIGNING_CA_CN.to_string(),
@@ -532,7 +570,11 @@ fn process_signing_result(
                     ));
                 } else {
                     if print {
-                        print_content("signingca.der", &signing_ca).unwrap();
+                        print_content("signingca.der", &signing_ca).map_err(|error| {
+                            CollateralError::Validation(format!(
+                                "failed to write signingca.der: {error}"
+                            ))
+                        })?;
                     }
                     collaterals.tcb_signing_ca = signing_ca;
                 }
@@ -544,6 +586,7 @@ fn process_signing_result(
             false,
         )),
     }
+    Ok(())
 }
 
 fn process_pck_result(
@@ -552,7 +595,7 @@ fn process_pck_result(
     print: bool,
     collaterals: &mut Collaterals,
     missing: &mut Vec<MissingCollateral>,
-) {
+) -> Result<(), CollateralError> {
     match result {
         Ok((pck_ca_cert, pck_ca_crl)) => {
             if pck_ca_cert.is_empty() {
@@ -571,10 +614,16 @@ fn process_pck_result(
                 if print {
                     let filename = format!("{}.der", pck_type_string);
                     let crl_filename = format!("{}-crl.der", pck_type_string);
-                    print_content(&filename, &pck_ca_cert).unwrap();
-                    print_content(&crl_filename, &pck_ca_crl).unwrap();
+                    print_content(&filename, &pck_ca_cert).map_err(|error| {
+                        CollateralError::Validation(format!("failed to write {filename}: {error}"))
+                    })?;
+                    print_content(&crl_filename, &pck_ca_crl).map_err(|error| {
+                        CollateralError::Validation(format!(
+                            "failed to write {crl_filename}: {error}"
+                        ))
+                    })?;
                 }
-                let pck_cert_parsed = parse_x509_der(&pck_ca_cert);
+                let pck_cert_parsed = parse_x509_der(&pck_ca_cert)?;
                 if !pck_cert_parsed.validity.is_valid() {
                     missing.push(MissingCollateral::PCS(
                         pck_type_string.to_string(),
@@ -582,7 +631,7 @@ fn process_pck_result(
                         false,
                     ));
                 } else {
-                    let pck_ca_crl_parsed = parse_crl_der(&pck_ca_crl);
+                    let pck_ca_crl_parsed = parse_crl_der(&pck_ca_crl)?;
                     if let Some(next_update) = pck_ca_crl_parsed.next_update() {
                         let now = x509_parser::time::ASN1Time::now();
                         if next_update < now {
@@ -603,6 +652,7 @@ fn process_pck_result(
             true,
         )),
     }
+    Ok(())
 }
 
 /// Parses an X.509 certificate from DER-encoded bytes.
@@ -615,12 +665,11 @@ fn process_pck_result(
 ///
 /// Parsed X.509 certificate with lifetime tied to input bytes
 ///
-/// # Panics
-///
-/// Panics if the DER encoding is invalid
-pub fn parse_x509_der<'a>(raw_bytes: &'a [u8]) -> X509Certificate<'a> {
-    let (_, cert) = X509Certificate::from_der(raw_bytes).unwrap();
-    cert
+pub fn parse_x509_der<'a>(raw_bytes: &'a [u8]) -> Result<X509Certificate<'a>, CollateralError> {
+    let (_, cert) = X509Certificate::from_der(raw_bytes).map_err(|error| {
+        CollateralError::Validation(format!("invalid X.509 certificate DER: {error}"))
+    })?;
+    Ok(cert)
 }
 
 /// Parses a Certificate Revocation List (CRL) from DER-encoded bytes.
@@ -633,12 +682,13 @@ pub fn parse_x509_der<'a>(raw_bytes: &'a [u8]) -> X509Certificate<'a> {
 ///
 /// Parsed CRL with lifetime tied to input bytes
 ///
-/// # Panics
-///
-/// Panics if the DER encoding is invalid
-pub fn parse_crl_der<'a>(raw_bytes: &'a [u8]) -> CertificateRevocationList<'a> {
-    let (_, crl) = CertificateRevocationList::from_der(raw_bytes).unwrap();
-    crl
+pub fn parse_crl_der<'a>(
+    raw_bytes: &'a [u8],
+) -> Result<CertificateRevocationList<'a>, CollateralError> {
+    let (_, crl) = CertificateRevocationList::from_der(raw_bytes).map_err(|error| {
+        CollateralError::Validation(format!("invalid certificate revocation list DER: {error}"))
+    })?;
+    Ok(crl)
 }
 
 #[cfg(test)]
@@ -713,6 +763,54 @@ mod test {
             error.to_string(),
             "Quote is too short: expected at least 8 bytes"
         );
+    }
+
+    #[test]
+    fn malformed_json_collateral_returns_validation_error_without_panicking() {
+        for collateral in [
+            "not-json",
+            r#"{"enclaveIdentity":{}}"#,
+            r#"{"enclaveIdentity":{"nextUpdate":"not-a-date"}}"#,
+        ] {
+            let result =
+                std::panic::catch_unwind(|| collateral_is_outdated(collateral, "enclaveIdentity"));
+            assert!(result.is_ok());
+            assert!(matches!(
+                result.unwrap(),
+                Err(CollateralError::Validation(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn malformed_der_returns_validation_error_without_panicking() {
+        let certificate_result = std::panic::catch_unwind(|| parse_x509_der(&[0xff]));
+        assert!(certificate_result.is_ok());
+        assert!(matches!(
+            certificate_result.unwrap(),
+            Err(CollateralError::Validation(_))
+        ));
+
+        let crl_result = std::panic::catch_unwind(|| parse_crl_der(&[0xff]));
+        assert!(crl_result.is_ok());
+        assert!(matches!(
+            crl_result.unwrap(),
+            Err(CollateralError::Validation(_))
+        ));
+    }
+
+    #[test]
+    fn invalid_utf8_collateral_returns_validation_error_without_panicking() {
+        let result = std::panic::catch_unwind(|| {
+            let mut collaterals = Collaterals::default();
+            let mut missing = Vec::new();
+            process_qe_identity_result(Ok(vec![0xff]), "td", false, &mut collaterals, &mut missing)
+        });
+        assert!(result.is_ok());
+        assert!(matches!(
+            result.unwrap(),
+            Err(CollateralError::Validation(_))
+        ));
     }
 
     #[test]

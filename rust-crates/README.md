@@ -99,6 +99,28 @@ address with `PccsReadStrategy::Multicall3 { address }`. A failed batch falls
 back to direct concurrent calls. A failed call inside a successful batch is
 retried once as a direct call.
 
+Malformed RPC collateral returns `CollateralError::Validation`. Missing or
+expired collateral returns `CollateralError::Missing`. The public
+`parse_x509_der` and `parse_crl_der` functions return
+`Result<_, CollateralError>`; malformed DER does not cause a panic.
+
+Local quote verification uses a production policy by default:
+
+```rust,ignore
+use dcap_rs::{DcapVerificationPolicy, verify_dcap_quote_with_policy};
+
+let verified = verify_dcap_quote_with_policy(
+    now,
+    collateral,
+    quote,
+    &DcapVerificationPolicy::production(),
+)?;
+```
+
+The production policy rejects debug SGX and TDX reports, TDX 1.5 migration
+service TDs, reserved TDX attribute bits, and TDX reports without
+`SEPT_VE_DISABLE`. Invalid input returns an error instead of causing a panic.
+
 ### Regenerating EVM bindings
 
 Whenever the Solidity ABI changes, regenerate the bindings from the repository root:
