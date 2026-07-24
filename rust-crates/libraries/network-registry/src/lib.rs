@@ -52,8 +52,7 @@ pub const DEFAULT_NETWORK_KEY: &str = "eth_hoodi";
 /// Current/latest version networks (v1.1)
 /// When a new version is released, this points to the newest version
 static NETWORKS_V1_1: LazyLock<Vec<Network>> = LazyLock::new(|| {
-    // NOTE: Current version (v1.1) deployments are in deployment/current/
-    // Foundry writes to current/ and build.rs copies historical versions to v1.0/
+    // Current version (v1.1) deployments are checked in under deployment/current/.
     if DEPLOYMENT_DIR.get_dir("current").is_some() {
         parser::parse_networks_from_version_dir(METADATA_TOML, &DEPLOYMENT_DIR, "current").ok()
     } else {
@@ -261,5 +260,23 @@ mod tests {
         let default = Network::default_network(None);
         assert!(default.is_some(), "Default network should exist");
         assert_eq!(default.unwrap().key, DEFAULT_NETWORK_KEY);
+    }
+
+    #[test]
+    fn loads_checked_in_current_and_legacy_deployments() {
+        let current = Network::all(Some(Version::V1_1));
+        let legacy = Network::all(Some(Version::V1_0));
+
+        assert!(
+            !current.is_empty(),
+            "current deployments should be embedded"
+        );
+        assert!(!legacy.is_empty(), "v1.0 deployments should be embedded");
+        assert!(current
+            .iter()
+            .all(|network| network.version == Version::V1_1));
+        assert!(legacy
+            .iter()
+            .all(|network| network.version == Version::V1_0));
     }
 }
