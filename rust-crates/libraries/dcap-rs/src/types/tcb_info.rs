@@ -455,17 +455,20 @@ pub struct TcbTdx {
 }
 
 impl TcbStatus {
-    /// Determine the status of the TCB level that is trustable for the platform
+    /// Determine the TCB Info levels matched by the quote and PCK extension.
     ///
     /// This function performs TCB (Trusted Computing Base) level verification by:
     /// 1. Finding a matching SGX TCB level based on PCK extension values
-    /// 2. Extracting the SGX TCB status and advisories
-    /// 3. Checking for TDX TCB status if applicable
+    /// 2. Recording that fully matched SGX status, or the preliminary SGX/PCE
+    ///    match status when evaluating TDX TCB Info
+    /// 3. Finding the complete SGX/PCE/TDX match for a TDX quote
     ///
     /// Returns:
     ///   - A tuple containing (sgx_tcb_status, tdx_tcb_status, advisory_ids)
-    ///   - sgx_tcb_status: Status of SGX platform components
-    ///   - tdx_tcb_status: Status of TDX components (defaults to Unspecified if not applicable)
+    ///   - sgx_tcb_status: Fully matched status for SGX TCB Info, or the
+    ///     preliminary SGX/PCE match status for TDX TCB Info
+    ///   - tdx_tcb_status: Fully matched SGX/PCE/TDX status for a TDX quote
+    ///     (defaults to Unspecified if not applicable)
     ///   - advisory_ids: List of security advisories affecting this TCB level
     pub fn lookup(
         pck_extension: &SgxPckExtension,

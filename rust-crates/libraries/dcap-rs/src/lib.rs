@@ -45,13 +45,14 @@ pub mod types;
 pub mod utils;
 
 #[cfg(feature = "full")]
+use std::time::SystemTime;
+
+#[cfg(feature = "full")]
 use anyhow::{Context, anyhow, bail};
 #[cfg(feature = "full")]
 use chrono::{DateTime, Utc};
 #[cfg(feature = "full")]
 use p256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
-#[cfg(feature = "full")]
-use std::time::SystemTime;
 #[cfg(feature = "full")]
 use tdx::*;
 #[cfg(feature = "full")]
@@ -86,6 +87,19 @@ pub struct DcapVerificationPolicy {
     pub require_sept_ve_disable: bool,
     /// Require every reserved TDX attribute bit to be zero.
     pub require_zero_reserved_attributes: bool,
+    /// Select how TDX platform TCB revocation is enforced.
+    pub tdx_tcb_revocation_policy: TdxTcbRevocationPolicy,
+}
+
+/// Selects how TDX platform TCB revocation is enforced.
+#[cfg(feature = "full")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TdxTcbRevocationPolicy {
+    /// Follow Intel QVL by enforcing the status of the fully matched TDX TCB Info level.
+    #[default]
+    IntelQvlCompatible,
+    /// Also reject when the preliminary SGX/PCE match points to a revoked TDX TCB Info level.
+    RejectRevokedSgxPcePartialMatch,
 }
 
 #[cfg(feature = "full")]
@@ -97,7 +111,17 @@ impl DcapVerificationPolicy {
             allow_service_td: false,
             require_sept_ve_disable: true,
             require_zero_reserved_attributes: true,
+            tdx_tcb_revocation_policy: TdxTcbRevocationPolicy::IntelQvlCompatible,
         }
+    }
+
+    /// Sets how TDX platform TCB revocation is enforced.
+    pub const fn with_tdx_tcb_revocation_policy(
+        mut self,
+        tdx_tcb_revocation_policy: TdxTcbRevocationPolicy,
+    ) -> Self {
+        self.tdx_tcb_revocation_policy = tdx_tcb_revocation_policy;
+        self
     }
 }
 
@@ -184,10 +208,12 @@ pub fn verify_dcap_quote_with_policy(
     let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
         verify_tcb_status(&tcb_info, &pck_extension, &quote)?;
 
-    reject_invalid_tcb_status("SGX platform", sgx_tcb_status)?;
-    if quote.header.tee_type == TDX_TEE_TYPE {
-        reject_invalid_tcb_status("TDX platform", tdx_tcb_status)?;
-    }
+    enforce_platform_tcb_policy(
+        quote.header.tee_type,
+        sgx_tcb_status,
+        tdx_tcb_status,
+        policy.tdx_tcb_revocation_policy,
+    )?;
 
     let advisory_ids = if advisory_ids.is_empty() {
         None
@@ -258,6 +284,31 @@ fn reject_invalid_qe_tcb_status(status: QeTcbStatus) -> anyhow::Result<()> {
     match status {
         QeTcbStatus::Revoked => bail!("quoting enclave TCB is revoked"),
         QeTcbStatus::Unspecified => bail!("quoting enclave TCB status is unspecified"),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(feature = "full")]
+fn enforce_platform_tcb_policy(
+    tee_type: u32,
+    sgx_tcb_status: TcbStatus,
+    tdx_tcb_status: TcbStatus,
+    policy: TdxTcbRevocationPolicy,
+) -> anyhow::Result<()> {
+    if tee_type == TDX_TEE_TYPE && policy == TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch
+    {
+        reject_invalid_tcb_status("SGX/PCE partial TDX TCB Info match", sgx_tcb_status)?;
+    }
+
+    let quote_tcb_status = if tee_type == TDX_TEE_TYPE {
+        tdx_tcb_status
+    } else {
+        sgx_tcb_status
+    };
+
+    match quote_tcb_status {
+        TcbStatus::Revoked => bail!("FMSPC TCB Revoked"),
+        TcbStatus::Unspecified => bail!("FMSPC TCB status is unspecified"),
         _ => Ok(()),
     }
 }
@@ -576,8 +627,12 @@ pub fn verify_quote_signatures(quote: &Quote) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Ensure the latest tcb info is not revoked, and is either up to date or only needs a configuration
-/// change.
+/// Matches the quote and PCK extension against the supplied TCB Info.
+///
+/// For an SGX quote, the first returned status is the fully matched SGX status
+/// and the second status is [`TcbStatus::Unspecified`]. For a TDX quote, the
+/// first status belongs to the preliminary SGX/PCE match inside TDX TCB Info;
+/// only the second status belongs to the fully matched SGX/PCE/TDX level.
 #[cfg(feature = "full")]
 pub fn verify_tcb_status(
     tcb_info: &TcbInfo,
@@ -612,7 +667,7 @@ pub fn verify_tcb_status(
 #[cfg(all(test, feature = "full"))]
 mod tests {
     use super::*;
-    use crate::types::quote::{Quote, QuoteBody};
+    use crate::types::quote::{Quote, QuoteBody, SGX_TEE_TYPE};
 
     fn sample_tdx_body() -> QuoteBody {
         let quote_bytes = hex::decode(include_str!("../../../samples/quotev4.hex").trim()).unwrap();
@@ -691,5 +746,71 @@ mod tests {
             ..DcapVerificationPolicy::production()
         };
         validate_quote_policy(&body, &policy).unwrap();
+    }
+
+    #[test]
+    fn production_policy_is_intel_qvl_compatible() {
+        assert_eq!(
+            DcapVerificationPolicy::production().tdx_tcb_revocation_policy,
+            TdxTcbRevocationPolicy::IntelQvlCompatible
+        );
+    }
+
+    #[test]
+    fn rejects_revoked_sgx_tcb_status() {
+        let result = enforce_platform_tcb_policy(
+            SGX_TEE_TYPE,
+            TcbStatus::Revoked,
+            TcbStatus::Unspecified,
+            TdxTcbRevocationPolicy::IntelQvlCompatible,
+        );
+
+        assert_eq!(result.unwrap_err().to_string(), "FMSPC TCB Revoked");
+    }
+
+    #[test]
+    fn intel_policy_allows_revoked_sgx_pce_partial_match_for_tdx_quote() {
+        // Mirrors Intel's preliminary SGX/PCE=Revoked, complete TDX=OutOfDate case:
+        // https://github.com/intel/confidential-computing.tee.dcap.qvl/blob/caedd7616d07409878d6daf5ba80f7418fec9c0d/Src/AttestationLibrary/test/UnitTests/QuoteVerifierTcbStatusUT.cpp#L103-L108
+        let result = enforce_platform_tcb_policy(
+            TDX_TEE_TYPE,
+            TcbStatus::Revoked,
+            TcbStatus::OutOfDate,
+            TdxTcbRevocationPolicy::IntelQvlCompatible,
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn conservative_policy_rejects_revoked_sgx_pce_partial_match_for_tdx_quote() {
+        let result = enforce_platform_tcb_policy(
+            TDX_TEE_TYPE,
+            TcbStatus::Revoked,
+            TcbStatus::OutOfDate,
+            TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch,
+        );
+
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "SGX/PCE partial TDX TCB Info match TCB is revoked"
+        );
+    }
+
+    #[test]
+    fn rejects_revoked_tdx_tcb_status_under_both_policies() {
+        for policy in [
+            TdxTcbRevocationPolicy::IntelQvlCompatible,
+            TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch,
+        ] {
+            let result = enforce_platform_tcb_policy(
+                TDX_TEE_TYPE,
+                TcbStatus::UpToDate,
+                TcbStatus::Revoked,
+                policy,
+            );
+
+            assert_eq!(result.unwrap_err().to_string(), "FMSPC TCB Revoked");
+        }
     }
 }

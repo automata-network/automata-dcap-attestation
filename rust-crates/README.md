@@ -119,7 +119,13 @@ let verified = verify_dcap_quote_with_policy(
 
 The production policy rejects debug SGX and TDX reports, TDX 1.5 migration
 service TDs, reserved TDX attribute bits, and TDX reports without
-`SEPT_VE_DISABLE`. Invalid input returns an error instead of causing a panic.
+`SEPT_VE_DISABLE`. It uses
+`TdxTcbRevocationPolicy::IntelQvlCompatible`, so existing
+`verify_dcap_quote` callers retain Intel QVL's fully matched TDX TCB Info
+behavior. Applications can select
+`TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch` through
+`DcapVerificationPolicy` when they also want a revoked preliminary SGX/PCE
+match to fail. Invalid input returns an error instead of causing a panic.
 
 ### Regenerating EVM bindings
 

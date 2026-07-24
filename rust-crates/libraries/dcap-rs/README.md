@@ -23,18 +23,22 @@ This library supports verification of the following quotes:
 `verify_dcap_quote` uses `DcapVerificationPolicy::production()`. The production
 policy rejects debug SGX enclaves, debug TDX trust domains, TDX 1.5 migration
 service TDs, reserved TDX attribute bits, and TDX reports without
-`SEPT_VE_DISABLE`.
+`SEPT_VE_DISABLE`. It uses
+`TdxTcbRevocationPolicy::IntelQvlCompatible`, which follows Intel QVL by
+enforcing the fully matched TDX TCB Info level for a TDX quote.
 
 Call `verify_dcap_quote_with_policy` when an application needs an explicit
-exception. For example:
+policy change. For example, this rejects a TDX quote when the preliminary
+SGX/PCE match points to a revoked TDX TCB Info level:
 
 ```rust,ignore
-use dcap_rs::{DcapVerificationPolicy, verify_dcap_quote_with_policy};
-
-let policy = DcapVerificationPolicy {
-    allow_service_td: true,
-    ..DcapVerificationPolicy::production()
+use dcap_rs::{
+    DcapVerificationPolicy, TdxTcbRevocationPolicy, verify_dcap_quote_with_policy,
 };
+
+let policy = DcapVerificationPolicy::production().with_tdx_tcb_revocation_policy(
+    TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch,
+);
 let verified = verify_dcap_quote_with_policy(now, collateral, quote, &policy)?;
 ```
 
