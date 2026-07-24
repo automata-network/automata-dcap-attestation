@@ -1646,7 +1646,7 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "automata-dcap-cli"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -1667,7 +1667,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-evm-bindings"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "serde",
@@ -1675,7 +1675,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-network-registry"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -1690,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-qpl"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -1712,7 +1712,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-utils"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -1726,7 +1726,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-verifier"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -1742,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "automata-dcap-zkvm"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -3416,7 +3416,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "dcap-rs"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "alloy-sol-types",
@@ -6799,7 +6799,7 @@ checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "pccs-reader-rs"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
