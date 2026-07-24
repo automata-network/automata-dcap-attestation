@@ -65,6 +65,68 @@ This repository uses a **unified Rust workspace** with smart defaults:
 **Contract Interfaces:**
 - `contracts/`: Solidity contract interfaces for Automata Onchain PCCS and Automata DCAP Attestation to generate Rust bindings
 
+### Reusing a PCCS reader
+
+Applications that already selected a network can reuse `PccsReader` to avoid
+repeating `eth_chainId` before each collateral read:
+
+```rust,no_run
+use pccs_reader_rs::PccsReader;
+
+let reader = PccsReader::from_network(&provider, network);
+let collaterals = reader
+    .find_missing_collaterals_from_quote(&quote, false, None)
+    .await?;
+```
+
+`PccsReader::from_network` does not check the provider's chain ID. The caller
+must ensure that the provider and `Network` refer to the same chain. Use
+`PccsReader::from_provider` when the reader should select and validate the
+registered network from the provider.
+
+Multicall3 batching is available as an opt-in strategy:
+
+```rust,no_run
+use pccs_reader_rs::{PccsReadStrategy, PccsReader};
+
+let reader = PccsReader::from_network(&provider, network)
+    .with_read_strategy(PccsReadStrategy::multicall3());
+```
+
+`DirectConcurrent` remains the default. The Multicall3 strategy uses the
+standard cross-chain Multicall3 address unless the caller supplies a different
+address with `PccsReadStrategy::Multicall3 { address }`. A failed batch falls
+back to direct concurrent calls. A failed call inside a successful batch is
+retried once as a direct call.
+
+Malformed RPC collateral returns `CollateralError::Validation`. Missing or
+expired collateral returns `CollateralError::Missing`. The public
+`parse_x509_der` and `parse_crl_der` functions return
+`Result<_, CollateralError>`; malformed DER does not cause a panic.
+
+Local quote verification uses a production policy by default:
+
+```rust,ignore
+use dcap_rs::{DcapVerificationPolicy, verify_dcap_quote_with_policy};
+
+let verified = verify_dcap_quote_with_policy(
+    now,
+    collateral,
+    quote,
+    &DcapVerificationPolicy::production(),
+)?;
+```
+
+The production policy rejects debug SGX and TDX reports, TDX 1.5 migration
+service TDs, reserved TDX attribute bits, and TDX reports without
+`SEPT_VE_DISABLE`. It uses
+`TdxTcbRevocationPolicy::IntelQvlCompatible`, so existing
+`verify_dcap_quote` callers retain Intel QVL's fully matched TDX TCB Info
+behavior. Applications can select
+`TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch` through
+`DcapVerificationPolicy` when they also want a revoked preliminary SGX/PCE
+match to fail. Invalid input returns an error instead of causing a panic.
+
 ### Regenerating EVM bindings
 
 Whenever the Solidity ABI changes, regenerate the bindings from the repository root:

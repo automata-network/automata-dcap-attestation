@@ -18,6 +18,33 @@ This library supports verification of the following quotes:
 -   V4 TDX and SGX Quotes
 -   V5 TDX and SGX Quotes
 
+## Verification policy and errors
+
+`verify_dcap_quote` uses `DcapVerificationPolicy::production()`. The production
+policy rejects debug SGX enclaves, debug TDX trust domains, TDX 1.5 migration
+service TDs, reserved TDX attribute bits, and TDX reports without
+`SEPT_VE_DISABLE`. It uses
+`TdxTcbRevocationPolicy::IntelQvlCompatible`, which follows Intel QVL by
+enforcing the fully matched TDX TCB Info level for a TDX quote.
+
+Call `verify_dcap_quote_with_policy` when an application needs an explicit
+policy change. For example, this rejects a TDX quote when the preliminary
+SGX/PCE match points to a revoked TDX TCB Info level:
+
+```rust,ignore
+use dcap_rs::{
+    DcapVerificationPolicy, TdxTcbRevocationPolicy, verify_dcap_quote_with_policy,
+};
+
+let policy = DcapVerificationPolicy::production().with_tdx_tcb_revocation_policy(
+    TdxTcbRevocationPolicy::RejectRevokedSgxPcePartialMatch,
+);
+let verified = verify_dcap_quote_with_policy(now, collateral, quote, &policy)?;
+```
+
+All quote, certificate, signature, TCB, and policy failures return
+`anyhow::Error`. Untrusted verification input does not cause a panic.
+
 ## zkVM Patches
 
 zkVM programs provide patches, which are simply modified Rust crates that can help reduce execution cycle costs in the VM.

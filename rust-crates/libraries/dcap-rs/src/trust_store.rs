@@ -118,8 +118,7 @@ impl TrustStore {
         let mut chain = chain.iter().rev().peekable();
         let mut intermediary = BTreeMap::new();
 
-        loop {
-            let cert = chain.next().expect("should have returned after leaf");
+        while let Some(cert) = chain.next() {
             let issuer = cert.tbs_certificate.issuer.to_string();
             let subject = cert.tbs_certificate.subject.to_string();
 
@@ -153,6 +152,8 @@ impl TrustStore {
                 intermediary.insert(subject, identity);
             }
         }
+
+        bail!("certificate chain ended without a leaf certificate")
     }
 
     /// Check the current crls to ensure a certificate is not revoked

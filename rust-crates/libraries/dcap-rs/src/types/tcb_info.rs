@@ -1,4 +1,4 @@
-use std::{str::from_utf8, time::SystemTime};
+use std::time::SystemTime;
 
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Utc};
@@ -45,10 +45,11 @@ impl TcbInfoAndSignature {
             bail!("tcb info is not valid at current time");
         }
 
-        let sig = p256::ecdsa::Signature::from_slice(&self.signature).unwrap();
+        let sig = p256::ecdsa::Signature::from_slice(&self.signature)
+            .context("invalid TCB info signature encoding")?;
         public_key
             .verify(self.tcb_info_raw.get().as_bytes(), &sig)
-            .expect("valid signature expected");
+            .context("TCB info signature verification failed")?;
 
         if tcb_info
             .tcb_levels
@@ -127,18 +128,12 @@ pub struct TcbInfo {
 }
 
 impl TcbInfo {
-    pub fn fmspc_bytes(&self) -> [u8; 6] {
-        hex::decode(from_utf8(self.fmspc.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn fmspc_bytes(&self) -> Result<[u8; 6]> {
+        decode_hex_array(&self.fmspc, "TCB info FMSPC")
     }
 
-    pub fn pce_id_bytes(&self) -> [u8; 2] {
-        hex::decode(from_utf8(self.pce_id.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn pce_id_bytes(&self) -> Result<[u8; 2]> {
+        decode_hex_array(&self.pce_id, "TCB info PCE ID")
     }
 
     pub fn converge_tcb_status_with_tdx_module(
@@ -195,7 +190,7 @@ impl TcbInfo {
                 } else if id == "TDX" {
                     1
                 } else {
-                    panic!("Unsupported TCB Info ID: {}", id);
+                    bail!("unsupported TCB info ID: {id}");
                 }
             },
             None => 0,
@@ -206,8 +201,8 @@ impl TcbInfo {
         pre_image.extend_from_slice(&[id]);
         pre_image.extend_from_slice(&u32::from(self.version).to_be_bytes());
         pre_image.extend_from_slice(&self.tcb_evaluation_data_number.to_be_bytes());
-        pre_image.extend_from_slice(&self.fmspc_bytes());
-        pre_image.extend_from_slice(&self.pce_id_bytes());
+        pre_image.extend_from_slice(&self.fmspc_bytes()?);
+        pre_image.extend_from_slice(&self.pce_id_bytes()?);
         pre_image.extend_from_slice(serde_json::to_vec(&self.tcb_levels)?.as_slice());
 
         if let Some(tdx_module) = &self.tdx_module {
@@ -391,25 +386,16 @@ pub struct TdxModule {
 }
 
 impl TdxModule {
-    pub fn mrsigner_bytes(&self) -> [u8; 48] {
-        hex::decode(from_utf8(self.mrsigner.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn mrsigner_bytes(&self) -> Result<[u8; 48]> {
+        decode_hex_array(&self.mrsigner, "TDX module mrsigner")
     }
 
-    pub fn attributes_bytes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(self.attributes.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_bytes(&self) -> Result<[u8; 8]> {
+        decode_hex_array(&self.attributes, "TDX module attributes")
     }
 
-    pub fn attributes_mask_bytes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(self.attributes_mask.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_mask_bytes(&self) -> Result<[u8; 8]> {
+        decode_hex_array(&self.attributes_mask, "TDX module attributes mask")
     }
 }
 
@@ -426,26 +412,24 @@ pub struct TdxModuleIdentity {
 }
 
 impl TdxModuleIdentity {
-    pub fn mrsigner_bytes(&self) -> [u8; 48] {
-        hex::decode(from_utf8(self.mrsigner.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn mrsigner_bytes(&self) -> Result<[u8; 48]> {
+        decode_hex_array(&self.mrsigner, "TDX module identity mrsigner")
     }
 
-    pub fn attributes_bytes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(self.attributes.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_bytes(&self) -> Result<[u8; 8]> {
+        decode_hex_array(&self.attributes, "TDX module identity attributes")
     }
 
-    pub fn attributes_mask_bytes(&self) -> [u8; 8] {
-        hex::decode(from_utf8(self.attributes_mask.as_bytes()).unwrap())
-            .unwrap()
-            .try_into()
-            .unwrap()
+    pub fn attributes_mask_bytes(&self) -> Result<[u8; 8]> {
+        decode_hex_array(&self.attributes_mask, "TDX module identity attributes mask")
     }
+}
+
+fn decode_hex_array<const N: usize>(value: &str, field: &str) -> Result<[u8; N]> {
+    let bytes = hex::decode(value).with_context(|| format!("{field} is not valid hexadecimal"))?;
+    bytes
+        .try_into()
+        .map_err(|bytes: Vec<u8>| anyhow::anyhow!("{field} must be {N} bytes, got {}", bytes.len()))
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
@@ -471,17 +455,20 @@ pub struct TcbTdx {
 }
 
 impl TcbStatus {
-    /// Determine the status of the TCB level that is trustable for the platform
+    /// Determine the TCB Info levels matched by the quote and PCK extension.
     ///
     /// This function performs TCB (Trusted Computing Base) level verification by:
     /// 1. Finding a matching SGX TCB level based on PCK extension values
-    /// 2. Extracting the SGX TCB status and advisories
-    /// 3. Checking for TDX TCB status if applicable
+    /// 2. Recording that fully matched SGX status, or the preliminary SGX/PCE
+    ///    match status when evaluating TDX TCB Info
+    /// 3. Finding the complete SGX/PCE/TDX match for a TDX quote
     ///
     /// Returns:
     ///   - A tuple containing (sgx_tcb_status, tdx_tcb_status, advisory_ids)
-    ///   - sgx_tcb_status: Status of SGX platform components
-    ///   - tdx_tcb_status: Status of TDX components (defaults to Unspecified if not applicable)
+    ///   - sgx_tcb_status: Fully matched status for SGX TCB Info, or the
+    ///     preliminary SGX/PCE match status for TDX TCB Info
+    ///   - tdx_tcb_status: Fully matched SGX/PCE/TDX status for a TDX quote
+    ///     (defaults to Unspecified if not applicable)
     ///   - advisory_ids: List of security advisories affecting this TCB level
     pub fn lookup(
         pck_extension: &SgxPckExtension,
@@ -535,6 +522,28 @@ fn pck_in_tcb_level(level: &TcbLevel, pck_extension: &SgxPckExtension) -> bool {
         .zip(level.tcb.sgx_tcb_components())
         .all(|(&pck, tcb)| pck >= tcb)
         && pck_extension.tcb.pcesvn >= level.tcb.pcesvn()
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    #[test]
+    fn invalid_tdx_module_hex_returns_error_without_panicking() {
+        let module = TdxModule {
+            mrsigner: "not-hex".to_string(),
+            attributes: "00".to_string(),
+            attributes_mask: "00".to_string(),
+        };
+
+        let result = std::panic::catch_unwind(|| module.mrsigner_bytes());
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_err());
+
+        let result = std::panic::catch_unwind(|| module.attributes_bytes());
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_err());
+    }
 }
 
 fn match_tdx_tcb(

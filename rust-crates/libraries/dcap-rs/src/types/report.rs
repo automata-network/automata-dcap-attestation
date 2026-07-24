@@ -6,7 +6,16 @@ use zerocopy::little_endian;
 const SGX_CPUSVN_SIZE: usize = 16;
 const SGX_HASH_SIZE: usize = 32;
 
-#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    zerocopy::FromBytes,
+    zerocopy::FromZeroes,
+    zerocopy::AsBytes,
+    Serialize,
+    Deserialize,
+)]
 #[repr(C)]
 pub struct EnclaveReportBody {
     // (0) CPU Security Version
@@ -89,13 +98,22 @@ impl TryFrom<[u8; std::mem::size_of::<EnclaveReportBody>()]> for EnclaveReportBo
         value: [u8; std::mem::size_of::<EnclaveReportBody>()],
     ) -> Result<Self, Self::Error> {
         let report = <Self as zerocopy::FromBytes>::read_from(&value)
-            .expect("failed to read enclave report body");
+            .ok_or_else(|| anyhow::anyhow!("failed to read enclave report body"))?;
 
         Ok(report)
     }
 }
 
-#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    zerocopy::FromBytes,
+    zerocopy::FromZeroes,
+    zerocopy::AsBytes,
+    Serialize,
+    Deserialize,
+)]
 #[repr(C)]
 pub struct Td10ReportBody {
     // (0) Describes the TCB of TDX.
@@ -179,13 +197,22 @@ impl TryFrom<[u8; std::mem::size_of::<Td10ReportBody>()]> for Td10ReportBody {
 
     fn try_from(value: [u8; std::mem::size_of::<Td10ReportBody>()]) -> Result<Self, Self::Error> {
         let report = <Self as zerocopy::FromBytes>::read_from(&value)
-            .expect("failed to read tdx report body");
+            .ok_or_else(|| anyhow::anyhow!("failed to read TDX 1.0 report body"))?;
 
         Ok(report)
     }
 }
 
-#[derive(Debug, Clone, Copy, zerocopy::FromBytes, zerocopy::FromZeroes, zerocopy::AsBytes, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    zerocopy::FromBytes,
+    zerocopy::FromZeroes,
+    zerocopy::AsBytes,
+    Serialize,
+    Deserialize,
+)]
 #[repr(C)]
 pub struct Td15ReportBody {
     pub td_report: Td10ReportBody,
@@ -204,7 +231,7 @@ impl TryFrom<[u8; std::mem::size_of::<Td15ReportBody>()]> for Td15ReportBody {
 
     fn try_from(value: [u8; std::mem::size_of::<Td15ReportBody>()]) -> Result<Self, Self::Error> {
         let report = <Self as zerocopy::FromBytes>::read_from(&value)
-            .expect("failed to read tdx report body");
+            .ok_or_else(|| anyhow::anyhow!("failed to read TDX 1.5 report body"))?;
 
         Ok(report)
     }

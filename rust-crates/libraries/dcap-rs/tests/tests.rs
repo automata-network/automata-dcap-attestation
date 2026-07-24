@@ -1,7 +1,9 @@
 mod common;
 
 use common::*;
-use dcap_rs::{types::quote::Quote, verify_dcap_quote};
+use dcap_rs::{
+    DcapVerificationPolicy, types::quote::Quote, verify_dcap_quote, verify_dcap_quote_with_policy,
+};
 
 #[test]
 fn parse_v3_quote() {
@@ -43,7 +45,11 @@ async fn e2e_v4_quote() {
 #[tokio::test]
 async fn e2e_v5_quote() {
     let (collateral, quote) = v5_quote_data().await;
-    let output = verify_dcap_quote(test_v5_time(), collateral, quote)
-        .expect("certificate chain integrity should succeed");
+    let policy = DcapVerificationPolicy {
+        allow_service_td: true,
+        ..DcapVerificationPolicy::production()
+    };
+    let output = verify_dcap_quote_with_policy(test_v5_time(), collateral, quote, &policy)
+        .expect("certificate chain integrity should succeed when service TDs are allowed");
     println!("{:?}", output);
 }

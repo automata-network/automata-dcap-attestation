@@ -56,6 +56,9 @@ impl<'a> Quote<'a> {
                 return Err(anyhow!("unsupported TEE type"));
             }
         } else {
+            if bytes.len() < 6 {
+                return Err(anyhow!("underflow reading quote body header"));
+            }
             quote_body_type = u16::from_le_bytes([bytes[0], bytes[1]]);
             *bytes = &bytes[2..];
 
@@ -166,44 +169,70 @@ impl<'a> std::fmt::Display for Quote<'a> {
                 writeln!(f, "    MR_SIGNER: {}", hex::encode(body.mr_signer))?;
                 writeln!(f, "    ISV_PROD_ID: {}", body.isv_prod_id)?;
                 writeln!(f, "    ISV_SVN: {}", body.isv_svn)?;
-                writeln!(
-                    f,
-                    "    Report Data: {}",
-                    hex::encode(&body.user_report_data)
-                )?;
-            }
+                writeln!(f, "    Report Data: {}", hex::encode(body.user_report_data))?;
+            },
             QuoteBody::Td10QuoteBody(body) => {
                 writeln!(f, "  TDX TD10 Report:")?;
                 writeln!(f, "    TEE_TCB_SVN: {}", hex::encode(body.tee_tcb_svn))?;
                 writeln!(f, "    MR_SEAM: {}", hex::encode(body.mr_seam))?;
-                writeln!(f, "    MR_SIGNER_SEAM: {}", hex::encode(body.mr_signer_seam))?;
-                writeln!(f, "    MR_TD: {}", hex::encode(body.mr_td))?;
-                writeln!(f, "    RTMR0: {}", hex::encode(body.rtm_r0))?;
                 writeln!(
                     f,
-                    "    Report Data: {}",
-                    hex::encode(&body.user_report_data)
+                    "    MR_SIGNER_SEAM: {}",
+                    hex::encode(body.mr_signer_seam)
                 )?;
-            }
+                writeln!(f, "    MR_TD: {}", hex::encode(body.mr_td))?;
+                writeln!(f, "    RTMR0: {}", hex::encode(body.rtm_r0))?;
+                writeln!(f, "    Report Data: {}", hex::encode(body.user_report_data))?;
+            },
             QuoteBody::Td15QuoteBody(body) => {
                 writeln!(f, "  TDX TD15 Report:")?;
-                writeln!(f, "    TEE_TCB_SVN: {}", hex::encode(body.td_report.tee_tcb_svn))?;
+                writeln!(
+                    f,
+                    "    TEE_TCB_SVN: {}",
+                    hex::encode(body.td_report.tee_tcb_svn)
+                )?;
                 writeln!(f, "    MR_SEAM: {}", hex::encode(body.td_report.mr_seam))?;
-                writeln!(f, "    MR_SIGNER_SEAM: {}", hex::encode(body.td_report.mr_signer_seam))?;
+                writeln!(
+                    f,
+                    "    MR_SIGNER_SEAM: {}",
+                    hex::encode(body.td_report.mr_signer_seam)
+                )?;
                 writeln!(f, "    MR_TD: {}", hex::encode(body.td_report.mr_td))?;
                 writeln!(f, "    RTMR0: {}", hex::encode(body.td_report.rtm_r0))?;
                 writeln!(
                     f,
                     "    Report Data: {}",
-                    hex::encode(&body.td_report.user_report_data)
+                    hex::encode(body.td_report.user_report_data)
                 )?;
                 writeln!(f, "    TEE_TCB_SVN2: {}", hex::encode(body.tee_tcb_svn2))?;
                 writeln!(f, "    MR_SERVICE_TD: {}", hex::encode(body.mr_service_td))?;
-            }
+            },
         }
 
         write!(f, "{}", self.signature)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::Quote;
+
+    #[test]
+    fn truncated_quotes_return_errors_without_panicking() {
+        let v3 = hex::decode(include_str!("../../../../../samples/quotev3.hex").trim()).unwrap();
+        let v4 = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+        let v5 = include_bytes!("../../../../../samples/quotev5.dat").as_slice();
+
+        for quote in [v3.as_slice(), v4.as_slice(), v5] {
+            let required_len = Quote::read(&mut quote.as_ref()).unwrap().byte_len();
+            for end in 0..required_len {
+                let truncated = &quote[..end];
+                let result = std::panic::catch_unwind(|| Quote::read(&mut truncated.as_ref()));
+                assert!(result.is_ok(), "quote parser panicked at length {end}");
+                assert!(result.unwrap().is_err(), "truncated quote parsed at {end}");
+            }
+        }
     }
 }

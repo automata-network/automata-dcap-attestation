@@ -11,6 +11,13 @@ fn cast_slice<T: Pod>(slice: &[u8]) -> Result<&T, ZeroCopyError> {
     bytemuck::try_from_bytes(slice).map_err(ZeroCopyError::from_bytemuck_error)
 }
 
+fn decode_hex_array<const N: usize>(value: &[u8]) -> Result<[u8; N], ZeroCopyError> {
+    let bytes = hex::decode(value).map_err(|_| ZeroCopyError::InvalidHex)?;
+    bytes
+        .try_into()
+        .map_err(|_| ZeroCopyError::InvalidFieldLength)
+}
+
 // --- Top-Level ZeroCopy Struct ---
 
 #[derive(Debug, Copy, Clone)]
@@ -64,35 +71,20 @@ impl<'a> EnclaveIdentityZeroCopy<'a> {
     pub fn isvprodid(&self) -> u16 {
         self.header.isvprodid
     }
-    pub fn miscselect_bytes(&self) -> [u8; 4] {
-        hex::decode(self.header.miscselect_hex)
-            .expect("Failed to decode miscselect_hex")
-            .try_into()
-            .expect("Failed to convert miscselect_hex to byte array")
+    pub fn miscselect_bytes(&self) -> Result<[u8; 4], ZeroCopyError> {
+        decode_hex_array(&self.header.miscselect_hex)
     }
-    pub fn miscselect_mask_bytes(&self) -> [u8; 4] {
-        hex::decode(self.header.miscselect_mask_hex)
-            .expect("Failed to decode miscselect_mask_hex")
-            .try_into()
-            .expect("Failed to convert miscselect_mask_hex to byte array")
+    pub fn miscselect_mask_bytes(&self) -> Result<[u8; 4], ZeroCopyError> {
+        decode_hex_array(&self.header.miscselect_mask_hex)
     }
-    pub fn attributes_bytes(&self) -> [u8; 16] {
-        hex::decode(self.header.attributes_hex)
-            .expect("Failed to decode attributes_hex")
-            .try_into()
-            .expect("Failed to convert attributes_hex to byte array")
+    pub fn attributes_bytes(&self) -> Result<[u8; 16], ZeroCopyError> {
+        decode_hex_array(&self.header.attributes_hex)
     }
-    pub fn attributes_mask_bytes(&self) -> [u8; 16] {
-        hex::decode(self.header.attributes_mask_hex)
-            .expect("Failed to decode attributes_mask_hex")
-            .try_into()
-            .expect("Failed to convert attributes_mask_hex to byte array")
+    pub fn attributes_mask_bytes(&self) -> Result<[u8; 16], ZeroCopyError> {
+        decode_hex_array(&self.header.attributes_mask_hex)
     }
-    pub fn mrsigner_bytes(&self) -> [u8; 32] {
-        hex::decode(self.header.mrsigner_hex)
-            .expect("Failed to decode mrsigner_hex")
-            .try_into()
-            .expect("Failed to convert mrsigner_hex to byte array")
+    pub fn mrsigner_bytes(&self) -> Result<[u8; 32], ZeroCopyError> {
+        decode_hex_array(&self.header.mrsigner_hex)
     }
 
     // --- Parsed/Structured Accessors ---

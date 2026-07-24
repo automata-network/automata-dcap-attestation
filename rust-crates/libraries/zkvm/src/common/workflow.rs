@@ -57,25 +57,21 @@ pub async fn prepare_guest_input<P: Provider>(
         "Fetching collaterals from network: {} (chain_id: {})",
         network.display_name, network.chain_id
     );
-    let collaterals = pccs_reader_rs::find_missing_collaterals_from_quote(
-        provider,
-        deployment_version,
-        &quote,
-        false,
-        tcb_eval_num,
-    )
-    .await
-    .map_err(|e| match e {
-        pccs_reader_rs::CollateralError::Missing(report) => {
-            anyhow::anyhow!(
-                "Failed to fetch all required collaterals from PCCS:\n{}",
-                report
-            )
-        }
-        pccs_reader_rs::CollateralError::Validation(msg) => {
-            anyhow::anyhow!("Quote validation error: {}", msg)
-        }
-    })?;
+    let reader = pccs_reader_rs::PccsReader::from_network(provider, network);
+    let collaterals = reader
+        .find_missing_collaterals_from_quote(&quote, false, tcb_eval_num)
+        .await
+        .map_err(|e| match e {
+            pccs_reader_rs::CollateralError::Missing(report) => {
+                anyhow::anyhow!(
+                    "Failed to fetch all required collaterals from PCCS:\n{}",
+                    report
+                )
+            }
+            pccs_reader_rs::CollateralError::Validation(msg) => {
+                anyhow::anyhow!("Quote validation error: {}", msg)
+            }
+        })?;
     log::debug!("Fetched collaterals: {:?}", collaterals);
 
     println!("All collaterals fetched successfully!");

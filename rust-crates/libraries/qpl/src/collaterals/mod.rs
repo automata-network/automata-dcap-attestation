@@ -8,7 +8,8 @@ pub use helper::{
     sgx_ql_get_root_ca_crl, tdx_ql_get_quote_verification_collateral, upload_missing_collaterals,
 };
 pub use pccs_reader_rs::{
-    CollateralError, Collaterals, MissingCollateral, MissingCollateralReport,
+    CollateralError, Collaterals, MissingCollateral, MissingCollateralReport, PccsReadStrategy,
+    PccsReader,
 };
 
 use automata_dcap_network_registry::Network;
@@ -25,13 +26,8 @@ pub async fn detect_missing_collateral(
     let provider = network
         .create_provider(None, None)
         .map_err(|e| CollateralError::Validation(format!("Failed to create provider: {}", e)))?;
-    pccs_reader_rs::find_missing_collaterals_from_quote(
-        &provider,
-        Some(network.version),
-        quote,
-        false,
-        tcb_eval_num,
-    )
-    .await
-    .map(|_collaterals| ())
+    PccsReader::from_network(&provider, network)
+        .find_missing_collaterals_from_quote(quote, false, tcb_eval_num)
+        .await
+        .map(|_collaterals| ())
 }

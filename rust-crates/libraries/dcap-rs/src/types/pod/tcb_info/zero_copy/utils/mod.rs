@@ -29,16 +29,14 @@ pub fn lookup<'a>(
         }
     }
 
-    if found_sgx_match_index.is_none() {
-        // As per original TcbStatus::lookup, this is an error condition.
-        return Err(ZeroCopyError::NoMatchingSgxTcbLevel);
-    }
+    let found_sgx_match_index =
+        found_sgx_match_index.ok_or(ZeroCopyError::NoMatchingSgxTcbLevel)?;
 
     let mut tdx_tcb_status_u8 = 7u8; // TcbStatus::Unspecified = 7
 
     if let QuoteBody::Td10QuoteBody(tdx_quote_body) = &quote.body {
         // Start iterating from the found sgx matching level's index
-        for tdx_tcb_levels_res in tcb_info.tcb_levels().skip(found_sgx_match_index.unwrap()) {
+        for tdx_tcb_levels_res in tcb_info.tcb_levels().skip(found_sgx_match_index) {
             let tdx_tcb_level = tdx_tcb_levels_res?;
             if let Some(tdx_tcb_levels_iter) = tdx_tcb_level.tdx_tcb_components() {
                 let mut tdx_components_match = true;

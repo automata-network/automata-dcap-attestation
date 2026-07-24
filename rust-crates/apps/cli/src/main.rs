@@ -601,7 +601,8 @@ fn print_verified_output(verified_output_bytes: &[u8], dcap_version: Version) ->
 }
 
 async fn handle_collateral_status(filter: NetworkFilter, version: Version) -> Result<()> {
-    use pccs_reader_rs::pccs::pcs::{get_certificate_by_id, CA};
+    use pccs_reader_rs::pccs::pcs::CA;
+    use pccs_reader_rs::PccsReader;
 
     let networks: Vec<&Network> = Network::all(Some(version))
         .iter()
@@ -635,16 +636,23 @@ async fn handle_collateral_status(filter: NetworkFilter, version: Version) -> Re
                 continue;
             }
         };
+        let reader = PccsReader::from_network(&network_provider, network);
 
         // Check PCS Certificates & CRLs
         println!("  PCS Certificates:");
-        for (ca, name) in [
-            (CA::Root, "Root CA"),
-            (CA::Signing, "Signing CA"),
-            (CA::Processor, "Processor CA"),
-            (CA::Platform, "Platform CA"),
+        let (root, signing, processor, platform) = tokio::join!(
+            reader.get_certificate_by_id(CA::Root),
+            reader.get_certificate_by_id(CA::Signing),
+            reader.get_certificate_by_id(CA::Processor),
+            reader.get_certificate_by_id(CA::Platform),
+        );
+        for (name, result) in [
+            ("Root CA", root),
+            ("Signing CA", signing),
+            ("Processor CA", processor),
+            ("Platform CA", platform),
         ] {
-            match get_certificate_by_id(&network_provider, Some(version), ca).await {
+            match result {
                 Ok((cert, crl)) => {
                     let cert_status = if cert.is_empty() {
                         "MISSING"
