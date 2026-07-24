@@ -7,10 +7,8 @@ homepage.workspace = true
 license.workspace = true
 include = [
     "src/**/*",
-    "build.rs",
     "metadata.toml",
     "deployment/**/*",
-    "!deployment/cache/**",
 ]
 
 [dependencies]
@@ -25,14 +23,3 @@ toml = "0.8"
 
 [dev-dependencies]
 tokio = { workspace = true }
-
-[build-dependencies]
-anyhow = { workspace = true }
-hex = { workspace = true }
-reqwest = { version = "0.12", features = ["blocking"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { workspace = true }
-toml = "0.8"
-flate2 = "1.0"
-tar = "0.4"
-sha2 = "0.10"
