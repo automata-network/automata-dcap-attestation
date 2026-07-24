@@ -48,21 +48,34 @@ pub struct PicoGenerateEvmInputsArgs {
 }
 
 /// Handle Pico CLI commands
-pub async fn run<P: Provider>(command: PicoCommand, quote_bytes: Option<Vec<u8>>, provider: &P, version: automata_dcap_utils::Version, tcb_eval_num: Option<u32>) -> Result<()> {
+pub async fn run<P: Provider>(
+    command: PicoCommand,
+    quote_bytes: Option<Vec<u8>>,
+    provider: &P,
+    version: automata_dcap_utils::Version,
+    tcb_eval_num: Option<u32>,
+) -> Result<()> {
     match command {
         PicoCommand::Prove(args) => {
             let quote_bytes = quote_bytes.context("Quote bytes must be provided for proving")?;
             prove(&args, quote_bytes, provider, version, tcb_eval_num).await
-        },
+        }
         PicoCommand::GenerateEvmInputs(args) => generate_evm_inputs(&args),
         PicoCommand::ProgramId => program_id(version),
     }
 }
 
 /// Generate proof for DCAP quote verification
-async fn prove<P: Provider>(args: &PicoProveArgs, quote_bytes: Vec<u8>, provider: &P, version: automata_dcap_utils::Version, tcb_eval_num: Option<u32>) -> Result<()> {
+async fn prove<P: Provider>(
+    args: &PicoProveArgs,
+    quote_bytes: Vec<u8>,
+    provider: &P,
+    version: automata_dcap_utils::Version,
+    tcb_eval_num: Option<u32>,
+) -> Result<()> {
     // Prepare version-aware guest input using common workflow
-    let input_bytes = prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
+    let input_bytes =
+        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
 
     // Create version-aware prover
     let prover = PicoProver::new(version)?;
@@ -138,7 +151,9 @@ fn generate_evm_inputs(args: &PicoGenerateEvmInputsArgs) -> Result<()> {
     // Get proof from proof.data
     let proof_data = fs::read_to_string(&proof_path)?;
     let proof_slice: Vec<String> = proof_data.split(',').map(|s| s.to_string()).collect();
-    let proof = &proof_slice[0..8];
+    let proof = proof_slice
+        .get(..8)
+        .context("proof.data must contain at least 8 comma-separated proof values")?;
 
     // Get pv stream from pv file
     let pv_file_path = artifacts_path.join(PV_FILE);
@@ -147,11 +162,15 @@ fn generate_evm_inputs(args: &PicoGenerateEvmInputsArgs) -> Result<()> {
     }
     let pv_file_content = fs::read_to_string(&pv_file_path)?;
     let pv_string = pv_file_content.trim();
-    if !pv_string[2..].chars().all(|c| c.is_ascii_hexdigit()) {
+    let pv_hex = pv_string
+        .strip_prefix("0x")
+        .context("pv file must start with 0x")?;
+    if pv_hex.is_empty() || pv_hex.len() % 2 != 0 || !pv_hex.chars().all(|c| c.is_ascii_hexdigit())
+    {
         anyhow::bail!("Invalid hex format in pv file");
     }
 
-    let public_values_hex = "0x".to_string() + pv_string;
+    let public_values_hex = pv_string.to_string();
     let result_json = json!({
         "riscvVKey": vkey_hex,
         "proof": proof,
@@ -167,7 +186,10 @@ fn generate_evm_inputs(args: &PicoGenerateEvmInputsArgs) -> Result<()> {
     let mut contract_input_file = File::create(&contract_input_path)?;
     contract_input_file.write_all(json_string.as_bytes())?;
 
-    println!("Generated EVM contract inputs at: {}", contract_input_path.display());
+    println!(
+        "Generated EVM contract inputs at: {}",
+        contract_input_path.display()
+    );
 
     Ok(())
 }

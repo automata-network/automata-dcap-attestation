@@ -268,10 +268,11 @@ pub trait Expireable {
 impl Expireable for CertificateList {
     /// Validate CRL creation/expiration
     fn valid_at(&self, timestamp: SystemTime) -> bool {
-        if let Some(na) = self.tbs_cert_list.next_update.map(|t| t.to_system_time()) {
-            if na <= timestamp {
-                return false;
-            }
+        let Some(na) = self.tbs_cert_list.next_update.map(|t| t.to_system_time()) else {
+            return false;
+        };
+        if na <= timestamp {
+            return false;
         }
 
         // return false if the crl is for the future

@@ -71,9 +71,8 @@ pub fn check_for_relaunch(
     let mut relaunch_needed = false;
     let mut configuration_needed = false;
 
-    if (qe_tcb_status != QeTcbStatus::OutOfDate
-        && qe_tcb_status != QeTcbStatus::OutOfDateConfigurationNeeded)
-        && !is_out_of_date(sgx_tcb_status)
+    if is_relaunch_eligible_qe_status(qe_tcb_status)
+        && is_relaunch_eligible_sgx_status(sgx_tcb_status)
         && is_out_of_date(tdx_tcb_status)
         && is_out_of_date(tdx_module_tcb_status)
     {
@@ -146,4 +145,48 @@ fn is_configuration_needed(tcb_status: TcbStatus) -> bool {
 
 fn is_out_of_date(tcb_status: TcbStatus) -> bool {
     tcb_status == TcbStatus::OutOfDate || tcb_status == TcbStatus::OutOfDateConfigurationNeeded
+}
+
+fn is_relaunch_eligible_qe_status(status: QeTcbStatus) -> bool {
+    matches!(
+        status,
+        QeTcbStatus::UpToDate
+            | QeTcbStatus::SWHardeningNeeded
+            | QeTcbStatus::ConfigurationNeeded
+            | QeTcbStatus::ConfigurationAndSWHardeningNeeded
+    )
+}
+
+fn is_relaunch_eligible_sgx_status(status: TcbStatus) -> bool {
+    matches!(
+        status,
+        TcbStatus::UpToDate
+            | TcbStatus::SWHardeningNeeded
+            | TcbStatus::ConfigurationNeeded
+            | TcbStatus::ConfigurationAndSWHardeningNeeded
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relaunch_rejects_revoked_and_unknown_preliminary_statuses() {
+        assert!(!is_relaunch_eligible_qe_status(QeTcbStatus::Revoked));
+        assert!(!is_relaunch_eligible_qe_status(QeTcbStatus::Unspecified));
+        assert!(!is_relaunch_eligible_sgx_status(TcbStatus::Revoked));
+    }
+
+    #[test]
+    fn relaunch_accepts_intel_reference_preliminary_statuses() {
+        assert!(is_relaunch_eligible_qe_status(QeTcbStatus::UpToDate));
+        assert!(is_relaunch_eligible_qe_status(
+            QeTcbStatus::SWHardeningNeeded
+        ));
+        assert!(is_relaunch_eligible_sgx_status(TcbStatus::UpToDate));
+        assert!(is_relaunch_eligible_sgx_status(
+            TcbStatus::ConfigurationAndSWHardeningNeeded
+        ));
+    }
 }

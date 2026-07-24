@@ -46,13 +46,23 @@ impl<'a> QuoteSignatureData<'a> {
             return Err(anyhow!("underflow reading signature"));
         }
 
-        if version == 3 {
-            Self::read_v3_signature(bytes)
+        let (signature_bytes, remaining) = bytes.split_at(signature_len as usize);
+        let mut signature_bytes = signature_bytes;
+        let signature = if version == 3 {
+            Self::read_v3_signature(&mut signature_bytes)
         } else if version >= 4 {
-            Self::read_v4_signature(bytes)
+            Self::read_v4_signature(&mut signature_bytes)
         } else {
-            Err(anyhow!("unsupported quote version"))
+            return Err(anyhow!("unsupported quote version"));
+        }?;
+        if !signature_bytes.is_empty() {
+            return Err(anyhow!(
+                "signature data has {} trailing bytes",
+                signature_bytes.len()
+            ));
         }
+        *bytes = remaining;
+        Ok(signature)
     }
 
     fn read_v3_signature(bytes: &mut &'a [u8]) -> anyhow::Result<Self> {
@@ -129,6 +139,12 @@ impl<'a> QuoteSignatureData<'a> {
         )
         .ok_or_else(|| anyhow!("underflow reading QE authentication data"))?;
         let cert_data = QuoteCertData::read(&mut cert_data_struct.cert_data)?;
+        if !cert_data_struct.cert_data.is_empty() {
+            return Err(anyhow!(
+                "QE report certification data has {} trailing bytes",
+                cert_data_struct.cert_data.len()
+            ));
+        }
 
         Ok(QuoteSignatureData {
             isv_signature,

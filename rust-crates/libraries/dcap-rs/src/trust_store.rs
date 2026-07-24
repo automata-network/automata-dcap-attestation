@@ -69,6 +69,10 @@ impl TrustStore {
         verify_signature: bool,
         intermediaries: Option<&BTreeMap<String, TrustedIdentity>>,
     ) -> anyhow::Result<()> {
+        if !crl.valid_at(self.current_time) {
+            bail!("certificate revocation list is not valid at the verification time");
+        }
+
         // Verify signature if requested
         if verify_signature {
             let issuer = crl.tbs_cert_list.issuer.to_string();
@@ -161,11 +165,12 @@ impl TrustStore {
         let issuer = cert.tbs_certificate.issuer.to_string();
         let serial = cert.tbs_certificate.serial_number.to_string();
 
-        // Check if this issuer has any revoked certificates
-        if let Some(issuer_revoked) = self.crl.get(&issuer) {
-            if issuer_revoked.contains(&serial) {
-                bail!("certificate is revoked");
-            }
+        let issuer_revoked = self
+            .crl
+            .get(&issuer)
+            .ok_or_else(|| anyhow::anyhow!("no certificate revocation list for issuer {issuer}"))?;
+        if issuer_revoked.contains(&serial) {
+            bail!("certificate is revoked");
         }
 
         Ok(())

@@ -32,9 +32,15 @@ impl<'a> Quote<'a> {
             return Err(anyhow!("incorrect buffer size"));
         }
 
-        // Read the quote header
-        let quote_header = utils::read_from_bytes::<QuoteHeader>(bytes)
-            .ok_or_else(|| anyhow!("underflow reading quote header"))?;
+        // Copy the fixed-size header so all semantic checks in QuoteHeader::try_from
+        // run before any attacker-controlled length or type is used.
+        let raw_header: [u8; std::mem::size_of::<QuoteHeader>()] = bytes
+            .get(..std::mem::size_of::<QuoteHeader>())
+            .ok_or_else(|| anyhow!("underflow reading quote header"))?
+            .try_into()
+            .map_err(|_| anyhow!("underflow reading quote header"))?;
+        *bytes = &bytes[std::mem::size_of::<QuoteHeader>()..];
+        let quote_header = QuoteHeader::try_from(raw_header)?;
 
         // Read the quote body and signature
         let quote_body_type;
@@ -217,7 +223,7 @@ impl<'a> std::fmt::Display for Quote<'a> {
 
 #[cfg(test)]
 mod error_tests {
-    use super::Quote;
+    use super::{Quote, QuoteHeader, Td10ReportBody};
 
     #[test]
     fn truncated_quotes_return_errors_without_panicking() {
@@ -233,6 +239,42 @@ mod error_tests {
                 assert!(result.is_ok(), "quote parser panicked at length {end}");
                 assert!(result.unwrap().is_err(), "truncated quote parsed at {end}");
             }
+        }
+    }
+
+    #[test]
+    fn quote_parser_enforces_header_security_fields() {
+        let quote = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+
+        let mut unsupported_version = quote.clone();
+        unsupported_version[0..2].copy_from_slice(&2u16.to_le_bytes());
+        assert!(Quote::read(&mut unsupported_version.as_slice()).is_err());
+
+        let mut unsupported_key = quote.clone();
+        unsupported_key[2..4].copy_from_slice(&3u16.to_le_bytes());
+        assert!(Quote::read(&mut unsupported_key.as_slice()).is_err());
+
+        let mut unsupported_vendor = quote;
+        unsupported_vendor[12] ^= 1;
+        assert!(Quote::read(&mut unsupported_vendor.as_slice()).is_err());
+    }
+
+    #[test]
+    fn quote_parser_enforces_declared_signature_length() {
+        let quote = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+        let signature_length_offset =
+            std::mem::size_of::<QuoteHeader>() + std::mem::size_of::<Td10ReportBody>();
+        let declared_length = u32::from_le_bytes(
+            quote[signature_length_offset..signature_length_offset + 4]
+                .try_into()
+                .unwrap(),
+        );
+
+        for invalid_length in [declared_length - 1, declared_length + 1] {
+            let mut invalid_quote = quote.clone();
+            invalid_quote[signature_length_offset..signature_length_offset + 4]
+                .copy_from_slice(&invalid_length.to_le_bytes());
+            assert!(Quote::read(&mut invalid_quote.as_slice()).is_err());
         }
     }
 }
