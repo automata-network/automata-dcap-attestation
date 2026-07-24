@@ -43,6 +43,35 @@ async fn e2e_v4_quote() {
 }
 
 #[tokio::test]
+async fn e2e_v4_quote_rejects_root_crl_as_pck_crl() {
+    let (mut collateral, quote) = v4_quote_data().await;
+    collateral.pck_crl = collateral.root_ca_crl.clone();
+    let error = verify_dcap_quote(test_v4_time(), collateral, quote)
+        .expect_err("the root CA CRL must not cover a PCK certificate");
+    assert!(
+        format!("{error:#}").contains("no certificate revocation list for issuer"),
+        "{error:#}"
+    );
+}
+
+#[tokio::test]
+async fn e2e_v4_quote_rejects_expired_crl() {
+    let (collateral, quote) = v4_quote_data().await;
+    let expired_at = collateral
+        .pck_crl
+        .tbs_cert_list
+        .next_update
+        .expect("Intel PCK CRL should have nextUpdate")
+        .to_system_time();
+    let error = verify_dcap_quote(expired_at, collateral, quote)
+        .expect_err("a CRL must not be accepted at or after nextUpdate");
+    assert!(
+        format!("{error:#}").contains("certificate revocation list is not valid"),
+        "{error:#}"
+    );
+}
+
+#[tokio::test]
 async fn e2e_v5_quote() {
     let (collateral, quote) = v5_quote_data().await;
     let policy = DcapVerificationPolicy {

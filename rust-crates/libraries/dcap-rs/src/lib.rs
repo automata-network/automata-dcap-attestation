@@ -467,6 +467,9 @@ fn verify_integrity(
         .tcb_info
         .as_tcb_info_and_verify(current_time, tcb_signer)
         .context("failed to verify tcb info signature")?;
+    tcb_info
+        .validate_id_for_tee_type(quote.header.tee_type)
+        .context("TCB Info type does not match quote")?;
 
     // Verify the quote identity issuer chain
     let _qe_id_issuer = trust_store
@@ -500,7 +503,10 @@ pub fn verify_quote_enclave_source(
         .qe_identity
         .validate_as_enclave_identity(
             &VerifyingKey::from_sec1_bytes(
-                collateral.tcb_info_and_qe_identity_issuer_chain[0]
+                collateral
+                    .tcb_info_and_qe_identity_issuer_chain
+                    .first()
+                    .context("tcb issuer chain is empty")?
                     .tbs_certificate
                     .subject_public_key_info
                     .subject_public_key
@@ -510,6 +516,9 @@ pub fn verify_quote_enclave_source(
             .context("failed to verify quote enclave identity")?,
         )
         .context("failed to verify quote enclave identity")?;
+    qe_identity
+        .validate_id_for_tee_type(quote.header.tee_type)
+        .context("Quoting Enclave Identity type does not match quote")?;
 
     // Validate that current time is between issue_date and next_update
     let current_time: DateTime<Utc> = current_time.into();

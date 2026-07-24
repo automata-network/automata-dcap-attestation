@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
 use super::tcb_info::TcbStatus;
+use crate::types::quote::{SGX_TEE_TYPE, TDX_TEE_TYPE};
 use crate::utils::keccak;
 
 const ENCLAVE_IDENTITY_V2: u32 = 2;
@@ -109,6 +110,25 @@ pub struct EnclaveIdentity {
 
     /// Sorted list of supported Enclave TCB levels for given QVE encoded as a JSON array of Enclave TCB level objects.
     pub tcb_levels: Vec<QeTcbLevel>,
+}
+
+impl EnclaveIdentity {
+    /// Require the Intel Quoting Enclave identity that belongs to the quote.
+    pub fn validate_id_for_tee_type(&self, tee_type: u32) -> anyhow::Result<()> {
+        let expected = match tee_type {
+            SGX_TEE_TYPE => EnclaveType::Qe,
+            TDX_TEE_TYPE => EnclaveType::TdQe,
+            other => anyhow::bail!("unsupported quote TEE type 0x{other:08x}"),
+        };
+        if self.id != expected {
+            anyhow::bail!(
+                "Enclave Identity id {:?} does not match quote TEE type 0x{tee_type:08x}; expected {:?}",
+                self.id,
+                expected
+            );
+        }
+        Ok(())
+    }
 }
 
 impl EnclaveIdentity {
@@ -305,6 +325,41 @@ impl From<EnclaveType> for u8 {
             EnclaveType::Qve => 1,
             EnclaveType::TdQe => 2,
         }
+    }
+}
+
+#[cfg(test)]
+mod collateral_id_tests {
+    use super::*;
+    use crate::types::quote::{SGX_TEE_TYPE, TDX_TEE_TYPE};
+
+    fn tdx_qe_identity() -> EnclaveIdentity {
+        serde_json::from_value(serde_json::json!({
+            "id": "TD_QE",
+            "version": 2,
+            "issueDate": "2026-01-01T00:00:00Z",
+            "nextUpdate": "2027-01-01T00:00:00Z",
+            "tcbEvaluationDataNumber": 1,
+            "miscselect": "00000000",
+            "miscselectMask": "FFFFFFFF",
+            "attributes": "00000000000000000000000000000000",
+            "attributesMask": "00000000000000000000000000000000",
+            "mrsigner": "0000000000000000000000000000000000000000000000000000000000000000",
+            "isvprodid": 0,
+            "tcbLevels": []
+        }))
+        .expect("minimal TDX Quoting Enclave Identity")
+    }
+
+    #[test]
+    fn enclave_identity_id_must_match_quote_tee_type() {
+        let mut identity = tdx_qe_identity();
+        identity.validate_id_for_tee_type(TDX_TEE_TYPE).unwrap();
+        assert!(identity.validate_id_for_tee_type(SGX_TEE_TYPE).is_err());
+
+        identity.id = EnclaveType::Qe;
+        identity.validate_id_for_tee_type(SGX_TEE_TYPE).unwrap();
+        assert!(identity.validate_id_for_tee_type(TDX_TEE_TYPE).is_err());
     }
 }
 

@@ -7,7 +7,10 @@ use p256::ecdsa::signature::Verifier;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
-use crate::types::{quote::TDX_TEE_TYPE, report::Td10ReportBody};
+use crate::types::{
+    quote::{SGX_TEE_TYPE, TDX_TEE_TYPE},
+    report::Td10ReportBody,
+};
 use crate::utils::keccak;
 
 use super::{
@@ -106,6 +109,56 @@ impl From<TcbInfoVersion> for u32 {
     }
 }
 
+#[cfg(test)]
+mod collateral_id_tests {
+    use super::*;
+    use crate::types::quote::{SGX_TEE_TYPE, TDX_TEE_TYPE};
+
+    fn tdx_tcb_info() -> TcbInfo {
+        serde_json::from_value(serde_json::json!({
+            "id": "TDX",
+            "version": 3,
+            "issueDate": "2026-01-01T00:00:00Z",
+            "nextUpdate": "2027-01-01T00:00:00Z",
+            "fmspc": "000000000000",
+            "pceId": "0000",
+            "tcbType": 0,
+            "tcbEvaluationDataNumber": 1,
+            "tcbLevels": []
+        }))
+        .expect("minimal TDX TCB Info")
+    }
+
+    #[test]
+    fn tcb_info_id_must_match_quote_tee_type() {
+        let mut info = tdx_tcb_info();
+        info.validate_id_for_tee_type(TDX_TEE_TYPE).unwrap();
+        assert!(info.validate_id_for_tee_type(SGX_TEE_TYPE).is_err());
+
+        info.id = Some("SGX".into());
+        info.validate_id_for_tee_type(SGX_TEE_TYPE).unwrap();
+        assert!(info.validate_id_for_tee_type(TDX_TEE_TYPE).is_err());
+    }
+
+    #[test]
+    fn version_three_tcb_info_requires_id() {
+        let mut info = tdx_tcb_info();
+        info.id = None;
+        assert!(info.validate_id_for_tee_type(TDX_TEE_TYPE).is_err());
+        assert!(info.validate_id_for_tee_type(SGX_TEE_TYPE).is_err());
+    }
+
+    #[test]
+    fn version_two_tcb_info_cannot_describe_tdx() {
+        let mut info = tdx_tcb_info();
+        info.version = TcbInfoVersion::V2;
+        assert!(info.validate_id_for_tee_type(TDX_TEE_TYPE).is_err());
+
+        info.id = None;
+        info.validate_id_for_tee_type(SGX_TEE_TYPE).unwrap();
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TcbInfo {
@@ -128,6 +181,42 @@ pub struct TcbInfo {
 }
 
 impl TcbInfo {
+    /// Require the Intel TCB Info document type that belongs to the quote.
+    ///
+    /// Version 2 TCB Info predates the `id` field and only describes SGX.
+    /// Version 3 collateral must carry an explicit `SGX` or `TDX` identifier.
+    pub fn validate_id_for_tee_type(&self, tee_type: u32) -> anyhow::Result<()> {
+        if self.version == TcbInfoVersion::V2 {
+            if tee_type != SGX_TEE_TYPE {
+                bail!(
+                    "TCB Info version 2 only describes SGX and cannot match quote TEE type 0x{tee_type:08x}"
+                );
+            }
+            return match self.id.as_deref() {
+                None | Some("SGX") => Ok(()),
+                Some(actual) => {
+                    bail!("TCB Info version 2 has invalid id {actual:?}; expected \"SGX\" or no id")
+                },
+            };
+        }
+
+        let expected = match tee_type {
+            SGX_TEE_TYPE => "SGX",
+            TDX_TEE_TYPE => "TDX",
+            other => bail!("unsupported quote TEE type 0x{other:08x}"),
+        };
+        match self.id.as_deref() {
+            Some(actual) if actual == expected => Ok(()),
+            Some(actual) => bail!(
+                "TCB Info id {actual:?} does not match quote TEE type 0x{tee_type:08x}; expected {expected:?}"
+            ),
+            None => bail!(
+                "TCB Info version {} is missing id; expected {expected:?} for quote TEE type 0x{tee_type:08x}",
+                u32::from(self.version)
+            ),
+        }
+    }
+
     pub fn fmspc_bytes(&self) -> Result<[u8; 6]> {
         decode_hex_array(&self.fmspc, "TCB info FMSPC")
     }
