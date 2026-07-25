@@ -49,6 +49,33 @@ interface IPCCSRouter {
 
     function getQeIdentityContentHash(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval) external view returns (bytes32);
 
+    function getFmspcTcbVersion(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval)
+        external
+        view
+        returns (uint256);
+
+    function getQeIdentityVersion(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval)
+        external
+        view
+        returns (uint256);
+
+    function getPcsCollateralVersion(CA ca, bool isCrl) external view returns (uint256);
+
+    function hasFmspcTcbChanged(TcbId id, bytes6 fmspc, uint32 version, uint32 tcbEval, uint256 sinceVersion)
+        external
+        view
+        returns (bool changed, uint256 currentVersion);
+
+    function hasQeIdentityChanged(EnclaveId id, uint256 pcsApiVersion, uint32 tcbEval, uint256 sinceVersion)
+        external
+        view
+        returns (bool changed, uint256 currentVersion);
+
+    function hasPcsCollateralChanged(CA ca, bool isCrl, uint256 sinceVersion)
+        external
+        view
+        returns (bool changed, uint256 currentVersion);
+
     function getFmspcTcbV2(bytes6 fmspc, uint32 tcbEval) external view returns (TCBLevelsObj[] memory);
 
     function getFmspcTcbV3(TcbId id, bytes6 fmspc, uint32 tcbEval)

@@ -5,14 +5,16 @@ libs = ['lib']
 script = 'forge-script'
 test = 'forge-test'
 cache_path  = 'cache_forge'
+allow_paths = ["../../automata-on-chain-pccs-upstream"]
 fs_permissions = [
     { access = "read", path = "./forge-test/assets"},
     { access = "read-write", path = "../rust-crates/libraries/network-registry/deployment/current"}
 ]
 remappings = [
-    "solady/=lib/automata-on-chain-pccs/lib/solady/src/",
+    "solady/=../../automata-on-chain-pccs-upstream/lib/solady/src/",
     "p256-verifier/=lib/automata-on-chain-pccs/lib/p256-verifier/src/",
-    "@automata-network/on-chain-pccs/=lib/automata-on-chain-pccs/src/",
+    "@automata-network/on-chain-pccs/=../../automata-on-chain-pccs-upstream/src/",
+    "@openzeppelin/contracts/=../../automata-on-chain-pccs-upstream/lib/openzeppelin-contracts/contracts/",
     "risc0/=lib/risc0-ethereum/contracts/src/",
     # foundry is not able to detect this particular remapping for some reason...
     "openzeppelin/=lib/risc0-ethereum/lib/openzeppelin-contracts/",
