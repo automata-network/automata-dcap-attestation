@@ -193,13 +193,28 @@ pub fn verify_dcap_quote_with_policy(
     quote: Quote,
     policy: &DcapVerificationPolicy,
 ) -> anyhow::Result<VerifiedOutput> {
+    verify_dcap_quote_with_policy_ref(current_time, &collateral, quote, policy)
+}
+
+/// Verifies an SGX or TDX DCAP quote while borrowing the supplied collateral.
+///
+/// This variant allows a verifier to parse signed collateral once and reuse
+/// that immutable value for multiple quotes. Every call still evaluates
+/// certificate and collateral validity against `current_time`.
+#[cfg(feature = "full")]
+pub fn verify_dcap_quote_with_policy_ref(
+    current_time: SystemTime,
+    collateral: &Collateral,
+    quote: Quote,
+    policy: &DcapVerificationPolicy,
+) -> anyhow::Result<VerifiedOutput> {
     // 1. Verify the integrity of the signature chain from the Quote to the Intel-issued PCK
     //    certificate, and that no keys in the chain have been revoked.
     use crate::types::quote::QuoteBody;
-    let tcb_info = verify_integrity(current_time, &collateral, &quote)?;
+    let tcb_info = verify_integrity(current_time, collateral, &quote)?;
 
     // 2. Verify the Quoting Enclave source and all signatures in the Quote.
-    let qe_tcb_status = verify_quote(current_time, &collateral, &quote)?;
+    let qe_tcb_status = verify_quote(current_time, collateral, &quote)?;
 
     reject_invalid_qe_tcb_status(qe_tcb_status)?;
 
