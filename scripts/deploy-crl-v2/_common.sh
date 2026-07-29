@@ -61,8 +61,12 @@ load_attester_workers() {
 grant_attester_roles() {
     local label="$1"
     local dao="$2"
+    local gas_limit="${ATTESTER_ROLE_GAS_LIMIT:-100000}"
     local worker
     local has_role
+
+    [[ "$gas_limit" =~ ^[1-9][0-9]*$ ]] \
+        || die "ATTESTER_ROLE_GAS_LIMIT must be a positive integer"
 
     for worker in "${ATTESTER_WORKERS[@]}"; do
         has_role="$(cast call "$dao" 'hasAnyRole(address,uint256)(bool)' "$worker" 1 --rpc-url "$RPC_URL")"
@@ -75,6 +79,7 @@ grant_attester_roles() {
         cast send "$dao" \
             'grantRoles(address,uint256)' "$worker" 1 \
             --rpc-url "$RPC_URL" \
+            --gas-limit "$gas_limit" \
             "${CAST_WALLET_ARGS[@]}"
         [[ "$(cast call "$dao" 'hasAnyRole(address,uint256)(bool)' "$worker" 1 --rpc-url "$RPC_URL")" == "true" ]] \
             || die "$label ATTESTER_ROLE grant did not take effect for $worker"

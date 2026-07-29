@@ -43,15 +43,27 @@ run_deployment() {
 deploy_if_missing() {
     local key="$1"
     local signature="$2"
+    local address
+    local code
     shift 2
 
     if address="$(json_address_if_present "$DEPLOYMENT_FILE" "$key")"; then
-        require_contract_code "$key" "$address"
-        success "$key already deployed at $address"
-        return
+        code="$(cast code "$address" --rpc-url "$RPC_URL")"
+        if [[ -n "$code" && "$code" != "0x" ]]; then
+            success "$key already deployed at $address"
+            return
+        fi
+
+        # Forge scripts execute filesystem cheatcodes during simulation, before
+        # broadcast succeeds. A failed broadcast can therefore leave the
+        # predicted CREATE2 address in deployment/<chain>.json without any code
+        # at that address. Treat that state as an interrupted deployment and
+        # rerun it instead of permanently blocking resume.
+        info "$key is recorded at $address but has no contract code; resuming deployment"
+    else
+        info "Deploying $key"
     fi
 
-    info "Deploying $key"
     run_deployment "$signature" "$@"
     address="$(json_address "$DEPLOYMENT_FILE" "$key")"
     require_contract_code "$key" "$address"

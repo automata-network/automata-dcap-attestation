@@ -66,10 +66,35 @@ It deliberately does **not** revoke the legacy PCS DAO.
 ./scripts/deploy-crl-v2/01-deploy-pccs-v2.sh
 ./scripts/deploy-crl-v2/02-index-stored-crls.sh
 ./scripts/deploy-crl-v2/03-deploy-dependent-daos.sh
+./scripts/deploy-crl-v2/verify-contract-sources.sh
 ./scripts/deploy-crl-v2/04-sync-deployment.sh
 ./scripts/deploy-crl-v2/05-update-router.sh
 ./scripts/deploy-crl-v2/06-verify.sh
 ```
+
+`verify-contract-sources.sh` submits source metadata only to the explorer,
+sends no chain transaction, and does not require a keystore. It verifies the
+seven CRL V2 contract classes, including every configured evaluation-specific
+deployment. It supports Blockscout and Etherscan separately and discovers
+evaluation numbers from the deployment file by default:
+
+```bash
+# Blockscout; chain 1315 defaults to the DATA Network Aeneid endpoint below.
+./scripts/deploy-crl-v2/verify-contract-sources.sh \
+  --verifier blockscout \
+  --verifier-url https://aeneid.datanetscan.io/api/
+
+# Etherscan-family explorer.
+ETHERSCAN_API_KEY=... \
+  ./scripts/deploy-crl-v2/verify-contract-sources.sh \
+    --verifier etherscan
+```
+
+For another Blockscout network, set its explorer API URL explicitly. Use
+`--evals "20 21"` to restrict verification to selected evaluation deployments.
+The script reads the deployment owner and P256 verifier from the deployed
+contracts and derives every constructor argument from
+`deployment/<chain-id>.json`.
 
 The stages are intentionally ordered as follows:
 
