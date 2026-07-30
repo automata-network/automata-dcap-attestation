@@ -162,8 +162,10 @@ fn parse_deployment_for_chain(
 /// Parse PCCS contracts from JSON
 fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsContracts> {
     let mut enclave_id_versioned = HashMap::new();
+    let mut enclave_id_versioned_crl_v2 = HashMap::new();
     let mut fmspc_tcb_versioned = HashMap::new();
     let mut fmspc_tcb_versioned_v2 = HashMap::new();
+    let mut fmspc_tcb_versioned_v2_crl_v2 = HashMap::new();
 
     // Determine if this version uses versioned DAOs by parsing the version string
     // This uses the Version enum which is auto-generated from version.toml
@@ -186,6 +188,17 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
                         enclave_id_versioned.insert(num, addr);
                     }
                 }
+                if let Some(num_str) =
+                    key.strip_prefix("AutomataEnclaveIdentityDaoVersionedCrlV2_tcbeval_")
+                {
+                    if let Ok(num) = num_str.parse::<u32>() {
+                        let addr: Address = value
+                            .as_str()
+                            .ok_or_else(|| anyhow!("Invalid address string"))?
+                            .parse()?;
+                        enclave_id_versioned_crl_v2.insert(num, addr);
+                    }
+                }
                 if let Some(num_str) = key.strip_prefix("AutomataFmspcTcbDaoVersioned_tcbeval_") {
                     if let Ok(num) = num_str.parse::<u32>() {
                         let addr: Address = value
@@ -204,15 +217,42 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
                         fmspc_tcb_versioned_v2.insert(num, addr);
                     }
                 }
+                if let Some(num_str) =
+                    key.strip_prefix("AutomataFmspcTcbDaoVersionedV2CrlV2_tcbeval_")
+                {
+                    if let Ok(num) = num_str.parse::<u32>() {
+                        let addr: Address = value
+                            .as_str()
+                            .ok_or_else(|| anyhow!("Invalid address string"))?
+                            .parse()?;
+                        fmspc_tcb_versioned_v2_crl_v2.insert(num, addr);
+                    }
+                }
             }
 
+            // Prefer the async FMSPC V2 deployment over the original versioned
+            // deployment, then prefer the CRL V2 deployments over both. CRL V2
+            // is currently deployed for evaluation data numbers 20 and 21,
+            // while older evaluation numbers intentionally remain on legacy
+            // contracts.
             for (num, addr) in fmspc_tcb_versioned_v2 {
                 fmspc_tcb_versioned.insert(num, addr);
             }
+            for (num, addr) in enclave_id_versioned_crl_v2 {
+                enclave_id_versioned.insert(num, addr);
+            }
+            for (num, addr) in fmspc_tcb_versioned_v2_crl_v2 {
+                fmspc_tcb_versioned.insert(num, addr);
+            }
 
-            // v1.1 must have TcbEvalDao
-            if !json.get("AutomataTcbEvalDao").is_some() {
-                return Err(anyhow!("v1.1 deployment missing AutomataTcbEvalDao"));
+            // Current deployments must expose either the CRL V2 TCB evaluation
+            // DAO or the legacy DAO used by networks that have not upgraded.
+            if json.get("AutomataTcbEvalDaoCrlV2").is_none()
+                && json.get("AutomataTcbEvalDao").is_none()
+            {
+                return Err(anyhow!(
+                    "current deployment missing AutomataTcbEvalDaoCrlV2 and AutomataTcbEvalDao"
+                ));
             }
         } else {
             // v1.0: Use non-versioned DAOs - create a single entry with tcbeval_num = 0
@@ -234,14 +274,29 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
 
     // Parse TcbEvalDao (only exists in versions that use versioned DAOs)
     let tcb_eval_dao = if uses_versioned {
-        json["AutomataTcbEvalDao"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing AutomataTcbEvalDao"))?
+        json.get("AutomataTcbEvalDaoCrlV2")
+            .or_else(|| json.get("AutomataTcbEvalDao"))
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| anyhow!("Missing AutomataTcbEvalDaoCrlV2 and AutomataTcbEvalDao"))?
             .parse()?
     } else {
         // v1.0 doesn't have TcbEvalDao, use zero address
         Address::ZERO
     };
+
+    let pck_dao = json
+        .get("AutomataPckDaoV2")
+        .or_else(|| json.get("AutomataPckDao"))
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow!("Missing AutomataPckDaoV2 and AutomataPckDao"))?
+        .parse()?;
+
+    let pcs_dao = json
+        .get("AutomataPcsDaoV2")
+        .or_else(|| json.get("AutomataPcsDao"))
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow!("Missing AutomataPcsDaoV2 and AutomataPcsDao"))?
+        .parse()?;
 
     Ok(PccsContracts {
         enclave_id_dao: VersionedDao {
@@ -250,14 +305,8 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
         fmspc_tcb_dao: VersionedDao {
             versioned: fmspc_tcb_versioned,
         },
-        pck_dao: json["AutomataPckDao"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing AutomataPckDao"))?
-            .parse()?,
-        pcs_dao: json["AutomataPcsDao"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing AutomataPcsDao"))?
-            .parse()?,
+        pck_dao,
+        pcs_dao,
         tcb_eval_dao,
     })
 }
@@ -317,6 +366,100 @@ mod tests {
         assert_eq!(
             contracts.fmspc_tcb_dao.get_address(19).unwrap(),
             "0x1111111111111111111111111111111111111111"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_pccs_contracts_prefers_crl_v2_deployments() {
+        let json = json!({
+            "AutomataEnclaveIdentityDaoVersioned_tcbeval_20": "0x1111111111111111111111111111111111111111",
+            "AutomataEnclaveIdentityDaoVersionedCrlV2_tcbeval_20": "0x2222222222222222222222222222222222222222",
+            "AutomataFmspcTcbDaoVersioned_tcbeval_20": "0x3333333333333333333333333333333333333333",
+            "AutomataFmspcTcbDaoVersionedV2_tcbeval_20": "0x4444444444444444444444444444444444444444",
+            "AutomataFmspcTcbDaoVersionedV2CrlV2_tcbeval_20": "0x5555555555555555555555555555555555555555",
+            "AutomataTcbEvalDao": "0x6666666666666666666666666666666666666666",
+            "AutomataTcbEvalDaoCrlV2": "0x7777777777777777777777777777777777777777",
+            "AutomataPckDao": "0x8888888888888888888888888888888888888888",
+            "AutomataPckDaoV2": "0x9999999999999999999999999999999999999999",
+            "AutomataPcsDao": "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "AutomataPcsDaoV2": "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        });
+
+        let contracts = parse_pccs_contracts(&json, "v1.1").unwrap();
+
+        assert_eq!(
+            contracts.enclave_id_dao.get_address(20).unwrap(),
+            "0x2222222222222222222222222222222222222222"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.fmspc_tcb_dao.get_address(20).unwrap(),
+            "0x5555555555555555555555555555555555555555"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.tcb_eval_dao,
+            "0x7777777777777777777777777777777777777777"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.pck_dao,
+            "0x9999999999999999999999999999999999999999"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.pcs_dao,
+            "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_pccs_contracts_falls_back_when_crl_v2_is_absent() {
+        let json = json!({
+            "AutomataEnclaveIdentityDaoVersioned_tcbeval_20": "0x1111111111111111111111111111111111111111",
+            "AutomataFmspcTcbDaoVersionedV2_tcbeval_20": "0x2222222222222222222222222222222222222222",
+            "AutomataTcbEvalDao": "0x3333333333333333333333333333333333333333",
+            "AutomataPckDao": "0x4444444444444444444444444444444444444444",
+            "AutomataPcsDao": "0x5555555555555555555555555555555555555555"
+        });
+
+        let contracts = parse_pccs_contracts(&json, "v1.1").unwrap();
+
+        assert_eq!(
+            contracts.enclave_id_dao.get_address(20).unwrap(),
+            "0x1111111111111111111111111111111111111111"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.fmspc_tcb_dao.get_address(20).unwrap(),
+            "0x2222222222222222222222222222222222222222"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.tcb_eval_dao,
+            "0x3333333333333333333333333333333333333333"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.pck_dao,
+            "0x4444444444444444444444444444444444444444"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            contracts.pcs_dao,
+            "0x5555555555555555555555555555555555555555"
                 .parse::<Address>()
                 .unwrap()
         );

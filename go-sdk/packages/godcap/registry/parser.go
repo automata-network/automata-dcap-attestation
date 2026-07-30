@@ -42,9 +42,21 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 
 	// Regex to extract TCB eval number from versioned DAO keys
 	versionedEnclaveIdRegex := regexp.MustCompile(`^AutomataEnclaveIdentityDaoVersioned_tcbeval_(\d+)$`)
+	versionedEnclaveIdCrlV2Regex := regexp.MustCompile(`^AutomataEnclaveIdentityDaoVersionedCrlV2_tcbeval_(\d+)$`)
 	versionedFmspcTcbRegex := regexp.MustCompile(`^AutomataFmspcTcbDaoVersioned_tcbeval_(\d+)$`)
 	versionedFmspcTcbV2Regex := regexp.MustCompile(`^AutomataFmspcTcbDaoVersionedV2_tcbeval_(\d+)$`)
+	versionedFmspcTcbV2CrlV2Regex := regexp.MustCompile(`^AutomataFmspcTcbDaoVersionedV2CrlV2_tcbeval_(\d+)$`)
+	enclaveIdDaoCrlV2 := make(map[uint32]common.Address)
 	fmspcTcbDaoV2 := make(map[uint32]common.Address)
+	fmspcTcbDaoV2CrlV2 := make(map[uint32]common.Address)
+	var (
+		pcsDao       common.Address
+		pcsDaoV2     common.Address
+		pckDao       common.Address
+		pckDaoV2     common.Address
+		tcbEvalDao   common.Address
+		tcbEvalDaoV2 common.Address
+	)
 
 	for key, addrStr := range deployment {
 		addr := common.HexToAddress(addrStr)
@@ -68,6 +80,12 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
 				contracts.EnclaveIdDao.Versioned[uint32(evalNum)] = addr
 			}
+		case versionedEnclaveIdCrlV2Regex.MatchString(key):
+			matches := versionedEnclaveIdCrlV2Regex.FindStringSubmatch(key)
+			if len(matches) == 2 {
+				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
+				enclaveIdDaoCrlV2[uint32(evalNum)] = addr
+			}
 		case versionedFmspcTcbRegex.MatchString(key):
 			matches := versionedFmspcTcbRegex.FindStringSubmatch(key)
 			if len(matches) == 2 {
@@ -80,19 +98,54 @@ func parsePccsDeployment(data []byte) (*PccsContracts, error) {
 				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
 				fmspcTcbDaoV2[uint32(evalNum)] = addr
 			}
+		case versionedFmspcTcbV2CrlV2Regex.MatchString(key):
+			matches := versionedFmspcTcbV2CrlV2Regex.FindStringSubmatch(key)
+			if len(matches) == 2 {
+				evalNum, _ := strconv.ParseUint(matches[1], 10, 32)
+				fmspcTcbDaoV2CrlV2[uint32(evalNum)] = addr
+			}
 
 		// Non-versioned contracts
 		case key == "AutomataPcsDao":
-			contracts.PcsDao = addr
+			pcsDao = addr
+		case key == "AutomataPcsDaoV2":
+			pcsDaoV2 = addr
 		case key == "AutomataPckDao":
-			contracts.PckDao = addr
+			pckDao = addr
+		case key == "AutomataPckDaoV2":
+			pckDaoV2 = addr
 		case key == "AutomataTcbEvalDao":
-			contracts.TcbEvalDao = addr
+			tcbEvalDao = addr
+		case key == "AutomataTcbEvalDaoCrlV2":
+			tcbEvalDaoV2 = addr
 		}
 	}
 
+	// Apply deployment precedence independently of Go's randomized map
+	// iteration order. The original async FMSPC V2 deployment supersedes the
+	// first versioned DAO, and CRL V2 supersedes both for evaluation data
+	// numbers where it is deployed.
 	for evalNum, addr := range fmspcTcbDaoV2 {
 		contracts.FmspcTcbDao.Versioned[evalNum] = addr
+	}
+	for evalNum, addr := range enclaveIdDaoCrlV2 {
+		contracts.EnclaveIdDao.Versioned[evalNum] = addr
+	}
+	for evalNum, addr := range fmspcTcbDaoV2CrlV2 {
+		contracts.FmspcTcbDao.Versioned[evalNum] = addr
+	}
+
+	contracts.PcsDao = pcsDao
+	if pcsDaoV2 != (common.Address{}) {
+		contracts.PcsDao = pcsDaoV2
+	}
+	contracts.PckDao = pckDao
+	if pckDaoV2 != (common.Address{}) {
+		contracts.PckDao = pckDaoV2
+	}
+	contracts.TcbEvalDao = tcbEvalDao
+	if tcbEvalDaoV2 != (common.Address{}) {
+		contracts.TcbEvalDao = tcbEvalDaoV2
 	}
 
 	// If we have versioned entries, remove the sentinel 0 entry

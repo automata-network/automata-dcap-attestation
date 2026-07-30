@@ -133,6 +133,7 @@ impl Network {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy::primitives::Address;
 
     #[test]
     fn validate_all_registry_entries() {
@@ -228,6 +229,141 @@ mod tests {
             // Validate key is non-empty
             assert!(!network.key.is_empty(), "Found network with empty key");
         }
+    }
+
+    #[test]
+    fn current_registry_prefers_crl_v2_and_preserves_legacy_fallbacks() {
+        let mut crl_v2_networks = 0;
+        let mut legacy_networks = 0;
+
+        for network in Network::all(None) {
+            let deployment_path = format!("current/{}/onchain_pccs.json", network.chain_id);
+            let deployment_file = DEPLOYMENT_DIR
+                .get_file(&deployment_path)
+                .unwrap_or_else(|| panic!("missing {deployment_path}"));
+            let deployment: serde_json::Value = serde_json::from_str(
+                deployment_file
+                    .contents_utf8()
+                    .unwrap_or_else(|| panic!("invalid UTF-8 in {deployment_path}")),
+            )
+            .unwrap_or_else(|err| panic!("invalid JSON in {deployment_path}: {err}"));
+            let address = |key: &str| {
+                deployment[key]
+                    .as_str()
+                    .unwrap_or_else(|| panic!("missing {key} in {deployment_path}"))
+                    .parse::<Address>()
+                    .unwrap_or_else(|err| panic!("invalid {key} in {deployment_path}: {err}"))
+            };
+
+            if deployment.get("AutomataPcsDaoV2").is_some() {
+                crl_v2_networks += 1;
+                assert_eq!(
+                    network.contracts.pccs.pcs_dao,
+                    address("AutomataPcsDaoV2"),
+                    "{} did not select AutomataPcsDaoV2",
+                    network.key
+                );
+                assert_eq!(
+                    network.contracts.pccs.pck_dao,
+                    address("AutomataPckDaoV2"),
+                    "{} did not select AutomataPckDaoV2",
+                    network.key
+                );
+                assert_eq!(
+                    network.contracts.pccs.tcb_eval_dao,
+                    address("AutomataTcbEvalDaoCrlV2"),
+                    "{} did not select AutomataTcbEvalDaoCrlV2",
+                    network.key
+                );
+                assert_eq!(
+                    network
+                        .contracts
+                        .pccs
+                        .enclave_id_dao
+                        .get_address(20)
+                        .unwrap(),
+                    address("AutomataEnclaveIdentityDaoVersionedCrlV2_tcbeval_20"),
+                    "{} did not select the evaluation 20 CRL V2 Enclave Identity DAO",
+                    network.key
+                );
+                assert_eq!(
+                    network
+                        .contracts
+                        .pccs
+                        .enclave_id_dao
+                        .get_address(21)
+                        .unwrap(),
+                    address("AutomataEnclaveIdentityDaoVersionedCrlV2_tcbeval_21"),
+                    "{} did not select the evaluation 21 CRL V2 Enclave Identity DAO",
+                    network.key
+                );
+                assert_eq!(
+                    network
+                        .contracts
+                        .pccs
+                        .fmspc_tcb_dao
+                        .get_address(20)
+                        .unwrap(),
+                    address("AutomataFmspcTcbDaoVersionedV2CrlV2_tcbeval_20"),
+                    "{} did not select the evaluation 20 CRL V2 FMSPC DAO",
+                    network.key
+                );
+                assert_eq!(
+                    network
+                        .contracts
+                        .pccs
+                        .fmspc_tcb_dao
+                        .get_address(21)
+                        .unwrap(),
+                    address("AutomataFmspcTcbDaoVersionedV2CrlV2_tcbeval_21"),
+                    "{} did not select the evaluation 21 CRL V2 FMSPC DAO",
+                    network.key
+                );
+            } else {
+                legacy_networks += 1;
+                assert_eq!(
+                    network.contracts.pccs.pcs_dao,
+                    address("AutomataPcsDao"),
+                    "{} did not preserve the legacy PCS fallback",
+                    network.key
+                );
+                assert_eq!(
+                    network.contracts.pccs.pck_dao,
+                    address("AutomataPckDao"),
+                    "{} did not preserve the legacy PCK fallback",
+                    network.key
+                );
+                assert_eq!(
+                    network.contracts.pccs.tcb_eval_dao,
+                    address("AutomataTcbEvalDao"),
+                    "{} did not preserve the legacy TCB evaluation fallback",
+                    network.key
+                );
+                assert!(
+                    network
+                        .contracts
+                        .pccs
+                        .enclave_id_dao
+                        .get_address(21)
+                        .is_err(),
+                    "{} unexpectedly supports Enclave Identity evaluation 21",
+                    network.key
+                );
+                assert!(
+                    network
+                        .contracts
+                        .pccs
+                        .fmspc_tcb_dao
+                        .get_address(21)
+                        .is_err(),
+                    "{} unexpectedly supports FMSPC evaluation 21",
+                    network.key
+                );
+            }
+        }
+
+        assert_eq!(crl_v2_networks, 25);
+        assert_eq!(legacy_networks, 3);
     }
 
     #[test]

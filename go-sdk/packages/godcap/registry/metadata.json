@@ -79,6 +79,22 @@
     "gas_price_hint_wei": 1000000000,
     "block_explorers": ["https://sepolia.uniscan.xyz/", "https://unichain-sepolia.blockscout.com/"]
   },
+  "eth_story_testnet": {
+    "name": "Story Aeneid Testnet",
+    "chain_id": 1315,
+    "testnet": true,
+    "rpc_endpoints": ["https://aeneid.storyrpc.io", "https://story-testnet-evm.itrocket.net"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://aeneid.storyscan.io/", "https://aeneid.datanetscan.io/"]
+  },
+  "eth_story": {
+    "name": "Story Mainnet",
+    "chain_id": 1514,
+    "testnet": false,
+    "rpc_endpoints": ["https://mainnet.storyrpc.io", "https://story-json-rpc.stakely.io", "https://story-mainnet-evm.itrocket.net"],
+    "gas_price_hint_wei": 1000000000,
+    "block_explorers": ["https://www.storyscan.io/"]
+  },
   "world_sepolia": {
     "name": "World Chain Sepolia",
     "chain_id": 4801,
@@ -110,6 +126,22 @@
     "rpc_endpoints": ["https://rpc.testnet.tempo.xyz"],
     "gas_price_hint_wei": 3000,
     "block_explorers": ["https://scout.tempo.xyz/", "https://explore.tempo.xyz/"]
+  },
+  "megaeth_testnet": {
+    "name": "MegaETH Testnet",
+    "chain_id": 6343,
+    "testnet": true,
+    "rpc_endpoints": ["https://carrot.megaeth.com/rpc"],
+    "gas_price_hint_wei": 1000000,
+    "block_explorers": ["https://megaeth-testnet-v2.blockscout.com/"]
+  },
+  "megaeth_mainnet": {
+    "name": "MegaETH Mainnet",
+    "chain_id": 4326,
+    "testnet": false,
+    "rpc_endpoints": ["https://mainnet.megaeth.com/rpc"],
+    "gas_price_hint_wei": 1000000,
+    "block_explorers": ["https://mega.etherscan.io/", "https://megaeth.blockscout.com/"]
   },
   "avax_fuji": {
     "name": "Avalanche Fuji",
