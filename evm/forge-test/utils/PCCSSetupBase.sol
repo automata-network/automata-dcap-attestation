@@ -24,6 +24,9 @@ import {AutomataTcbEvalDao} from "@automata-network/on-chain-pccs/automata_pccs/
 import {AutomataPcsDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPcsDao.sol";
 import {AutomataPckDao} from "@automata-network/on-chain-pccs/automata_pccs/AutomataPckDao.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
+import {
+    PccsDependencyConfig
+} from "@automata-network/on-chain-pccs/automata_pccs/shared/PccsDependencyConfig.sol";
 
 import "../../contracts/PCCSRouter.sol";
 
@@ -43,6 +46,7 @@ abstract contract PCCSSetupBase is Test {
     AutomataEnclaveIdentityDaoVersioned enclaveIdDao;
     AutomataTcbEvalDao tcbEvalDao;
     AutomataDaoStorage pccsStorage;
+    PccsDependencyConfig dependencyConfig;
     address P256_VERIFIER;
 
     address internal constant admin = address(1);
@@ -71,15 +75,16 @@ abstract contract PCCSSetupBase is Test {
 
         pccsStorage = new AutomataDaoStorage(admin);
         pcsDao = new AutomataPcsDao(address(pccsStorage), P256_VERIFIER, address(x509), address(x509Crl));
+        dependencyConfig = new PccsDependencyConfig(admin);
+        dependencyConfig.initialize(address(pcsDao), address(x509Crl));
         pckDao =
             new AutomataPckDao(address(pccsStorage), P256_VERIFIER, address(pcsDao), address(x509), address(x509Crl));
         enclaveIdDao = new AutomataEnclaveIdentityDaoVersioned(
             address(pccsStorage),
             P256_VERIFIER,
-            address(pcsDao),
+            address(dependencyConfig),
             address(enclaveIdHelper),
             address(x509),
-            address(x509Crl),
             admin,
             17
         );
@@ -94,7 +99,12 @@ abstract contract PCCSSetupBase is Test {
             17
         );
         tcbEvalDao = new AutomataTcbEvalDao(
-            address(pccsStorage), P256_VERIFIER, address(pcsDao), address(tcbEvalHelper), address(x509), address(x509Crl), admin
+            address(pccsStorage),
+            P256_VERIFIER,
+            address(dependencyConfig),
+            address(tcbEvalHelper),
+            address(x509),
+            admin
         );
 
         pccsStorage.grantDao(address(pcsDao));
