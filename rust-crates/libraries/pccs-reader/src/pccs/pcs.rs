@@ -1,6 +1,8 @@
+use alloy::primitives::Address;
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_pcs_dao::IPcsDao;
+use automata_dcap_evm_bindings::r#i_pcs_dao::IPcsDao::getCertificateByIdReturn;
 use automata_dcap_network_registry::Network;
 use automata_dcap_utils::Version;
 
@@ -19,7 +21,7 @@ impl CA {
     pub const PLATFORM: CA = CA::Platform;
     pub const SIGNING: CA = CA::Signing;
 
-    fn as_u8(self) -> u8 {
+    pub(crate) fn as_u8(self) -> u8 {
         self as u8
     }
 }
@@ -32,18 +34,26 @@ pub async fn get_certificate_by_id<P: Provider>(
     // Derive network from provider to get contract address
     let network = Network::from_provider(provider, deployment_version).await?;
 
-    let contract = IPcsDao::new(network.contracts.pccs.pcs_dao, provider);
+    get_certificate_by_id_at_address(provider, network.contracts.pccs.pcs_dao, ca_id).await
+}
 
+pub(crate) async fn get_certificate_by_id_at_address<P: Provider>(
+    provider: &P,
+    pcs_dao_address: Address,
+    ca_id: CA,
+) -> Result<(Vec<u8>, Vec<u8>)> {
+    let contract = IPcsDao::new(pcs_dao_address, provider);
     let response = contract
         .getCertificateById(ca_id.as_u8())
         .from(alloy::primitives::Address::ZERO)
         .call()
         .await?;
 
-    let cert = response.cert.to_vec();
-    let crl = response.crl.to_vec();
+    Ok(certificate_from_return(response))
+}
 
-    Ok((cert, crl))
+pub(crate) fn certificate_from_return(response: getCertificateByIdReturn) -> (Vec<u8>, Vec<u8>) {
+    (response.cert.to_vec(), response.crl.to_vec())
 }
 
 #[cfg(test)]
@@ -75,8 +85,7 @@ mod tests {
         // Smoke-check that we can instantiate the contract with the registry address.
         let provider =
             ProviderBuilder::new().connect_http(network.default_rpc_url().parse().unwrap());
-        let contract =
-            IPcsDao::new(network.contracts.pccs.pcs_dao, provider);
+        let contract = IPcsDao::new(network.contracts.pccs.pcs_dao, provider);
         let _ = (encoded, contract);
     }
 }

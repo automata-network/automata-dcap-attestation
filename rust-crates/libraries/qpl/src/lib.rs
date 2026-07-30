@@ -30,4 +30,7 @@ pub use collaterals::{
 };
 
 // Re-export from pccs-reader-rs
-pub use pccs_reader_rs::{Collaterals, CollateralError, MissingCollateral, MissingCollateralReport};
+pub use pccs_reader_rs::{
+    CollateralError, Collaterals, MissingCollateral, MissingCollateralReport, PccsReadStrategy,
+    PccsReader,
+};

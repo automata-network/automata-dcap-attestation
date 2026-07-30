@@ -103,8 +103,7 @@ pub(crate) fn parse_networks_from_version_dir(
                         }
                     }
                 } else {
-                    // Chain ID found in deployment but no metadata - just skip it silently
-                    // (warning is already issued by build.rs)
+                    // Chain ID found in deployment but no metadata. Skip it.
                 }
             }
         }

@@ -39,12 +39,12 @@ pub fn upload_missing_collaterals<P: Provider>(
         .unwrap();
 
     // Derive network from provider
-    let network = rt.block_on(async {
-        Network::from_provider(provider, deployment_version).await
-    }).expect("Failed to derive network from provider");
-    let missing_collateral_result = rt.block_on(
-        pccs_reader_rs::find_missing_collaterals_from_quote(&provider, deployment_version, quote, false, tcb_eval_num),
-    );
+    let network = rt
+        .block_on(async { Network::from_provider(provider, deployment_version).await })
+        .expect("Failed to derive network from provider");
+    let reader = PccsReader::from_network(provider, network);
+    let missing_collateral_result =
+        rt.block_on(reader.find_missing_collaterals_from_quote(quote, false, tcb_eval_num));
 
     let missing_report = match missing_collateral_result {
         Ok(_collaterals) => {

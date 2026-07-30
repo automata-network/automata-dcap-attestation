@@ -19,7 +19,7 @@ use pem::{encode, Pem};
 /// # Examples
 ///
 /// ```no_run
-/// # use automata_dcap_pccs_reader::tcb_pem::generate_tcb_issuer_chain_pem;
+/// # use pccs_reader_rs::tcb_pem::generate_tcb_issuer_chain_pem;
 /// # fn example() -> anyhow::Result<()> {
 /// let tcb_signing_der = vec![/* ... */];
 /// let root_ca_der = vec![/* ... */];

@@ -28,7 +28,8 @@ impl<'a> QuoteCertData<'a> {
         let cert_data_size = utils::read_from_bytes::<little_endian::U32>(bytes)
             .ok_or_else(|| anyhow!("incorrect buffer size"))?;
 
-        let cert_data = utils::read_bytes(bytes, cert_data_size.get() as usize);
+        let cert_data = utils::read_bytes(bytes, cert_data_size.get() as usize)
+            .ok_or_else(|| anyhow!("underflow reading certification data"))?;
 
         Ok(Self {
             cert_key_type,

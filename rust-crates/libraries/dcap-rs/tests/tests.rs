@@ -1,7 +1,8 @@
 mod common;
 
 use common::*;
-use dcap_rs::{types::quote::Quote, verify_dcap_quote};
+use dcap_rs::types::quote::Quote;
+use dcap_rs::{DcapVerificationPolicy, verify_dcap_quote, verify_dcap_quote_with_policy_ref};
 
 #[test]
 fn parse_v3_quote() {
@@ -41,9 +42,42 @@ async fn e2e_v4_quote() {
 }
 
 #[tokio::test]
+async fn e2e_v4_quote_rejects_root_crl_as_pck_crl() {
+    let (mut collateral, quote) = v4_quote_data().await;
+    collateral.pck_crl = collateral.root_ca_crl.clone();
+    let error = verify_dcap_quote(test_v4_time(), collateral, quote)
+        .expect_err("the root CA CRL must not cover a PCK certificate");
+    assert!(
+        format!("{error:#}").contains("no certificate revocation list for issuer"),
+        "{error:#}"
+    );
+}
+
+#[tokio::test]
+async fn e2e_v4_quote_rejects_expired_crl() {
+    let (collateral, quote) = v4_quote_data().await;
+    let expired_at = collateral
+        .pck_crl
+        .tbs_cert_list
+        .next_update
+        .expect("Intel PCK CRL should have nextUpdate")
+        .to_system_time();
+    let error = verify_dcap_quote(expired_at, collateral, quote)
+        .expect_err("a CRL must not be accepted at or after nextUpdate");
+    assert!(
+        format!("{error:#}").contains("certificate revocation list is not valid"),
+        "{error:#}"
+    );
+}
+
+#[tokio::test]
 async fn e2e_v5_quote() {
     let (collateral, quote) = v5_quote_data().await;
-    let output = verify_dcap_quote(test_v5_time(), collateral, quote)
-        .expect("certificate chain integrity should succeed");
+    let policy = DcapVerificationPolicy {
+        allow_service_td: true,
+        ..DcapVerificationPolicy::production()
+    };
+    let output = verify_dcap_quote_with_policy_ref(test_v5_time(), &collateral, quote, &policy)
+        .expect("certificate chain integrity should succeed when service TDs are allowed");
     println!("{:?}", output);
 }

@@ -1,5 +1,5 @@
 use alloy_sol_types::SolValue;
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use quote::QuoteBody;
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +53,9 @@ impl VerifiedOutput {
     }
 
     pub fn from_bytes(slice: &[u8]) -> Result<VerifiedOutput> {
+        if slice.len() < 11 {
+            bail!("verified output is too short: expected at least 11 bytes");
+        }
         let mut quote_version = [0; 2];
         quote_version.copy_from_slice(&slice[0..2]);
         let mut quote_body_type = [0; 2];
@@ -66,25 +69,32 @@ impl VerifiedOutput {
         let quote_body = match quote_body_type {
             1 => {
                 let raw_quote_body: [u8; ENCLAVE_REPORT_LEN] = slice
-                    [offset..offset + ENCLAVE_REPORT_LEN]
+                    .get(offset..offset + ENCLAVE_REPORT_LEN)
+                    .context("verified output is missing the SGX report body")?
                     .try_into()
-                    .unwrap();
+                    .context("invalid SGX report body length")?;
                 offset += ENCLAVE_REPORT_LEN;
                 QuoteBody::SgxQuoteBody(EnclaveReportBody::try_from(raw_quote_body)?)
             },
             2 => {
-                let raw_quote_body: [u8; TD10_REPORT_LEN] =
-                    slice[offset..offset + TD10_REPORT_LEN].try_into()?;
+                let raw_quote_body: [u8; TD10_REPORT_LEN] = slice
+                    .get(offset..offset + TD10_REPORT_LEN)
+                    .context("verified output is missing the TDX 1.0 report body")?
+                    .try_into()
+                    .context("invalid TDX 1.0 report body length")?;
                 offset += TD10_REPORT_LEN;
                 QuoteBody::Td10QuoteBody(Td10ReportBody::try_from(raw_quote_body)?)
             },
             3 => {
-                let raw_quote_body: [u8; TD15_REPORT_LEN] =
-                    slice[offset..offset + TD15_REPORT_LEN].try_into()?;
+                let raw_quote_body: [u8; TD15_REPORT_LEN] = slice
+                    .get(offset..offset + TD15_REPORT_LEN)
+                    .context("verified output is missing the TDX 1.5 report body")?
+                    .try_into()
+                    .context("invalid TDX 1.5 report body length")?;
                 offset += TD15_REPORT_LEN;
                 QuoteBody::Td15QuoteBody(Td15ReportBody::try_from(raw_quote_body)?)
             },
-            _ => panic!("unknown QuoteBody type"),
+            _ => bail!("unknown quote body type {quote_body_type}"),
         };
 
         let mut advisory_ids = None;
@@ -193,5 +203,19 @@ impl std::fmt::Display for VerifiedOutput {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::VerifiedOutput;
+
+    #[test]
+    fn malformed_verified_output_returns_error_without_panicking() {
+        for input in [&[][..], &[0; 10][..], &[0; 11][..]] {
+            let result = std::panic::catch_unwind(|| VerifiedOutput::from_bytes(input));
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_err());
+        }
     }
 }

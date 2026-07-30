@@ -1,5 +1,5 @@
 use alloy::providers::Provider;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use automata_dcap_network_registry::Network;
 use automata_dcap_utils::Version;
 
@@ -38,7 +38,7 @@ pub async fn prepare_guest_input<P: Provider>(
     metadata.log_info();
     let quote_version = metadata.version;
 
-    if deployment_version.unwrap() == Version::V1_0 {
+    if deployment_version == Some(Version::V1_0) {
         if quote_version != 3 && quote_version != 4 {
             return Err(anyhow::anyhow!(
                 "Incompatible quote version for DCAP v1.0: expected version 3 or 4, got version {}",
@@ -57,25 +57,21 @@ pub async fn prepare_guest_input<P: Provider>(
         "Fetching collaterals from network: {} (chain_id: {})",
         network.display_name, network.chain_id
     );
-    let collaterals = pccs_reader_rs::find_missing_collaterals_from_quote(
-        provider,
-        deployment_version,
-        &quote,
-        false,
-        tcb_eval_num,
-    )
-    .await
-    .map_err(|e| match e {
-        pccs_reader_rs::CollateralError::Missing(report) => {
-            anyhow::anyhow!(
-                "Failed to fetch all required collaterals from PCCS:\n{}",
-                report
-            )
-        }
-        pccs_reader_rs::CollateralError::Validation(msg) => {
-            anyhow::anyhow!("Quote validation error: {}", msg)
-        }
-    })?;
+    let reader = pccs_reader_rs::PccsReader::from_network(provider, network);
+    let collaterals = reader
+        .find_missing_collaterals_from_quote(&quote, false, tcb_eval_num)
+        .await
+        .map_err(|e| match e {
+            pccs_reader_rs::CollateralError::Missing(report) => {
+                anyhow::anyhow!(
+                    "Failed to fetch all required collaterals from PCCS:\n{}",
+                    report
+                )
+            }
+            pccs_reader_rs::CollateralError::Validation(msg) => {
+                anyhow::anyhow!("Quote validation error: {}", msg)
+            }
+        })?;
     log::debug!("Fetched collaterals: {:?}", collaterals);
 
     println!("All collaterals fetched successfully!");
@@ -83,7 +79,7 @@ pub async fn prepare_guest_input<P: Provider>(
     // Step 2: Generate version-aware input bytes with current timestamp
     let current_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .context("System clock is before the Unix epoch")?
         .as_secs();
 
     let version = deployment_version.unwrap_or(Version::V1_1);

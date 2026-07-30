@@ -4,6 +4,8 @@
 pub enum ZeroCopyError {
     InvalidSliceLength,
     InvalidUtf8,
+    InvalidHex,
+    InvalidFieldLength,
     InvalidOffset,
     DataNotPresent,
     InvalidEnumValue,
@@ -36,6 +38,8 @@ impl core::fmt::Display for ZeroCopyError {
         let msg = match self {
             ZeroCopyError::InvalidSliceLength => "Invalid slice length encountered during parsing",
             ZeroCopyError::InvalidUtf8 => "Invalid UTF-8 sequence encountered",
+            ZeroCopyError::InvalidHex => "Invalid hexadecimal field encountered",
+            ZeroCopyError::InvalidFieldLength => "Invalid decoded field length encountered",
             ZeroCopyError::InvalidOffset => "Invalid offset calculation or out of bounds",
             ZeroCopyError::DataNotPresent => "Expected data not present where indicated",
             ZeroCopyError::InvalidEnumValue => "Invalid value for enum conversion",

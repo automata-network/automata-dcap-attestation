@@ -141,11 +141,11 @@ impl SgxPckExtension {
         )?;
 
         Ok(Self {
-            ppid: ppid.unwrap(),
-            tcb: tcb.unwrap(),
-            pceid: pceid.unwrap(),
-            fmspc: fmspc.unwrap(),
-            _sgx_type: sgx_type.unwrap(),
+            ppid: ppid.context("missing PPID extension in PCK certificate")?,
+            tcb: tcb.context("missing TCB extension in PCK certificate")?,
+            pceid: pceid.context("missing PCE ID extension in PCK certificate")?,
+            fmspc: fmspc.context("missing FMSPC extension in PCK certificate")?,
+            _sgx_type: sgx_type.context("missing SGX type extension in PCK certificate")?,
             _platform_instance_id: platform_instance_id,
             _configuration: configuration,
         })
@@ -303,10 +303,25 @@ impl<'a> TryFrom<SequenceOf<'a, SgxExtension<'a>>> for Tcb {
             ]),
         )?;
 
+        let compsvn = compsvn
+            .into_iter()
+            .enumerate()
+            .map(|(index, value)| {
+                value.ok_or_else(|| {
+                    anyhow!(
+                        "missing TCB component {} SVN extension in PCK certificate",
+                        index + 1
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?
+            .try_into()
+            .map_err(|_| anyhow!("PCK certificate must contain 16 TCB component SVN values"))?;
+
         Ok(Self {
-            compsvn: compsvn.map(Option::unwrap),
-            pcesvn: pcesvn.unwrap(),
-            cpusvn: cpusvn.unwrap(),
+            compsvn,
+            pcesvn: pcesvn.context("missing PCE SVN extension in PCK certificate")?,
+            cpusvn: cpusvn.context("missing CPU SVN extension in PCK certificate")?,
         })
     }
 }
@@ -442,9 +457,11 @@ impl<'a> TryFrom<SequenceOf<'a, SgxExtension<'a>>> for Configuration {
         )?;
 
         Ok(Self {
-            _dynamic_platform: dynamic_platform.unwrap(),
-            _cached_keys: cached_keys.unwrap(),
-            _smt_enabled: smt_enabled.unwrap(),
+            _dynamic_platform: dynamic_platform
+                .context("missing dynamic platform configuration in PCK certificate")?,
+            _cached_keys: cached_keys
+                .context("missing cached keys configuration in PCK certificate")?,
+            _smt_enabled: smt_enabled.context("missing SMT configuration in PCK certificate")?,
         })
     }
 }

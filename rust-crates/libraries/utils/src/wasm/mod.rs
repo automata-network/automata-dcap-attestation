@@ -14,8 +14,6 @@
 
 mod wrapper;
 
-use core::panic;
-
 use anyhow::{bail, Result};
 use serde_wasm_bindgen;
 use wasm_bindgen::prelude::*;
@@ -38,14 +36,19 @@ use wrapper::QuoteWrapper;
 /// # Returns
 /// Serialized `VerifiedOutput` as a `JsValue`
 #[wasm_bindgen]
-pub fn parse_verified_output(output_bytes: &[u8], version_str: &str) -> JsValue {
+pub fn parse_verified_output(
+    output_bytes: &[u8],
+    version_str: &str,
+) -> std::result::Result<JsValue, JsValue> {
     let version = version_str
         .parse::<Version>()
-        .expect("Invalid version string");
+        .map_err(|error| JsValue::from_str(&format!("invalid version string: {error}")))?;
 
-    let output =
-        parser::parse_output(output_bytes, version).expect("Failed to parse verified output");
-    serde_wasm_bindgen::to_value(&output).unwrap()
+    let output = parser::parse_output(output_bytes, version)
+        .map_err(|error| JsValue::from_str(&format!("failed to parse verified output: {error}")))?;
+    serde_wasm_bindgen::to_value(&output).map_err(|error| {
+        JsValue::from_str(&format!("failed to serialize verified output: {error}"))
+    })
 }
 
 // =============================================================================
@@ -60,13 +63,15 @@ pub fn parse_verified_output(output_bytes: &[u8], version_str: &str) -> JsValue 
 /// # Returns
 /// Serialized `QuoteWrapper` as a `JsValue`
 #[wasm_bindgen]
-pub fn parse_quote_js(quote_bytes: &[u8]) -> JsValue {
-    let quote = parser::parse_quote(quote_bytes).expect("Failed to parse quote");
+pub fn parse_quote_js(quote_bytes: &[u8]) -> std::result::Result<JsValue, JsValue> {
+    let quote = parser::parse_quote(quote_bytes)
+        .map_err(|error| JsValue::from_str(&format!("failed to parse quote: {error}")))?;
 
     // Convert to owned wrapper for serialization
     let quote_wrapper = QuoteWrapper::from(&quote);
 
-    serde_wasm_bindgen::to_value(&quote_wrapper).unwrap()
+    serde_wasm_bindgen::to_value(&quote_wrapper)
+        .map_err(|error| JsValue::from_str(&format!("failed to serialize quote: {error}")))
 }
 
 // =============================================================================
@@ -83,15 +88,15 @@ pub fn parse_quote_js(quote_bytes: &[u8]) -> JsValue {
 /// # Returns
 /// Serialized `LocatedQuoteOutput` containing the quote, version, and raw bytes
 #[wasm_bindgen]
-pub fn locate_raw_quote_js(txn_data: &[u8], quote_version: u16, idx: usize) -> JsValue {
-    let located_quote = locate_raw_quote(txn_data, quote_version, idx);
-    match located_quote {
-        Ok(quote_bytes) => serde_wasm_bindgen::to_value(&quote_bytes).unwrap(),
-        Err(e) => {
-            let error_msg = format!("Error locating quote: {}", e);
-            panic!("{}", error_msg);
-        }
-    }
+pub fn locate_raw_quote_js(
+    txn_data: &[u8],
+    quote_version: u16,
+    idx: usize,
+) -> std::result::Result<JsValue, JsValue> {
+    let quote_bytes = locate_raw_quote(txn_data, quote_version, idx)
+        .map_err(|error| JsValue::from_str(&format!("error locating quote: {error}")))?;
+    serde_wasm_bindgen::to_value(&quote_bytes)
+        .map_err(|error| JsValue::from_str(&format!("failed to serialize quote bytes: {error}")))
 }
 
 /// Get the number of possible quote locations within transaction data
@@ -103,9 +108,13 @@ pub fn locate_raw_quote_js(txn_data: &[u8], quote_version: u16, idx: usize) -> J
 /// # Returns
 /// Number of possible quote locations found
 #[wasm_bindgen]
-pub fn locate_possible_quote_length_js(txn_data: &[u8], quote_version: u8) -> JsValue {
+pub fn locate_possible_quote_length_js(
+    txn_data: &[u8],
+    quote_version: u8,
+) -> std::result::Result<JsValue, JsValue> {
     let length = locate_possible_quote_length(txn_data, quote_version);
-    serde_wasm_bindgen::to_value(&length).unwrap()
+    serde_wasm_bindgen::to_value(&length)
+        .map_err(|error| JsValue::from_str(&format!("failed to serialize quote count: {error}")))
 }
 
 // =============================================================================
@@ -146,8 +155,8 @@ pub fn locate_raw_quote(txn_data: &[u8], quote_version: u16, idx: usize) -> Resu
 /// all byte sequences starting from each match.
 pub fn find_possible_quote_bytes_vec(txn_data: &[u8], quote_version: u8) -> Vec<Vec<u8>> {
     let mut results: Vec<Vec<u8>> = Vec::new();
-    for i in 0..txn_data.len() - 1 {
-        if txn_data[i] == quote_version && txn_data[i + 1] == 0 {
+    for (i, bytes) in txn_data.windows(2).enumerate() {
+        if bytes == [quote_version, 0] {
             let sub_slice = txn_data[i..].to_vec();
             results.push(sub_slice);
         }
@@ -158,6 +167,12 @@ pub fn find_possible_quote_bytes_vec(txn_data: &[u8], quote_version: u8) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_transaction_data_has_no_quote_locations() {
+        assert_eq!(locate_possible_quote_length(&[], 4), 0);
+        assert!(locate_raw_quote(&[], 4, 0).is_err());
+    }
 
     #[test]
     fn test_locate_raw_quote_v3() {

@@ -51,11 +51,8 @@ fn generate_input_v1_1(
 
     // Solidity ABI encode: (bytes collateral, bytes quote, uint64 timestamp)
     let collateral_encoded = collateral.sol_abi_encode()?;
-    let input = GuestInputSolType::abi_encode_params(&(
-        collateral_encoded.as_slice(),
-        quote,
-        timestamp,
-    ));
+    let input =
+        GuestInputSolType::abi_encode_params(&(collateral_encoded.as_slice(), quote, timestamp));
 
     Ok(input)
 }
@@ -119,7 +116,8 @@ fn serialize_collateral_v1_0(
     match pck_type {
         PckType::Platform => {
             data.extend_from_slice(&(0u32).to_le_bytes()); // processor_crl_len = 0
-            data.extend_from_slice(&(collaterals.pck_crl.len() as u32).to_le_bytes()); // platform_crl_len
+            data.extend_from_slice(&(collaterals.pck_crl.len() as u32).to_le_bytes());
+            // platform_crl_len
         }
         PckType::Processor => {
             data.extend_from_slice(&(collaterals.pck_crl.len() as u32).to_le_bytes()); // processor_crl_len
@@ -145,25 +143,49 @@ fn detect_pck_type(quote: &[u8]) -> Result<PckType> {
     use x509_parser::prelude::*;
 
     // Determine quote version and TEE type
-    let quote_version = u16::from_le_bytes([quote[0], quote[1]]);
-    let tee_type = u32::from_le_bytes([quote[4], quote[5], quote[6], quote[7]]);
+    let header = quote
+        .get(..8)
+        .context("Quote is shorter than the 8-byte header fields needed for PCK detection")?;
+    let quote_version = u16::from_le_bytes(
+        header[0..2]
+            .try_into()
+            .context("Quote version has the wrong length")?,
+    );
+    let tee_type = u32::from_le_bytes(
+        header[4..8]
+            .try_into()
+            .context("Quote TEE type has the wrong length")?,
+    );
 
     // Calculate QE Auth Data Size offset based on version and TEE type
     // Reference: dcap-sp1-cli/src/parser.rs:7-12
     let offset: usize = if quote_version < 4 {
-        1012  // V3_SGX_QE_AUTH_DATA_SIZE_OFFSET
-    } else if tee_type == 0x00000000 {  // SGX_TEE_TYPE
-        1018  // V4_SGX_QE_AUTH_DATA_SIZE_OFFSET
+        1012 // V3_SGX_QE_AUTH_DATA_SIZE_OFFSET
+    } else if tee_type == 0x00000000 {
+        // SGX_TEE_TYPE
+        1018 // V4_SGX_QE_AUTH_DATA_SIZE_OFFSET
     } else {
-        1218  // V4_TDX_QE_AUTH_DATA_SIZE_OFFSET
+        1218 // V4_TDX_QE_AUTH_DATA_SIZE_OFFSET
     };
 
     // Get certificate data offset
-    let auth_data_size = u16::from_le_bytes([quote[offset], quote[offset + 1]]);
-    let cert_data_offset = offset + 2 + auth_data_size as usize + 2 + 4;
+    let auth_data_size = u16::from_le_bytes(
+        quote
+            .get(offset..offset + 2)
+            .context("Quote is truncated before QE authentication data size")?
+            .try_into()
+            .context("QE authentication data size has the wrong length")?,
+    );
+    let cert_data_offset = offset
+        .checked_add(2)
+        .and_then(|value| value.checked_add(usize::from(auth_data_size)))
+        .and_then(|value| value.checked_add(2 + 4))
+        .context("PCK certificate data offset overflow")?;
 
     // Parse PCK certificate from quote
-    let cert_data = &quote[cert_data_offset..];
+    let cert_data = quote
+        .get(cert_data_offset..)
+        .context("Quote is truncated before PCK certificate data")?;
     let pem = Pem::iter_from_buffer(cert_data)
         .collect::<Result<Vec<_>, _>>()
         .context("Failed to parse PEM certificates")?;
@@ -172,7 +194,9 @@ fn detect_pck_type(quote: &[u8]) -> Result<PckType> {
         anyhow::bail!("No certificates found in quote");
     }
 
-    let cert = pem[0].parse_x509().context("Failed to parse X509 certificate")?;
+    let cert = pem[0]
+        .parse_x509()
+        .context("Failed to parse X509 certificate")?;
 
     // Extract issuer CN to determine Platform vs Processor
     let issuer = cert.issuer();
@@ -187,6 +211,28 @@ fn detect_pck_type(quote: &[u8]) -> Result<PckType> {
         "Intel SGX PCK Platform CA" => Ok(PckType::Platform),
         "Intel SGX PCK Processor CA" => Ok(PckType::Processor),
         _ => anyhow::bail!("Unknown PCK issuer: {}", cn),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pck_type_detection_returns_errors_for_truncated_quotes() {
+        for quote in [Vec::new(), vec![0; 7], vec![0; 8], vec![0; 1_013]] {
+            let result = std::panic::catch_unwind(|| detect_pck_type(&quote));
+            assert!(
+                result.is_ok(),
+                "PCK type detection panicked for {} bytes",
+                quote.len()
+            );
+            assert!(
+                result.unwrap().is_err(),
+                "PCK type detection accepted {} truncated bytes",
+                quote.len()
+            );
+        }
     }
 }
 

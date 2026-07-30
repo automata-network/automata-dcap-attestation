@@ -46,24 +46,37 @@ impl<'a> QuoteSignatureData<'a> {
             return Err(anyhow!("underflow reading signature"));
         }
 
-        if version == 3 {
-            Self::read_v3_signature(bytes)
+        let (signature_bytes, remaining) = bytes.split_at(signature_len as usize);
+        let mut signature_bytes = signature_bytes;
+        let signature = if version == 3 {
+            Self::read_v3_signature(&mut signature_bytes)
         } else if version >= 4 {
-            Self::read_v4_signature(bytes)
+            Self::read_v4_signature(&mut signature_bytes)
         } else {
-            Err(anyhow!("unsupported quote version"))
+            return Err(anyhow!("unsupported quote version"));
+        }?;
+        if !signature_bytes.is_empty() {
+            return Err(anyhow!(
+                "signature data has {} trailing bytes",
+                signature_bytes.len()
+            ));
         }
+        *bytes = remaining;
+        Ok(signature)
     }
 
     fn read_v3_signature(bytes: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let isv_signature = utils::read_bytes(bytes, 64);
+        let isv_signature = utils::read_bytes(bytes, 64)
+            .ok_or_else(|| anyhow!("underflow reading ISV signature"))?;
 
-        let attestation_pub_key = utils::read_bytes(bytes, 64);
+        let attestation_pub_key = utils::read_bytes(bytes, 64)
+            .ok_or_else(|| anyhow!("underflow reading attestation public key"))?;
 
         let qe_report_body = utils::read_from_bytes::<EnclaveReportBody>(bytes)
             .ok_or_else(|| anyhow!("underflow reading enclave report body"))?;
 
-        let qe_report_signature = utils::read_bytes(bytes, 64);
+        let qe_report_signature = utils::read_bytes(bytes, 64)
+            .ok_or_else(|| anyhow!("underflow reading QE report signature"))?;
 
         let auth_data_size = utils::read_from_bytes::<little_endian::U16>(bytes)
             .ok_or_else(|| anyhow!("Failed to read auth data size"))?
@@ -73,7 +86,8 @@ impl<'a> QuoteSignatureData<'a> {
             return Err(anyhow!("buffer underflow"));
         }
 
-        let auth_data = utils::read_bytes(bytes, auth_data_size as usize);
+        let auth_data = utils::read_bytes(bytes, auth_data_size as usize)
+            .ok_or_else(|| anyhow!("underflow reading QE authentication data"))?;
         let cert_data = QuoteCertData::read(bytes)?;
 
         Ok(QuoteSignatureData {
@@ -87,9 +101,11 @@ impl<'a> QuoteSignatureData<'a> {
     }
 
     fn read_v4_signature(bytes: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let isv_signature = utils::read_bytes(bytes, 64);
+        let isv_signature = utils::read_bytes(bytes, 64)
+            .ok_or_else(|| anyhow!("underflow reading ISV signature"))?;
 
-        let attestation_pub_key = utils::read_bytes(bytes, 64);
+        let attestation_pub_key = utils::read_bytes(bytes, 64)
+            .ok_or_else(|| anyhow!("underflow reading attestation public key"))?;
 
         let mut cert_data_struct = QuoteCertData::read(bytes)?;
 
@@ -105,7 +121,8 @@ impl<'a> QuoteSignatureData<'a> {
                 .ok_or_else(|| anyhow!("underflow reading enclave report body"))?;
 
         // Parse the QE report signature
-        let qe_report_signature = utils::read_bytes(&mut cert_data_struct.cert_data, 64);
+        let qe_report_signature = utils::read_bytes(&mut cert_data_struct.cert_data, 64)
+            .ok_or_else(|| anyhow!("underflow reading QE report signature"))?;
 
         // Read auth data size and auth data
         let auth_data_size =
@@ -119,8 +136,15 @@ impl<'a> QuoteSignatureData<'a> {
         let qe_auth_data = utils::read_bytes(
             &mut cert_data_struct.cert_data,
             auth_data_size.get() as usize,
-        );
+        )
+        .ok_or_else(|| anyhow!("underflow reading QE authentication data"))?;
         let cert_data = QuoteCertData::read(&mut cert_data_struct.cert_data)?;
+        if !cert_data_struct.cert_data.is_empty() {
+            return Err(anyhow!(
+                "QE report certification data has {} trailing bytes",
+                cert_data_struct.cert_data.len()
+            ));
+        }
 
         Ok(QuoteSignatureData {
             isv_signature,
@@ -150,8 +174,6 @@ impl<'a> QuoteSignatureData<'a> {
         hasher.update(self.attestation_pub_key);
         hasher.update(self.auth_data);
         let digest = hasher.finalize();
-        assert_eq!(digest.len(), 32);
-
         if *digest != self.qe_report_body.user_report_data[..digest.len()] {
             bail!("Quoting enclave report should be hash of attestation key and auth data");
         }
@@ -280,7 +302,11 @@ impl<'a> std::fmt::Display for QuoteSignatureData<'a> {
                 // Try to parse as PCK cert chain
                 match self.cert_data.as_pck_cert_chain_data() {
                     Ok(pck_data) => {
-                        writeln!(f, "    Certificate Chain ({} certificates):", pck_data.pck_cert_chain.len())?;
+                        writeln!(
+                            f,
+                            "    Certificate Chain ({} certificates):",
+                            pck_data.pck_cert_chain.len()
+                        )?;
                         for (i, cert) in pck_data.pck_cert_chain.iter().enumerate() {
                             writeln!(f, "      [{}] Subject: {}", i, cert.tbs_certificate.subject)?;
                             writeln!(f, "          Issuer:  {}", cert.tbs_certificate.issuer)?;
@@ -294,21 +320,41 @@ impl<'a> std::fmt::Display for QuoteSignatureData<'a> {
 
                         // Display PCK extension info
                         writeln!(f, "    PCK Extension:")?;
-                        writeln!(f, "      FMSPC: {}", hex::encode(&pck_data.pck_extension.fmspc))?;
-                        writeln!(f, "      PCE ID: {}", hex::encode(&pck_data.pck_extension.pceid))?;
+                        writeln!(
+                            f,
+                            "      FMSPC: {}",
+                            hex::encode(pck_data.pck_extension.fmspc)
+                        )?;
+                        writeln!(
+                            f,
+                            "      PCE ID: {}",
+                            hex::encode(pck_data.pck_extension.pceid)
+                        )?;
                         writeln!(f, "      PCE SVN: {}", pck_data.pck_extension.tcb.pcesvn)?;
-                        writeln!(f, "      CPU SVN: {}", hex::encode(&pck_data.pck_extension.tcb.cpusvn))?;
-                    }
+                        writeln!(
+                            f,
+                            "      CPU SVN: {}",
+                            hex::encode(pck_data.pck_extension.tcb.cpusvn)
+                        )?;
+                    },
                     Err(e) => {
                         writeln!(f, "    (Failed to parse certificate chain: {})", e)?;
-                        writeln!(f, "    Raw Cert Data: {}", hex::encode(self.cert_data.cert_data))?;
-                    }
+                        writeln!(
+                            f,
+                            "    Raw Cert Data: {}",
+                            hex::encode(self.cert_data.cert_data)
+                        )?;
+                    },
                 }
-            }
+            },
             _ => {
                 // For other types, just display raw hex
-                writeln!(f, "    Cert Data (hex): {}", hex::encode(self.cert_data.cert_data))?;
-            }
+                writeln!(
+                    f,
+                    "    Cert Data (hex): {}",
+                    hex::encode(self.cert_data.cert_data)
+                )?;
+            },
         }
 
         Ok(())

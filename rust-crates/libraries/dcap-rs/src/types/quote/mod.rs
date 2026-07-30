@@ -32,9 +32,15 @@ impl<'a> Quote<'a> {
             return Err(anyhow!("incorrect buffer size"));
         }
 
-        // Read the quote header
-        let quote_header = utils::read_from_bytes::<QuoteHeader>(bytes)
-            .ok_or_else(|| anyhow!("underflow reading quote header"))?;
+        // Copy the fixed-size header so all semantic checks in QuoteHeader::try_from
+        // run before any attacker-controlled length or type is used.
+        let raw_header: [u8; std::mem::size_of::<QuoteHeader>()] = bytes
+            .get(..std::mem::size_of::<QuoteHeader>())
+            .ok_or_else(|| anyhow!("underflow reading quote header"))?
+            .try_into()
+            .map_err(|_| anyhow!("underflow reading quote header"))?;
+        *bytes = &bytes[std::mem::size_of::<QuoteHeader>()..];
+        let quote_header = QuoteHeader::try_from(raw_header)?;
 
         // Read the quote body and signature
         let quote_body_type;
@@ -56,6 +62,9 @@ impl<'a> Quote<'a> {
                 return Err(anyhow!("unsupported TEE type"));
             }
         } else {
+            if bytes.len() < 6 {
+                return Err(anyhow!("underflow reading quote body header"));
+            }
             quote_body_type = u16::from_le_bytes([bytes[0], bytes[1]]);
             *bytes = &bytes[2..];
 
@@ -166,44 +175,106 @@ impl<'a> std::fmt::Display for Quote<'a> {
                 writeln!(f, "    MR_SIGNER: {}", hex::encode(body.mr_signer))?;
                 writeln!(f, "    ISV_PROD_ID: {}", body.isv_prod_id)?;
                 writeln!(f, "    ISV_SVN: {}", body.isv_svn)?;
-                writeln!(
-                    f,
-                    "    Report Data: {}",
-                    hex::encode(&body.user_report_data)
-                )?;
-            }
+                writeln!(f, "    Report Data: {}", hex::encode(body.user_report_data))?;
+            },
             QuoteBody::Td10QuoteBody(body) => {
                 writeln!(f, "  TDX TD10 Report:")?;
                 writeln!(f, "    TEE_TCB_SVN: {}", hex::encode(body.tee_tcb_svn))?;
                 writeln!(f, "    MR_SEAM: {}", hex::encode(body.mr_seam))?;
-                writeln!(f, "    MR_SIGNER_SEAM: {}", hex::encode(body.mr_signer_seam))?;
-                writeln!(f, "    MR_TD: {}", hex::encode(body.mr_td))?;
-                writeln!(f, "    RTMR0: {}", hex::encode(body.rtm_r0))?;
                 writeln!(
                     f,
-                    "    Report Data: {}",
-                    hex::encode(&body.user_report_data)
+                    "    MR_SIGNER_SEAM: {}",
+                    hex::encode(body.mr_signer_seam)
                 )?;
-            }
+                writeln!(f, "    MR_TD: {}", hex::encode(body.mr_td))?;
+                writeln!(f, "    RTMR0: {}", hex::encode(body.rtm_r0))?;
+                writeln!(f, "    Report Data: {}", hex::encode(body.user_report_data))?;
+            },
             QuoteBody::Td15QuoteBody(body) => {
                 writeln!(f, "  TDX TD15 Report:")?;
-                writeln!(f, "    TEE_TCB_SVN: {}", hex::encode(body.td_report.tee_tcb_svn))?;
+                writeln!(
+                    f,
+                    "    TEE_TCB_SVN: {}",
+                    hex::encode(body.td_report.tee_tcb_svn)
+                )?;
                 writeln!(f, "    MR_SEAM: {}", hex::encode(body.td_report.mr_seam))?;
-                writeln!(f, "    MR_SIGNER_SEAM: {}", hex::encode(body.td_report.mr_signer_seam))?;
+                writeln!(
+                    f,
+                    "    MR_SIGNER_SEAM: {}",
+                    hex::encode(body.td_report.mr_signer_seam)
+                )?;
                 writeln!(f, "    MR_TD: {}", hex::encode(body.td_report.mr_td))?;
                 writeln!(f, "    RTMR0: {}", hex::encode(body.td_report.rtm_r0))?;
                 writeln!(
                     f,
                     "    Report Data: {}",
-                    hex::encode(&body.td_report.user_report_data)
+                    hex::encode(body.td_report.user_report_data)
                 )?;
                 writeln!(f, "    TEE_TCB_SVN2: {}", hex::encode(body.tee_tcb_svn2))?;
                 writeln!(f, "    MR_SERVICE_TD: {}", hex::encode(body.mr_service_td))?;
-            }
+            },
         }
 
         write!(f, "{}", self.signature)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::{Quote, QuoteHeader, Td10ReportBody};
+
+    #[test]
+    fn truncated_quotes_return_errors_without_panicking() {
+        let v3 = hex::decode(include_str!("../../../../../samples/quotev3.hex").trim()).unwrap();
+        let v4 = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+        let v5 = include_bytes!("../../../../../samples/quotev5.dat").as_slice();
+
+        for quote in [v3.as_slice(), v4.as_slice(), v5] {
+            let required_len = Quote::read(&mut quote.as_ref()).unwrap().byte_len();
+            for end in 0..required_len {
+                let truncated = &quote[..end];
+                let result = std::panic::catch_unwind(|| Quote::read(&mut truncated.as_ref()));
+                assert!(result.is_ok(), "quote parser panicked at length {end}");
+                assert!(result.unwrap().is_err(), "truncated quote parsed at {end}");
+            }
+        }
+    }
+
+    #[test]
+    fn quote_parser_enforces_header_security_fields() {
+        let quote = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+
+        let mut unsupported_version = quote.clone();
+        unsupported_version[0..2].copy_from_slice(&2u16.to_le_bytes());
+        assert!(Quote::read(&mut unsupported_version.as_slice()).is_err());
+
+        let mut unsupported_key = quote.clone();
+        unsupported_key[2..4].copy_from_slice(&3u16.to_le_bytes());
+        assert!(Quote::read(&mut unsupported_key.as_slice()).is_err());
+
+        let mut unsupported_vendor = quote;
+        unsupported_vendor[12] ^= 1;
+        assert!(Quote::read(&mut unsupported_vendor.as_slice()).is_err());
+    }
+
+    #[test]
+    fn quote_parser_enforces_declared_signature_length() {
+        let quote = hex::decode(include_str!("../../../../../samples/quotev4.hex").trim()).unwrap();
+        let signature_length_offset =
+            std::mem::size_of::<QuoteHeader>() + std::mem::size_of::<Td10ReportBody>();
+        let declared_length = u32::from_le_bytes(
+            quote[signature_length_offset..signature_length_offset + 4]
+                .try_into()
+                .unwrap(),
+        );
+
+        for invalid_length in [declared_length - 1, declared_length + 1] {
+            let mut invalid_quote = quote.clone();
+            invalid_quote[signature_length_offset..signature_length_offset + 4]
+                .copy_from_slice(&invalid_length.to_le_bytes());
+            assert!(Quote::read(&mut invalid_quote.as_slice()).is_err());
+        }
     }
 }

@@ -1,11 +1,12 @@
-use alloy::primitives::U256;
+use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use anyhow::Result;
 use automata_dcap_evm_bindings::r#i_enclave_identity_dao::IEnclaveIdentityDao;
+use automata_dcap_evm_bindings::r#i_enclave_identity_dao::IEnclaveIdentityDao::EnclaveIdentityJsonObj;
 use automata_dcap_network_registry::{ContractKind, Network};
 use automata_dcap_utils::Version;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnclaveIdType {
     QE,
     QVE,
@@ -24,7 +25,7 @@ pub async fn get_enclave_identity<P: Provider>(
 
     // Determine TcbId based on enclave type
     let tcb_id = match id {
-        EnclaveIdType::TDQE => 1, // TDX
+        EnclaveIdType::TDQE => 1,                    // TDX
         EnclaveIdType::QE | EnclaveIdType::QVE => 0, // SGX
     };
 
@@ -33,8 +34,16 @@ pub async fn get_enclave_identity<P: Provider>(
         .resolve_contract_address(ContractKind::EnclaveIdDao, tcb_eval_num, Some(tcb_id))
         .await?;
 
-    let enclave_id_dao_contract = IEnclaveIdentityDao::new(dao_address, provider);
+    get_enclave_identity_at_address(provider, dao_address, id, version).await
+}
 
+pub(crate) async fn get_enclave_identity_at_address<P: Provider>(
+    provider: &P,
+    dao_address: Address,
+    id: EnclaveIdType,
+    version: u32,
+) -> Result<Vec<u8>> {
+    let enclave_id_dao_contract = IEnclaveIdentityDao::new(dao_address, provider);
     let enclave_id_type_uint256 = match id {
         EnclaveIdType::QE => U256::from(0),
         EnclaveIdType::QVE => U256::from(1),
@@ -47,6 +56,10 @@ pub async fn get_enclave_identity<P: Provider>(
         .call()
         .await?;
 
+    enclave_identity_from_return(call_return)
+}
+
+pub(crate) fn enclave_identity_from_return(call_return: EnclaveIdentityJsonObj) -> Result<Vec<u8>> {
     let identity_str = call_return.identityStr;
     let signature_bytes = call_return.signature;
 

@@ -4,8 +4,11 @@ use p3_field::PrimeField;
 use pico_sdk::client::{DefaultProverClient, KoalaBearProverClient};
 use pico_sdk::HashableKey;
 
-use crate::{common::{ZkVmProver, ZkVm}, get_elf, Version};
 use super::config::PicoConfig;
+use crate::{
+    common::{ZkVm, ZkVmProver},
+    get_elf, Version,
+};
 
 /// Pico zkVM prover implementation
 pub struct PicoProver {
@@ -36,9 +39,13 @@ impl ZkVmProver for PicoProver {
         log::info!("EVM Emulation Cycles: {}", cycles);
 
         // Generate proof if not in dev mode
-        if std::env::var("DEV_MODE").is_err() || std::env::var("DEV_MODE").unwrap().is_empty() {
-            println!("Begin proving with Pico zkVM (field: {})", config.field_type);
-            
+        let dev_mode = matches!(std::env::var("DEV_MODE"), Ok(value) if !value.is_empty());
+        if !dev_mode {
+            println!(
+                "Begin proving with Pico zkVM (field: {})",
+                config.field_type
+            );
+
             // Check if trusted setup is needed (vm_pk exists)
             let proving_key_path = config.artifacts_path.join("vm_pk");
             let need_setup = !proving_key_path.exists();
@@ -48,7 +55,7 @@ impl ZkVmProver for PicoProver {
             } else {
                 log::info!("Using existing proving key at {:?}", proving_key_path);
             }
-            
+
             client
                 .prove_evm(
                     stdin_builder,
@@ -69,8 +76,8 @@ impl ZkVmProver for PicoProver {
         // Read and encode proof from proof.data
         let proof_data_path = config.artifacts_path.join("proof.data");
         let proof_bytes = if proof_data_path.exists() {
-            let proof_data = std::fs::read_to_string(&proof_data_path)
-                .context("Failed to read proof.data")?;
+            let proof_data =
+                std::fs::read_to_string(&proof_data_path).context("Failed to read proof.data")?;
 
             // Parse comma-separated hex strings
             let hex_strings: Vec<&str> = proof_data.split(',').collect();
@@ -91,8 +98,7 @@ impl ZkVmProver for PicoProver {
             // Concatenate the 8 proof values (each already 32 bytes)
             for hex_str in proof_values {
                 let hex_str = hex_str.trim().trim_start_matches("0x");
-                let bytes = hex::decode(hex_str)
-                    .context("Failed to decode proof hex string")?;
+                let bytes = hex::decode(hex_str).context("Failed to decode proof hex string")?;
 
                 if bytes.len() != 32 {
                     anyhow::bail!(

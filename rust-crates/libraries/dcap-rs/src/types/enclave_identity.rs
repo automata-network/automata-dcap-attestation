@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
 use super::tcb_info::TcbStatus;
+use crate::types::quote::{SGX_TEE_TYPE, TDX_TEE_TYPE};
 use crate::utils::keccak;
 
 const ENCLAVE_IDENTITY_V2: u32 = 2;
@@ -112,39 +113,43 @@ pub struct EnclaveIdentity {
 }
 
 impl EnclaveIdentity {
-    pub fn miscselect_bytes(&self) -> [u8; 4] {
-        hex::decode(&self.miscselect)
-            .expect("Failed to decode miscselect")
-            .try_into()
-            .expect("miscselect should be 4 bytes")
+    /// Require the Intel Quoting Enclave identity that belongs to the quote.
+    pub fn validate_id_for_tee_type(&self, tee_type: u32) -> anyhow::Result<()> {
+        let expected = match tee_type {
+            SGX_TEE_TYPE => EnclaveType::Qe,
+            TDX_TEE_TYPE => EnclaveType::TdQe,
+            other => anyhow::bail!("unsupported quote TEE type 0x{other:08x}"),
+        };
+        if self.id != expected {
+            anyhow::bail!(
+                "Enclave Identity id {:?} does not match quote TEE type 0x{tee_type:08x}; expected {:?}",
+                self.id,
+                expected
+            );
+        }
+        Ok(())
+    }
+}
+
+impl EnclaveIdentity {
+    pub fn miscselect_bytes(&self) -> Result<[u8; 4]> {
+        decode_hex_array(&self.miscselect, "enclave identity miscselect")
     }
 
-    pub fn miscselect_mask_bytes(&self) -> [u8; 4] {
-        hex::decode(&self.miscselect_mask)
-            .expect("Failed to decode miscselect mask")
-            .try_into()
-            .expect("miscselect mask should be 4 bytes")
+    pub fn miscselect_mask_bytes(&self) -> Result<[u8; 4]> {
+        decode_hex_array(&self.miscselect_mask, "enclave identity miscselect mask")
     }
 
-    pub fn attributes_bytes(&self) -> [u8; 16] {
-        hex::decode(&self.attributes)
-            .expect("Failed to decode attributes")
-            .try_into()
-            .expect("attributes should be 16 bytes")
+    pub fn attributes_bytes(&self) -> Result<[u8; 16]> {
+        decode_hex_array(&self.attributes, "enclave identity attributes")
     }
 
-    pub fn attributes_mask_bytes(&self) -> [u8; 16] {
-        hex::decode(&self.attributes_mask)
-            .expect("Failed to decode attributes mask")
-            .try_into()
-            .expect("attributes mask should be 16 bytes")
+    pub fn attributes_mask_bytes(&self) -> Result<[u8; 16]> {
+        decode_hex_array(&self.attributes_mask, "enclave identity attributes mask")
     }
 
-    pub fn mrsigner_bytes(&self) -> [u8; 32] {
-        hex::decode(&self.mrsigner)
-            .expect("Failed to decode mrsigner")
-            .try_into()
-            .expect("mrsigner should be 32 bytes")
+    pub fn mrsigner_bytes(&self) -> Result<[u8; 32]> {
+        decode_hex_array(&self.mrsigner, "enclave identity mrsigner")
     }
 
     pub fn get_qe_tcb_status(&self, isv_svn: u16) -> QeTcbStatus {
@@ -160,15 +165,22 @@ impl EnclaveIdentity {
         pre_image.extend_from_slice(&[u8::from(self.id)]);
         pre_image.extend_from_slice(&self.version.to_be_bytes());
         pre_image.extend_from_slice(&self.tcb_evaluation_data_number.to_be_bytes());
-        pre_image.extend_from_slice(&self.miscselect_bytes());
-        pre_image.extend_from_slice(&self.miscselect_mask_bytes());
-        pre_image.extend_from_slice(&self.attributes_bytes());
-        pre_image.extend_from_slice(&self.attributes_mask_bytes());
-        pre_image.extend_from_slice(&self.mrsigner_bytes());
+        pre_image.extend_from_slice(&self.miscselect_bytes()?);
+        pre_image.extend_from_slice(&self.miscselect_mask_bytes()?);
+        pre_image.extend_from_slice(&self.attributes_bytes()?);
+        pre_image.extend_from_slice(&self.attributes_mask_bytes()?);
+        pre_image.extend_from_slice(&self.mrsigner_bytes()?);
         pre_image.extend_from_slice(&self.isvprodid.to_be_bytes());
         pre_image.extend_from_slice(serde_json::to_vec(&self.tcb_levels)?.as_slice());
         Ok(keccak::hash(&pre_image))
     }
+}
+
+fn decode_hex_array<const N: usize>(value: &str, field: &str) -> Result<[u8; N]> {
+    let bytes = hex::decode(value).with_context(|| format!("{field} is not valid hexadecimal"))?;
+    bytes
+        .try_into()
+        .map_err(|bytes: Vec<u8>| anyhow::anyhow!("{field} must be {N} bytes, got {}", bytes.len()))
 }
 
 /// Enclave TCB level
@@ -313,6 +325,41 @@ impl From<EnclaveType> for u8 {
             EnclaveType::Qve => 1,
             EnclaveType::TdQe => 2,
         }
+    }
+}
+
+#[cfg(test)]
+mod collateral_id_tests {
+    use super::*;
+    use crate::types::quote::{SGX_TEE_TYPE, TDX_TEE_TYPE};
+
+    fn tdx_qe_identity() -> EnclaveIdentity {
+        serde_json::from_value(serde_json::json!({
+            "id": "TD_QE",
+            "version": 2,
+            "issueDate": "2026-01-01T00:00:00Z",
+            "nextUpdate": "2027-01-01T00:00:00Z",
+            "tcbEvaluationDataNumber": 1,
+            "miscselect": "00000000",
+            "miscselectMask": "FFFFFFFF",
+            "attributes": "00000000000000000000000000000000",
+            "attributesMask": "00000000000000000000000000000000",
+            "mrsigner": "0000000000000000000000000000000000000000000000000000000000000000",
+            "isvprodid": 0,
+            "tcbLevels": []
+        }))
+        .expect("minimal TDX Quoting Enclave Identity")
+    }
+
+    #[test]
+    fn enclave_identity_id_must_match_quote_tee_type() {
+        let mut identity = tdx_qe_identity();
+        identity.validate_id_for_tee_type(TDX_TEE_TYPE).unwrap();
+        assert!(identity.validate_id_for_tee_type(SGX_TEE_TYPE).is_err());
+
+        identity.id = EnclaveType::Qe;
+        identity.validate_id_for_tee_type(SGX_TEE_TYPE).unwrap();
+        assert!(identity.validate_id_for_tee_type(TDX_TEE_TYPE).is_err());
     }
 }
 
