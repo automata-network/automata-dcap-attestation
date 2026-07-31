@@ -7,7 +7,7 @@ require (
 	github.com/chzyer/logex v1.2.1
 	github.com/chzyer/test v1.0.0
 	github.com/ethereum/go-ethereum v1.17.0
-	google.golang.org/grpc v1.82.0
+	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
 )
 
