@@ -17,7 +17,7 @@ type GenConfig struct {
 }
 
 func GenAbi(name string, jsonAbi []byte, out string) error {
-	code, err := bind.Bind([]string{name}, []string{string(jsonAbi)}, []string{""}, nil, name, bind.LangGo, nil, nil)
+	code, err := bind.Bind([]string{name}, []string{string(jsonAbi)}, []string{""}, nil, name, nil, nil)
 	if err != nil {
 		return logex.Trace(err)
 	}
