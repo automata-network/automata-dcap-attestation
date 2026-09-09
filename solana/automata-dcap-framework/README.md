@@ -18,7 +18,7 @@ The Solana DCAP Attestation Framework provides a comprehensive solution for veri
         - ``verify_dcap_quote_integrity()``
         - ``verify_dcap_quote_isv_signature()``
         - ``verify_dcap_quote_enclave_source()``
-        - ``verify_pck_cert_chain()``
+        - ``verify_pck_cert_chain_zk()``
         - ``verify_dcap_quote_tcb_status()``
     - Final verified output is stored in a VerifiedOutput account
 4. Security Components:
@@ -87,7 +87,7 @@ sequenceDiagram
     DCAP->>Output: Sets verified_output.qe_tcb_status
     Note over Output: Sets the QE TCB Status.
 
-    SDK->>DCAP: (6) verify_pck_cert_chain()
+    SDK->>DCAP: (6) verify_pck_cert_chain_zk()
 
     Note over SDK: Verifies the root of trust in the provided PCK Certificate chain.
 
@@ -104,7 +104,7 @@ sequenceDiagram
     DCAP->>PCCS: Requests to fetch TcbInfo data
     PCCS->>DCAP: Returns TcbInfo data
     DCAP->>Output: Sets verified_output.fmspc_tcb_status, tdx_module_tcb_status and advisory_ids
-    Note over Output: Populates the FMSPC field. tdx_module_tcb_status is only applicable for TDX quotes. Advisory IDs are only available for V4 quotes.
+    Note over Output: Populates the FMSPC field. tdx_module_tcb_status is only applicable for TDX quotes. Advisory IDs are available for V4 and V5 quotes.
 
     SDK->>Output: Fetches VerifiedOutput account data
     Output->>SDK: Returns VerifiedOutput data
