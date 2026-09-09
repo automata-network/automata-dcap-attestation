@@ -66,7 +66,7 @@ func (c *Callback) WithTo(to common.Address) *Callback {
 }
 
 func (c *Callback) Value() *big.Int {
-	if c == nil {
+	if c == nil || c.raw.Value == nil {
 		return new(big.Int)
 	}
 	return new(big.Int).Set(c.raw.Value)
