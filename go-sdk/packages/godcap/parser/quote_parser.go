@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/asn1"
@@ -51,9 +52,8 @@ type QuoteParser struct {
 	quote []byte
 }
 
-func NewQuoteParser(quote []byte) *QuoteParser {
-	spec := DetectQuoteSpec(quote)
-	return &QuoteParser{spec: spec, quote: quote}
+func NewQuoteParser(quote []byte) (*QuoteParser, error) {
+	return NewQuoteParserSafe(quote)
 }
 
 // NewQuoteParserSafe is like NewQuoteParser but returns an error instead of panicking
@@ -63,11 +63,19 @@ func NewQuoteParserSafe(quote []byte) (*QuoteParser, error) {
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	return &QuoteParser{spec: spec, quote: quote}, nil
+	parser := &QuoteParser{spec: spec, quote: quote}
+	if _, _, err := parser.certDataBounds(); err != nil {
+		return nil, err
+	}
+	return parser, nil
 }
 
-func (q *QuoteParser) CertData() []byte {
-	return q.quote[q.CertDataOffset():]
+func (q *QuoteParser) CertData() ([]byte, error) {
+	start, end, err := q.certDataBounds()
+	if err != nil {
+		return nil, err
+	}
+	return q.quote[start:end], nil
 }
 
 func (q *QuoteParser) Quote() []byte {
@@ -78,10 +86,61 @@ func (q *QuoteParser) Spec() QuoteSpec {
 	return q.spec
 }
 
-func (q *QuoteParser) CertDataOffset() int {
-	offset := q.spec.AuthDataSizeOffset()
-	authDataSize := led.Uint16(q.quote[offset:])
-	return offset + 2 + int(authDataSize) + 2 + 4
+func (q *QuoteParser) CertDataOffset() (int, error) {
+	start, _, err := q.certDataBounds()
+	return start, err
+}
+
+// Revalidate at the point of use: the caller may still own/mutate the quote slice.
+// Ignore bytes outside the declared payload, as existing legacy fixtures require.
+func (q *QuoteParser) certDataBounds() (int, int, error) {
+	if q == nil {
+		return 0, 0, logex.NewError("missing quote parser")
+	}
+	spec, err := DetectQuoteSpecSafe(q.quote)
+	if err != nil {
+		return 0, 0, err
+	}
+	version := led.Uint16(q.quote[:2])
+	qeAuthOffset := spec.AuthDataSizeOffset()
+	prefix := 576
+	if version != V3_QUOTE {
+		prefix = 582
+	}
+	authStart := qeAuthOffset - prefix
+	if len(q.quote) < authStart {
+		return 0, 0, ErrQuoteTooShort.Format(authStart, len(q.quote))
+	}
+	authLength := led.Uint32(q.quote[authStart-4 : authStart])
+	if uint64(authLength) > uint64(len(q.quote)-authStart) || authLength < uint32(prefix+8) {
+		return 0, 0, logex.NewError("invalid quote authentication length")
+	}
+	end := authStart + int(authLength)
+	if version != V3_QUOTE {
+		if led.Uint16(q.quote[authStart+128:authStart+130]) != 6 {
+			return 0, 0, logex.NewError("expected QE report certification type 6")
+		}
+		qeLength := led.Uint32(q.quote[authStart+130 : authStart+134])
+		if uint64(qeLength) > uint64(end-authStart-134) || qeLength < uint32(prefix+8-134) {
+			return 0, 0, logex.NewError("invalid QE report certification length")
+		}
+		end = authStart + 134 + int(qeLength)
+	}
+	qeAuthLength := int(led.Uint16(q.quote[qeAuthOffset : qeAuthOffset+2]))
+	certHeader := qeAuthOffset + 2
+	if qeAuthLength > end-certHeader-6 {
+		return 0, 0, logex.NewError("invalid QE authentication length")
+	}
+	certHeader += qeAuthLength
+	if led.Uint16(q.quote[certHeader:certHeader+2]) != 5 {
+		return 0, 0, logex.NewError("expected PCK certificate chain type 5")
+	}
+	certLength := led.Uint32(q.quote[certHeader+2 : certHeader+6])
+	start := certHeader + 6
+	if uint64(certLength) > uint64(end-start) {
+		return 0, 0, logex.NewError("invalid PCK certificate length")
+	}
+	return start, start + int(certLength), nil
 }
 
 func (q *QuoteParser) PckIssuer(cert *x509.Certificate) string {
@@ -143,12 +202,23 @@ func (q *QuoteParser) PckType(pck *x509.Certificate) (uint8, error) {
 }
 
 func (q *QuoteParser) Certificates() ([]*x509.Certificate, error) {
-	certData := q.CertData()
+	certData, err := q.CertData()
+	if err != nil {
+		return nil, err
+	}
+	// Intel certificate-chain payloads can have one terminal NUL.
+	certData = bytes.TrimSpace(certData)
+	certData = bytes.TrimSuffix(certData, []byte{0})
 	var certs []*x509.Certificate
-
-parseCert:
-	pemBlock, certData := pem.Decode(certData)
-	if pemBlock != nil {
+	for len(bytes.TrimSpace(certData)) != 0 {
+		certData = bytes.TrimSpace(certData)
+		if !bytes.HasPrefix(certData, []byte("-----BEGIN ")) {
+			return nil, logex.NewError("invalid PCK certificate PEM data")
+		}
+		pemBlock, rest := pem.Decode(certData)
+		if pemBlock == nil {
+			return nil, logex.NewError("invalid PCK certificate PEM block")
+		}
 		if pemBlock.Type != "CERTIFICATE" {
 			return nil, ErrInvalidPemType.Format(pemBlock.Type)
 		}
@@ -157,7 +227,10 @@ parseCert:
 			return nil, logex.Trace(err)
 		}
 		certs = append(certs, cert)
-		goto parseCert
+		certData = rest
+	}
+	if len(certs) == 0 {
+		return nil, logex.NewError("quote contains no PCK certificates")
 	}
 	return certs, nil
 }
@@ -282,20 +355,15 @@ type QuoteSpec interface {
 	Version() uint32
 }
 
-func DetectQuoteSpec(quote []byte) QuoteSpec {
-	spec, err := DetectQuoteSpecSafe(quote)
-	if err != nil {
-		panic(err.Error())
-	}
-	return spec
+func DetectQuoteSpec(quote []byte) (QuoteSpec, error) {
+	return DetectQuoteSpecSafe(quote)
 }
 
 // DetectQuoteSpecSafe detects the quote version and returns the appropriate QuoteSpec
 // Returns an error for unsupported versions or malformed quotes
 func DetectQuoteSpecSafe(quote []byte) (QuoteSpec, error) {
-	// Minimum quote size: header (48) + minimal body
-	if len(quote) < QUOTE_HEADER_SIZE+8 {
-		return nil, ErrQuoteTooShort.Format(QUOTE_HEADER_SIZE+8, len(quote))
+	if len(quote) < QUOTE_HEADER_SIZE {
+		return nil, ErrQuoteTooShort.Format(QUOTE_HEADER_SIZE, len(quote))
 	}
 
 	ed := binary.LittleEndian
@@ -304,6 +372,9 @@ func DetectQuoteSpecSafe(quote []byte) (QuoteSpec, error) {
 
 	switch version {
 	case V3_QUOTE:
+		if teeType != SGX_TEE_TYPE {
+			return nil, ErrUnknownTeeType.Format(teeType)
+		}
 		return &V3QuoteSpec{}, nil
 	case V4_QUOTE:
 		// Validate TEE type for V4
@@ -325,6 +396,21 @@ func DetectQuoteSpecSafe(quote []byte) (QuoteSpec, error) {
 		// Validate body type
 		if bodyType != BODY_TYPE_SGX && bodyType != BODY_TYPE_TDX10 && bodyType != BODY_TYPE_TDX15 {
 			return nil, ErrUnknownBodyType.Format(bodyType)
+		}
+		expectedSize := uint32(ENCLAVE_REPORT_BODY_SIZE)
+		expectedTee := SGX_TEE_TYPE
+		if bodyType != BODY_TYPE_SGX {
+			expectedTee = TDX_TEE_TYPE
+			expectedSize = TD10_REPORT_BODY_SIZE
+			if bodyType == BODY_TYPE_TDX15 {
+				expectedSize = TD15_REPORT_BODY_SIZE
+			}
+		}
+		if teeType != expectedTee {
+			return nil, ErrUnknownTeeType.Format(teeType)
+		}
+		if bodySize != expectedSize {
+			return nil, logex.NewErrorf("invalid quote body size: expected %v, got %v", expectedSize, bodySize)
 		}
 
 		return &V5QuoteSpec{
