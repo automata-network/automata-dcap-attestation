@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {LibString} from "solady/utils/LibString.sol";
-import {TD10ReportParser} from "../utils/TDReportParser.sol";
 import {TD10ReportBody} from "../types/TDXStruct.sol";
 import "../bases/TdxQuoteBase.sol";
 import "../types/Errors.sol";
@@ -12,6 +11,7 @@ import "../types/Errors.sol";
  */
 contract V4QuoteVerifier is TdxQuoteBase {
     using LibString for bytes;
+    using BytesUtils for bytes;
 
     constructor(address _ecdsaVerifier, address _router) QuoteVerifierBase(_router, 4) P256Verifier(_ecdsaVerifier) {}
 
@@ -19,12 +19,28 @@ contract V4QuoteVerifier is TdxQuoteBase {
         external
         view
         override
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, false);
+    }
+
+    function verifyQuoteV2(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber)
+        external
+        view
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, true);
+    }
+
+    function _verifyQuote(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber, bool withIdentity)
+        private
+        view
         returns (bool success, bytes memory output)
     {
         string memory reason;
         bytes memory rawQuoteBody;
         AuthData memory authData;
-        (success, reason, rawQuoteBody, authData) = _parseV4Quote(header, rawQuote);
+        (success, reason, rawQuoteBody, authData) = _parseV4Quote(header, rawQuote, withIdentity);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -39,17 +55,13 @@ contract V4QuoteVerifier is TdxQuoteBase {
         } else {
             return (false, bytes(TEE));
         }
+        if (withIdentity && success) output = identityEnvelope(output, authData.certification);
     }
 
-    function _parseV4Quote(Header calldata header, bytes calldata quote)
+    function _parseV4Quote(Header calldata header, bytes calldata quote, bool withIdentity)
         private
         view
-        returns (
-            bool success,
-            string memory reason,
-            bytes memory rawQuoteBody,
-            AuthData memory authData
-        )
+        returns (bool success, string memory reason, bytes memory rawQuoteBody, AuthData memory authData)
     {
         bytes4 teeType = header.teeType;
         (success, reason) = validateHeader(header, quote.length, teeType == SGX_TEE || teeType == TDX_TEE);
@@ -78,13 +90,13 @@ contract V4QuoteVerifier is TdxQuoteBase {
         offset += 4;
         // we don't strictly require the auth data to be equal to the provided length
         // but this ignores any trailing bytes after the indicated length allocated for authData
-        if (quote.length - offset < localAuthDataSize) {
+        if (quote.length - offset < localAuthDataSize || (withIdentity && quote.length - offset != localAuthDataSize)) {
             return (false, ADS, rawQuoteBody, authData);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize], withIdentity);
         if (!success) {
             return (false, ADF, rawQuoteBody, authData);
         }
@@ -96,8 +108,9 @@ contract V4QuoteVerifier is TdxQuoteBase {
         bytes memory rawQuoteBody,
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
-        VerificationResult memory result =
-            _verifyQuoteIntegrity(4, tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+        VerificationResult memory result = _verifyQuoteIntegrity(
+            4, tcbEvalNumber, SGX_TEE, rawQuoteHeader, rawQuoteBody, authData
+        );
         if (!result.success) {
             return (false, bytes(result.reason));
         }
@@ -140,8 +153,9 @@ contract V4QuoteVerifier is TdxQuoteBase {
         bytes memory rawQuoteBody,
         AuthData memory authData
     ) private view returns (bool success, bytes memory serialized) {
-        VerificationResult memory result =
-            _verifyQuoteIntegrity(4, tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData);
+        VerificationResult memory result = _verifyQuoteIntegrity(
+            4, tcbEvalNumber, TDX_TEE, rawQuoteHeader, rawQuoteBody, authData
+        );
         if (!result.success) {
             return (false, bytes(result.reason));
         }
@@ -150,26 +164,37 @@ contract V4QuoteVerifier is TdxQuoteBase {
         (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
             pccsRouter.getFmspcTcbV3(TcbId.TDX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber);
 
-        // Parse the TDX quote body
+        // Keep the complete raw body for output, but copy only fields consumed by
+        // the module/TCB checks. The former full parser also checked only the length.
         TD10ReportBody memory reportBody;
-        (success, reportBody) = TD10ReportParser.parse(rawQuoteBody);
-        if (!success) {
+        if (rawQuoteBody.length != TD_REPORT10_LENGTH) {
             return (false, bytes(TD10F));
         }
+        reportBody.teeTcbSvn = bytes16(rawQuoteBody.substring(0, 16));
+        reportBody.mrsignerSeam = rawQuoteBody.substring(64, 48);
+        reportBody.seamAttributes = bytes8(rawQuoteBody.substring(112, 8));
 
         TCBStatus tcbStatus;
         uint256 tcbLevelSelected;
-        (success,, tcbStatus, tcbLevelSelected) = getTDXTcbStatus(tcbLevels, pckTcb, reportBody.teeTcbSvn);
-        if (!success || tcbStatus == TCBStatus.TCB_REVOKED) {
+        (success,, tcbStatus, tcbLevelSelected) =
+            getTDXTcbStatus(tcbLevels, pckTcb, reportBody.teeTcbSvn, authData.certification.identityParsed);
+        if (
+            !success || tcbStatus == TCBStatus.TCB_REVOKED
+                || (authData.certification.identityParsed && tcbStatus == TCBStatus.TCB_UNRECOGNIZED)
+        ) {
             return (false, bytes(TCBR));
         }
 
         TCBStatus tdxModuleStatus;
         bytes memory expectedMrSignerSeam;
         bytes8 expectedSeamAttributes;
-        (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
-            checkTdxModuleTcbStatus(reportBody.teeTcbSvn, tdxModule, tdxModuleIdentities);
-        if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
+        (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) = checkTdxModuleTcbStatus(
+            reportBody.teeTcbSvn, tdxModule, tdxModuleIdentities, authData.certification.identityParsed
+        );
+        if (
+            !success || tdxModuleStatus == TCBStatus.TCB_REVOKED
+                || (authData.certification.identityParsed && tdxModuleStatus == TCBStatus.TCB_UNRECOGNIZED)
+        ) {
             return (false, bytes(TCBR));
         }
 
@@ -211,11 +236,13 @@ contract V4QuoteVerifier is TdxQuoteBase {
      * [586+Y:590+Y] bytes: certSize (Z)
      * [590+Y:590+Y+Z] bytes: certData
      */
-    function _parseAuthData(bytes calldata rawAuthData)
+    function _parseAuthData(bytes calldata rawAuthData, bool withIdentity)
         private
         view
         returns (bool success, AuthData memory authData)
     {
+        // V2 bounds every nested length before slicing; legacy acceptance remains unchanged.
+        if (withIdentity && rawAuthData.length < 590) return (false, authData);
         authData.ecdsa256BitSignature = rawAuthData[0:64];
         authData.ecdsaAttestationKey = rawAuthData[64:128];
 
@@ -228,6 +255,7 @@ contract V4QuoteVerifier is TdxQuoteBase {
 
         uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
         uint256 offset = 584;
+        if (withIdentity && qeAuthDataSize > rawAuthData.length - offset - 6) return (false, authData);
         authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
         offset += qeAuthDataSize;
 
@@ -239,17 +267,18 @@ contract V4QuoteVerifier is TdxQuoteBase {
         offset += 2;
         uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
         offset += 4;
+        if (withIdentity && certDataSize != rawAuthData.length - offset) return (false, authData);
         bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
         offset += certDataSize;
 
-        if (offset - 134 != qeReportCertSize) {
+        if (offset - 134 != qeReportCertSize || (withIdentity && offset != rawAuthData.length)) {
             return (false, authData);
         }
 
         authData.qeReport = rawAuthData[134:518];
 
         (success, authData.certification) =
-            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData, withIdentity);
         if (!success) {
             return (false, authData);
         }

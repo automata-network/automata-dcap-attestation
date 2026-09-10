@@ -13,6 +13,28 @@ import "./TCBInfoV2Base.sol";
 abstract contract TCBInfoV3Base is TCBInfoV2Base {
     uint256 constant TCB_LEVEL_ERROR = type(uint256).max;
 
+    /// @dev V2 follows dcap-rs production policy: retain the first SGX/PCE partial
+    /// match, but enforce revocation on the complete TDX match, not the partial one.
+    function getTDXTcbStatus(TCBLevelsObj[] memory levels, PCKCertTCB memory pck, bytes16 svn, bool v2)
+        internal
+        pure
+        returns (bool found, TCBStatus sgx, TCBStatus tdx, uint256 selected)
+    {
+        if (!v2) return getTDXTcbStatus(levels, pck, svn);
+        sgx = TCBStatus.TCB_UNRECOGNIZED;
+        tdx = TCBStatus.TCB_UNRECOGNIZED;
+        selected = TCB_LEVEL_ERROR;
+        bool partialFound;
+        for (uint256 i; i < levels.length; ++i) {
+            if (!partialFound) {
+                (partialFound, sgx) = getSGXTcbStatus(pck, levels[i]);
+            }
+            if (partialFound && _isTdxTcbHigherOrEqual(svn, levels[i].tdxComponentCpuSvns)) {
+                return (true, sgx, levels[i].status, i);
+            }
+        }
+    }
+
     /// @dev Modified from https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L129-L181
     function getTDXTcbStatus(TCBLevelsObj[] memory tcbLevels, PCKCertTCB memory pckTcb, bytes16 teeTcbSvn)
         internal
@@ -22,7 +44,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         sgxStatus = TCBStatus.TCB_UNRECOGNIZED;
         tdxStatus = TCBStatus.TCB_UNRECOGNIZED;
         tcbLevelSelected = TCB_LEVEL_ERROR;
-        
+
         bool pceSvnIsHigherOrGreater;
         bool cpuSvnsAreHigherOrGreater;
         bool sgxTcbFound = sgxStatus != TCBStatus.TCB_UNRECOGNIZED;
@@ -54,11 +76,7 @@ abstract contract TCBInfoV3Base is TCBInfoV2Base {
         }
     }
 
-    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns)
-        private
-        pure
-        returns (bool)
-    {
+    function _isTdxTcbHigherOrEqual(bytes16 teeTcbSvn, uint8[] memory tdxComponentCpuSvns) private pure returns (bool) {
         if (tdxComponentCpuSvns.length != CPUSVN_LENGTH) {
             return false;
         }

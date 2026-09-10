@@ -97,6 +97,10 @@ struct AuthData {
 struct PCKCollateral {
     X509CertObj[] pckChain;
     PCKCertTCB pckExtension;
+    bytes16 ppid;
+    bytes16 piid;
+    bool piidPresent;
+    bool identityParsed;
 }
 
 /**
