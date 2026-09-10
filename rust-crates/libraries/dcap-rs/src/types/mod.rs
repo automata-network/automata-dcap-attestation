@@ -9,8 +9,10 @@ use super::types::report::{EnclaveReportBody, Td10ReportBody, Td15ReportBody};
 pub mod collateral;
 #[cfg(feature = "full")]
 pub mod enclave_identity;
+pub mod output_v2;
 pub mod pod;
 pub mod quote;
+pub use output_v2::VerifiedOutputV2;
 pub mod report;
 pub mod sgx_x509;
 #[cfg(feature = "full")]

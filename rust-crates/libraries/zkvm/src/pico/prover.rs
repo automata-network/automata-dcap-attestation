@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use p3_field::PrimeField;
-use pico_sdk::client::{DefaultProverClient, KoalaBearProverClient};
+use pico_sdk::client::KoalaBearProverClient;
 use pico_sdk::HashableKey;
 
 use super::config::PicoConfig;
@@ -13,7 +13,18 @@ use crate::{
 /// Pico zkVM prover implementation
 pub struct PicoProver {
     /// The ELF binary for the guest program
-    elf: &'static [u8],
+    elf: std::borrow::Cow<'static, [u8]>,
+}
+
+impl PicoProver {
+    /// Load an explicitly selected V2 release ELF. Its native program_identifier must match
+    /// the audited release manifest and the on-chain V2 allowlist before submission.
+    pub fn from_v2_elf(elf: Vec<u8>) -> Result<Self> {
+        anyhow::ensure!(elf.starts_with(b"\x7fELF"), "invalid V2 ELF");
+        Ok(Self {
+            elf: std::borrow::Cow::Owned(elf),
+        })
+    }
 }
 
 #[async_trait]
@@ -21,13 +32,19 @@ impl ZkVmProver for PicoProver {
     type Config = PicoConfig;
 
     fn new(version: Version) -> Result<Self> {
+        if version == Version::V2_0 {
+            return Self::from_v2_elf(crate::load_v2_elf()?);
+        }
         let elf = get_elf(version, ZkVm::Pico)?;
-        Ok(Self { elf })
+        Ok(Self {
+            elf: std::borrow::Cow::Borrowed(elf),
+        })
     }
 
     async fn prove(&self, config: &Self::Config, input_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+        config.validate()?;
         // Initialize the prover client
-        let client = DefaultProverClient::new(self.elf);
+        let client = KoalaBearProverClient::new(self.elf.as_ref());
 
         // Initialize new stdin builder
         let mut stdin_builder = client.new_stdin_builder();
@@ -123,16 +140,14 @@ impl ZkVmProver for PicoProver {
         println!("Computing program identifier for Pico DCAP program...");
 
         // Create KoalaBear client to compute VK
-        let client = KoalaBearProverClient::new(self.elf);
+        let client = KoalaBearProverClient::new(self.elf.as_ref());
         let vk = client.riscv_vk();
         let vk_digest_bn254 = vk.hash_bn254();
 
         // Convert to bytes
         let vk_bytes = vk_digest_bn254.as_canonical_biguint().to_bytes_be();
 
-        // Pad to 32 bytes
-        let mut result = [0u8; 32];
-        result[1..].copy_from_slice(&vk_bytes);
+        let result = pad_program_identifier(&vk_bytes)?;
 
         // Return as hex string
         Ok(format!("0x{}", hex::encode(result)))
@@ -142,6 +157,43 @@ impl ZkVmProver for PicoProver {
     /// As specified in <https://github.com/brevis-network/pico/blob/main/Cargo.toml>
     fn circuit_version() -> String {
         "v1.1.6".to_string()
+    }
+}
+
+/// BigUint encoding omits leading zero bytes; the on-chain identifier does not.
+fn pad_program_identifier(bytes: &[u8]) -> Result<[u8; 32]> {
+    anyhow::ensure!(
+        bytes.len() <= 32,
+        "Pico program identifier exceeds 32 bytes"
+    );
+    let mut result = [0u8; 32];
+    result[32 - bytes.len()..].copy_from_slice(bytes);
+    Ok(result)
+}
+
+#[cfg(test)]
+mod identifier_tests {
+    use super::*;
+
+    #[test]
+    fn pads_every_digest_width_without_truncation() {
+        for length in 0..=32 {
+            let bytes = vec![0x17; length];
+            let padded = pad_program_identifier(&bytes).unwrap();
+            assert_eq!(&padded[..32 - length], vec![0; 32 - length]);
+            assert_eq!(&padded[32 - length..], bytes);
+        }
+        assert!(pad_program_identifier(&[1; 33]).is_err());
+    }
+
+    #[tokio::test]
+    async fn unsupported_field_fails_before_reading_elf_or_proving() {
+        let prover = PicoProver::from_v2_elf(b"\x7fELF".to_vec()).unwrap();
+        let error = prover
+            .prove(&PicoConfig::default().with_field_type("bb".into()), &[])
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("KoalaBear"));
     }
 }
 

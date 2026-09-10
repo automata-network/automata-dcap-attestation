@@ -6,7 +6,7 @@
 current = "v1.1"
 
 # All supported versions (including current)
-supported = ["v1.0", "v1.1"]
+supported = ["v1.0", "v1.1", "v2.0"]
 
 # Version 1.0 Configuration
 [versions.v1_0]
@@ -17,3 +17,7 @@ description = "Legacy deployment version with non-versioned DAOs"
 [versions.v1_1]
 name = "v1.1"
 description = "Current deployment version with versioned DAOs and TcbEvalDao support"
+
+[versions.v2_0]
+name = "v2.0"
+description = "Identity-bearing FeeV2 with output schema 2.1; no published deployments yet"

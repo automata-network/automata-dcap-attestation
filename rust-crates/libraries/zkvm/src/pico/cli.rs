@@ -30,9 +30,8 @@ pub struct PicoProveArgs {
     #[arg(long = "artifacts-path", default_value = "./artifacts/")]
     pub artifacts_path: Option<PathBuf>,
 
-    /// Optional: Field type for proving backend (e.g., "kb" for KoalaBear, "bb" for BabyBear)
-    /// Default: "kb"
-    #[arg(long = "field-type", default_value = "kb")]
+    /// Field used by the DCAP program and its on-chain identifier (KoalaBear only).
+    #[arg(long = "field-type", default_value = "kb", value_parser = ["kb"])]
     pub field_type: String,
 
     /// Optional path to write proof artifact as JSON
@@ -73,25 +72,27 @@ async fn prove<P: Provider>(
     version: automata_dcap_utils::Version,
     tcb_eval_num: Option<u32>,
 ) -> Result<()> {
-    // Prepare version-aware guest input using common workflow
-    let input_bytes =
-        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
-
-    // Create version-aware prover
-    let prover = PicoProver::new(version)?;
-
     // Build Pico configuration
     let config = if let Some(ref path) = args.artifacts_path {
         PicoConfig::new(path.clone()).with_field_type(args.field_type.clone())
     } else {
         PicoConfig::default().with_field_type(args.field_type.clone())
     };
+    config.validate()?;
+
+    let input_bytes =
+        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
+    let prover = PicoProver::new(version)?;
 
     // Generate proof using Pico prover
     let (journal, proof) = prover.prove(&config, &input_bytes).await?;
 
     // Display results
-    display_proof_result(&journal, &proof, "Groth16 Proof", version)?;
+    if version == automata_dcap_utils::Version::V2_0 {
+        crate::common::display::display_proof_result_v2(&journal, &proof, "Groth16 Proof")?;
+    } else {
+        display_proof_result(&journal, &proof, "Groth16 Proof", version)?;
+    }
 
     // Write proof artifact if output path is provided
     if let Some(ref output_path) = args.output_path {

@@ -108,6 +108,10 @@ pub struct SgxPckExtension {
 }
 
 impl SgxPckExtension {
+    pub fn platform_instance_id(&self) -> Option<[u8; PLATFORM_INSTANCE_ID_LEN]> {
+        self._platform_instance_id
+    }
+
     pub fn is_pck_ext(oid: String) -> bool {
         oid == SGX_EXTENSIONS_OID
     }

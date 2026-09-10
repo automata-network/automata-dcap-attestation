@@ -2,12 +2,13 @@ mod boundless;
 
 pub use boundless::prove_with_boundless;
 
-use anyhow::{Context, Result, Error};
-use risc0_zkvm::{default_prover, ExecutorEnv, InnerReceipt, ProverOpts};
+use anyhow::{Context, Error, Result};
 use risc0_ethereum_contracts::groth16;
+use risc0_zkvm::{default_prover, ExecutorEnv, InnerReceipt, ProverOpts};
 
 /// Prove using Bonsai remote prover
-pub async fn prove_with_bonsai(elf: &'static [u8], input_bytes: &[u8]) -> Result<Vec<u8>> {
+pub async fn prove_with_bonsai(elf: &[u8], input_bytes: &[u8]) -> Result<Vec<u8>> {
+    let elf = elf.to_vec();
     let input_bytes = input_bytes.to_vec();
 
     // Run the blocking Bonsai operation in a separate thread
@@ -30,7 +31,7 @@ pub async fn prove_with_bonsai(elf: &'static [u8], input_bytes: &[u8]) -> Result
         };
 
         let receipt = prover
-            .prove_with_opts(env, elf, &prover_opts)
+            .prove_with_opts(env, &elf, &prover_opts)
             .context("Bonsai proving failed")?
             .receipt;
 
@@ -46,4 +47,3 @@ pub async fn prove_with_bonsai(elf: &'static [u8], input_bytes: &[u8]) -> Result
     .await
     .context("Bonsai proving task panicked")?
 }
-

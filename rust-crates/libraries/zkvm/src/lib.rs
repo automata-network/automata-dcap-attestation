@@ -31,6 +31,21 @@
 
 // Shared modules (always available)
 pub mod common;
+pub use dcap_rs::types::VerifiedOutputV2;
+pub use dcap_rs::v2::encode_guest_input_v2;
+
+/// V2 journals are the canonical output itself, not length-prefixed legacy output.
+pub fn parse_output_v2(journal: &[u8]) -> anyhow::Result<VerifiedOutputV2> {
+    VerifiedOutputV2::from_bytes(journal)
+}
+
+/// Explicit V2 artifact selection for CLI/program-ID commands; never falls back to a legacy ELF.
+pub(crate) fn load_v2_elf() -> anyhow::Result<Vec<u8>> {
+    let path = std::env::var("DCAP_V2_ELF").map_err(|_| {
+        anyhow::anyhow!("set DCAP_V2_ELF to the audited backend-specific V2 artifact")
+    })?;
+    Ok(std::fs::read(path)?)
+}
 
 // zkVM-specific modules (feature-gated)
 // Each zkVM module contains versioned guest programs under guest/v1_x/
@@ -84,6 +99,7 @@ pub use pico::{
 /// - Pico is requested for v1.0 (not supported)
 pub fn get_elf(version: Version, zkvm: ZkVm) -> anyhow::Result<&'static [u8]> {
     match (version, zkvm) {
+        (Version::V2_0, _) => anyhow::bail!("V2 ELF is not embedded; build methods and use from_v2_elf with an audited release artifact"),
         // v1.0 ELFs
         #[cfg(feature = "risc0")]
         (Version::V1_0, ZkVm::Risc0) => Ok(risc0::guest::v1_0::elf::DCAP_ELF),

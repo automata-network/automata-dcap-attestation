@@ -1,0 +1,7 @@
+[package]
+name = "dcap-sp1-methods-v2"
+version = "0.1.0"
+edition = "2021"
+[workspace]
+[build-dependencies]
+sp1-build = "=5.2.2"
