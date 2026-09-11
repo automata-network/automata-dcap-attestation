@@ -1,5 +1,19 @@
 # DCAP V2 rollout (not executed)
 
+## Release scope (confirmed 2026-09-11)
+
+- Preserve the existing network/backend support matrix. RISC Zero/SP1 are the
+  production candidates only on networks that already support the respective
+  backend; this release does not add backend support to other networks.
+- Pico remains **local-only**. Do not deploy a Pico universal verifier, register
+  a new Pico V2 program/default/route, or publish/enable Pico network endpoints.
+  Keep its source and local SDK/build/execution tests; local proof verification
+  is tracked separately and is not a production release blocker.
+- Recovering parameters for an assumed deployed Pico verifier is not a release
+  prerequisite. A local proof test needs a matching local circuit/key/verifier
+  set, not compatibility with an unverified production deployment. No new setup
+  or deployment is performed merely by recording this scope.
+
 ## Implementation details
 
 - Five new deployments: PCKHelperV2, V3/V4/V5QuoteVerifierV2, FeeV2. PCCS DAOs/storage, CRL/FMSPC helpers, P-256 and universal proof verifiers are reused.
@@ -11,11 +25,11 @@
 
 ## Gates and ordering
 
-1. Review and commit the PCCS change in its own repository, then pin the DCAP submodule to that commit. The current workspace contains uncommitted submodule edits; no new commit/pin is claimed.
-2. Finalize all three guest toolchains and lockfiles. Rebuild twice from pinned source; compare ELF hashes/native IDs. Prove real quotes and verify against the existing universal verifier contracts. Execution-only runs and mocked proof verifiers do not satisfy this gate.
+1. PCCS parser changes are committed and the DCAP submodule is pinned to `f1406ef479560ad888960899b95383f026c76526`. Preserve that pin in the release manifest; the sibling checkout was not edited.
+2. Finalize guest toolchains, lockfiles and digest/platform-pinned Docker images. Paired clean builds for all three backends already pass at source `81646e5`; freeze the final release inputs and repeat if guest source, dependencies or the build recipe change. Compare complete artifacts/native IDs without requiring host-native equality, using the official RISC Zero/SP1 images. For production-enabled RISC Zero/SP1 routes, prove real quotes and verify against the intended existing universal verifiers and FeeV2. Execution-only runs and mocks do not satisfy that proof gate. Pico proof testing remains local-only and outside this production gate.
 3. Fill the release manifest from live state. Inventory every required legacy ID, including ATKJ compact programs, plus default IDs, proof-selector routes/freezes, fee basis points and all six Router components. Mapping routes require historical event/config inspection; do not assume the default verifier covers every route.
 4. Simulate DeployDcapV2 stages on a fork of the target chain. Deploy five new contracts. Configure only FeeV2 and authorize the four new readers; copy legacy fee configuration, IDs and routes. Keep V2 ZK paused while staging.
-5. Register separately audited V2 native IDs against reused universal verifiers. Re-read new configuration and compare the exact old/default ID sets and route states to the manifest.
+5. Register separately audited RISC Zero/SP1 V2 native IDs only for backends already supported on the target network, against reused universal verifiers. Do not add Pico IDs/defaults/routes. Re-read configuration and compare the exact old/default ID sets and route states to the manifest; investigate unexpected live backend configuration before changing scope.
 6. Switch only the Router's pckHelper, using the live values of the other five fields. Coordinate with the Router owner to avoid concurrent configuration updates between simulation and execution. Read back all six components.
 7. Run legacy and V2 on-chain/ZK regressions and transaction-event checks. Enable V2 ZK only after the release gates pass. Update application addresses explicitly; no application is migrated by these scripts.
 8. Publish real addresses under deployment/v2.0 and additive *V2 keys. The pre-upgrade deployment/v1.1 snapshot is checked in; current still denotes v1.1. Promote current and SDK defaults only in the release PR after approval. Do not replace the old keys or old embedded ELFs.
@@ -29,3 +43,8 @@
 - Retain new deployments/artifacts and transaction history for investigation; do not remove shared collateral or registry history.
 
 Transaction counts depend on the number of migrated legacy IDs/routes and caller restrictions. The earlier 15–19 estimate is not a deployment budget.
+
+The mandatory [fork acceptance TODO](dcap-v2-fork-validation.md) expands the
+deployment, raw/ZK verification, Rust/Go SDK and gas-breakdown acceptance matrix.
+That phase is recorded but deliberately not started until the current
+prerequisites are resolved and the user gives the go-ahead.

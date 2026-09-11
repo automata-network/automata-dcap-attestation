@@ -34,7 +34,15 @@ The guest lockfile was resolved for Rust 1.88, then `ruint` was pinned to 1.17.0
 to match the host and SP1. All four existing RISC Zero crypto-patch tags remain
 unchanged. Normal builds must preserve the lockfile, not regenerate it.
 
-## Build
+## Canonical release build
+
+Use the official `risczero/risc0-guest-builder:r0.1.88.0` image, pinned by digest
+and `linux/amd64`, and compare two clean Docker builds. Equality with a native
+host build is not required. See the [paired Docker build procedure](../../../../../docs/dcap-v2-container-rebuild.md).
+The local command below is for development/execution checks, not the canonical
+release artifact source.
+
+## Local build
 
 From the repository root:
 
@@ -60,6 +68,9 @@ not establish independent-machine/container reproducibility.
 
 Use a complete V2 ABI input from `dcap_rs::v2::encode_guest_input_v2`, including
 the signed quote, collateral and fixed verification timestamp:
+
+The checked-in [V3/V4/V5 fixtures](../../../../../evm/forge-test/assets/v2/fixtures/README.md)
+include an offline export command; no prior local diagnostic files are needed.
 
 ```sh
 CARGO_BUILD_JOBS=2 cargo run --locked \

@@ -29,7 +29,15 @@ The guest lockfile pins `ruint` to 1.17.0, matching the host workspace; 1.20.0
 requires Rust 1.90 and cannot be built by succinct-1.88.0. Preserve this pin when
 updating the guest lockfile. The actual guest Cargo build uses `--locked`.
 
-## Build
+## Canonical release build
+
+Use the official `ghcr.io/succinctlabs/sp1:v5.2.2` image, pinned by digest and
+`linux/amd64`, and compare two clean Docker builds. Equality with a native host
+build is not required. See the [paired Docker build procedure](../../../../../docs/dcap-v2-container-rebuild.md).
+The local command below is for development/execution checks, not the canonical
+release artifact source.
+
+## Local build
 
 From the repository root:
 
@@ -54,6 +62,9 @@ bypass this dependency.
 
 Use an ABI input produced by `dcap_rs::v2::encode_guest_input_v2`, with the signed
 quote, full collateral and a fixed verification timestamp:
+
+The checked-in [V3/V4/V5 fixtures](../../../../../evm/forge-test/assets/v2/fixtures/README.md)
+include an offline export command; no prior local diagnostic files are needed.
 
 ```sh
 CARGO_BUILD_JOBS=2 cargo run --locked \

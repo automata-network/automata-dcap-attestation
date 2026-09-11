@@ -2,6 +2,7 @@
   "release": "v2.0",
   "outputSchema": { "major": 2, "minor": 1, "magicNumber": 6 },
   "status": "UNRELEASED",
+  "scope": { "productionCandidateBackends": ["risc0", "sp1"], "localOnlyBackends": ["pico"], "expandNetworkBackendSupport": false },
   "chainId": null,
   "source": { "dcapCommit": null, "pccsCommit": null, "guestSourceBaseline": "942d42c8a8543a28ed737db515fb8e8c246aca61" },
   "owner": null,
@@ -10,10 +11,10 @@
   "legacyFee": null,
   "feeBasisPoints": null,
   "backends": {
-    "risc0": { "universalVerifier": null, "toolchain": null, "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null },
-    "sp1": { "universalVerifier": null, "toolchain": null, "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null },
-    "pico": { "universalVerifier": null, "toolchain": "v1.1.6", "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null }
+    "risc0": { "v2EnabledOnTargetChain": null, "universalVerifier": null, "toolchain": null, "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null },
+    "sp1": { "v2EnabledOnTargetChain": null, "universalVerifier": null, "toolchain": null, "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null },
+    "pico": { "v2EnabledOnTargetChain": false, "universalVerifier": null, "toolchain": "v1.1.6", "lockfileSha256": null, "elfSha256": null, "v2DefaultProgramId": null, "v2ProgramIds": [], "legacyDefaultProgramId": null, "legacyProgramIds": [], "legacyProofRoutes": [], "realProofVerificationTx": null }
   },
-  "gates": { "legacyRoutesInventoryReviewed": false, "reproducibleGuestBuilds": false, "realProofsAllBackends": false, "legacyRegression": false, "v2Parity": false, "deployedCodeVerified": false, "routerReadback": false, "rollbackRehearsed": false },
+  "gates": { "legacyRoutesInventoryReviewed": false, "networkBackendScopeReviewed": false, "reproducibleGuestBuilds": false, "realProofsProductionEnabledBackends": false, "legacyRegression": false, "v2Parity": false, "deployedCodeVerified": false, "routerReadback": false, "rollbackRehearsed": false },
   "transactions": []
 }

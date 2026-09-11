@@ -12,11 +12,148 @@ No live deployments, router mutations, SDK publication, or replacement of legacy
 - [x] Rust/Go SDK bindings, direct calls, parsers and registry support.
 - [x] Safe deployment/rollback tooling and release manifest template; local staged migration/rollback tests.
 - [x] Unit/integration tests, deployed-size checks and legacy regressions (see limits below).
-- [ ] Reproducible guest builds and real proofs against reused universal verifiers.
+- [x] Same-image paired Docker builds for all three guests at frozen source `81646e5`; artifact bytes and native IDs match (see evidence below).
+- [ ] Real RISC Zero/SP1 proofs against the intended supported-network universal verifiers and FeeV2; final release artifact/metadata freeze.
 - [x] Commit PCCS changes and pin the new PCCS submodule commit (`f1406ef`).
 - [ ] Target-chain fork rehearsal, release addresses/program IDs, publication and deployment.
 
 Guest binaries and published addresses must not be fabricated when build/deployment prerequisites are unavailable.
+
+## Evidence retention and Pico release scope (2026-09-11)
+
+- Archived the new execution evidence unchanged under
+  [docs/evidence/dcap-v2/2026-09-11](evidence/dcap-v2/2026-09-11/README.md), with a
+  SHA-256 manifest and provenance/scope notes. The original returned build
+  archives and session logs in the repository root were not moved or modified.
+- User confirmed Pico is **local-only**, with no network deployment or new
+  program/default/route registrations. Preserve the current network/backend
+  matrix; production acceptance covers RISC Zero/SP1 only where already
+  supported. Pico local source/SDK/build/execution support remains intact.
+- Pico local real-proof verification remains a separate, non-production TODO;
+  it has not passed and no new setup was generated. Recovering parameters for
+  an assumed deployed Pico verifier is no longer a release prerequisite. A
+  local proof test must use a matching local circuit/key/verifier set.
+- Updated the rollout, fork acceptance checklist and example release manifest
+  to reflect that scope. No fork test, live configuration change or deployment
+  was performed, and no commit was created automatically.
+
+## Returned Mac evidence and guest regression (2026-09-11)
+
+- Independently checked the returned RISC Zero/SP1 evidence archives and session
+  logs: pinned image/platform, source archive, harness hashes, locked guest
+  dependencies, actual A/B program bytes and native IDs all agree. Logs show
+  fresh guest compilation in both runs. Source is frozen at
+  `81646e5754a8124d4a70a483882f11b515c98c7b`, not the uncommitted working tree.
+- RISC Zero/SP1 both pass same-image Docker reproducibility on the user's Mac.
+  Together with the earlier Pico paired builds, this closes the build check
+  for all three backends **at that source/build configuration**. Matching an
+  earlier host-native artifact remains unnecessary.
+- Executed each returned A program against authentic V3/V4/V5 and each B program
+  against V5 using the local pinned SDKs: **8 successful executions and 16
+  rejection checks passed**. All journals match native verification and frozen
+  expectations byte-for-byte (833 / 1,225 / 937 bytes), decode as OutputV2 2.1,
+  and preserve PPID/PIID/presence semantics. Independently computed Linux SDK
+  native IDs agree with the Mac CLI results.
+- Recorded complete artifact/native-ID values, archive hashes, execution
+  matrix and repeatable input references in the
+  [Docker evidence record](dcap-v2-container-rebuild.md#returned-mac-build-evidence-2026-09-11).
+  Original user archives, legacy binaries, host candidates and registrations
+  are unchanged. This follow-up changes documentation only in the repository.
+- Real RISC Zero/SP1 proofs and intended universal-verifier/FeeV2 integration remain open;
+  execution is not proof verification. The final manifest must bind the tested
+  source, image/platform, locks, harness and native IDs. Rebuild/revalidate if
+  guest source, dependencies or the build recipe change. The user-deferred
+  [full fork acceptance](dcap-v2-fork-validation.md) has not started.
+
+## Apple Silicon official-image handoff (2026-09-11)
+
+- User-reported Mac preflight passed for both digest-pinned AMD64 official
+  images on macOS 26.6.2 / Docker Desktop 4.90.0 / engine 29.7.2, with Apple
+  Virtualization framework and Rosetta enabled. RISC Zero reports Rust/Cargo
+  1.88-dev; SP1 reports Rust 1.88-dev and Cargo 1.90.0. Keep the image tools as-is.
+- The Mac has 24 GiB RAM. Docker reported about 7.75 GiB at preflight and in the
+  successful returned builds; 12 GiB was a recommendation, not a tested minimum.
+- Added a frozen-source handoff, macOS hash/path compatibility, host metadata
+  Cargo 1.88 pin, normalized native-ID comparisons, and success/failure evidence
+  archives. No guest source, production artifact or deployment setting changed.
+- Five existing command guards and seven new **mock orchestration/portability**
+  cases pass. These test script behavior only, not compilers or cryptography.
+- Official-image paired builds and returned-program execution have since
+  passed as recorded above; real-proof verification remains pending.
+
+## Release build criterion correction (2026-09-11)
+
+- Per the team's existing process, reproducibility means **two independent
+  clean builds in the same digest/platform-pinned Docker image**, not equality
+  between a generic container and an arbitrary host build. The earlier mismatch
+  is retained as a diagnostic, not a failed Docker-only release gate. No guest
+  path-normalization change is required solely to match the old host hashes.
+- Resolved the official RISC Zero `r0.1.88.0` and SP1 `v5.2.2` image digests.
+  Both images target AMD64. The SP1 image was pulled, but its no-op preflight
+  fails with `exec format error` on this ARM64 worker. An AMD64 Docker worker
+  or separately configured emulation is needed; no privileged setup was run.
+- Added paired-build tooling using the official SDK Docker paths, plus a Pico
+  image with the fixed nightly installed before either run. No host guest
+  compiler/target cache is mounted. Official-image execution remains blocked
+  at preflight here.
+- Pico: **two clean containers produced byte-identical ELFs**, using the same
+  frozen ARM64 image and source `81646e5`. Compiler and lockfile records match.
+  The canonical Docker ELF SHA-256 is
+  `8d0dc7c137e1a2b3f336acc05ac82125833f385201cd11a5bfbf1e02128b31b4`.
+  Both runs' independently computed SDK native ID is
+  `0x000e95d6b7f85b7a9302081b512ab1dff0fad9759b89411d083760c7d554efd6`;
+  both Google V5 executions match the 937-byte native journal (179,886,646 cycles
+  each). Both build containers are stopped and retained. Pico's current runner
+  covers successful execution only, not the RISC Zero/SP1 negative-test matrix.
+- Five command-shape/argument-guard smoke checks and shell syntax checks pass.
+  These do not establish RISC Zero/SP1 build or real-proof success.
+- See [canonical Docker build procedure](dcap-v2-container-rebuild.md). Guest
+  regressions, real proofs, frozen release metadata and the deferred fork
+  acceptance remain required. No registrations or deployments occurred.
+
+## Frozen fixtures, V5 Solidity parity and container follow-up (2026-09-11)
+
+- Persisted the exact V3/V4/V5 ABI inputs from the earlier backend execution
+  checks as public JSON fixtures, with individual quote/collateral components,
+  fixed timestamps, provenance, SHA-256 values and immutable expected journals.
+  Added an offline input exporter and explicit, non-overwriting capture command.
+  Tests reconstruct the ABI from components; they never regenerate expectations.
+- Added authentic Google V5 success through real PCCS DAOs, signature/chain
+  verification and FeeV2. The full journal matches the native/three-guest 937-byte
+  output. This uses explicit evaluation number 20; automatic evaluation-number
+  selection is a separate fork acceptance item. Changed-body and pre-validity
+  rejection cases pass. No cryptographic mocks or online collateral fetches.
+- Solidity: **73 tests passed** across 18 suites, excluding the explicitly
+  deferred `CrlV2AeneidForkTest`. Rust: **33 tests passed** (28 unit, 3 existing
+  OutputV2 tests, 2 new fixture tests covering all three versions). The initial
+  Rust incremental build hit a missing-object filesystem error; retrying with
+  `CARGO_INCREMENTAL=0` passed. Existing unrelated warnings remain.
+- All three offline exported ABI hashes equal those recorded in the earlier
+  SP1/RISC Zero/Pico sections. The exporter also rejects existing destinations.
+- Completed a pinned Rust ARM64 container rebuild of committed source `81646e5`,
+  without host build caches. All three compile with unchanged guest lockfiles,
+  but all three artifact hashes and native IDs differ from the host baseline.
+  All three container-built programs pass Google V5 journal parity; RISC Zero/SP1
+  also pass both rejection cases. RISC Zero/Pico contain differing absolute
+  Cargo paths; the SP1 host/container difference was not diagnosed. Portable
+  reproducibility was not established by this cross-environment comparison;
+  it is **not a failure of the agreed Docker-only criterion**. See the [container runbook](dcap-v2-container-rebuild.md)
+  for exact inputs, limitations and the follow-up gate. Original host candidates
+  are unchanged; no new native IDs were registered.
+- Checked the Pico public download candidate's 520-byte `vm_vk`: none of its 20
+  relevant coordinate constants match the repository's existing Groth16 verifier.
+  It is not a compatible substitute for that verifier. Recovering the original
+  bundle is necessary only if that verifier is the chosen local test target;
+  it is not an online release gate under the confirmed Pico local-only scope.
+  `constraints.json` can be regenerated by the pinned SDK, but must describe
+  the matching circuit. No new setup was performed.
+- Recorded the mandatory [fork acceptance TODO](dcap-v2-fork-validation.md):
+  deployment, live configuration inventory, migration/rollback, raw and real-ZK
+  verification, Rust/Go SDK coverage and detailed gas/off-chain cost reporting.
+  This phase has **not started**, per the user's sequencing request.
+
+See [fixture provenance and repeatable commands](../evm/forge-test/assets/v2/fixtures/README.md)
+and [Pico local validation](../rust-crates/libraries/zkvm/methods/pico/README.md#local-validation-status-not-a-production-release-gate).
 
 ## RISC Zero toolchain follow-up (2026-09-11)
 
@@ -139,7 +276,7 @@ V3/V4 ABI inputs were reconstructed from the same signed quote/collateral fixtur
 used by `dcap-rs/tests/output_v2.rs`; their native journals match the checked-in
 `verified-v3.hex` and `verified-v4.hex` vectors. The Google V5 input is the same
 one used for the Pico execution below. The encoded inputs are local diagnostic
-files, not newly checked-in fixtures. ABI input SHA-256 values:
+files at that checkpoint; they are now checked in as described above. ABI input SHA-256 values:
 
 ```text
 V3: a541671d3a37b9d6f1877edfc2c600217cf58fee8488d0a2af1ef3d8fd1aad5e
@@ -167,12 +304,14 @@ See [SP1 build and execution instructions](../rust-crates/libraries/zkvm/methods
   with matching Intel collateral and verification timestamp `1789052566`:
   **179,886,646 cycles; 937 journal bytes; exact native/Pico V2 parity passed**.
   The sample meets production policy, has zero MR_SERVICE_TD, and verifies with
-  UpToDate status and PIID present. Inputs are currently local diagnostic data,
-  not checked-in regression fixtures; Solidity parity for this new sample remains
-  outstanding. This run used the real guest, not DEV_MODE or a mock verifier.
+  UpToDate status and PIID present. Inputs were local diagnostic data at that
+  checkpoint; they are now checked-in fixtures and Solidity parity has passed
+  as recorded above. This run used the real guest, not DEV_MODE or a mock verifier.
 - No real V2 proof or on-chain registration was produced. The default Pico
-  artifacts directory is absent; existing-verifier-compatible `vm_pk`, `vm_vk`
-  and `constraints.json` are needed. Do not substitute a new trusted setup.
+  artifacts directory is absent. A local real-proof test still needs a matching
+  circuit/key/verifier set; it is separate from the production release. A fresh
+  local test setup cannot be treated as compatible with the old verifier. See
+  the confirmed local-only scope and conditional parameter guidance above.
 
 Local **candidate**, not an approved release/allowlist entry:
 
@@ -228,8 +367,9 @@ go test ./go-sdk/packages/godcap/feev2 ./go-sdk/packages/godcap/parser ./go-sdk/
 ## Outstanding build/release gates
 
 - All three toolchains, guest/build-driver lockfiles and local V2 program binaries/native IDs are now available. SP1 and RISC Zero use separate Cargo 1.88 for guest builds. Pico does not need cargo-pico; see local build evidence above.
-- Independently reproducible builds and real ZK proofs for all three backends remain outstanding. Tests using mock universal verifiers and execution-only checks do not establish proof correctness or universal-verifier compatibility.
-- The public Google V5 sample now passes native/three-guest journal parity; Solidity parity for that same successful V5 sample remains outstanding.
+- Paired fixed-image builds for all three backends pass at source `81646e5`. Final release metadata still needs freezing; repeat checks if guest source, dependencies or recipe change. Real RISC Zero/SP1 proofs against supported-network universal verifiers and FeeV2 remain outstanding. Mock/execution-only tests do not establish proof correctness or verifier compatibility.
+- Pico remains local-only. Local real-proof testing is still open but does not require a supported-network deployment and does not block production release; do not add Pico network routes/defaults/IDs.
+- The public Google V5 sample now passes native/three-guest and Solidity FeeV2 journal parity. Complete signed inputs, collateral, fixed timestamps and expected outputs are checked in and rebuild offline.
 - `CrlV2AeneidForkTest` requires an external RPC and was excluded. The local rollout tests are not target-chain fork simulations or broadcasts.
 - PCCS changes are committed in `evm/lib/automata-on-chain-pccs`, pinned at `f1406ef`; the sibling repository was not edited.
-- Toolchain installation/pinning, two clean guest builds per backend, successful authenticated V5 parity, real proof verification, live configuration inventory and fork rehearsal must pass before release. See [rollout](dcap-v2-rollout.md) and [manifest template](dcap-v2-release-manifest.example.json).
+- Final source/artifact freeze, real proof verification for production-enabled RISC Zero/SP1 backends, live configuration inventory and fork rehearsal must pass before release. Preserve the existing network support matrix. See [rollout](dcap-v2-rollout.md) and [manifest template](dcap-v2-release-manifest.example.json).

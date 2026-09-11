@@ -1,5 +1,12 @@
 # [Planning] DCAP V2 with PPID/PIID Support
 
+Release scope confirmed on 2026-09-11: retain the existing network/backend
+support matrix. RISC Zero/SP1 production verification is enabled only where
+already supported. Pico remains local-only: no network deployment, new Pico
+V2 registration/default/route or online SDK enablement. Its local real-proof
+tests are separate from production acceptance; execution parity does not count
+as proof verification.
+
 ## 1. Versioning and compatibility
 
 This change introduces three independent version concepts:
@@ -201,9 +208,12 @@ The following should remain unchanged:
 - CRL helpers
 - FMSPC/TCB helpers
 - P-256 verifier
-- RISC Zero, SP1, and Pico universal verifier contracts
+- RISC Zero/SP1 universal verifier contracts on their existing supported networks
+- Pico verifier source/local test support (no network deployment in scope)
 
-The three universal ZK verifier contracts can be reused, but each backend requires a new guest/program identifier.
+Reuse the applicable existing RISC Zero/SP1 universal verifiers and register
+their new audited guest/program identifiers only on supported networks. Pico's
+new guest/native ID is for local validation, not a network registration.
 
 If `DcapPortal` must directly expose the V2 methods, its implementation, ABI and proxy deployment form a separate downstream upgrade. Direct calls to `AutomataDcapAttestationFeeV2` do not require this.
 
@@ -215,7 +225,7 @@ Estimated production scope, excluding tests and deployment JSON:
 - DCAP EVM layer: approximately 10–14 Solidity/script/interface files.
 - Rust verification and ZK layers: verifier/SDK changes, three guest source/build projects, and the required shared input types, host/guest feature separation, and workspace configuration.
 - Go SDK: V2 direct-call support, output/journal parsing, bindings, and network/version registries.
-- Three new checked-in guest ELF artifacts under an isolated `v2.0` release directory; existing V1 ELF files must not be overwritten.
+- Isolated `v2.0` guest artifacts: RISC Zero/SP1 production candidates and a Pico local-validation artifact; existing V1 ELF files must not be overwritten.
 
 Re-estimate the previous 35–50-file production scope after accounting for guest source/build projects and their supporting changes, plus tests and deployment metadata. TeeVerifier application, DcapPortal, and Solana upgrades are outside this release.
 
@@ -251,7 +261,7 @@ This means:
 - 56 active deployment files in total.
 - Another 56 files should be added as a frozen `v1.1` snapshot before `current` is promoted to the new release.
 - Rust and Go network/version registries must gain the new release and V2 address fields.
-- A release-level manifest must record all three new guest binary hashes and program identifiers, source commits, build toolchain versions, per-backend V1/V2 default identifiers, and required legacy identifiers, including ATKJ where configured.
+- Record all three guest binary hashes/native IDs, source commits and build toolchains in build evidence, marking Pico local-only. The per-chain release manifest records V1/V2 defaults and required legacy IDs (including ATKJ) for supported production backends; do not populate new Pico defaults, routes or registrations.
 
 Old address keys must not be replaced during the compatibility period.
 
@@ -264,9 +274,9 @@ With the current unbatched deployment tooling, each chain requires:
 - 3 router authorization calls for the new quote verifiers
 - 3 `setQuoteVerifier` calls on the new entrypoint
 - 0–1 fee configuration call
-- ZK configuration calls for separate V1/V2 defaults on all three backends, plus registration of the required legacy program identifiers
+- ZK configuration calls for separate V1/V2 defaults on already-supported RISC Zero/SP1 backends, plus required legacy program identifiers; no new Pico configuration
 
-Registering only V2 identifiers is not a full-compatibility deployment option. Recalculate the previous 15–19 transactions per chain / 420–532 network-wide estimate from the final scripts and program inventory; six default-configuration calls alone may not cover all historical and ATKJ identifiers. Multisend or a purpose-built deployment coordinator could reduce the administrative transaction count.
+Registering only V2 identifiers is not a full-compatibility deployment option. Recalculate the previous 15–19 transactions per chain / 420–532 network-wide estimate from the final scripts and supported-backend/program inventory; default-configuration calls alone may not cover all historical and ATKJ identifiers. Multisend or a purpose-built deployment coordinator could reduce the administrative transaction count.
 
 ## 9. Testing gates
 
@@ -298,8 +308,8 @@ Registering only V2 identifiers is not a full-compatibility deployment option. R
 
 - Solidity/Rust cross-language serialization vectors
 - Journal round trips for all quote-body types
-- RISC Zero, SP1 and Pico proof generation
-- Verification using each newly published program identifier and the reused universal verifiers
+- RISC Zero/SP1 real proof generation for production-enabled backends; separate local-only Pico proof testing is not a production release gate
+- Verification using the production program identifiers and reused supported-network universal verifiers; Pico local proofs use a matching local verifier
 - Fresh, reproducible builds of all three guests; fail the gate if an existing ELF was merely reused
 - Existing V1 ELF artifacts and program identifiers remain unchanged
 - Rejection of a V1 journal through the V2 selector and vice versa
