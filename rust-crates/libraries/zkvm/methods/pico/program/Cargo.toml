@@ -16,3 +16,7 @@ dcap-rs = { path = "../../../../dcap-rs" }
 sha2 = { git = "https://github.com/brevis-network/hashes", tag = "pico-patch-v1.0.1-sha2-v0.10.8" }
 ecdsa = { git = "https://github.com/brevis-network/signatures", tag = "pico-patch-v1.0.1-ecdsa-0.16.9" }
 tiny-keccak = { git = "https://github.com/brevis-network/tiny-keccak", tag = "pico-patch-v1.0.0-keccak-v2.0.2" }
+
+# The ECDSA patch's unversioned pico-patch-libs Git dependency is pinned to the
+# v1.1.6 commit in Cargo.lock. Do not regenerate/update this lock without retaining
+# that pin (see ../README.md); the build driver always uses --locked.

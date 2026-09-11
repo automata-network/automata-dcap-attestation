@@ -10,6 +10,18 @@ license = { workspace = true }
 name = "automata_dcap_zkvm"
 path = "src/lib.rs"
 
+[[example]]
+name = "pico_v2_execute"
+required-features = ["pico"]
+
+[[example]]
+name = "sp1_v2_execute"
+required-features = ["sp1"]
+
+[[example]]
+name = "risc0_v2_execute"
+required-features = ["risc0"]
+
 [features]
 default = []
 risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:boundless-market"]

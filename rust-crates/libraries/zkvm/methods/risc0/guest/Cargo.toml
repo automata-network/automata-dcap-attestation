@@ -2,6 +2,7 @@
 name = "dcap-risc0-guest-v2"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 
 # Standalone crate - not part of workspace
 # Required for zkVM compilation with specific patches

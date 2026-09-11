@@ -25,9 +25,19 @@ selected backend. Program-ID commands also honor this selection. V2 never falls 
 to an old embedded ELF. For SP1, use a target directory literally named target, e.g.
 --target-dir ../../../../target; its upstream build script rejects cargo-target paths.
 
-Current validation status: host/build-driver compilation was attempted locally, but
-RISC Zero Rust, Succinct and cargo-pico toolchains are not installed. RISC Zero and
-Pico guest lockfile resolution also requires uncached crypto-patch Git dependencies.
-The three build-driver lockfiles and SP1 program lockfile exist; the remaining
-guest lockfiles, all V2 ELFs, native IDs and real proof checks are still outstanding.
-Do not treat these source projects as reproducibly built release artifacts.
+Pico uses an in-repository build driver with nightly-2025-08-04 and `rust-src`;
+`cargo-pico` is not required. Its guest lockfile also pins the ECDSA patch's
+otherwise floating Pico dependency to v1.1.6. See [Pico build instructions](pico/README.md).
+
+SP1 uses a separate Cargo 1.88.0 with the official Succinct Rust 1.88 compiler.
+The driver does not rely on `cargo +succinct` falling back to a newer system
+Cargo. See [SP1 build instructions](sp1/README.md).
+
+RISC Zero uses the installed rzup Rust 1.88 compiler, separate Cargo 1.88 and
+SDK/runtime 3.0.3. The driver also locks the inner guest build. Its `.elf` artifact
+is a combined user/kernel program binary; see [RISC Zero instructions](risc0/README.md).
+
+Current validation status: all three V2 guests have compiled locally, with all
+guest and build-driver lockfiles present. All backends still require independent
+reproducibility and real proof checks before release. Local execution checks are
+not proof validation; see [current evidence](../../../../docs/dcap-v2-progress.md).

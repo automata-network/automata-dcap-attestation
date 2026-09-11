@@ -1,5 +1,6 @@
 # Ignores build artifacts
 **/target
+libraries/zkvm/artifacts/
 **/out*
 !libraries/dcap-rs/src/types/output_v2.rs
 !libraries/dcap-rs/tests/output_v2.rs

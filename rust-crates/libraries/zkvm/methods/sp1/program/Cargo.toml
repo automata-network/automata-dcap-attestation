@@ -2,6 +2,7 @@
 name = "dcap-sp1-guest-v2"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 
 # Standalone crate - not part of workspace
 # Required for zkVM compilation with specific patches
@@ -10,6 +11,9 @@ edition = "2021"
 [dependencies]
 sp1-zkvm = { version = "=5.2.1" }
 dcap-rs = { path = "../../../../dcap-rs" }
+
+# Cargo.lock pins the transitive ruint dependency to 1.17.0 (also used by the
+# host workspace). ruint 1.20.0 requires Rust 1.90, beyond succinct-1.88.0.
 
 # SP1-specific crypto patches
 [patch.crates-io]
