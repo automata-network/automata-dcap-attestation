@@ -15,6 +15,23 @@ are preserved as strings: do not sort or reserialize their object members.
 | V3 | 1755236700 | `a541671d3a37b9d6f1877edfc2c600217cf58fee8488d0a2af1ef3d8fd1aad5e` | 833 |
 | V4 | 1749095100 | `3e0eb6ab34f89434a9442aa06728b10fd82a97b7fb6e4ca725dfe666bab520ea` | 1225 |
 | V5 | 1789052566 | `99c9630ffd878ab2800b5d72ca90d07b077ef360eec83efa116815e2200419a9` | 937 |
+| ATA SGX V3 | 1789139978 | `d0ba508f6946915279d1662516b0324a1e899c073ca94e0e13b69407287aec94` | 833 |
+| ATA TDX V4 (extracted prefix) | 1789139978 | `567c4e1f7ec0b70cc52e55ad3c06c0ed205b28c4f32bebe3d16efcc37e4e78ce` | 873 |
+
+The additional ATA quote originals and explicit TDX padding extraction are
+documented in [quote provenance](../quotes/README.md). The original 8,000-byte
+TDX input is a rejection fixture, not the 4,935-byte successful quote committed
+by `ata-tdx-v4.json`.
+
+Both ATA snapshots use evaluation number 20 and fixed timestamp `1789139978`
+(2026-09-11T15:19:38Z). SGX FMSPC `00606a000000` and TDX FMSPC `00806f050000`
+TCB Info plus their respective QE identities were obtained directly from Intel
+PCS API v4 on 2026-09-11. Root/platform CRLs and the signing/root certificates
+are reused from the authenticated `v5.json` snapshot captured on 2026-09-10;
+the new responses' issuer chains were independently checked against those
+certificates. Full native and Solidity verification authenticate this combined
+snapshot at the recorded time. No claim of validity at arbitrary future fork
+timestamps is made.
 
 ## Provenance and scope
 
@@ -44,11 +61,16 @@ CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2 cargo test --locked --offline \
   --manifest-path rust-crates/Cargo.toml -p dcap-rs \
   --lib --test output_v2 --test guest_fixtures_v2 --target-dir rust-crates/target
 forge test --root evm --match-contract QuoteV5PublicFixtureV2Test -vv
+forge test --root evm --match-contract 'PublicAta(SgxV3|TdxV4)Test' -vv
+go test ./go-sdk/packages/godcap/parser
 ```
 
-The Rust tests rebuild all three ABI inputs from their individual components,
+The Rust tests rebuild all five ABI inputs from their individual components,
 check digests and compare verification against the frozen expected bytes. They
 also reject a changed signed body and a timestamp before certificate validity.
+The two ATA inputs additionally cover the shared eight-case mutation matrix.
+Their frozen TCB statuses are SGX `OutOfDate` (1) and TDX `UpToDate` (0);
+successful verification is not an assertion that every platform is up to date.
 The Solidity V5 test uses real PCCS DAOs, collateral signatures, certificate
 verification and FeeV2; no RPC or cryptographic mocks are involved. It selects
 the snapshot's evaluation number **20** explicitly. Automatic selection using
@@ -64,13 +86,21 @@ for quote_version in 3 4 5; do
     export "evm/forge-test/assets/v2/fixtures/v${quote_version}.json" \
     "$fixture_output_dir/v${quote_version}-input.bin"
 done
+for sample in ata-sgx-v3 ata-tdx-v4; do
+  cargo run --locked --offline --manifest-path rust-crates/Cargo.toml \
+    -p dcap-rs --example v2_fixture --target-dir rust-crates/target -- \
+    export "evm/forge-test/assets/v2/fixtures/${sample}.json" \
+    "$fixture_output_dir/${sample}-input.bin"
+done
 ```
 
 Pass an exported file to the execution-only runners documented under
 [SP1](../../../../../rust-crates/libraries/zkvm/methods/sp1/README.md),
 [RISC Zero](../../../../../rust-crates/libraries/zkvm/methods/risc0/README.md) or
 [Pico](../../../../../rust-crates/libraries/zkvm/methods/pico/README.md).
-The SP1/RISC Zero runners support `--negative`; Pico's current runner compares
+The SP1/RISC Zero runners support `--negative`: signed-body/signature changes,
+trailing zeros, truncation, unsupported quote version, oversized signature
+length, and pre-/post-validity timestamps (eight cases). Pico's current runner compares
 successful execution only. Guest ELF/native ID approval and real proof checks
 are separate gates.
 

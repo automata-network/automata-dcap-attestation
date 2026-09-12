@@ -1,10 +1,10 @@
 //! Local SP1 V2 execution, native journal parity and optional rejection checks.
 //! This does not generate proofs, contact a prover network or register a program.
-use alloy_sol_types::{sol, SolType};
+#[path = "../../dcap-rs/tests/support/v2_negative_cases.rs"]
+mod negative_cases;
 use anyhow::{ensure, Context, Result};
 use sp1_sdk::{HashableKey, Prover, ProverClient, SP1Stdin, SP1_CIRCUIT_VERSION};
 
-type GuestInput = sol!((bytes, bytes, uint64));
 const EXECUTION_CYCLE_LIMIT: u64 = 500_000_000;
 
 fn main() -> Result<()> {
@@ -58,23 +58,7 @@ fn main() -> Result<()> {
     );
 
     if args.len() == 3 {
-        let (collateral, quote, timestamp) = GuestInput::abi_decode_params(&input)?;
-        ensure!(
-            quote.len() > 80,
-            "quote is too short for signed-body mutation"
-        );
-        let mut tampered = quote.to_vec();
-        tampered[80] ^= 1;
-        for (name, invalid) in [
-            (
-                "tampered-signed-body",
-                GuestInput::abi_encode_params(&(collateral.clone(), tampered, timestamp)),
-            ),
-            (
-                "pre-validity-timestamp",
-                GuestInput::abi_encode_params(&(collateral, quote, 0u64)),
-            ),
-        ] {
+        for (name, invalid) in negative_cases::negative_inputs(&input)? {
             ensure!(
                 dcap_rs::v2::verify_guest_input_v2(&invalid).is_err(),
                 "native V2 unexpectedly accepted {name}"
