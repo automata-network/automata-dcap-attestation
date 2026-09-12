@@ -23,12 +23,24 @@ tracked separately and does not block this fork phase or production release.
   PCCS commits, host/guest lock hashes, compiler identities, container digest,
   build commands, artifact SHA-256 values and independently computed native IDs.
   Repeat build/execution checks if guest source, dependencies or recipe change.
-- [ ] Generate real RISC Zero/SP1 V2 proofs with the pinned programs and confirm local
-  cryptographic verification. No mock proofs, DEV_MODE, cached unrelated proofs
-  or paid network proving without separate authorization.
+- [x] Generate real local RISC Zero composite and SP1 core V2 proofs with the
+  pinned Docker programs and confirm cryptographic verification: both pass for
+  ATA SGX V3, including full journal equality and three tampering/wrong-ID or
+  key rejection checks per backend. See the [extended serial retry](dcap-v2-public-quotes-validation.md#extended-serial-retry-2026-09-11).
+  This establishes neither TDX/V5 real-proof coverage nor EVM proof compatibility.
+- [ ] Produce and locally verify the intended EVM-compatible proof formats
+  for the release matrix. Composite/core proofs cannot be passed directly to
+  the deployed universal verifiers. No mock proofs, DEV_MODE, cached unrelated
+  proofs or paid network proving without separate authorization.
 - [ ] Use the checked-in V3/V4/V5 quote/collateral fixtures as a deterministic
   baseline. Source additional signed inputs/collateral appropriate to each
   fork's block timestamp; historical success is not evidence of current validity.
+  Include the authenticated ATA SGX V3 and extracted TDX V4 inputs from the
+  [public-quote validation record](dcap-v2-public-quotes-validation.md), with
+  their full signed collateral and frozen journals at timestamp `1789139978`.
+  Preserve the original 8,000-byte padded TDX as a rejection case, not a success
+  input. SGX returns `OutOfDate`; both samples use Platform CA with PIID present,
+  so they do not supply Processor CA/PIID-absent or V5 coverage.
 - [ ] Define the target-chain list, RPCs, pinned fork block numbers/hashes, chain
   IDs, client versions and snapshot/reset strategy. Record credentials only in
   secrets, never in the report or manifest. No production writes.

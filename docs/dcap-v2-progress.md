@@ -19,6 +19,54 @@ No live deployments, router mutations, SDK publication, or replacement of legacy
 
 Guest binaries and published addresses must not be fabricated when build/deployment prerequisites are unavailable.
 
+## Public ATA SGX/TDX follow-up (2026-09-11)
+
+- Extended retry: **RISC Zero real local composite receipt now passes**, with
+  exact journal parity and modified-journal/wrong-image-ID/modified-seal
+  rejection. Elapsed 1:03:19, maximum RSS about 3.50 GiB; saved receipt and logs
+  are archived locally under `docs/evidence/dcap-v2/2026-09-11/ata-proofs`.
+  **SP1 real CPU core proof also passes**, including exact journal and modified
+  journal/wrong verifying key/modified proof-commitment rejection. Its successful
+  release-host run took 11:55.22, maximum RSS about 7.17 GiB. An earlier 10 GiB
+  virtual-limit allocation failure is retained separately; the successful
+  retry used allocator/address-space tuning with a physical-memory watcher,
+  not changed guest code, proof parameters or skipped checks.
+  The user removed the one-hour deadline; both ran sequentially on SGX V3 only.
+  Both saved artifacts were extracted into fresh directories and reverified
+  in fresh processes, including all rejection checks; both exited 0.
+  No TDX/V5 real proof was produced in this retry. This does not close the EVM-compatible
+  proof/universal-verifier/FeeV2 or full fork gates.
+- Preserved both supplied quote files unchanged, plus an explicit extracted
+  TDX prefix. Original TDX is 8,000 bytes: its declared quote occupies 4,935
+  bytes followed by 3,065 zeros. Strict V2 rejects the original; only the exact
+  authenticated prefix is the positive fixture. No verifier normalization or
+  signed-byte modification was introduced.
+- Captured full authenticated collateral, offline ABI inputs and immutable
+  journals at `1789139978`, evaluation 20. SGX returns `OutOfDate` and TDX
+  `UpToDate`; both are Platform CA / PIID-present. Added reusable fixture
+  inspection/preparation tooling with explicit extraction and no overwrites.
+- Native Rust **35 tests pass**. Solidity **92 tests pass**, including 19 new
+  tests through real local PCCS upserts, P-256 and FeeV2, without crypto mocks.
+  Go parser/FeeV2/registry packages pass, including new ATA journal regressions.
+- Canonical Docker RISC Zero/SP1/Pico programs each execute both samples and
+  match complete native/Solidity journals (833/873 bytes): **6 positive guest
+  executions**. RISC Zero/SP1 additionally pass **32 negative guest checks**
+  across eight input mutations. Pico remains positive execution/local-only.
+- Initial bounded run: added explicit-local real composite/core proof diagnostics.
+  Both compiled; five development-mode/VK/shape guards passed. Each SGX attempt timed
+  out after 600 seconds (exit 124) on this ARM64 worker, with bounded memory
+  and two Rayon threads. No completed receipt/proof was saved in that run and
+  its logs do not establish proof-cryptography or proof-tampering checks.
+  The extended retry above supersedes this local-proof status. EVM-compatible
+  compression and universal-verifier/FeeV2 proof acceptance remain open.
+- Retained logs, exact inputs and public PCS responses in optional local archives;
+  Git keeps the test sources/fixtures, text hashes, result summary and archive-free
+  repeat procedure. The new ATA archives are ignored, not deleted. See the
+  [public-quote validation report](dcap-v2-public-quotes-validation.md).
+  Guest source/locks/artifacts/native IDs, old user evidence and production
+  configuration are unchanged. Full fork acceptance remains deferred,
+  including `CrlV2AeneidForkTest`; no fork or live deployment was started.
+
 ## Evidence retention and Pico release scope (2026-09-11)
 
 - Archived the new execution evidence unchanged under
