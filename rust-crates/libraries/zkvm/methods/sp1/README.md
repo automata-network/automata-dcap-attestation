@@ -78,8 +78,9 @@ The example explicitly uses the local CPU client without prebuilding the unused
 recursive-program cache (VK checks and default circuit shapes stay enabled),
 prints the native program ID and circuit version, and compares the journal against native V2
 verification. `--negative` additionally checks that native and guest both reject
-a changed signed quote body and a verification timestamp before certificate
-validity. Rejection must be a guest validation panic (exit code 1), not an
+eight cases: changed signed body/signature, trailing zeros, truncation,
+unsupported quote version, oversized signature length, and pre-/post-validity
+timestamps. Rejection must be a guest validation panic (exit code 1), not an
 unsupported syscall or the local 500-million-cycle execution limit.
 It does not select a network prover, send a paid proving request,
 generate a proof, or register any program ID.
@@ -110,3 +111,49 @@ or require a system-wide linker change.
 Execution parity does not establish real-proof/universal-verifier compatibility.
 Independent reproducibility and real proof checks remain release prerequisites;
 see the [progress evidence](../../../../../docs/dcap-v2-progress.md).
+
+## Local real-proof diagnostic
+
+The separate `sp1_v2_prove_local` example explicitly selects the local CPU
+prover and a **core** proof. It never chooses the network prover or mock mode.
+Use the canonical Docker ELF:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo run --release --locked \
+  --manifest-path rust-crates/Cargo.toml -p automata-dcap-zkvm \
+  --features sp1 --example sp1_v2_prove_local --target-dir rust-crates/target -- \
+  /path/to/canonical/sp1.elf /path/to/v2-input.bin /path/to/new.proof
+```
+
+Use the optimized **host** build for real proving; this does not rebuild or
+change the supplied canonical guest ELF. `RUST_LOG=info` enables SDK progress
+logs. An unoptimized dev host can add substantial proving overhead even when
+guest execution already passes. For the low-memory linking fallback, include
+`--release` and run `target/release/examples/sp1_v2_prove_local` afterwards.
+
+The runner verifies the proof against the ELF-derived key, compares the entire
+journal with native V2, and rejects a changed journal, wrong verifying key and
+changed proof commitment.
+It writes only after those checks, refusing to overwrite an existing file.
+Append `--verify` to recheck an existing proof without proving again. Default
+VK checks and circuit shapes remain enabled; only the unused recursive cache
+is disabled. `FRI_QUERIES` must be unset or the SDK's default `100`; weakened
+query counts are refused. No guest source or release program ID is changed.
+
+The runner uses 2^18-cycle shards, a batch size of one, and a 500-million-cycle
+limit. Optional upstream pipeline settings `TRACE_GEN_WORKERS=1`,
+`CHECKPOINTS_CHANNEL_CAPACITY=1` and `RECORDS_AND_TRACES_CHANNEL_CAPACITY=1`
+limit concurrent buffers, not cryptographic checks. Set memory/wall-clock
+limits outside the runner. On the tested Linux/glibc ARM64 worker,
+`MALLOC_ARENA_MAX=2 RAYON_NUM_THREADS=4` plus those single-buffer settings
+completed the SGX diagnostic in 11:55 with about 7.17 GiB peak RSS. The earlier
+attempt failed allocation under a 10 GiB **virtual address-space** limit; the
+successful retry allowed 24 GiB virtual space and watched actual RSS/system
+available memory separately. This is not a guarantee that every input fits
+8 GiB RAM; leave system headroom and monitor actual memory pressure. Allocator
+and host optimization settings do not weaken FRI/VK checks or change the guest.
+Use the low-memory linking recipe above with this
+example name if needed. A core proof is not an EVM Groth16/Plonk proof;
+compression and actual universal-verifier/FeeV2 acceptance remain required.
+See the [public-quote validation record](../../../../../docs/dcap-v2-public-quotes-validation.md)
+for actual outcomes; a compiled runner or timed-out attempt is not proof success.

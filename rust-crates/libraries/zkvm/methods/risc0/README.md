@@ -85,8 +85,9 @@ explicitly executes in a local subprocess. It never selects Bonsai or submits
 a proving request. The subprocess needs local IPC/loopback access.
 
 Successful execution must halt with status zero, match the native journal
-byte-for-byte and pass the SDK's OutputV2 decoder. `--negative` also checks a
-changed signed quote body and a timestamp before certificate validity. Only a
+byte-for-byte and pass the SDK's OutputV2 decoder. `--negative` checks eight
+cases: changed signed body/signature, trailing zeros, truncation, unsupported
+quote version, oversized signature length, and pre-/post-validity timestamps. Only a
 DCAP verification panic counts as rejection, not transport errors, arbitrary
 faults or the 500-million-cycle session limit. Reported cycles are user cycles,
 excluding continuation overhead and proof padding.
@@ -99,3 +100,35 @@ setting; it does not alter the program binary or image ID.
 Execution parity is not proof verification. Real receipts and verification
 against the reused universal verifier remain release prerequisites; see
 the [progress evidence](../../../../../docs/dcap-v2-progress.md).
+
+## Local real-proof diagnostic
+
+The separate `risc0_v2_prove_local` example explicitly selects local `r0vm`
+3.0.3 and a **composite** receipt, never Bonsai, DEV_MODE or a fake receipt.
+Use the canonical Docker program, not an unrelated locally rebuilt artifact:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo run --release --locked \
+  --manifest-path rust-crates/Cargo.toml -p automata-dcap-zkvm \
+  --features risc0 --example risc0_v2_prove_local --target-dir rust-crates/target -- \
+  /path/to/canonical/risc0.elf /path/to/v2-input.bin /path/to/new.receipt
+```
+
+`--release` optimizes the host-side receipt checks, not the supplied canonical
+guest or the separately installed `r0vm`. Include it in the low-memory linking
+fallback too, and use `target/release/examples/risc0_v2_prove_local` afterwards.
+
+The runner verifies the receipt/image ID, compares the complete journal with
+native V2, and rejects a changed journal, wrong image ID and changed seal.
+Only then does it write the receipt, refusing to overwrite an existing file.
+Append `--verify` to recheck an existing receipt without proving again.
+The 2^18 segment size bounds individual proving segments; the 500-million-cycle
+session limit is not a wall-clock or memory limit. Set resource/time limits
+outside the runner when needed. A timeout is **not** a successful proof check.
+Use the low-memory host-linking recipe above with this example name if needed.
+
+A composite receipt is not an EVM Groth16 seal. Compression and real
+universal-verifier/FeeV2 acceptance remain separate gates. See the
+[public-quote validation record](../../../../../docs/dcap-v2-public-quotes-validation.md)
+for actual results and resource limits, rather than assuming that compiling
+this example establishes proof success.

@@ -22,6 +22,14 @@ required-features = ["sp1"]
 name = "risc0_v2_execute"
 required-features = ["risc0"]
 
+[[example]]
+name = "risc0_v2_prove_local"
+required-features = ["risc0"]
+
+[[example]]
+name = "sp1_v2_prove_local"
+required-features = ["sp1"]
+
 [features]
 default = []
 risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:boundless-market"]
