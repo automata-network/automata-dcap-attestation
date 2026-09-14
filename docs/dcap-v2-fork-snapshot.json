@@ -1,0 +1,1471 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-09-12T15:58:01.377Z",
+  "scope": "Initial default configuration only; route event history and full release inventory remain required",
+  "networks": [
+    {
+      "chainId": 1,
+      "name": "Ethereum Mainnet",
+      "status": "partial",
+      "block": {
+        "number": 25962370,
+        "hex": "0x18c2782",
+        "hash": "0xab452b55b1a089747016ed744786839723b317359020eb5cdbc2941a4bd10124",
+        "timestamp": 1789228571
+      },
+      "rpc": "https://1rpc.io/eth",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4",
+        "PCCSRouter": "0xE2Cd5aA44a0896D683684B8EA15eB54B269fC933",
+        "V3QuoteVerifier": "0x2F457dE983Bc5Fe80aFF9207494916d592A768dc",
+        "V4QuoteVerifier": "0x1a38BE54421fFD73f65e3512A667424D6fF7281e",
+        "V5QuoteVerifier": "0x560d93Ff2C103c4270cd7058bdA7AAe4B1170acE"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": null
+        },
+        "sp1": {
+          "defaultVerifier": null,
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": null
+        },
+        "pico": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": null,
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "readErrors": [
+        {
+          "field": "risc0.programIds",
+          "error": "HTTP 429"
+        },
+        {
+          "field": "sp1.defaultVerifier",
+          "error": "HTTP 503"
+        },
+        {
+          "field": "sp1.programIds",
+          "error": "HTTP 301"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "HTTP 429"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 10,
+      "name": "Optimism",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://1rpc.io/op",
+          "error": "HTTP 429"
+        }
+      ]
+    },
+    {
+      "chainId": 56,
+      "name": "BNB Smart Chain",
+      "status": "partial",
+      "block": {
+        "number": 121481592,
+        "hex": "0x73da978",
+        "hash": "0x87ce56ff7efc8f1f7a7365b1ec989f0dffe8fe737d61d70ffdd61451d67888ad",
+        "timestamp": 1789228582
+      },
+      "rpc": "https://bsc-dataseed.bnbchain.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted: 0x\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted: 0x\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted: 0x\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 97,
+      "name": "BNB Testnet",
+      "status": "partial",
+      "block": {
+        "number": 130626735,
+        "hex": "0x7c934af",
+        "hash": "0xf6063d5ede04359fa192baa896dd43f999e2b79cf94b88699b53d4154c0adeb0",
+        "timestamp": 1789228593
+      },
+      "rpc": "https://bsc-testnet.drpc.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 130,
+      "name": "Unichain Mainnet",
+      "status": "partial",
+      "block": {
+        "number": 58480236,
+        "hex": "0x37c566c",
+        "hash": "0x80041dce02fb49f7657aa10f99582def894e84e0f33c537897f59a51275cce13",
+        "timestamp": 1789228595
+      },
+      "rpc": "https://1rpc.io/unichain",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB",
+        "V3QuoteVerifier": "0x6976e688E9616f82E52fc3aEC760DEedc8618f52",
+        "V4QuoteVerifier": "0xeF1e09EB7B0412730C5D6Ccd82aC12C961798A56",
+        "V5QuoteVerifier": "0x03f8768C48339A6f055f593dE3f509Bf66CB23b0"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x94f899986115ed42c14921739c082f9b1d8c0e65",
+        "pcsDaoAddr": "0x8f20d69f9d82128433f6b9216e9597803147789c",
+        "pckDaoAddr": "0x1daff7ae7b397620b465662b7a55226ac01dd1b9",
+        "pckHelperAddr": "0xcd3c208991f79e496474a4e12303a8d924b2d62f",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://mainnet.unichain.org",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 137,
+      "name": "Polygon",
+      "status": "partial",
+      "block": {
+        "number": 93682373,
+        "hex": "0x5957ac5",
+        "hash": "0x888192c8fdb739884ad4cea0d24ac001cb56797442b6aa4070dc59b8046d1237",
+        "timestamp": 1789228593
+      },
+      "rpc": "https://1rpc.io/matic",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": null
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "feeOwner",
+          "error": "HTTP 403"
+        },
+        {
+          "field": "router.fmspcTcbHelperAddr",
+          "error": "HTTP 410"
+        },
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "HTTP 403"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 480,
+      "name": "World Chain",
+      "status": "partial",
+      "block": {
+        "number": 34946481,
+        "hex": "0x2153db1",
+        "hash": "0x3f6c0a87f13dd23eb34b47356f452b23b721d99e21d2676f53b8794cb7239558",
+        "timestamp": 1789228601
+      },
+      "rpc": "https://worldchain-mainnet.g.alchemy.com/public",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 998,
+      "name": "HyperEVM Testnet",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2",
+        "V3QuoteVerifier": "0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7",
+        "V4QuoteVerifier": "0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e",
+        "V5QuoteVerifier": "0x0D85Cecd452A1CBd7afBe1C671DeC2D9c56B97f5"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://rpc.hyperliquid-testnet.xyz/evm",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 999,
+      "name": "HyperEVM Mainnet",
+      "status": "partial",
+      "block": {
+        "number": 45721849,
+        "hex": "0x2b9a8f9",
+        "hash": "0x98b0a02e0c06249c0c60f2858a91fd6b5c7453df394b97c85dfed5e643a1675b",
+        "timestamp": 1789228605
+      },
+      "rpc": "https://rpc.hyperliquid.xyz/evm",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2",
+        "V3QuoteVerifier": "0x087C0c460C083DACcA6DBaa82E8Fe0983E70C6F7",
+        "V4QuoteVerifier": "0x2aDDd89aEbFE01d4aae4a73f31E7197152a9D99e",
+        "V5QuoteVerifier": "0x0D85Cecd452A1CBd7afBe1C671DeC2D9c56B97f5"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x2c5d84d0601653e8aac7b2708532566a053587a8",
+        "pcsDaoAddr": "0x39e4dfa57c8311d9228958bf07cf8523786b0892",
+        "pckDaoAddr": "0xbc497f4daf74198816a01915e3a4a1d25aef68fb",
+        "pckHelperAddr": "0xcd3c208991f79e496474a4e12303a8d924b2d62f",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 1301,
+      "name": "Unichain Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 62376178,
+        "hex": "0x3b7c8f2",
+        "hash": "0x8f11c01c8c2c8e230b453eaf8ea57b15be49a8bdcd4c89cd4ac966bb92387909",
+        "timestamp": 1789228606
+      },
+      "rpc": "https://sepolia.unichain.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 1315,
+      "name": "Story Aeneid Testnet",
+      "status": "snapshot",
+      "block": {
+        "number": 23533644,
+        "hex": "0x167184c",
+        "hash": "0x7a5dcc21b44930a76a6368660ec7f549ccde583b888523e39fb8932665ad5df7",
+        "timestamp": 1789228609
+      },
+      "rpc": "https://aeneid.storyrpc.io",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xB8621Da79b42A62E576408995155D48E9f856489",
+        "PCCSRouter": "0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB",
+        "V3QuoteVerifier": "0xccEa687519596944CE2b9f1f13BEAE5DC0c7F97C",
+        "V4QuoteVerifier": "0x264E5A8f6361A78011CCe093Ad5DD97dD891E32E",
+        "V5QuoteVerifier": "0x7F0Dd68ab36143e384a90c07301549F53b43C39e"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x94f899986115ed42c14921739c082f9b1d8c0e65",
+        "pcsDaoAddr": "0x8f20d69f9d82128433f6b9216e9597803147789c",
+        "pckDaoAddr": "0x1daff7ae7b397620b465662b7a55226ac01dd1b9",
+        "pckHelperAddr": "0xcd3c208991f79e496474a4e12303a8d924b2d62f",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "readErrors": [],
+      "attempts": []
+    },
+    {
+      "chainId": 1514,
+      "name": "Story Mainnet",
+      "status": "snapshot",
+      "block": {
+        "number": 22083227,
+        "hex": "0x150f69b",
+        "hash": "0x6b24c4d3cc5c0eb3b052ea5053ee0bb17a4cbd138e4b3f8e1e2fb1df9bf78f41",
+        "timestamp": 1789228608
+      },
+      "rpc": "https://mainnet.storyrpc.io",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xB8621Da79b42A62E576408995155D48E9f856489",
+        "PCCSRouter": "0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB",
+        "V3QuoteVerifier": "0x045EC55c0F35D17222A0C7a2183c6B3D904a815b",
+        "V4QuoteVerifier": "0x0f82EA8d717d2cD20b48E193b7BfC20D1d540643",
+        "V5QuoteVerifier": "0x8D7Dcd05814763bBdE987fa0D38409014dfCBA5A"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x94f899986115ed42c14921739c082f9b1d8c0e65",
+        "pcsDaoAddr": "0x8f20d69f9d82128433f6b9216e9597803147789c",
+        "pckDaoAddr": "0x1daff7ae7b397620b465662b7a55226ac01dd1b9",
+        "pckHelperAddr": "0xcd3c208991f79e496474a4e12303a8d924b2d62f",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "readErrors": [],
+      "attempts": []
+    },
+    {
+      "chainId": 4326,
+      "name": "MegaETH Mainnet",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4",
+        "PCCSRouter": "0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB",
+        "V3QuoteVerifier": "0x0e5c261ddEF14b885a8eFB8D81A68ee79fEB4a64",
+        "V4QuoteVerifier": "0x00952C6D5111B14FdF8b22909a5Dd771d07d4612",
+        "V5QuoteVerifier": "0x03f8768C48339A6f055f593dE3f509Bf66CB23b0"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://mainnet.megaeth.com/rpc",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 4801,
+      "name": "World Chain Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 34340596,
+        "hex": "0x20bfef4",
+        "hash": "0xd6327111597c60d892cfd0b36fb3bf6afb55ed3fd11c40b600a0a1f571d0d4bf",
+        "timestamp": 1789228616
+      },
+      "rpc": "https://worldchain-sepolia.drpc.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 6343,
+      "name": "MegaETH Testnet",
+      "status": "snapshot",
+      "block": {
+        "number": 29518171,
+        "hex": "0x1c2695b",
+        "hash": "0xfb97b5ba3fbd349e517311a81f822c8c9c88b19617fa054d0f1ff7b702a0f5dc",
+        "timestamp": 1789228627
+      },
+      "rpc": "https://carrot.megaeth.com/rpc",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4",
+        "PCCSRouter": "0xcb1934EA19c6650a8cC9888c0306D39f0BeBc2AB",
+        "V3QuoteVerifier": "0x0e5c261ddEF14b885a8eFB8D81A68ee79fEB4a64",
+        "V4QuoteVerifier": "0x00952C6D5111B14FdF8b22909a5Dd771d07d4612",
+        "V5QuoteVerifier": "0x03f8768C48339A6f055f593dE3f509Bf66CB23b0"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x94f899986115ed42c14921739c082f9b1d8c0e65",
+        "pcsDaoAddr": "0x8f20d69f9d82128433f6b9216e9597803147789c",
+        "pckDaoAddr": "0x1daff7ae7b397620b465662b7a55226ac01dd1b9",
+        "pckHelperAddr": "0xcd3c208991f79e496474a4e12303a8d924b2d62f",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "readErrors": [],
+      "attempts": []
+    },
+    {
+      "chainId": 8453,
+      "name": "Base",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://1rpc.io/base",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 42161,
+      "name": "Arbitrum One",
+      "status": "partial",
+      "block": {
+        "number": 504443919,
+        "hex": "0x1e11340f",
+        "hash": "0x139b997e701f873249fffc66482642c5f7205a4199326b31bbd446422458906e",
+        "timestamp": 1789228619
+      },
+      "rpc": "https://1rpc.io/arb",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": null,
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": null,
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "feeCode",
+          "error": "HTTP 410"
+        },
+        {
+          "field": "router.owner",
+          "error": "HTTP 429"
+        },
+        {
+          "field": "sp1.defaultVerifier",
+          "error": "{\"code\":-32603,\"message\":\"Remote Error\"}"
+        },
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 42429,
+      "name": "Tempo Testnet",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x0387aB2eDAB2A138a43437e36AF63689Bb7030f4",
+        "PCCSRouter": "0xB0483A77543dF107aa6DfF1BFb6316dBE0ceFbf2",
+        "V3QuoteVerifier": "0xFCD6a45cAFdD91Fe7A0890B315FF57334552Ed99",
+        "V4QuoteVerifier": "0x06b9534aBd518A1E7B467aFF0D9D3D348c670f8D",
+        "V5QuoteVerifier": "0x0D85Cecd452A1CBd7afBe1C671DeC2D9c56B97f5"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://rpc.testnet.tempo.xyz",
+          "error": "Wrong chain ID: 42431"
+        }
+      ]
+    },
+    {
+      "chainId": 43113,
+      "name": "Avalanche Fuji",
+      "status": "partial",
+      "block": {
+        "number": 58334682,
+        "hex": "0x37a1dda",
+        "hash": "0xdf8ca85e9a061c196140c5a9cd50ec32d4a3cb011072c22e755ce54fff70cbdb",
+        "timestamp": 1789228601
+      },
+      "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+        "V3QuoteVerifier": "0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0",
+        "V4QuoteVerifier": "0x428Da5a573d9e77a7246E1512e1924d660dC1d48",
+        "V5QuoteVerifier": "0xE03BF6560A88c631649d6906c077c7021927656e"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 43114,
+      "name": "Avalanche C-Chain",
+      "status": "partial",
+      "block": {
+        "number": 95110512,
+        "hex": "0x5ab4570",
+        "hash": "0xa937e944deff17b9a3a1dce6b75b37f756986d8c3f9008bc10d4f97e2a5b91f3",
+        "timestamp": 1789228636
+      },
+      "rpc": "https://1rpc.io/avax/c",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+        "V3QuoteVerifier": "0xD2ac9C4Ae95713C39C45d0c95EAd6E7D1feEA5f0",
+        "V4QuoteVerifier": "0x428Da5a573d9e77a7246E1512e1924d660dC1d48",
+        "V5QuoteVerifier": "0x1257d7411231680A733d0389Bf2F1ff9E1342BD0"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":-32000,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":-32000,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":-32000,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    },
+    {
+      "chainId": 65536,
+      "name": "Automata Mainnet",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://1rpc.io/ata",
+          "error": "HTTP 400"
+        },
+        {
+          "rpc": "https://rpc.ata.network",
+          "error": "{\"code\":-32002,\"message\":\"Automata Attestation L2 is retired; remaining L2 balances were refunded to the corresponding addresses in Ethereum transaction 0xfd9f3fc489e3aa26adfbeb35a37a997d880c8265a787b1cd222a2627a0c71d4c.\"}"
+        }
+      ]
+    },
+    {
+      "chainId": 80002,
+      "name": "Polygon Amoy",
+      "status": "partial",
+      "block": {
+        "number": 47406467,
+        "hex": "0x2d35d83",
+        "hash": "0x0569b6defa29fa4fce57c6c6422688fedb2820421868bcdfc2c3249068a69fed",
+        "timestamp": 1789228638
+      },
+      "rpc": "https://polygon-amoy.drpc.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x89F3E5E16bEcc8E6070Cd436D17a653a872a8A52"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": null,
+        "pckDaoAddr": null,
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": null
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "router.pcsDaoAddr",
+          "error": "HTTP 500"
+        },
+        {
+          "field": "router.pckDaoAddr",
+          "error": "fetch failed"
+        },
+        {
+          "field": "router.fmspcTcbHelperAddr",
+          "error": "HTTP 500"
+        },
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "HTTP 500"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://rpc-amoy.polygon.technology",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 84532,
+      "name": "Base Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 46730181,
+        "hex": "0x2c90bc5",
+        "hash": "0xc17be0f99dce6286bbe9f080a40e007ad5b983b95a46fa0e1e5605f54d3b05b2",
+        "timestamp": 1789228650
+      },
+      "rpc": "https://base-sepolia.drpc.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://sepolia.base.org",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 421614,
+      "name": "Arbitrum Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 308159450,
+        "hex": "0x125e23da",
+        "hash": "0x621dde11f9184b5d866dea35f9200cd0d13d8a1a13d4d0b7a1f56b3e148d1d33",
+        "timestamp": 1789228657
+      },
+      "rpc": "https://arbitrum-sepolia.drpc.org",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 560048,
+      "name": "Ethereum Hoodi",
+      "status": "partial",
+      "block": {
+        "number": 3610130,
+        "hex": "0x371612",
+        "hash": "0x0b4cc5665251c65a41cb5e8526921a205cf7c80bae1f51414a9f760395d4d17d",
+        "timestamp": 1789228656
+      },
+      "rpc": "https://1rpc.io/hoodi",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+        "V3QuoteVerifier": "0x8f0Cb0E0ee1d7D65E7330870631A5DE140E7c844",
+        "V4QuoteVerifier": "0x0da990aA59b2Df2DA308b8034D59F5DeDe89aeDa",
+        "V5QuoteVerifier": "0xE03BF6560A88c631649d6906c077c7021927656e"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x7da83ec4af493081500ecd36d1a72c23f8fc2abd",
+          "defaultProgramId": "0x00ed85153a35a84ea1fff62d16ac42f850082f11caea923bf25c20a432bdae46",
+          "programIdsAbi": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200ba59088927820d51654fb9a3f0bedbcc4350910f8b665fba57b0c8b97d269a00ed85153a35a84ea1fff62d16ac42f850082f11caea923bf25c20a432bdae46",
+          "verifierCodeBytes": 1931
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://rpc.hoodi.ethpandaops.io",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 1398243,
+      "name": "Automata Testnet",
+      "status": "unreachable",
+      "block": null,
+      "rpc": null,
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": null,
+      "backends": null,
+      "readErrors": null,
+      "attempts": [
+        {
+          "rpc": "https://1rpc.io/ata/testnet",
+          "error": "HTTP 400"
+        },
+        {
+          "rpc": "https://rpc-testnet.ata.network",
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "chainId": 11155111,
+      "name": "Ethereum Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 11689923,
+        "hex": "0xb25fc3",
+        "hash": "0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096",
+        "timestamp": 1789228656
+      },
+      "rpc": "https://rpc.sepolia.ethpandaops.io",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0x27188ABA3a26CBb806eF4C67de9b05D7d792EC10",
+        "PCCSRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+        "V3QuoteVerifier": "0x8f0Cb0E0ee1d7D65E7330870631A5DE140E7c844",
+        "V4QuoteVerifier": "0x0da990aA59b2Df2DA308b8034D59F5DeDe89aeDa",
+        "V5QuoteVerifier": "0xE03BF6560A88c631649d6906c077c7021927656e"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x925d8331ddc0a1f0d96e68cf073dfe1d92b69187",
+          "defaultProgramId": "0x9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07",
+          "programIdsAbi": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000019346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07",
+          "verifierCodeBytes": 2356
+        },
+        "sp1": {
+          "defaultVerifier": "0x397a5f7f3dbd538f23de225b51f532c34448da9b",
+          "defaultProgramId": "0x008228a87e56a065fb3ad27026aef08acc97d72d289439e8dab0d53baaea9f26",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001008228a87e56a065fb3ad27026aef08acc97d72d289439e8dab0d53baaea9f26",
+          "verifierCodeBytes": 1975
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"data\":\"0x\",\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\",\"data\":\"0x\"}"
+        }
+      ],
+      "attempts": [
+        {
+          "rpc": "https://1rpc.io/sepolia",
+          "error": "HTTP 429"
+        }
+      ]
+    },
+    {
+      "chainId": 11155420,
+      "name": "Optimism Sepolia",
+      "status": "partial",
+      "block": {
+        "number": 48713063,
+        "hex": "0x2e74d67",
+        "hash": "0x9adb9b2705c5d3cadd4eaa402cd2a357c9682a2315a2bf8d24b114a23721df44",
+        "timestamp": 1789228666
+      },
+      "rpc": "https://sepolia.optimism.io",
+      "contracts": {
+        "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+        "PCCSRouter": "0xaf2a0D5473062b36E2dE986DA09d945EB26d492B",
+        "V3QuoteVerifier": "0x2d81FB3aB5eb67eD1529F29E78899138b0EA6162",
+        "V4QuoteVerifier": "0x1692111F7cc3630b15C2f16fb8Ab4d23cE7DE4D6",
+        "V5QuoteVerifier": "0x360c922626E3bcDa5D69e960619FE1E7628352d7"
+      },
+      "router": {
+        "owner": "0xdf841b239be7a6b37366005107069b7410da4ff9",
+        "tcbEvalDaoAddr": "0x96200760070c5d7fdfae4b4aac265579c9e87ecc",
+        "pcsDaoAddr": "0x8a0586a101b1fb2589202732842de41df099f5b6",
+        "pckDaoAddr": "0xfae02a4e8cf53cd7980783eddc1a032e4cacd56a",
+        "pckHelperAddr": "0xed75bb6543c53d49f4445055ba18380068025370",
+        "crlHelperAddr": "0x6eccb2274bb2c2ebd9ec04f0aa56d1577c73afa0",
+        "fmspcTcbHelperAddr": "0x181dc716922c84554aea8bafa07c906f4e4c15b2"
+      },
+      "backends": {
+        "risc0": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "sp1": {
+          "defaultVerifier": "0x0000000000000000000000000000000000000000",
+          "defaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "programIdsAbi": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "pico": {
+          "defaultVerifier": null,
+          "defaultProgramId": null,
+          "programIdsAbi": null
+        }
+      },
+      "readErrors": [
+        {
+          "field": "pico.defaultVerifier",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.defaultProgramId",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        },
+        {
+          "field": "pico.programIds",
+          "error": "{\"code\":3,\"message\":\"execution reverted\"}"
+        }
+      ],
+      "attempts": []
+    }
+  ]
+}

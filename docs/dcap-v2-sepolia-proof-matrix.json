@@ -1,0 +1,262 @@
+{
+  "schema": 1,
+  "status": "SIX_REAL_PROOF_SDK_CELLS_RECONCILED_NOT_RELEASE_APPROVAL",
+  "chainId": 11155111,
+  "forkBlock": 11689923,
+  "summarySha256": "d755bc2ca68bf298086b9a2907fae46fb99a87e2772249c4102c79d2cf2c133c",
+  "cells": [
+    {
+      "backend": "RISC Zero",
+      "fixture": "ata-sgx-v3",
+      "quoteVersion": 3,
+      "quoteBodyType": 1,
+      "verificationTimestamp": 1789139978,
+      "quoteSha256": "93aeaad2128ee866149de0491f4857ebc90e9336adec003919e4f47f3289b550",
+      "programId": "0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b",
+      "proofSelector": "0x73c457ba",
+      "evmProofJsonSha256": "8be95e09feab6fc9396ab0637cc5b8a8796b921f1ff5e6bd5d1fb34f67e2ab80",
+      "proofSha256": "53501eb6d75b1709a0af463326022ae8bbbf3faa581645dde64cd08a1a59c38b",
+      "journalSha256": "63a380dbab7865ccc903c7c87bd50b187d44022e97affd9a7d63072ebd07dba9",
+      "journalBytes": 833,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-1.quote-v3.body-1.explicit",
+          "transactionHash": "0x7c27902ecb491ecedee7ed2b72d45d3bf0d363ebfbc19377761aea87287fbbe5",
+          "gasUsed": 492092
+        },
+        {
+          "label": "go-sdk.zk.backend-1.quote-v3.body-1.default",
+          "transactionHash": "0x42501445d1fb39454688b64794a9f539ed85e32c4cbe7bf2fd8899d486d20948",
+          "gasUsed": 694055
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v3.body-1.explicit",
+          "transactionHash": "0xc1560ac8dcc736b7836b8a00b5f603db7241cd5f0f5a9ec5a747f33dd7e9309c",
+          "gasUsed": 492092
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v3.body-1.default",
+          "transactionHash": "0xeb39d7704315edd8bd74c6dbb109a4ea7a4d8f909f917139574221bb93199a51",
+          "gasUsed": 694055
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        467117,
+        357618
+      ],
+      "status": "PASS"
+    },
+    {
+      "backend": "RISC Zero",
+      "fixture": "ata-tdx-v4",
+      "quoteVersion": 4,
+      "quoteBodyType": 2,
+      "verificationTimestamp": 1789139978,
+      "quoteSha256": "4538f18e97ebc66dcec1a00c5e5d942784a5e8ca507221b090d128a4081f8dc8",
+      "programId": "0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b",
+      "proofSelector": "0x73c457ba",
+      "evmProofJsonSha256": "ae55c77795d4a39c13db6a4c87d60083b1d428ee3aa7f35a964e27d810b76130",
+      "proofSha256": "bbc647389d0e969fdba1e966fbf1f2f9c107cc96046e0c70f8f4439e93cbcdce",
+      "journalSha256": "d205415cfbba095c7c0697489a333976b84ee7ef3f657b68f86185d64dd2aa82",
+      "journalBytes": 873,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-1.quote-v4.body-2.explicit",
+          "transactionHash": "0xb660de712da00cef1d338a6e275e6116de31f055e94b3a5ad40c40b369af5cb5",
+          "gasUsed": 490484
+        },
+        {
+          "label": "go-sdk.zk.backend-1.quote-v4.body-2.default",
+          "transactionHash": "0x20f5d5b4c829f41a36cbb7ec8c5fa2741ad731687ea7546ea1638883111a5765",
+          "gasUsed": 692435
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v4.body-2.explicit",
+          "transactionHash": "0x6f93481f75eedcbd2775b0529230d01a905c3e762a27215069d3f9b25d22d96e",
+          "gasUsed": 490484
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v4.body-2.default",
+          "transactionHash": "0x7c9df20ed7cf262e9d40938d019c8fa58a7dbc79c9963a4455cce552a14ff7e7",
+          "gasUsed": 692435
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        462762,
+        353265
+      ],
+      "status": "PASS"
+    },
+    {
+      "backend": "RISC Zero",
+      "fixture": "v5",
+      "quoteVersion": 5,
+      "quoteBodyType": 3,
+      "verificationTimestamp": 1789052566,
+      "quoteSha256": "cf77a6e91e48291d5d338c5f3b5d0674225a4d13e7d83ff5e537a4914bf22e1d",
+      "programId": "0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b",
+      "proofSelector": "0x73c457ba",
+      "evmProofJsonSha256": "746740ce842370954eb6635138ce8c2243547607be1ff415527717626a39d0ef",
+      "proofSha256": "b01c5766cc5cfc683813b902ae3e4d1d28df384a633c97e284feae86f6d9d8af",
+      "journalSha256": "a346cb7acc2998ac3f11114dcda9ddf67dd69002b43cc1654e0a333594fda2d3",
+      "journalBytes": 937,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-1.quote-v5.body-3.explicit",
+          "transactionHash": "0x0e9039c7fa22255f6960d8e3eca9a5a0610d605ff9fb4f881d2c2f47ca5e52f7",
+          "gasUsed": 492548
+        },
+        {
+          "label": "go-sdk.zk.backend-1.quote-v5.body-3.default",
+          "transactionHash": "0xd517cb3660e280c5a14b937ac10ba8ce496ef4b6083742261404b91bcdd8dd08",
+          "gasUsed": 694512
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v5.body-3.explicit",
+          "transactionHash": "0x6b7b1e82e58bf9179b1653f070e10671eef4d81a09e2b775f39acab24e47e1c9",
+          "gasUsed": 492548
+        },
+        {
+          "label": "rust-sdk.zk.backend-1.quote-v5.body-3.default",
+          "transactionHash": "0x95b1ac2703faf3ec8a4d6c5989831e3325050610615a25d61b2b936b21aa79b7",
+          "gasUsed": 694512
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        464913,
+        355416
+      ],
+      "status": "PASS"
+    },
+    {
+      "backend": "SP1",
+      "fixture": "ata-sgx-v3",
+      "quoteVersion": 3,
+      "quoteBodyType": 1,
+      "verificationTimestamp": 1789139978,
+      "quoteSha256": "93aeaad2128ee866149de0491f4857ebc90e9336adec003919e4f47f3289b550",
+      "programId": "0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170",
+      "proofSelector": "0xa4594c59",
+      "evmProofJsonSha256": "5bea20925842dc807a3a2fb42f047e9559fac81325f602edb2142a3839080ff3",
+      "proofSha256": "11606528e238eeabcabe6adfd78fb8989672e467fceda8bb98db8ea6d06e6908",
+      "journalSha256": "63a380dbab7865ccc903c7c87bd50b187d44022e97affd9a7d63072ebd07dba9",
+      "journalBytes": 833,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-2.quote-v3.body-1.explicit",
+          "transactionHash": "0x1fbda7e11db8baef3f0e033abe4f7793e763c0a581f8771b1e86bdcc094f723e",
+          "gasUsed": 467098
+        },
+        {
+          "label": "go-sdk.zk.backend-2.quote-v3.body-1.default",
+          "transactionHash": "0xc01eb340236370e1d58d9d026580b16486e68be446f587bddb5de5f030d651b8",
+          "gasUsed": 669085
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v3.body-1.explicit",
+          "transactionHash": "0xd7b30e56c141e82c95b224277942652d324fc9baf731cded4f6103ca3f2117c8",
+          "gasUsed": 467098
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v3.body-1.default",
+          "transactionHash": "0xdf879182fb73606df647fa415ae2c67a4d008c4569afa091d79e48403a20cf74",
+          "gasUsed": 669085
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        442135,
+        337136
+      ],
+      "status": "PASS"
+    },
+    {
+      "backend": "SP1",
+      "fixture": "ata-tdx-v4",
+      "quoteVersion": 4,
+      "quoteBodyType": 2,
+      "verificationTimestamp": 1789139978,
+      "quoteSha256": "4538f18e97ebc66dcec1a00c5e5d942784a5e8ca507221b090d128a4081f8dc8",
+      "programId": "0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170",
+      "proofSelector": "0xa4594c59",
+      "evmProofJsonSha256": "c80daa3fb2d22b0cfef76cb2df11d687726ebefc0eb8aa5522a3ec115ad05004",
+      "proofSha256": "32bfc633707cc852dcb530b89ec2a1db3e117c7e12a376947461e70a3a4723e2",
+      "journalSha256": "d205415cfbba095c7c0697489a333976b84ee7ef3f657b68f86185d64dd2aa82",
+      "journalBytes": 873,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-2.quote-v4.body-2.explicit",
+          "transactionHash": "0x6ae831c3cc1beffdb8e108f61d05b30093dd5cf4985b6d50c637d280cfd18cc2",
+          "gasUsed": 465490
+        },
+        {
+          "label": "go-sdk.zk.backend-2.quote-v4.body-2.default",
+          "transactionHash": "0xa4cfbd3be9b3af47cdc5b827f6d1621a334bbdc7ffd889c346da9d927ff96008",
+          "gasUsed": 667465
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v4.body-2.explicit",
+          "transactionHash": "0x935f9491d123bef1165509b9157ae8dd1473d3f55a2edfa462d69ac6df170da2",
+          "gasUsed": 465490
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v4.body-2.default",
+          "transactionHash": "0x6a047ff20bdb6c69569f7b67d8e93d68373a2d7ffe28f02491032f5674fdd2ed",
+          "gasUsed": 667465
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        437792,
+        332795
+      ],
+      "status": "PASS"
+    },
+    {
+      "backend": "SP1",
+      "fixture": "v5",
+      "quoteVersion": 5,
+      "quoteBodyType": 3,
+      "verificationTimestamp": 1789052566,
+      "quoteSha256": "cf77a6e91e48291d5d338c5f3b5d0674225a4d13e7d83ff5e537a4914bf22e1d",
+      "programId": "0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170",
+      "proofSelector": "0xa4594c59",
+      "evmProofJsonSha256": "edf9fdc7c924dcac3c76142d353a2d86c8224990e0fb264e99781144ef08e71f",
+      "proofSha256": "23a083be4126d7d99ee80d02945af512423ce2c7511548b9434b47468ea90caf",
+      "journalSha256": "a346cb7acc2998ac3f11114dcda9ddf67dd69002b43cc1654e0a333594fda2d3",
+      "journalBytes": 937,
+      "sdkTransactions": [
+        {
+          "label": "go-sdk.zk.backend-2.quote-v5.body-3.explicit",
+          "transactionHash": "0x7304f9be70dbb9f56acf57ee0268b8ab80dccae7ca2a44a93860256d6de0312f",
+          "gasUsed": 467555
+        },
+        {
+          "label": "go-sdk.zk.backend-2.quote-v5.body-3.default",
+          "transactionHash": "0xc05372ba1a78b48363f34c0916a10eccbe51d40224ba7ffa12d8b1b067e3ebe8",
+          "gasUsed": 669543
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v5.body-3.explicit",
+          "transactionHash": "0xecc12882b87163adf89e989a61ef657b0362b19fcb7a8dcf57e5867a86738257",
+          "gasUsed": 467555
+        },
+        {
+          "label": "rust-sdk.zk.backend-2.quote-v5.body-3.default",
+          "transactionHash": "0x14b6b25f5121870a9fa6c64c55be94077dba8c1b3cac6b95a32ec18e639f4209",
+          "gasUsed": 669543
+        }
+      ],
+      "rejectionTransactions": 11,
+      "coldWarmCallGas": [
+        439968,
+        334971
+      ],
+      "status": "PASS"
+    }
+  ],
+  "limitations": "Three supplied authenticated Platform CA fixtures (SGX V3, TDX V4, TDX 1.5 V5), two canonical Docker programs, Groth16 only. No missing SGX/TDX body combination, Processor CA, ATKJ, remote service, other-network or live rollout acceptance is inferred. This report reconciles previous cryptographic and on-chain runs; it is not itself a proof verifier."
+}
