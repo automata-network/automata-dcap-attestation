@@ -21,10 +21,28 @@ impl Risc0Prover {
     /// Load an explicitly selected V2 release ELF. Its native program_identifier must match
     /// the audited release manifest and the on-chain V2 allowlist before submission.
     pub fn from_v2_elf(elf: Vec<u8>) -> Result<Self> {
-        anyhow::ensure!(elf.starts_with(b"\x7fELF"), "invalid V2 ELF");
+        // RISC Zero 3.x canonical artifacts may be combined user/kernel programs,
+        // not raw ELFs. Validate with the same decoder used to derive the image ID.
+        compute_image_id(&elf).context("invalid V2 RISC Zero program")?;
         Ok(Self {
             elf: std::borrow::Cow::Owned(elf),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn v2_rejects_malformed_programs_not_just_bad_magic() {
+        for bytes in [
+            b"".as_slice(),
+            b"\x7fELF".as_slice(),
+            b"invalid program".as_slice(),
+        ] {
+            assert!(Risc0Prover::from_v2_elf(bytes.to_vec()).is_err());
+        }
     }
 }
 

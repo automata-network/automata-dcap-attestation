@@ -22,6 +22,28 @@ type Collateral struct {
 }
 
 func NewCollateralFromQuoteParser(ctx context.Context, parser *parser.QuoteParser, ps *pccs.Client) (*Collateral, error) {
+	return newCollateralFromQuoteParser(ctx, parser, ps, false, nil)
+}
+
+// NewCollateralV2FromQuoteParser selects PCS API v4 / TCB Info v3 for every
+// quote version. A nil evaluation resolves the standard once for both documents.
+// The returned collateral is not authenticated until verified by the V2 guest.
+func NewCollateralV2FromQuoteParser(ctx context.Context, quoteParser *parser.QuoteParser, ps *pccs.Client, evaluation *uint32) (*Collateral, error) {
+	if quoteParser == nil {
+		return nil, logex.NewError("missing quote parser")
+	}
+	if ps == nil {
+		return nil, logex.NewError("missing PCCS client")
+	}
+	// Re-detect the quote spec: the original caller may still own the byte slice.
+	current, err := parser.NewQuoteParserSafe(quoteParser.Quote())
+	if err != nil {
+		return nil, err
+	}
+	return newCollateralFromQuoteParser(ctx, current, ps, true, evaluation)
+}
+
+func newCollateralFromQuoteParser(ctx context.Context, parser *parser.QuoteParser, ps *pccs.Client, v2 bool, evaluation *uint32) (*Collateral, error) {
 	if parser == nil {
 		return nil, logex.NewError("missing quote parser")
 	}
@@ -55,11 +77,28 @@ func NewCollateralFromQuoteParser(ctx context.Context, parser *parser.QuoteParse
 		return nil, logex.Trace(err)
 	}
 
-	tcbInfo, err := parser.TcbInfo(ctx, ps, fmpsc)
+	var tcbInfo *pccs.TcbInfo
+	var enclaveInfo *pccs.EnclaveIdentityInfo
+	if v2 {
+		if evaluation == nil {
+			standard, readErr := ps.GetStandardTcbEvalNum(ctx, parser.Spec().TcbType())
+			if readErr != nil {
+				return nil, readErr
+			}
+			evaluation = &standard
+		}
+		tcbInfo, err = ps.GetTcbInfoWithEvalNum(ctx, parser.Spec().TcbType(), fmpsc, 3, evaluation)
+	} else {
+		tcbInfo, err = parser.TcbInfo(ctx, ps, fmpsc)
+	}
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	enclaveInfo, err := parser.EnclaveID(ctx, ps)
+	if v2 {
+		enclaveInfo, err = ps.GetEnclaveIDWithEvalNum(ctx, parser.Spec().EnclaveIDType(), 4, evaluation)
+	} else {
+		enclaveInfo, err = parser.EnclaveID(ctx, ps)
+	}
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
