@@ -28,6 +28,15 @@ evm_version = "paris"
 
 ffi = true
 
+# Run current Ethereum precompiles without changing release bytecode settings.
+# setEvmVersion alone does not refresh the precompile table in Foundry 1.5.1.
+[profile.fork_osaka]
+evm_version = "osaka"
+out = "out_fork_osaka"
+cache_path = "cache_fork_osaka"
+additional_compiler_profiles = [{ name = "release_paris", evm_version = "paris" }]
+compilation_restrictions = [{ paths = "**", evm_version = "paris" }]
+
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}" }
 hoodi = { key = "${ETHERSCAN_API_KEY}" }

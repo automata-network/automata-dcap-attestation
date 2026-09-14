@@ -30,10 +30,26 @@ required-features = ["risc0"]
 name = "sp1_v2_prove_local"
 required-features = ["sp1"]
 
+[[example]]
+name = "risc0_v2_compress_local"
+required-features = ["risc0"]
+
+[[example]]
+name = "sp1_v2_compress_local"
+required-features = ["sp1"]
+
+[[example]]
+name = "sp1_v2_import_gnark"
+required-features = ["sp1"]
+
+[[example]]
+name = "risc0_v2_groth16_handoff"
+required-features = ["risc0"]
+
 [features]
 default = []
-risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:boundless-market"]
-sp1 = ["dep:sp1-sdk"]
+risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:risc0-groth16", "dep:boundless-market"]
+sp1 = ["dep:sp1-sdk", "dep:sp1-prover", "dep:sp1-stark"]
 pico = ["dep:pico-sdk", "dep:num", "dep:num-bigint", "dep:p3-field"]
 
 [dependencies]
@@ -63,10 +79,13 @@ async-trait = "0.1"
 # RISC0 specific dependencies (feature-gated)
 risc0-ethereum-contracts = { git = "https://github.com/risc0/risc0-ethereum", tag = "v3.0.0", optional = true }
 risc0-zkvm = { version = "^3.0.3", optional = true }
+risc0-groth16 = { version = "=3.0.2", optional = true }
 boundless-market = { version = "~1.0", optional = true }
 
 # SP1 specific dependencies (feature-gated)
 sp1-sdk = { version = "^5.2.0", optional = true }
+sp1-prover = { version = "=5.2.2", optional = true }
+sp1-stark = { version = "=5.2.2", optional = true }
 
 # Pico specific dependencies (feature-gated)
 pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6", optional = true }

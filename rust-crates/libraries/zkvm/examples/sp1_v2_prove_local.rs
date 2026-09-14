@@ -23,8 +23,8 @@ fn main() -> Result<()> {
         );
     }
     ensure!(
-        std::env::var("FRI_QUERIES").map_or(true, |v| v == "100"),
-        "requires default FRI_QUERIES=100"
+        std::env::var_os("FRI_QUERIES").is_none(),
+        "FRI_QUERIES must be unset: official core/inner=100, shrink=50, outer=25"
     );
     // Core proving does not need the recursive-program cache. This is not a VK bypass.
     std::env::set_var("SP1_DISABLE_PROGRAM_CACHE", "true");

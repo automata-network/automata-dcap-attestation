@@ -10,3 +10,9 @@
 # Public ATA validation: commit recipes and text manifests, keep bulk evidence local.
 /docs/evidence/dcap-v2/2026-09-11/ata-quotes/*.tar.gz
 /docs/evidence/dcap-v2/2026-09-11/ata-proofs/*.tar.gz
+
+# Fork acceptance: keep generated proof/witness bundles and execution caches local.
+/evm/out_fork_osaka/
+/evm/cache_fork_osaka/
+/evm/forge-test/assets/v2/local-fork/
+/docs/evidence/dcap-v2/fork-local/
