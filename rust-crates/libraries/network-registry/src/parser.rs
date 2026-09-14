@@ -154,7 +154,7 @@ fn parse_deployment_for_chain(
     let pccs = parse_pccs_contracts(&pccs_json, version)?;
 
     // Parse DCAP contracts
-    let dcap = parse_dcap_contracts(&dcap_json)?;
+    let dcap = parse_dcap_contracts(&dcap_json, version)?;
 
     Ok(Contracts { pccs, dcap })
 }
@@ -312,11 +312,16 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
 }
 
 /// Parse DCAP contracts from JSON
-fn parse_dcap_contracts(json: &serde_json::Value) -> Result<DcapContracts> {
+fn parse_dcap_contracts(json: &serde_json::Value, version: &str) -> Result<DcapContracts> {
+    let key = if Version::from_str(version)? == Version::V2_0 {
+        "AutomataDcapAttestationFeeV2"
+    } else {
+        "AutomataDcapAttestationFee"
+    };
     Ok(DcapContracts {
-        dcap_attestation: json["AutomataDcapAttestationFee"]
+        dcap_attestation: json[key]
             .as_str()
-            .ok_or_else(|| anyhow!("Missing AutomataDcapAttestationFee"))?
+            .ok_or_else(|| anyhow!("Missing {key}"))?
             .parse()?,
         pccs_router: json["PCCSRouter"]
             .as_str()
@@ -329,6 +334,34 @@ fn parse_dcap_contracts(json: &serde_json::Value) -> Result<DcapContracts> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn v2_requires_its_own_fee_key_and_preserves_legacy_selection() {
+        let mut config = json!({
+            "AutomataDcapAttestationFee": "0x1111111111111111111111111111111111111111",
+            "PCCSRouter": "0x2222222222222222222222222222222222222222"
+        });
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        let legacy = parse_dcap_contracts(&config, "v1.1")
+            .unwrap()
+            .dcap_attestation;
+        config["AutomataDcapAttestationFeeV2"] =
+            json!("0x3333333333333333333333333333333333333333");
+        assert_eq!(
+            parse_dcap_contracts(&config, "v1.1")
+                .unwrap()
+                .dcap_attestation,
+            legacy
+        );
+        assert_eq!(
+            parse_dcap_contracts(&config, "v2.0")
+                .unwrap()
+                .dcap_attestation,
+            "0x3333333333333333333333333333333333333333"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
 
     #[test]
     fn parse_pccs_contracts_prefers_fmspc_tcb_dao_versioned_v2() {

@@ -73,12 +73,7 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             result.reason = QEF;
             return result;
         }
-        result.success =
-            verifyQeReportData(
-                qeReport.reportData, 
-                authData.ecdsaAttestationKey, 
-                authData.qeAuthData
-            );
+        result.success = verifyQeReportData(qeReport.reportData, authData.ecdsaAttestationKey, authData.qeAuthData);
         if (!result.success) {
             result.reason = QEVE;
             return result;
@@ -86,7 +81,17 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
 
         // Step 1: Fetch QEIdentity to validate TCB of the QE
         EnclaveId id = tee == SGX_TEE ? EnclaveId.QE : EnclaveId.TD_QE;
-        (result.success, result.qeTcbStatus) = fetchQeIdentityAndCheckQeReport(id, pcsApiVersion, qeReport, tcbEvalNumber);
+        if (authData.certification.identityParsed) {
+            // The legacy object getter can return an empty identity for absent/expired data.
+            // Reuse the router's strict getter in V2 without changing legacy router behavior.
+            if (pccsRouter.getQeIdentityContentHash(id, pcsApiVersion, tcbEvalNumber) == bytes32(0)) {
+                result.success = false;
+                result.reason = QEIDCH;
+                return result;
+            }
+        }
+        (result.success, result.qeTcbStatus) =
+            fetchQeIdentityAndCheckQeReport(id, pcsApiVersion, qeReport, tcbEvalNumber);
         if (!result.success || result.qeTcbStatus == EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_REVOKED) {
             result.success = false;
             result.reason = QEIDVE;
@@ -101,6 +106,16 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         }
 
         // Step 3: Signature Verification on local isv report and qereport
+        // Identity policy is enforced only after authentication of the leaf chain.
+        if (authData.certification.identityParsed) {
+            bool platform = LibString.eq(authData.certification.pckChain[0].issuerCommonName, PLATFORM_ISSUER_NAME);
+            if (platform != authData.certification.piidPresent) {
+                result.success = false;
+                result.reason = "PCK PIID CA semantics mismatch";
+                return result;
+            }
+        }
+
         bytes memory localAttestationData = abi.encodePacked(rawHeader, rawBody);
         result.success = attestationVerification(
             authData.qeReport,
@@ -167,11 +182,12 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         success = true;
     }
 
-    function fetchQeIdentityAndCheckQeReport(EnclaveId id, uint256 pcsApiVersion, EnclaveReport memory qeReport, uint32 tcbEvalNumber)
-        internal
-        view
-        returns (bool success, EnclaveIdTcbStatus qeTcbStatus)
-    {
+    function fetchQeIdentityAndCheckQeReport(
+        EnclaveId id,
+        uint256 pcsApiVersion,
+        EnclaveReport memory qeReport,
+        uint32 tcbEvalNumber
+    ) internal view returns (bool success, EnclaveIdTcbStatus qeTcbStatus) {
         IdentityObj memory qeIdentity = pccsRouter.getQeIdentity(id, pcsApiVersion, tcbEvalNumber);
         (success, qeTcbStatus) = verifyQEReportWithIdentity(
             qeIdentity, qeReport.miscSelect, qeReport.attributes, qeReport.mrSigner, qeReport.isvProdId, qeReport.isvSvn
@@ -237,6 +253,13 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         );
     }
 
+    /// @dev Internal transport to FeeV2, NOT the public output/journal wire format.
+    /// Packing/strict decoding and collateral lookup live in the entrypoint to stay within EIP-170.
+    function identityEnvelope(bytes memory legacy, PCKCollateral memory pck) internal pure returns (bytes memory) {
+        require(pck.identityParsed, "Identity was not parsed");
+        return abi.encode(pck.ppid, pck.piid, pck.piidPresent, legacy);
+    }
+
     function checkCollateralHashes(uint32 tcbEvalNumber, uint256 offset, bytes calldata zkOutput)
         internal
         view
@@ -261,8 +284,9 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
             tcbEvalNumber = pccsRouter.getStandardTcbEvaluationDataNumberWithTimestamp(tcbId, timestamp);
         }
 
-        bytes32 expectedTcbInfoContentHash =
-            pccsRouter.getFmspcTcbContentHashWithTimestamp(tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber, timestamp);
+        bytes32 expectedTcbInfoContentHash = pccsRouter.getFmspcTcbContentHashWithTimestamp(
+            tcbId, fmspc, quoteVersion < 4 ? 2 : 3, tcbEvalNumber, timestamp
+        );
         if (tcbInfoContentHash != expectedTcbInfoContentHash) {
             return (false, bytes(TCBCH));
         }
@@ -294,13 +318,11 @@ abstract contract QuoteVerifierBase is IQuoteVerifier, EnclaveIdBase, X509ChainB
         // - one of the PCK CAs has a CRL stored on-chain
         // - the hash of the on-chain CRL matches with the CRL hash in the zkOutput
 
-        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp)
-        );
+        (bool platformSuccess, bytes memory platformRet) = address(pccsRouter)
+            .staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PLATFORM, timestamp));
 
-        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter).staticcall(
-            abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp)
-        );
+        (bool processorSuccess, bytes memory processorRet) = address(pccsRouter)
+            .staticcall(abi.encodeWithSelector(IPCCSRouter.getCrlHashWithTimestamp.selector, CA.PROCESSOR, timestamp));
 
         bytes32 expectedPlatformCrlHash;
         bytes32 expectedProcessorCrlHash;

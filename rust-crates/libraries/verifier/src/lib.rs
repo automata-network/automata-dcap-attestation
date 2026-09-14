@@ -5,6 +5,8 @@
 //! 2. ZK proof verification using various zkVM coprocessors
 
 pub mod utils;
+pub mod v2;
+pub use v2::{verify_and_attest_on_chain_v2, verify_and_attest_with_zk_proof_v2};
 
 use alloy::primitives::Bytes;
 use alloy::providers::Provider;
@@ -104,6 +106,16 @@ pub async fn verify_and_attest_on_chain<P: Provider>(
         .resolve_contract_address(ContractKind::DcapAttestation, None, None)
         .await?;
 
+    if deployment_version == Some(Version::V2_0) {
+        return verify_and_attest_on_chain_v2(
+            provider,
+            contract_address,
+            quote_bytes,
+            tcb_eval_data_num.unwrap_or(0),
+        )
+        .await;
+    }
+
     // Step 3: Create contract instance
     let contract = IAutomataDcapAttestation::new(contract_address, provider);
 
@@ -201,6 +213,18 @@ pub async fn verify_and_attest_with_zk_proof<P: Provider>(
     let contract = IAutomataDcapAttestation::new(contract_address, provider);
 
     // Convert enum to u8 for contract call
+    if deployment_version == Some(Version::V2_0) {
+        return verify_and_attest_with_zk_proof_v2(
+            provider,
+            contract_address,
+            output_bytes,
+            zk_coprocessor,
+            proof_bytes,
+            program_identifier,
+            tcb_eval_data_num.unwrap_or(0),
+        )
+        .await;
+    }
     let zk_coprocessor_u8: u8 = zk_coprocessor.into();
 
     // Step 4: Call the appropriate verifyAndAttestWithZKProof function

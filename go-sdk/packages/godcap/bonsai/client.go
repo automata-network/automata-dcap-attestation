@@ -138,11 +138,10 @@ func (c *Client) api(method string, path string, body io.Reader, response interf
 	req.Header.Set("x-risc0-version", c.cfg.Version)
 	httpResponse, err := http.DefaultClient.Do(req)
 
-	statusCode = httpResponse.StatusCode
-
 	if err != nil {
 		return statusCode, logex.Trace(err)
 	}
+	statusCode = httpResponse.StatusCode
 	defer httpResponse.Body.Close()
 	httpBody, err := io.ReadAll(httpResponse.Body)
 	if err != nil {

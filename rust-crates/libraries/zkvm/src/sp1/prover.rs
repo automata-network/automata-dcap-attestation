@@ -4,13 +4,27 @@ use sp1_sdk::{
     network::NetworkMode, HashableKey, Prover, ProverClient, SP1Stdin, SP1_CIRCUIT_VERSION,
 };
 
-use crate::{common::{ZkVmProver, ZkVm}, get_elf, Version};
 use super::{config::Sp1Config, proving::prove};
+use crate::{
+    common::{ZkVm, ZkVmProver},
+    get_elf, Version,
+};
 
 /// SP1 zkVM prover implementation
 pub struct Sp1Prover {
     /// The ELF binary for the guest program
-    elf: &'static [u8],
+    elf: std::borrow::Cow<'static, [u8]>,
+}
+
+impl Sp1Prover {
+    /// Load an explicitly selected V2 release ELF. Its native program_identifier must match
+    /// the audited release manifest and the on-chain V2 allowlist before submission.
+    pub fn from_v2_elf(elf: Vec<u8>) -> Result<Self> {
+        anyhow::ensure!(elf.starts_with(b"\x7fELF"), "invalid V2 ELF");
+        Ok(Self {
+            elf: std::borrow::Cow::Owned(elf),
+        })
+    }
 }
 
 #[async_trait]
@@ -18,8 +32,13 @@ impl ZkVmProver for Sp1Prover {
     type Config = Sp1Config;
 
     fn new(version: Version) -> Result<Self> {
+        if version == Version::V2_0 {
+            return Self::from_v2_elf(crate::load_v2_elf()?);
+        }
         let elf = get_elf(version, ZkVm::Sp1)?;
-        Ok(Self { elf })
+        Ok(Self {
+            elf: std::borrow::Cow::Borrowed(elf),
+        })
     }
 
     async fn prove(&self, config: &Self::Config, input_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -34,7 +53,7 @@ impl ZkVmProver for Sp1Prover {
             // Use local prover to execute and get journal
             std::env::set_var("SP1_PROVER", "mock");
             let client = ProverClient::from_env();
-            let (journal, report) = client.execute(self.elf, &stdin).run()?;
+            let (journal, report) = client.execute(self.elf.as_ref(), &stdin).run()?;
             log::info!(
                 "executed program with {} cycles",
                 report.total_instruction_count()
@@ -57,7 +76,7 @@ impl ZkVmProver for Sp1Prover {
             .build();
 
         // Setup: get proving key and verifying key
-        let (pk, vk) = client.setup(self.elf);
+        let (pk, vk) = client.setup(self.elf.as_ref());
 
         let vk_string = vk.bytes32();
         log::info!("VK: {}", vk_string.as_str());
@@ -83,7 +102,7 @@ impl ZkVmProver for Sp1Prover {
         std::env::set_var("SP1_PROVER", "mock");
 
         let client = ProverClient::from_env();
-        let (_, vk) = client.setup(self.elf);
+        let (_, vk) = client.setup(self.elf.as_ref());
 
         Ok(vk.bytes32())
     }
