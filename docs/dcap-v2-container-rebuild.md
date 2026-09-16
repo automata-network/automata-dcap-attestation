@@ -1,5 +1,10 @@
 # V2 reproducible Docker builds
 
+> Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
+> fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
+> and gas results below are historical, not acceptance for the current source.
+> See [current revision and release gates](dcap-v2-min-check.md).
+
 ## Agreed release criterion (corrected 2026-09-11)
 
 Freeze the image **digest and platform**, source commit, lockfiles, build flags

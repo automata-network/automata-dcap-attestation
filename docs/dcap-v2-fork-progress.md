@@ -1,5 +1,10 @@
 # Fork execution record — 2026-09-12–14
 
+> Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
+> fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
+> and gas results below are historical, not acceptance for the current source.
+> See [current revision and release gates](dcap-v2-min-check.md).
+
 The scoped six-cell V2 / single-Sepolia E2E is complete; see the compact
 [acceptance summary](dcap-v2-sepolia-acceptance.md) and
 [proof matrix](dcap-v2-sepolia-proof-matrix.json). This is **not a release approval**. Live deployments,

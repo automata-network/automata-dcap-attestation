@@ -1,5 +1,10 @@
 # Public ATA SGX/TDX V2 validation — 2026-09-11
 
+> Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
+> fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
+> and gas results below are historical, not acceptance for the current source.
+> See [current revision and release gates](dcap-v2-min-check.md).
+
 ## Inputs and important framing difference
 
 The two user-supplied public quotes are retained byte-for-byte under

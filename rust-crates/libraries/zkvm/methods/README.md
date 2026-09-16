@@ -4,6 +4,14 @@ Selectively ported from staging `942d42c8a8543a28ed737db515fb8e8c246aca61`.
 The verifier core remains the current main implementation. All guests call
 `dcap_rs::v2::verify_guest_input_v2` and commit its exact bytes.
 
+Current semantics: guests prove the common minimal baseline, retaining all V2
+authentication/identity/framing checks. FeeV2 applies production workload
+attribute checks to the committed body for strict calls. No mode field is
+added to the input ABI or journal. `fullQuoteHash` is Keccak-256 of the raw quote;
+RISC Zero's journal digest is still SHA-256. Earlier strict/SHA-256 V2 guest
+artifacts, native IDs and proof evidence must not be reused for this revision.
+See [mode semantics and release gates](../../../../docs/dcap-v2-min-check.md).
+
 These are standalone build workspaces. Ordinary host builds do not build guests.
 Build drivers write only to `zkvm/artifacts/v2.0`; old embedded v1.0/v1.1 ELFs are untouched.
 Pico retains main's v1.1.6 SDK/universal-verifier family, not staging's v1.2.2.
@@ -37,7 +45,8 @@ RISC Zero uses the installed rzup Rust 1.88 compiler, separate Cargo 1.88 and
 SDK/runtime 3.0.3. The driver also locks the inner guest build. Its `.elf` artifact
 is a combined user/kernel program binary; see [RISC Zero instructions](risc0/README.md).
 
-Current validation status: all three V2 guests have compiled locally, with all
-guest and build-driver lockfiles present. All backends still require independent
-reproducibility and real proof checks before release. Local execution checks are
-not proof validation; see [current evidence](../../../../docs/dcap-v2-progress.md).
+The minCheck/Keccak guests have been rebuilt locally with unchanged guest and
+build-driver lockfiles. All three matched native journals for five fixtures;
+RISC Zero/SP1 also passed eight negative execution checks each. New pinned-Docker
+reproducibility, real proofs and fork acceptance remain release gates. Local
+execution is not proof validation; see [current status](../../../../docs/dcap-v2-min-check.md).

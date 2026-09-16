@@ -23,18 +23,26 @@ A new `AutomataDcapAttestationFeeV2` deployment will add:
 
 ```solidity
 verifyAndAttestOnChainV2(bytes rawQuote)
-verifyAndAttestOnChainV2(bytes rawQuote, uint32 tcbEvaluationDataNumber)
+verifyAndAttestOnChainV2(bytes rawQuote, uint32 tcbEvaluationDataNumber, bool minCheck)
 
 verifyAndAttestWithZKProofV2(bytes journal, ...)
 verifyAndAttestWithZKProofV2(
     bytes journal,
     ...,
     bytes32 programIdentifier,
-    uint32 tcbEvaluationDataNumber
+    uint32 tcbEvaluationDataNumber,
+    bool minCheck
 )
 ```
 
 All new verification methods return `(bool success, bytes output)`.
+
+The short overloads always use strict verification. The long overloads replace
+the previous draft signatures and append `minCheck`: `false` retains strict
+behavior; `true` skips only SGX/TDX DEBUG, TDX reserved-attribute checks,
+SEPT_VE_DISABLE, and MR_SERVICE_TD policy. It does not restore V1 parser,
+collateral, identity or TCB-status behavior. Authentication and all other V2
+checks remain mandatory. See [mode semantics and regression](dcap-v2-min-check.md).
 
 The V2 contract retains the legacy selectors, parser, acceptance rules, serializers, events, and journal validation behavior for full drop-in compatibility. The new strict identity requirements apply only to V2 selectors.
 
@@ -119,7 +127,7 @@ Final layout for `formatMajorVersion = 2, formatMinorVersion = 1` (integers big-
 | 161 | 32 | TCB Signing certificate hash | inline | verification-only |
 | 193 | 32 | Root CA CRL hash | inline | verification-only |
 | 225 | 32 | Platform/Processor PCK CRL hash | inline | verification-only |
-| 257 | 32 | `fullQuoteHash` (sha256 of the raw quote) | inline | result |
+| 257 | 32 | `fullQuoteHash` (Keccak-256 of the exact raw quote) | inline | result |
 | 289 | 384/584/648 | `quoteBody` payload | tail | result |
 | 289 + body | variable | `advisoryIDs` payload (absent when empty) | tail | result |
 
@@ -158,7 +166,7 @@ In V2, **the journal is the output**: the guest commits an `OutputV2` structure 
 - No new maximum-proof-age or challenge-binding policy is introduced. Collateral validity checks are not a complete freshness guarantee.
 - All V2 quote versions, including Quote V3, use PCS API v4 / TCB Info v3 on both paths.
 - V2 returns the actual advisory IDs from the matched TCB level, preserving their order without sorting or deduplication. Legacy paths retain their existing behavior.
-- V2 on-chain verification follows the Rust production quote policy: reject SGX/TDX debug mode, reserved TDX attribute bits, missing SEPT_VE_DISABLE, and non-zero MR_SERVICE_TD. Legacy selectors retain their existing acceptance policy.
+- Strict V2 calls reject SGX/TDX debug mode, reserved TDX attribute bits, missing SEPT_VE_DISABLE, and non-zero MR_SERVICE_TD. Only these workload restrictions are skipped with `minCheck=true`. All backends prove the common minimal baseline and authenticate the full report body; FeeV2 enforces strict workload policy on the committed body for short calls and `minCheck=false`. Legacy selectors retain their existing acceptance policy.
 - V2 TDX status calculation retains the first SGX/PCE partial-match status, enforces revocation on the complete TDX match, evaluates the matching module identity including TDX_00, and performs the relaunch check using the pre-convergence platform status. Relaunch results 8/9 must not be overwritten by legacy status serialization.
 - V2 requires exact raw-quote and authentication-data framing; trailing bytes are rejected rather than silently removed before calculating fullQuoteHash.
 
@@ -231,7 +239,7 @@ Re-estimate the previous 35–50-file production scope after accounting for gues
 
 The missing main-branch guest projects have been located in staging at [`rust-crates/libraries/zkvm/methods`](https://github.com/automata-network/automata-dcap-attestation/tree/942d42c8a8543a28ed737db515fb8e8c246aca61/rust-crates/libraries/zkvm/methods). Selectively port these projects and their required shared input types, feature separation, and workspace configuration; do not merge unrelated staging changes or SDK upgrades.
 
-The staging guests currently emit a legacy-style journal with an appended Keccak-256 quote hash. They must be adapted to the agreed OutputV2 format and SHA-256 fullQuoteHash. Their build scripts must target the new release directory without overwriting or silently reusing legacy ELF files. Source availability does not establish reproducibility; reproducible builds remain a release gate.
+The staging guests originally emitted a legacy-style journal with an appended Keccak-256 quote hash. V2 guests use the agreed OutputV2 format with Keccak-256 fullQuoteHash. Their build scripts target the new release directory without overwriting or silently reusing legacy ELF files. Source availability does not establish reproducibility; reproducible builds remain a release gate. Earlier draft V2 guests committed SHA-256 and enforced strict workload policy inside the guest; their IDs/proofs must not be registered for this revision. Rebuild and re-prove before release. RISC Zero's `sha256(journal)` remains unchanged.
 
 ## 7. Deployment configuration impact
 
@@ -391,7 +399,7 @@ Total journal size: `2 + outputLength + 8 + 192`.
 
 ### 12.3 ZK journal V1 with a 131-byte compact output ("ATKJ" guest)
 
-A downstream consumer (tee-workload-attestation) registers its own guest whose `verifiedOutput` is a fixed 131-byte compact output carrying hash commitments instead of the quote body and advisory IDs. `outputLength` is constant 131 and the total journal size is constant 333 bytes. Its `fullQuoteHash` uses Keccak-256, unlike the SHA-256 field in OutputV2; matching field names do not imply identical hash semantics.
+A downstream consumer (tee-workload-attestation) registers its own guest whose `verifiedOutput` is a fixed 131-byte compact output carrying hash commitments instead of the quote body and advisory IDs. `outputLength` is constant 131 and the total journal size is constant 333 bytes. Its `fullQuoteHash` and the current OutputV2 both use Keccak-256 of the raw quote, but their different wire formats and program families remain incompatible.
 
 | Offset | Size | Field | Group |
 | --- | --- | --- | --- |

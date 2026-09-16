@@ -1,5 +1,14 @@
 # DCAP V2 rollout (not executed)
 
+## Current revision gate
+
+The minCheck/Keccak revision invalidates earlier draft V2 guest/proof acceptance.
+Do not register the historical SHA-256 fullQuoteHash guest IDs in the revised
+FeeV2. Rebuild with pinned Docker images, compute new native IDs, regenerate
+RISC Zero/SP1 proofs and repeat Sepolia raw/ZK/SDK/gas acceptance for this source.
+Keep legacy V1 IDs in their separate legacy registry. See
+[current mode semantics and regression](dcap-v2-min-check.md).
+
 ## Release scope (confirmed 2026-09-11)
 
 - Preserve the existing network/backend support matrix. RISC Zero/SP1 are the

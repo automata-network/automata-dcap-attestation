@@ -1,5 +1,10 @@
 # DCAP V2 implementation
 
+> Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
+> fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
+> and gas results below are historical, not acceptance for the current source.
+> See [current revision and release gates](dcap-v2-min-check.md).
+
 Baseline: DCAP `41aedff`; PCCS `c65b4b1`. Source of guest build projects: staging `942d42c`.
 
 No live deployments, router mutations, SDK publication, or replacement of legacy ELF files.
