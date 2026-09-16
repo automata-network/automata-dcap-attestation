@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/crypto"
 	"os"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func TestPublicAtaOutputV2Fixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if out.QuoteVersion != fixture.QuoteVersion || out.Timestamp != fixture.Timestamp || out.FullQuoteHash != quoteHash || !out.PIIDPresent {
+			if out.QuoteVersion != fixture.QuoteVersion || out.Timestamp != fixture.Timestamp || out.FullQuoteHash != [32]byte(crypto.Keccak256Hash(quote)) || !out.PIIDPresent {
 				t.Fatal("incorrect journal fields")
 			}
 			encoded, err := out.MarshalBinary()

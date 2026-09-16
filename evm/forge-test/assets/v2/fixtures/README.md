@@ -1,5 +1,10 @@
 # Frozen V2 verification inputs
 
+The current expected journals use Keccak-256 for fullQuoteHash (bytes 257–288).
+The quote, input and journal integrity metadata remain SHA-256. Earlier guest
+artifacts/proofs using the draft SHA-256 quote slot must be rebuilt; the signed
+quote/collateral and ABI inputs themselves have not changed.
+
 These public fixtures capture the exact ABI inputs used for the local SP1,
 RISC Zero and Pico execution checks. Tests need neither a PCCS/PCS endpoint nor
 files left in a developer's temporary directory. They do not generate ZK proofs.

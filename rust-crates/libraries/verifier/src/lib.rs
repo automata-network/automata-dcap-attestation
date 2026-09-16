@@ -10,7 +10,7 @@ pub use v2::{verify_and_attest_on_chain_v2, verify_and_attest_with_zk_proof_v2};
 
 use alloy::primitives::Bytes;
 use alloy::providers::Provider;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use automata_dcap_evm_bindings::i_automata_dcap_attestation::IAutomataDcapAttestation;
 use automata_dcap_network_registry::{ContractKind, Network};
 use automata_dcap_utils::Version;
@@ -112,6 +112,7 @@ pub async fn verify_and_attest_on_chain<P: Provider>(
             contract_address,
             quote_bytes,
             tcb_eval_data_num.unwrap_or(0),
+            false,
         )
         .await;
     }
@@ -222,6 +223,7 @@ pub async fn verify_and_attest_with_zk_proof<P: Provider>(
             proof_bytes,
             program_identifier,
             tcb_eval_data_num.unwrap_or(0),
+            false,
         )
         .await;
     }

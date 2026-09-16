@@ -21,5 +21,19 @@ contract QuoteV5V2Test is QuoteV5Test {
             vm.readFileBinary(string.concat(vm.projectRoot(), "/forge-test/assets/quotes/alibaba_quote_5.dat"));
         vm.expectRevert(bytes("TDX migration service TD measurement is not zero"));
         fee.verifyAndAttestOnChainV2(quote);
+        vm.expectRevert(bytes("TDX migration service TD measurement is not zero"));
+        fee.verifyAndAttestOnChainV2(quote, 0, false);
+        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(quote, 0, true);
+        assertTrue(success);
+        OutputV2 memory decoded = this.decodeV2(output);
+        assertEq(decoded.fullQuoteHash, keccak256(quote));
+        assertEq(decoded.quoteBodyType, 3);
+        assertEq(decoded.quoteBody.length, 648);
+        assertNotEq(keccak256(_serviceTd(decoded.quoteBody)), keccak256(new bytes(48)));
+    }
+
+    function _serviceTd(bytes memory body) internal pure returns (bytes memory measurement) {
+        measurement = new bytes(48);
+        for (uint256 i; i < 48; ++i) measurement[i] = body[600 + i];
     }
 }

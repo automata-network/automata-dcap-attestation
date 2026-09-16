@@ -96,7 +96,7 @@ func TestForkRawV2CallsTransactionsAndEvents(t *testing.T) {
 				t.Fatal(err)
 			}
 			opts := &bind.CallOpts{Context: ctx, From: account}
-			actual, err := client.VerifyAndAttestOnChainV2(opts, quote, fixture.Eval)
+			actual, err := client.VerifyAndAttestOnChainV2(opts, quote, fixture.Eval, false)
 			if err != nil || !bytes.Equal(actual, wire) {
 				t.Fatalf("explicit call/parity: %v", err)
 			}
@@ -104,15 +104,19 @@ func TestForkRawV2CallsTransactionsAndEvents(t *testing.T) {
 			if err != nil || !bytes.Equal(actual, wire) {
 				t.Fatalf("default call/parity: %v", err)
 			}
+			actual, err = client.VerifyAndAttestOnChainV2(opts, quote, fixture.Eval, true)
+			if err != nil || !bytes.Equal(actual, wire) {
+				t.Fatalf("minimal call/parity: %v", err)
+			}
 			changed := append([]byte(nil), quote...)
 			changed[80] ^= 1
-			if _, err = client.VerifyAndAttestOnChainV2(opts, changed, fixture.Eval); err == nil {
+			if _, err = client.VerifyAndAttestOnChainV2(opts, changed, fixture.Eval, false); err == nil {
 				t.Fatal("modified quote accepted")
 			}
-			if _, err = client.VerifyAndAttestOnChainV2(opts, append(append([]byte(nil), quote...), 0), fixture.Eval); err == nil {
+			if _, err = client.VerifyAndAttestOnChainV2(opts, append(append([]byte(nil), quote...), 0), fixture.Eval, false); err == nil {
 				t.Fatal("padded quote accepted")
 			}
-			if _, err = client.VerifyAndAttestOnChainV2(opts, quote, ^uint32(0)); err == nil {
+			if _, err = client.VerifyAndAttestOnChainV2(opts, quote, ^uint32(0), false); err == nil {
 				t.Fatal("invalid evaluation accepted")
 			}
 			for _, automatic := range []bool{false, true} {
@@ -132,7 +136,7 @@ func TestForkRawV2CallsTransactionsAndEvents(t *testing.T) {
 					}
 					tx, err = client.contract.Transact(auth, method, quote)
 				} else {
-					tx, err = client.TransactOnChainV2(auth, quote, fixture.Eval)
+					tx, err = client.TransactOnChainV2(auth, quote, fixture.Eval, false)
 				}
 				if err != nil {
 					t.Fatal(err)

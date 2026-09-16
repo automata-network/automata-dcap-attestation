@@ -20,7 +20,7 @@ pub struct VerifiedOutputV2 {
     pub timestamp: u64,
     /// TCB Info, QE Identity, root cert, signing cert, root CRL, PCK CRL (in that order).
     pub collateral_hashes: [[u8; 32]; 6],
-    /// SHA-256 of the complete input quote, not Keccak-256.
+    /// Keccak-256 of the exact raw quote bytes; unrelated to backend journal digests.
     pub full_quote_hash: [u8; 32],
     pub quote_body: Vec<u8>,
     pub advisory_ids: Vec<String>,

@@ -23,7 +23,7 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
             abi.encodeWithSelector(IPCCSRouter.getQeIdentityContentHash.selector, EnclaveId.QE, uint256(4), uint32(17)),
             abi.encode(bytes32(0))
         );
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(readHex("quote-v3"), 17);
+        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(readHex("quote-v3"), 17, false);
         assertFalse(success);
         assertEq(string(output), QEIDCH);
         // The legacy verifier does not acquire this new strict hash dependency.
@@ -43,7 +43,7 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
         assertEq(pccsRouter.getQeIdentity(EnclaveId.QE, 4, 17).tcb.length, 0);
         bytes memory raw = readHex("quote-v3");
         vm.expectRevert(abi.encodeWithSelector(PCCSRouter.QEIdentityExpiredOrNotFound.selector, EnclaveId.QE, 4));
-        fee.verifyAndAttestOnChainV2(raw, 17);
+        fee.verifyAndAttestOnChainV2(raw, 17, false);
     }
 
     function testV2MissingIdentityHasExplicitRouterFailure() public {
@@ -54,7 +54,7 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
             abi.encode(uint64(0), uint64(0)));
         bytes memory raw = readHex("quote-v3");
         vm.expectRevert(abi.encodeWithSelector(PCCSRouter.QEIdentityExpiredOrNotFound.selector, EnclaveId.QE, 4));
-        fee.verifyAndAttestOnChainV2(raw, 17);
+        fee.verifyAndAttestOnChainV2(raw, 17, false);
         (bool success, bytes memory output) = fee.verifyAndAttestOnChain(raw, 17);
         assertFalse(success);
         assertEq(string(output), QEIDVE);
@@ -83,7 +83,7 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
         TDXModuleIdentity[] memory identities = new TDXModuleIdentity[](0);
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(raw, 17);
+        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertFalse(success);
         assertEq(string(output), TCBR);
         vm.expectRevert(stdError.indexOOBError);
@@ -94,14 +94,14 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
         levels[0].sgxComponentCpuSvns[0] = 255;
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17);
+        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertFalse(success);
         assertEq(string(output), TCBR);
         levels[0].sgxComponentCpuSvns[0] = 0;
         levels[0].status = TCBStatus.OK;
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17);
+        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertTrue(success, string(output));
     }
 

@@ -103,16 +103,17 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         collectFee
         returns (bool, bytes memory)
     {
-        return _onChainV2(rawQuote, 0);
+        return _onChainV2(rawQuote, 0, false);
     }
 
-    function verifyAndAttestOnChainV2(bytes calldata rawQuote, uint32 tcbEvaluationDataNumber)
+    /// @notice minCheck skips workload attribute policy only, never authentication or strict parsing.
+    function verifyAndAttestOnChainV2(bytes calldata rawQuote, uint32 tcbEvaluationDataNumber, bool minCheck)
         external
         payable
         collectFee
         returns (bool, bytes memory)
     {
-        return _onChainV2(rawQuote, tcbEvaluationDataNumber);
+        return _onChainV2(rawQuote, tcbEvaluationDataNumber, minCheck);
     }
 
     function verifyAndAttestWithZKProofV2(bytes calldata journal, ZkCoProcessorType backend, bytes calldata proof)
@@ -121,27 +122,32 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         collectFee
         returns (bool, bytes memory)
     {
-        return _withProofV2(journal, backend, proof, programIdentifierV2(backend), 0);
+        return _withProofV2(journal, backend, proof, programIdentifierV2(backend), 0, false);
     }
 
+    /// @notice minCheck skips workload attributes only; the proof must authenticate the full V2 journal.
     function verifyAndAttestWithZKProofV2(
         bytes calldata journal,
         ZkCoProcessorType backend,
         bytes calldata proof,
         bytes32 identifier,
-        uint32 tcbEvaluationDataNumber
+        uint32 tcbEvaluationDataNumber,
+        bool minCheck
     ) external payable collectFee returns (bool, bytes memory) {
-        return _withProofV2(journal, backend, proof, identifier, tcbEvaluationDataNumber);
+        return _withProofV2(journal, backend, proof, identifier, tcbEvaluationDataNumber, minCheck);
     }
 
-    function _onChainV2(bytes calldata rawQuote, uint32 tcbEval) private returns (bool success, bytes memory output) {
+    function _onChainV2(bytes calldata rawQuote, uint32 tcbEval, bool minCheck)
+        private
+        returns (bool success, bytes memory output)
+    {
         Header memory header;
         (success, header) = _parseQuoteHeader(rawQuote);
         if (!success) return (false, bytes("Quote length is less than Header length"));
         IQuoteVerifierV2 verifier = IQuoteVerifierV2(address(quoteVerifiers[header.version]));
         if (address(verifier) == address(0)) return (false, bytes("Unsupported quote version"));
         (success, output) = verifier.verifyQuoteV2(header, rawQuote, tcbEval);
-        if (success) output = _formatOutputV2(output, rawQuote, verifier.pccsRouter(), tcbEval);
+        if (success) output = _formatOutputV2(output, rawQuote, verifier.pccsRouter(), tcbEval, minCheck);
         emit AttestationSubmittedV2(success, ZkCoProcessorType.None, 2, 1, output);
     }
 
@@ -150,7 +156,8 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         ZkCoProcessorType backend,
         bytes calldata proof,
         bytes32 identifier,
-        uint32 tcbEval
+        uint32 tcbEval,
+        bool minCheck
     ) private returns (bool success, bytes memory output) {
         if (zkV2Paused) return (false, bytes("V2 ZK verification is paused"));
         if (backend == ZkCoProcessorType.None || !_programIdConfigV2[backend].contains(identifier)) {
@@ -160,7 +167,7 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         address verifier = zkVerifierV2(backend, bytes4(proof[:4]));
         if (verifier.code.length == 0) return (false, bytes("ZK Verifier is not configured"));
         OutputV2 memory decoded = OutputV2Codec.decode(journal);
-        QuotePolicyV2.validate(decoded.quoteBodyType, decoded.quoteBody);
+        if (!minCheck) QuotePolicyV2.validate(decoded.quoteBodyType, decoded.quoteBody);
         if (backend == ZkCoProcessorType.RiscZero) {
             IRiscZeroVerifier(verifier).verify(proof, identifier, sha256(journal));
         } else if (backend == ZkCoProcessorType.Succinct) {
@@ -181,11 +188,13 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         emit AttestationSubmittedV2(success, backend, 2, 1, output);
     }
 
-    function _formatOutputV2(bytes memory envelope, bytes calldata rawQuote, IPCCSRouter router, uint32 tcbEval)
-        private
-        view
-        returns (bytes memory)
-    {
+    function _formatOutputV2(
+        bytes memory envelope,
+        bytes calldata rawQuote,
+        IPCCSRouter router,
+        uint32 tcbEval,
+        bool minCheck
+    ) private view returns (bytes memory) {
         OutputV2 memory out;
         bytes memory legacy;
         (out.ppid, out.piid, out.piidPresent, legacy) = abi.decode(envelope, (bytes16, bytes16, bool, bytes));
@@ -197,10 +206,10 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         require(out.tcbStatus != 6 && out.tcbStatus != 7, "Invalid V2 TCB status");
         out.fmspc = bytes6(legacy.substring(5, 6));
         out.timestamp = uint64(block.timestamp);
-        out.fullQuoteHash = sha256(rawQuote);
+        out.fullQuoteHash = keccak256(rawQuote);
         uint256 length = OutputV2Codec.bodyLength(out.quoteVersion, out.quoteBodyType);
         out.quoteBody = legacy.substring(11, length);
-        QuotePolicyV2.validate(out.quoteBodyType, out.quoteBody);
+        if (!minCheck) QuotePolicyV2.validate(out.quoteBodyType, out.quoteBody);
         out.advisoryIDs = legacy.length == 11 + length
             ? new string[](0)
             : abi.decode(legacy.substring(11 + length, legacy.length - 11 - length), (string[]));

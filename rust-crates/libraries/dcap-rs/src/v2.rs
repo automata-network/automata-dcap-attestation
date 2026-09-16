@@ -3,10 +3,10 @@ use crate::types::{
     VerifiedOutputV2, collateral::Collateral, quote::Quote, sgx_x509::SgxPckExtension,
     tcb_info::TcbInfoVersion,
 };
+use crate::utils::keccak;
 use crate::{DcapVerificationPolicy, verify_dcap_quote_with_policy_ref};
 use alloy_sol_types::{SolType, sol};
 use anyhow::{Context, Result, ensure};
-use sha2::{Digest, Sha256};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Verify using the production policy at the same timestamp committed to OutputV2.
@@ -14,6 +14,17 @@ pub fn verify_dcap_quote_v2(
     current_time: SystemTime,
     collateral: &Collateral,
     raw_quote: &[u8],
+) -> Result<VerifiedOutputV2> {
+    verify_dcap_quote_v2_with_min_check(current_time, collateral, raw_quote, false)
+}
+
+/// Minimal mode skips workload attributes only. Authentication, framing, TCB
+/// status, collateral validity, and PPID/PIID semantics are always enforced.
+pub fn verify_dcap_quote_v2_with_min_check(
+    current_time: SystemTime,
+    collateral: &Collateral,
+    raw_quote: &[u8],
+    min_check: bool,
 ) -> Result<VerifiedOutputV2> {
     let mut remaining = raw_quote;
     let quote = Quote::read(&mut remaining)?;
@@ -34,7 +45,7 @@ pub fn verify_dcap_quote_v2(
         current_time,
         collateral,
         quote,
-        &DcapVerificationPolicy::production(),
+        &verification_policy(min_check),
     )?;
     // Do not apply issuer/identity policy until the certificate chain and quote have been authenticated.
     let leaf = chain.pck_cert_chain.first().context("missing PCK leaf")?;
@@ -87,10 +98,20 @@ pub fn verify_dcap_quote_v2(
             Collateral::get_crl_hash(&collateral.root_ca_crl)?,
             Collateral::get_crl_hash(&collateral.pck_crl)?,
         ],
-        full_quote_hash: Sha256::digest(raw_quote).into(),
+        full_quote_hash: keccak::hash(raw_quote),
         quote_body: verified.quote_body.as_bytes().to_vec(),
         advisory_ids: verified.advisory_ids.unwrap_or_default(),
     })
+}
+
+fn verification_policy(min_check: bool) -> DcapVerificationPolicy {
+    DcapVerificationPolicy {
+        allow_debug: min_check,
+        allow_service_td: min_check,
+        require_sept_ve_disable: !min_check,
+        require_zero_reserved_attributes: !min_check,
+        ..DcapVerificationPolicy::production()
+    }
 }
 
 fn validate_piid_ca(issuer: &str, present: bool) -> Result<()> {
@@ -117,19 +138,61 @@ pub fn encode_guest_input_v2(
     )))
 }
 
-/// Guest entry points commit these exact bytes, with no length prefix or hash trailer.
+/// Guest entry points prove the common minimal baseline and commit exact OutputV2
+/// bytes. FeeV2 enforces workload attributes for strict calls from the proven body.
+/// No uncommitted mode input is needed: all mode-dependent facts are in the journal.
 pub fn verify_guest_input_v2(input: &[u8]) -> Result<Vec<u8>> {
     let (collateral, quote, timestamp) = GuestInputV2::abi_decode_params(input)?;
     let collateral = Collateral::sol_abi_decode(&collateral)?;
     let time = UNIX_EPOCH
         .checked_add(Duration::from_secs(timestamp))
         .context("verification timestamp overflow")?;
-    verify_dcap_quote_v2(time, &collateral, &quote)?.to_vec()
+    verify_dcap_quote_v2_with_min_check(time, &collateral, &quote, true)?.to_vec()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::quote::QuoteBody;
+
+    #[test]
+    fn minimal_policy_changes_only_workload_attributes() {
+        let strict = verification_policy(false);
+        let minimal = verification_policy(true);
+        assert_eq!(strict, DcapVerificationPolicy::production());
+        assert_eq!(
+            minimal.tdx_tcb_revocation_policy,
+            strict.tdx_tcb_revocation_policy
+        );
+        assert!(minimal.allow_debug && minimal.allow_service_td);
+        assert!(!minimal.require_sept_ve_disable && !minimal.require_zero_reserved_attributes);
+
+        let raw = hex::decode(include_str!("../../../samples/quotev4.hex").trim()).unwrap();
+        let QuoteBody::Td10QuoteBody(report) = Quote::read(&mut raw.as_slice()).unwrap().body
+        else {
+            panic!("expected TDX 1.0");
+        };
+        for bit in 0..64 {
+            let mut changed = report;
+            changed.td_attributes = ((1u64 << 28) | (1u64 << bit)).to_le_bytes();
+            let body = QuoteBody::Td10QuoteBody(changed);
+            assert!(crate::validate_quote_policy(&body, &minimal).is_ok());
+            assert_eq!(
+                crate::validate_quote_policy(&body, &strict).is_ok(),
+                matches!(bit, 28 | 30 | 31 | 63)
+            );
+        }
+        let mut changed = report;
+        changed.td_attributes = [0; 8];
+        let body = QuoteBody::Td10QuoteBody(changed);
+        assert!(crate::validate_quote_policy(&body, &strict).is_err());
+        assert!(crate::validate_quote_policy(&body, &minimal).is_ok());
+        let body = Quote::read(&mut include_bytes!("../../../samples/quotev5.dat").as_slice())
+            .unwrap()
+            .body;
+        assert!(crate::validate_quote_policy(&body, &strict).is_err());
+        assert!(crate::validate_quote_policy(&body, &minimal).is_ok());
+    }
     #[test]
     fn ca_presence_matrix() {
         assert!(validate_piid_ca("Intel SGX PCK Platform CA", true).is_ok());

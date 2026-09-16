@@ -5,8 +5,53 @@ mod negative_cases;
 
 use alloy_sol_types::SolType;
 use dcap_rs::types::VerifiedOutputV2;
+use dcap_rs::types::collateral::Collateral;
+use dcap_rs::v2::verify_dcap_quote_v2_with_min_check;
 use dcap_rs::v2::verify_guest_input_v2;
 use fixture::{GuestInput, V2Fixture, hex_bytes};
+use std::time::{Duration, UNIX_EPOCH};
+
+#[test]
+fn both_modes_preserve_authentication_and_match_for_production_quotes() {
+    for raw in FIXTURES.into_iter().chain(ATA_FIXTURES) {
+        let fixture: V2Fixture = serde_json::from_str(raw).unwrap();
+        let input = fixture.rebuild_input().unwrap();
+        let (collateral, quote, timestamp) = GuestInput::abi_decode_params(&input).unwrap();
+        let collateral = Collateral::sol_abi_decode(&collateral).unwrap();
+        for min_check in [false, true] {
+            let output = verify_dcap_quote_v2_with_min_check(
+                UNIX_EPOCH + Duration::from_secs(timestamp),
+                &collateral,
+                &quote,
+                min_check,
+            )
+            .unwrap();
+            assert_eq!(
+                output.to_vec().unwrap(),
+                verify_guest_input_v2(&input).unwrap()
+            );
+            assert_eq!(
+                output.full_quote_hash,
+                alloy::primitives::keccak256(&quote).0
+            );
+            for (name, mutation) in negative_cases::negative_inputs(&input).unwrap() {
+                let (collateral, quote, timestamp) =
+                    GuestInput::abi_decode_params(&mutation).unwrap();
+                let collateral = Collateral::sol_abi_decode(&collateral).unwrap();
+                assert!(
+                    verify_dcap_quote_v2_with_min_check(
+                        UNIX_EPOCH + Duration::from_secs(timestamp),
+                        &collateral,
+                        &quote,
+                        min_check
+                    )
+                    .is_err(),
+                    "mode {min_check}: accepted {name}"
+                );
+            }
+        }
+    }
+}
 
 const FIXTURES: [&str; 3] = [
     include_str!("../../../../evm/forge-test/assets/v2/fixtures/v3.json"),
@@ -40,7 +85,7 @@ fn public_ata_quotes_match_frozen_journals_and_reject_eight_mutations_each() {
         assert!(output.piid_present);
         assert_eq!(
             output.full_quote_hash.to_vec(),
-            hex::decode(&fixture.quote_sha256).unwrap()
+            alloy::primitives::keccak256(fixture::unhex(&fixture.quote).unwrap()).to_vec()
         );
         let mutations = negative_cases::negative_inputs(&input).unwrap();
         assert_eq!(mutations.len(), 8);

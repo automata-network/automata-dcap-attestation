@@ -119,7 +119,7 @@ func TestForkRealZKV2SDK(t *testing.T) {
 	// The fixtures currently proven use evaluation 20. Do not guess other inputs.
 	const eval uint32 = 20
 	if originalPause {
-		if _, err = client.VerifyAndAttestWithZKProofV2(opts, journal, payload.Backend, proof, &id, eval); err == nil {
+		if _, err = client.VerifyAndAttestWithZKProofV2(opts, journal, payload.Backend, proof, &id, eval, false); err == nil {
 			t.Fatal("paused V2 accepted")
 		}
 	}
@@ -138,9 +138,11 @@ func TestForkRealZKV2SDK(t *testing.T) {
 		}
 	}()
 	for _, selectedID := range []*[32]byte{&id, nil} {
-		got, err := client.VerifyAndAttestWithZKProofV2(opts, journal, payload.Backend, proof, selectedID, eval)
-		if err != nil || !bytes.Equal(got, journal) {
-			t.Fatalf("explicit proof SDK parity: %v", err)
+		for _, minCheck := range []bool{false, true} {
+			got, err := client.VerifyAndAttestWithZKProofV2(opts, journal, payload.Backend, proof, selectedID, eval, minCheck)
+			if err != nil || !bytes.Equal(got, journal) {
+				t.Fatalf("explicit proof SDK parity (minCheck=%v): %v", minCheck, err)
+			}
 		}
 	}
 	got, err := client.VerifyAndAttestWithZKProofV2Default(opts, journal, payload.Backend, proof)
@@ -160,7 +162,7 @@ func TestForkRealZKV2SDK(t *testing.T) {
 		journal, proof []byte
 		id             [32]byte
 	}{{journal, changedProof, id}, {changedJournal, proof, id}, {journal, proof, wrongID}} {
-		if _, err = client.VerifyAndAttestWithZKProofV2(opts, negative.journal, payload.Backend, negative.proof, &negative.id, eval); err == nil {
+		if _, err = client.VerifyAndAttestWithZKProofV2(opts, negative.journal, payload.Backend, negative.proof, &negative.id, eval, false); err == nil {
 			t.Fatal("proof/journal/ID negative accepted")
 		}
 	}
@@ -172,8 +174,8 @@ func TestForkRealZKV2SDK(t *testing.T) {
 		}
 		auth.Context = ctx
 		auth.Value = big.NewInt(100000000000000000)
-		signature := "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)"
-		args := []interface{}{journal, payload.Backend, proof, id, eval}
+		signature := "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)"
+		args := []interface{}{journal, payload.Backend, proof, id, eval, false}
 		if automatic {
 			signature = "verifyAndAttestWithZKProofV2(bytes,uint8,bytes)"
 			args = args[:3]

@@ -343,13 +343,18 @@ contract DcapV2ForkTest is Test {
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
         vm.recordLogs();
         beforeGas = gasleft();
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         console2.log("raw verification internal-call gas", beforeGas - gasleft());
         assertTrue(success, string(journal));
         OutputV2 memory expected = this.decode(vm.parseJsonBytes(fixture, ".expectedJournal"));
         expected.timestamp = uint64(chainTimestamp);
         assertEq(journal, OutputV2Codec.encode(expected), "fork-time output mismatch");
         _assertSuccessEvent(vm.getRecordedLogs(), ZkCoProcessorType.None, journal);
+        beforeGas = gasleft();
+        (bool minimalSuccess, bytes memory minimalOutput) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, true);
+        console2.log("minimal raw verification internal-call gas", beforeGas - gasleft());
+        assertTrue(minimalSuccess);
+        assertEq(minimalOutput, journal, "minimal raw output mismatch");
         _rejectRaw(bytes.concat(quote, hex"00"), eval);
         quote[80] ^= 0x01;
         _rejectRaw(quote, eval);
@@ -365,7 +370,7 @@ contract DcapV2ForkTest is Test {
             string memory fixture = _fixture(names[i]);
             uint32 eval = _upsert(fixture);
             bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
-            (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+            (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
             assertTrue(success, "pre-expiry control failed");
             OutputV2 memory expected = this.decode(vm.parseJsonBytes(fixture, ".expectedJournal"));
             FmspcTcbDao tcb = FmspcTcbDao(router.fmspcTcbDaoVersionedAddr(eval));
@@ -386,7 +391,7 @@ contract DcapV2ForkTest is Test {
     function testForkOriginalPaddedTdxRejected() public {
         string memory fixture = _fixture("ata-tdx-v4");
         uint32 eval = _upsert(fixture);
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(vm.parseJsonBytes(fixture, ".quote"), eval);
+        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(vm.parseJsonBytes(fixture, ".quote"), eval, false);
         assertTrue(success, "unpadded baseline failed");
         bytes memory padded = vm.parseBytes(vm.readFile("forge-test/assets/v2/quotes/ata-tdx-v4.hex"));
         assertEq(padded.length, 8000);
@@ -410,7 +415,7 @@ contract DcapV2ForkTest is Test {
         _upsert(_fixture("ata-tdx-v4")); // Refresh shared signed TDX QE/cert collateral.
         bytes memory quote = vm.readFileBinary("forge-test/assets/quotes/alibaba_quote_5.dat");
         (bool called, bytes memory returned) = address(fee).call{value: 1 ether}(
-            abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32)", quote, uint32(20)));
+            abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, uint32(20), false));
         if (called) {
             (bool success, bytes memory reason) = abi.decode(returned, (bool, bytes));
             assertFalse(success, "historical migration-service input accepted");
@@ -434,11 +439,11 @@ contract DcapV2ForkTest is Test {
         vm.deal(payer, 10 ether);
         vm.prank(payer, payer);
         vm.expectRevert(bytes4(keccak256("Insufficient_Funds()")));
-        fee.verifyAndAttestOnChainV2(quote, eval);
+        fee.verifyAndAttestOnChainV2(quote, eval, false);
         uint256 beforeBalance = payer.balance;
         uint256 beforeCollected = address(fee).balance;
         vm.prank(payer, payer);
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 0.1 ether}(quote, eval);
+        (bool success,) = fee.verifyAndAttestOnChainV2{value: 0.1 ether}(quote, eval, false);
         assertTrue(success);
         uint256 collected = address(fee).balance - beforeCollected;
         assertGt(collected, 0);
@@ -472,7 +477,7 @@ contract DcapV2ForkTest is Test {
         (success, output) = fee.verifyAndAttestOnChain{value: 1 ether}(quote, eval);
         assertTrue(success, string(output));
         assertEq(output, oldOutput, "FeeV2 legacy selector changed output");
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "V2 baseline before rollback failed");
         // Exercise caller behavior, not only restored Router addresses. The old
         // helper has no combined V2 parser; legacy consumers remain available.
@@ -485,7 +490,7 @@ contract DcapV2ForkTest is Test {
         assertEq(output, oldOutput, "FeeV2 old selector unavailable after rollback");
         _rejectRaw(quote, eval);
         _switchHelper(helper);
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "V2 rollout replay failed");
     }
 
@@ -508,7 +513,8 @@ contract DcapV2ForkTest is Test {
     }
 
     function _rejectRaw(bytes memory quote, uint32 eval) internal {
-        _rejectCall(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32)", quote, eval));
+        _rejectCall(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, eval, false));
+        _rejectCall(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, eval, true));
     }
 
     function _rejectCall(bytes memory data) internal {
@@ -528,7 +534,7 @@ contract DcapV2ForkTest is Test {
         string memory fixture = _fixture("ata-sgx-v3");
         uint32 eval = _upsert(fixture);
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "negative baseline failed");
         _rejectRaw(quote, type(uint32).max);
         // A revoked allowlist entry is only a negative when restrictions are
@@ -537,7 +543,7 @@ contract DcapV2ForkTest is Test {
         vm.prank(owner); router.setAuthorized(verifiers[0], false);
         _rejectRaw(quote, eval);
         vm.prank(owner); router.setAuthorized(verifiers[0], true);
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval);
+        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "authorization restore failed");
     }
 
@@ -557,11 +563,16 @@ contract DcapV2ForkTest is Test {
         vm.prank(owner); fee.setZkV2Paused(false);
         vm.recordLogs();
         uint256 beforeGas = gasleft();
-        (bool success, bytes memory output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval);
+        (bool success, bytes memory output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
         console2.log("ZK verification internal-call gas", beforeGas - gasleft());
         assertTrue(success, string(output));
         assertEq(output, journal);
         _assertSuccessEvent(vm.getRecordedLogs(), kind, journal);
+        beforeGas = gasleft();
+        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, true);
+        console2.log("minimal ZK verification internal-call gas", beforeGas - gasleft());
+        assertTrue(success);
+        assertEq(output, journal, "minimal proof output mismatch");
         uint256 validState = vm.snapshotState();
         OutputV2 memory decoded = this.decode(journal);
         FmspcTcbDao tcb = FmspcTcbDao(router.fmspcTcbDaoVersionedAddr(eval));
@@ -576,7 +587,7 @@ contract DcapV2ForkTest is Test {
         // submission time. Merely advancing the current block must NOT impose
         // an unagreed maximum-age/challenge policy on a historical proof.
         vm.warp(expiry + 1);
-        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval);
+        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
         assertTrue(success, "unexpected journal maximum-age policy");
         assertEq(output, journal, "historical journal changed");
         assertTrue(vm.revertToState(validState));
@@ -607,7 +618,8 @@ contract DcapV2ForkTest is Test {
     }
 
     function _rejectProof(bytes memory journal, ZkCoProcessorType kind, bytes memory proof, bytes32 id, uint32 eval) internal {
-        _rejectCall(abi.encodeWithSignature("verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)", journal, kind, proof, id, eval));
+        _rejectCall(abi.encodeWithSignature("verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)", journal, kind, proof, id, eval, false));
+        _rejectCall(abi.encodeWithSignature("verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)", journal, kind, proof, id, eval, true));
     }
 
     function _existingSp1Freezes(bytes memory journal, bytes memory proof, bytes32 id, uint32 eval) internal {

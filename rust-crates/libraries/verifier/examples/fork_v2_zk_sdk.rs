@@ -1,16 +1,16 @@
 //! Real-proof SDK acceptance on the exact local Sepolia fork. Never broadcasts publicly.
 use alloy::{
     network::EthereumWallet,
-    primitives::{Address, Bytes, B256, U256},
+    primitives::{Address, B256, Bytes, U256},
     providers::{Provider, ProviderBuilder},
     signers::local::PrivateKeySigner,
     sol,
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use automata_dcap_evm_bindings::v2::{
     IAutomataDcapAttestationV2, IAutomataDcapAttestationV2Default,
 };
-use automata_dcap_verifier::{verify_and_attest_with_zk_proof_v2, ZkCoprocessor};
+use automata_dcap_verifier::{ZkCoprocessor, verify_and_attest_with_zk_proof_v2};
 use std::{io::Write, path::Path};
 mod fork_support;
 
@@ -89,7 +89,8 @@ async fn main() -> Result<()> {
                 kind,
                 &seal,
                 Some(id),
-                EVAL
+                EVAL,
+                false
             )
             .await
             .is_err(),
@@ -103,8 +104,10 @@ async fn main() -> Result<()> {
     let checks: Result<Vec<serde_json::Value>> = async {
         ensure!(admin.setZkV2Paused(false).from(owner).send().await?.get_receipt().await?.status(), "unpause failed");
         for selected in [Some(id), None] {
-            let got = verify_and_attest_with_zk_proof_v2(&provider, address, &journal, kind, &seal, selected, EVAL).await?;
-            ensure!(got == journal, "SDK journal mismatch");
+            for min_check in [false, true] {
+                let got = verify_and_attest_with_zk_proof_v2(&provider, address, &journal, kind, &seal, selected, EVAL, min_check).await?;
+                ensure!(got == journal, "SDK journal mismatch");
+            }
         }
         let got = IAutomataDcapAttestationV2Default::new(address, &provider)
             .verifyAndAttestWithZKProofV2(journal.clone(), backend, seal.clone()).call().await?;
@@ -117,7 +120,7 @@ async fn main() -> Result<()> {
         let mut wrong_id = id;
         wrong_id[31] ^= 1;
         for (j, p, i) in [(&journal[..], &changed_seal[..], id), (&changed_journal[..], &seal[..], id), (&journal[..], &seal[..], wrong_id)] {
-            ensure!(verify_and_attest_with_zk_proof_v2(&provider, address, j, kind, p, Some(i), EVAL).await.is_err(), "proof/journal/ID negative accepted");
+            ensure!(verify_and_attest_with_zk_proof_v2(&provider, address, j, kind, p, Some(i), EVAL, false).await.is_err(), "proof/journal/ID negative accepted");
         }
         let mut rows = Vec::new();
         for automatic in [false, true] {
@@ -128,7 +131,7 @@ async fn main() -> Result<()> {
                     .value(payment).send().await?.get_receipt().await?
             } else {
                 IAutomataDcapAttestationV2::new(address, &signed)
-                    .verifyAndAttestWithZKProofV2(journal.clone(), backend, seal.clone(), id, EVAL)
+                    .verifyAndAttestWithZKProofV2(journal.clone(), backend, seal.clone(), id, EVAL, false)
                     .value(payment).send().await?.get_receipt().await?
             };
             ensure!(receipt.status(), "ZK transaction reverted");

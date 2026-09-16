@@ -57,7 +57,7 @@ async function tx(label,to,input,{from=actor,admin=false,probe=false,creation=fa
   report.results.push(row);save();console.log(`${label}: gas=${row.gasUsed}${probe?' cold/warm='+samples.map(s=>s.callGas).join('/') : ''}`);
   return {row,output};
 }
-const raw=(v2,f)=>encode(v2?'verifyAndAttestOnChainV2(bytes,uint32)':'verifyAndAttestOnChain(bytes,uint32)',f.quote,f.tcbEvaluationDataNumber);
+const raw=(v2,f)=>encode(v2?'verifyAndAttestOnChainV2(bytes,uint32,bool)':'verifyAndAttestOnChain(bytes,uint32)',f.quote,f.tcbEvaluationDataNumber,...(v2?[false]:[]));
 let failure;
 try {
   for(const who of [actor,owner])await rpc('anvil_impersonateAccount',[who]);
@@ -88,7 +88,7 @@ try {
     const b=await call(fee,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
     if(!a[0] || !b[0] || a[1]!==b[1])throw new Error('Legacy unavailable after helper/client rollback');
     let rejected=false;
-    try {rejected=!(await call(fee,'verifyAndAttestOnChainV2(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber))[0];}
+    try {rejected=!(await call(fee,'verifyAndAttestOnChainV2(bytes,uint32,bool)','bool,bytes',f.quote,f.tcbEvaluationDataNumber,false))[0];}
     catch(error) {if(!/execution reverted/i.test(error.message))throw error;rejected=true;}
     if(!rejected)throw new Error('V2 accepted after legacy helper rollback');
   }
@@ -104,7 +104,7 @@ try {
     const cell=`${p.backend}.quote-v${journal.readUInt16BE(5)}.body-${journal.readUInt16BE(7)}`;
     if(measuredProofCells.has(cell))throw new Error('Duplicate proof matrix cell');
     measuredProofCells.add(cell);
-    const input=encode('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)',p.journal,p.backend,p.proof,p.programId,20);
+    const input=encode('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)',p.journal,p.backend,p.proof,p.programId,20,false);
     await tx(`cold-warm.zk.${cell}`,probe,encode('probe(address,bytes)',fee,input),{probe:true});
   }
   report.rollbackChecks='PASS';

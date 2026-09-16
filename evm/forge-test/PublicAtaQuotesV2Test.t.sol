@@ -91,14 +91,14 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
 
     function testAuthenticQuoteMatchesFrozenJournalAndEvent() public {
         vm.recordLogs();
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(_quote(), evaluationNumber);
+        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(_quote(), evaluationNumber, false);
         assertTrue(success, string(journal));
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
         OutputV2 memory output = this.decode(journal);
         assertEq(output.quoteVersion, version);
         assertEq(output.quoteBodyType, version == 3 ? 1 : 2);
         assertEq(output.timestamp, vm.parseJsonUint(fixture, ".verificationTimestamp"));
-        assertEq(output.fullQuoteHash, sha256(_quote()));
+        assertEq(output.fullQuoteHash, keccak256(_quote()));
         assertTrue(output.piidPresent);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 1);
@@ -113,9 +113,14 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
     }
 
     function _assertRejected(bytes memory quote) internal {
+        _assertRejectedMode(quote, false);
+        _assertRejectedMode(quote, true);
+    }
+
+    function _assertRejectedMode(bytes memory quote, bool minCheck) private {
         vm.recordLogs();
         (bool ok, bytes memory result) = address(fee)
-            .call(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32)", quote, evaluationNumber));
+            .call(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, evaluationNumber, minCheck));
         if (ok) {
             (bool success,) = abi.decode(result, (bool, bytes));
             assertFalse(success, "invalid quote accepted");
@@ -204,7 +209,7 @@ contract PublicAtaTdxV4Test is PublicAtaQuoteV2Base {
         assertEq(extracted.length, 4935);
         assertEq(original, bytes.concat(extracted, new bytes(3065)));
         _assertRejected(original);
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(extracted, evaluationNumber);
+        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(extracted, evaluationNumber, false);
         assertTrue(success, string(journal));
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
     }

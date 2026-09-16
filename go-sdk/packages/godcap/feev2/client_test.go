@@ -46,26 +46,78 @@ func TestV2SelectorsAndVerbatimJournal(t *testing.T) {
 	}
 	journal := wire(t)
 	id := [32]byte{1}
+	minCheck := false
 	backend.call = func(msg ethereum.CallMsg) ([]byte, error) {
 		method, err := client.abi.MethodById(msg.Data[:4])
 		if err != nil {
 			t.Fatal(err)
 		}
-		if method.Sig != "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)" {
+		if method.Sig != "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)" {
 			t.Fatal(method.Sig)
 		}
 		args, err := method.Inputs.Unpack(msg.Data[4:])
 		if err != nil {
 			t.Fatal(err)
 		}
-		if args[3].([32]byte) != id || args[4].(uint32) != 17 {
-			t.Fatal("ID/evaluation number discarded")
+		if args[3].([32]byte) != id || args[4].(uint32) != 17 || args[5].(bool) != minCheck {
+			t.Fatal("ID/evaluation number/minCheck discarded")
 		}
 		return method.Outputs.Pack(true, journal)
 	}
-	output, err := client.VerifyAndAttestWithZKProofV2(nil, journal, 1, []byte{0, 0, 0, 0}, &id, 17)
+	output, err := client.VerifyAndAttestWithZKProofV2(nil, journal, 1, []byte{0, 0, 0, 0}, &id, 17, false)
 	if err != nil || !bytes.Equal(output, journal) {
 		t.Fatalf("verification: %v", err)
+	}
+	minCheck = true
+	output, err = client.VerifyAndAttestWithZKProofV2(nil, journal, 1, []byte{0, 0, 0, 0}, &id, 17, minCheck)
+	if err != nil || !bytes.Equal(output, journal) {
+		t.Fatalf("minimal verification: %v", err)
+	}
+}
+
+func TestRawV2ModeAndDefaultSelectors(t *testing.T) {
+	backend := new(callerMock)
+	client, err := New(common.HexToAddress("0x1234"), backend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, minCheck := range []bool{false, true} {
+		backend.call = func(msg ethereum.CallMsg) ([]byte, error) {
+			method, err := client.abi.MethodById(msg.Data[:4])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if method.Sig != "verifyAndAttestOnChainV2(bytes,uint32,bool)" {
+				t.Fatal(method.Sig)
+			}
+			args, err := method.Inputs.Unpack(msg.Data[4:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if args[1].(uint32) != 17 || args[2].(bool) != minCheck {
+				t.Fatal("mode/evaluation discarded")
+			}
+			return method.Outputs.Pack(true, wire(t))
+		}
+		if _, err := client.VerifyAndAttestOnChainV2(nil, []byte{1}, 17, minCheck); err != nil {
+			t.Fatal(err)
+		}
+	}
+	backend.call = func(msg ethereum.CallMsg) ([]byte, error) {
+		method, err := client.abi.MethodById(msg.Data[:4])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if method.Sig != "verifyAndAttestOnChainV2(bytes)" && method.Sig != "verifyAndAttestWithZKProofV2(bytes,uint8,bytes)" {
+			t.Fatal(method.Sig)
+		}
+		return method.Outputs.Pack(true, wire(t))
+	}
+	if _, err := client.VerifyAndAttestOnChainV2Default(nil, []byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.VerifyAndAttestWithZKProofV2Default(nil, wire(t), 1, make([]byte, 4)); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -88,7 +140,7 @@ func TestDefaultUsesV2ProgramID(t *testing.T) {
 		}
 		return method.Outputs.Pack(true, journal)
 	}
-	if _, err := client.VerifyAndAttestWithZKProofV2(nil, journal, 1, make([]byte, 4), nil, 0); err != nil {
+	if _, err := client.VerifyAndAttestWithZKProofV2(nil, journal, 1, make([]byte, 4), nil, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 2 {

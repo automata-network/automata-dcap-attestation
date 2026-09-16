@@ -11,21 +11,31 @@ import {CA} from "@automata-network/on-chain-pccs/Common.sol";
 
 contract FeeV2QuoteMock is IQuoteVerifierV2 {
     IPCCSRouter public immutable pccsRouter;
-    uint16 public constant quoteVersion = 3;
+    uint16 public quoteVersion = 3;
+    uint16 public bodyType = 1;
+    bytes private body;
+    uint8 private status;
+
+    function configure(uint16 version, uint16 kind, bytes memory value, uint8 tcbStatus) external {
+        quoteVersion = version;
+        bodyType = kind;
+        body = value;
+        status = tcbStatus;
+    }
 
     constructor(address router) {
         pccsRouter = IPCCSRouter(router);
     }
 
-    function legacy() public pure returns (bytes memory) {
-        return abi.encodePacked(uint16(3), uint16(1), uint8(0), bytes6(0), new bytes(384));
+    function legacy() public view returns (bytes memory) {
+        return abi.encodePacked(quoteVersion, bodyType, status, bytes6(0), body.length == 0 ? new bytes(384) : body);
     }
 
-    function verifyQuote(Header calldata, bytes calldata, uint32) external pure returns (bool, bytes memory) {
+    function verifyQuote(Header calldata, bytes calldata, uint32) external view returns (bool, bytes memory) {
         return (true, legacy());
     }
 
-    function verifyQuoteV2(Header calldata, bytes calldata, uint32) external pure returns (bool, bytes memory) {
+    function verifyQuoteV2(Header calldata, bytes calldata, uint32) external view returns (bool, bytes memory) {
         return (true, abi.encode(bytes16(uint128(1)), bytes16(0), false, legacy()));
     }
 
@@ -127,7 +137,7 @@ contract AttestationFeeV2Test is Test {
         assertEq(logs[0].topics[1], bytes32(uint256(2)));
         assertEq(logs[0].topics[2], bytes32(uint256(1)));
         OutputV2 memory decoded = this.decode(output);
-        assertEq(decoded.fullQuoteHash, sha256(quoteBytes()));
+        assertEq(decoded.fullQuoteHash, keccak256(quoteBytes()));
         assertEq(decoded.timestamp, block.timestamp);
         assertEq(decoded.ppid, bytes16(uint128(1)));
     }
@@ -147,7 +157,7 @@ contract AttestationFeeV2Test is Test {
     function testProgramFamiliesDoNotCrossAndRollbackPreservesLegacy() public {
         bytes memory output = journal();
         (bool success,) =
-            fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 0);
+            fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 0, false);
         assertFalse(success);
         (success,) = fee.verifyAndAttestWithZKProof(output, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 0);
         assertFalse(success);

@@ -24,7 +24,7 @@ type OutputV2 struct {
 	PIIDPresent        bool
 	Timestamp          uint64
 	CollateralHashes   [6][32]byte
-	FullQuoteHash      [32]byte // SHA-256 of the complete input quote.
+	FullQuoteHash      [32]byte // Keccak-256 of the exact complete input quote.
 	QuoteBody          []byte
 	AdvisoryIDs        []string
 }

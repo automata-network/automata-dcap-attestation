@@ -45,8 +45,8 @@ async function transaction(label,calldata,{admin=false,expect='reject',gas=20000
   if(admin?reverted:expect==='accept'?reverted||!accepted||acceptedEvents!==1:accepted||acceptedEvents!==0)throw new Error(`${label}: unexpected acceptance/receipt`);
   console.log(`${label}: gas=${row.gasUsed} reverted=${reverted} accepted=${accepted}`);
 }
-const raw=(quote)=>data('verifyAndAttestOnChainV2(bytes,uint32)',quote,fixture.tcbEvaluationDataNumber);
-const zk=(journal=payload.journal,proof=payload.proof,id=payload.programId,evalNumber=fixture.tcbEvaluationDataNumber)=>data('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)',journal,payload.backend,proof,id,evalNumber);
+const raw=(quote)=>data('verifyAndAttestOnChainV2(bytes,uint32,bool)',quote,fixture.tcbEvaluationDataNumber,false);
+const zk=(journal=payload.journal,proof=payload.proof,id=payload.programId,evalNumber=fixture.tcbEvaluationDataNumber)=>data('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)',journal,payload.backend,proof,id,evalNumber,false);
 const flip=(value,index)=>{const bytes=Buffer.from(value.slice(2),'hex');bytes[index]^=1;return '0x'+bytes.toString('hex');};
 let failure;
 try {

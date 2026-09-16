@@ -50,6 +50,11 @@
         "name": "tcbEvaluationDataNumber",
         "type": "uint32",
         "internalType": "uint32"
+      },
+      {
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
       }
     ],
     "outputs": [
@@ -152,6 +157,11 @@
         "name": "tcbEvaluationDataNumber",
         "type": "uint32",
         "internalType": "uint32"
+      },
+      {
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
       }
     ],
     "outputs": [

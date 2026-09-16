@@ -78,8 +78,10 @@ func verificationOutput(result []interface{}, err error) ([]byte, error) {
 	return output, nil
 }
 
-func (c *Client) VerifyAndAttestOnChainV2(opts *bind.CallOpts, quote []byte, tcbEval uint32) ([]byte, error) {
-	return verificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes,uint32)", quote, tcbEval))
+// VerifyAndAttestOnChainV2 uses strict verification unless minCheck is true.
+// Minimal mode skips workload attributes only, never authentication or V2 framing.
+func (c *Client) VerifyAndAttestOnChainV2(opts *bind.CallOpts, quote []byte, tcbEval uint32, minCheck bool) ([]byte, error) {
+	return verificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, tcbEval, minCheck))
 }
 
 func (c *Client) VerifyAndAttestOnChainV2Default(opts *bind.CallOpts, quote []byte) ([]byte, error) {
@@ -101,7 +103,9 @@ func (c *Client) ProgramIdentifierV2(opts *bind.CallOpts, backend uint8) ([32]by
 	return id, nil
 }
 
-func (c *Client) VerifyAndAttestWithZKProofV2(opts *bind.CallOpts, journal []byte, backend uint8, proof []byte, id *[32]byte, tcbEval uint32) ([]byte, error) {
+// VerifyAndAttestWithZKProofV2 leaves workload attribute checks to the application
+// only when minCheck is true. Proof, journal and collateral checks remain mandatory.
+func (c *Client) VerifyAndAttestWithZKProofV2(opts *bind.CallOpts, journal []byte, backend uint8, proof []byte, id *[32]byte, tcbEval uint32, minCheck bool) ([]byte, error) {
 	if _, err := parser.ParseOutputV2(journal); err != nil {
 		return nil, err
 	}
@@ -118,7 +122,7 @@ func (c *Client) VerifyAndAttestWithZKProofV2(opts *bind.CallOpts, journal []byt
 	} else {
 		program = *id
 	}
-	output, err := verificationOutput(c.call(opts, "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32)", journal, backend, proof, program, tcbEval))
+	output, err := verificationOutput(c.call(opts, "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)", journal, backend, proof, program, tcbEval, minCheck))
 	if err == nil && !bytes.Equal(output, journal) {
 		return nil, fmt.Errorf("returned bytes differ from proven journal")
 	}
@@ -137,12 +141,12 @@ func (c *Client) VerifyAndAttestWithZKProofV2Default(opts *bind.CallOpts, journa
 }
 
 // TransactOnChainV2 sends a transaction only when explicitly called with signing options.
-func (c *Client) TransactOnChainV2(opts *bind.TransactOpts, quote []byte, tcbEval uint32) (*types.Transaction, error) {
-	name, err := c.method("verifyAndAttestOnChainV2(bytes,uint32)")
+func (c *Client) TransactOnChainV2(opts *bind.TransactOpts, quote []byte, tcbEval uint32, minCheck bool) (*types.Transaction, error) {
+	name, err := c.method("verifyAndAttestOnChainV2(bytes,uint32,bool)")
 	if err != nil {
 		return nil, err
 	}
-	return c.contract.Transact(opts, name, quote, tcbEval)
+	return c.contract.Transact(opts, name, quote, tcbEval, minCheck)
 }
 
 type AttestationSubmittedV2 struct {

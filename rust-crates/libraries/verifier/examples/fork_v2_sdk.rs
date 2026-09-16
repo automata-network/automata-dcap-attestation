@@ -8,7 +8,7 @@ use alloy::{
     sol,
     sol_types::SolType,
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use automata_dcap_evm_bindings::v2::{
     IAutomataDcapAttestationV2, IAutomataDcapAttestationV2Default,
 };
@@ -79,11 +79,13 @@ async fn main() -> Result<()> {
         let input = Input::abi_encode_params(&(collateral.clone(), quote.clone(), timestamp));
         let native =
             dcap_rs::v2::verify_guest_input_v2(&input).context("native full DCAP verification")?;
-        let output = verify_and_attest_on_chain_v2(&provider, address, &quote, eval).await?;
+        let output = verify_and_attest_on_chain_v2(&provider, address, &quote, eval, false).await?;
         ensure!(
             output.as_ref() == native,
             "{name}: native vs explicit SDK output mismatch"
         );
+        let minimal = verify_and_attest_on_chain_v2(&provider, address, &quote, eval, true).await?;
+        ensure!(minimal == output, "{name}: minimal SDK output mismatch");
         let result = IAutomataDcapAttestationV2Default::new(address, &provider)
             .verifyAndAttestOnChainV2(Bytes::copy_from_slice(&quote))
             .call()
@@ -95,7 +97,7 @@ async fn main() -> Result<()> {
         let mut changed = quote.to_vec();
         changed[80] ^= 1;
         ensure!(
-            verify_and_attest_on_chain_v2(&provider, address, &changed, eval)
+            verify_and_attest_on_chain_v2(&provider, address, &changed, eval, false)
                 .await
                 .is_err(),
             "modified quote accepted"
@@ -103,13 +105,13 @@ async fn main() -> Result<()> {
         let mut padded = quote.to_vec();
         padded.push(0);
         ensure!(
-            verify_and_attest_on_chain_v2(&provider, address, &padded, eval)
+            verify_and_attest_on_chain_v2(&provider, address, &padded, eval, false)
                 .await
                 .is_err(),
             "padded quote accepted"
         );
         ensure!(
-            verify_and_attest_on_chain_v2(&provider, address, &quote, u32::MAX)
+            verify_and_attest_on_chain_v2(&provider, address, &quote, u32::MAX, false)
                 .await
                 .is_err(),
             "invalid evaluation accepted"
@@ -122,7 +124,10 @@ async fn main() -> Result<()> {
             after.header.hash == block.header.hash,
             "fork changed during parity test; rerun without concurrent writers"
         );
-        println!("{name}: native verification / explicit SDK / default binding / three negatives PASS; timestamp={timestamp} journal_bytes={}", native.len());
+        println!(
+            "{name}: native verification / explicit SDK / default binding / three negatives PASS; timestamp={timestamp} journal_bytes={}",
+            native.len()
+        );
         if transaction_report.is_some() {
             // Both public transaction overloads are exercised through SDK bindings.
             for automatic in [false, true] {
@@ -137,7 +142,7 @@ async fn main() -> Result<()> {
                         .await?
                 } else {
                     IAutomataDcapAttestationV2::new(address, &signed_provider)
-                        .verifyAndAttestOnChainV2(quote.clone(), eval)
+                        .verifyAndAttestOnChainV2(quote.clone(), eval, false)
                         .value(payment)
                         .send()
                         .await?

@@ -49,6 +49,19 @@ fn real_tdx15_v2_output() {
     )
     .unwrap_err();
     assert!(error.to_string().contains("migration service TD"));
+    let time = UNIX_EPOCH + Duration::from_secs(1749945600);
+    let output =
+        dcap_rs::v2::verify_dcap_quote_v2_with_min_check(time, &collateral, quote, true).unwrap();
+    assert_eq!(
+        output.full_quote_hash,
+        alloy::primitives::keccak256(quote).0
+    );
+    assert_ne!(&output.quote_body[600..648], &[0u8; 48]);
+    let input = dcap_rs::v2::encode_guest_input_v2(&collateral, quote, 1749945600).unwrap();
+    assert_eq!(
+        dcap_rs::v2::verify_guest_input_v2(&input).unwrap(),
+        output.to_vec().unwrap()
+    );
 }
 
 #[test]
