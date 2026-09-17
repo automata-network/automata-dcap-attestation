@@ -185,6 +185,11 @@ func parseDcapDeployment(data []byte) (*DcapContracts, error) {
 			contracts.V5QuoteVerifierV2 = addr
 		case "PCCSRouter":
 			contracts.PccsRouter = addr
+		case "PCCSRouterV2":
+			if !common.IsHexAddress(addrStr) {
+				return nil, fmt.Errorf("invalid PCCSRouterV2 address")
+			}
+			contracts.PccsRouterV2 = addr
 		case "V3QuoteVerifier":
 			contracts.V3QuoteVerifier = addr
 		case "V4QuoteVerifier":
@@ -218,6 +223,13 @@ func parseNetwork(
 	// Add DcapPortal from metadata if present
 	if version == VersionV2_0 && dcap.DcapAttestationFeeV2 == (common.Address{}) {
 		return nil, fmt.Errorf("missing AutomataDcapAttestationFeeV2 for %s", key)
+	}
+	if version == VersionV2_0 {
+		if dcap.PccsRouterV2 == (common.Address{}) {
+			return nil, fmt.Errorf("missing PCCSRouterV2 for %s", key)
+		}
+		// ContractPccsRouter must follow the explicitly selected deployment family.
+		dcap.PccsRouter = dcap.PccsRouterV2
 	}
 	if metadata.DcapPortal != "" {
 		dcap.DcapPortal = common.HexToAddress(metadata.DcapPortal)

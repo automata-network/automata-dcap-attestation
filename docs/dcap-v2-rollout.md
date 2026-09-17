@@ -1,8 +1,26 @@
 # DCAP V2 rollout (not executed)
 
+## Isolated Hoodi testing (2026-09-17)
+
+Use the [isolated deployment workflow](../scripts/deploy-dcap-v2/README.md), not
+the shared-Router switch below. It deploys **six** contracts including a new
+PCCSRouter, reuses collateral read-only, and adds only the new Router's Storage
+reader permission. Configure then enable ZK for on-chain testing. Write TEST_ONLY
+addresses to `deployment/v2.0` after finalized live readback and append PCKHelperV2
+to the PCCS submodule registry; do not promote current or modify old contracts.
+The new [guest handoff](dcap-v2-current-build.md) must complete before registering
+the revised programs. Old build/proof evidence below remains historical.
+
+The later five-contract/shared-Router procedure is a coordinated upgrade option,
+NOT the isolated test procedure. If production also retains isolated Routers,
+use the six-contract recipe and explicit PCCSRouterV2 registry keys there too.
+
 ## Current revision gate
 
 The minCheck/Keccak revision invalidates earlier draft V2 guest/proof acceptance.
+The returned official Docker pairs for `359def3` and their exact-program guest
+regressions now pass; see [current build results](dcap-v2-current-build.md).
+Real-proof compression/on-chain acceptance remains a separate gate.
 Do not register the historical SHA-256 fullQuoteHash guest IDs in the revised
 FeeV2. Rebuild with pinned Docker images, compute new native IDs, regenerate
 RISC Zero/SP1 proofs and repeat Sepolia raw/ZK/SDK/gas acceptance for this source.

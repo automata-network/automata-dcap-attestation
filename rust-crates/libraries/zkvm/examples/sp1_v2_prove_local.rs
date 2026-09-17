@@ -6,6 +6,15 @@ use sp1_sdk::{
 };
 use std::io::Write;
 
+fn parse_shard_size(value: &str) -> Result<usize> {
+    let size: usize = value.parse().context("invalid DCAP_SP1_SHARD_SIZE")?;
+    ensure!(
+        matches!(size, 65536 | 131072 | 262144),
+        "DCAP_SP1_SHARD_SIZE must be 65536, 131072, or 262144"
+    );
+    Ok(size)
+}
+
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     ensure!(
@@ -26,6 +35,13 @@ fn main() -> Result<()> {
         std::env::var_os("FRI_QUERIES").is_none(),
         "FRI_QUERIES must be unset: official core/inner=100, shrink=50, outer=25"
     );
+    // SDK-supported execution partitioning only. Do not change FRI, VK checks,
+    // the program, or the verifier's allowed shapes to reduce memory usage.
+    let shard_size = match std::env::var("DCAP_SP1_SHARD_SIZE") {
+        Ok(value) => parse_shard_size(&value)?,
+        Err(std::env::VarError::NotPresent) => 1 << 18,
+        Err(error) => return Err(error.into()),
+    };
     // Core proving does not need the recursive-program cache. This is not a VK bypass.
     std::env::set_var("SP1_DISABLE_PROGRAM_CACHE", "true");
     sp1_sdk::setup_logger();
@@ -43,11 +59,13 @@ fn main() -> Result<()> {
     } else {
         let mut stdin = SP1Stdin::new();
         stdin.write_slice(&input);
-        println!("proving=local-cpu-core shard_size=262144 shard_batch_size=1 (not an EVM proof)");
+        println!(
+            "proving=local-cpu-core shard_size={shard_size} shard_batch_size=1 (not an EVM proof)"
+        );
         client
             .prove(&pk, &stdin)
             .core()
-            .shard_size(1 << 18)
+            .shard_size(shard_size)
             .shard_batch_size(1)
             .cycle_limit(500_000_000)
             .run()
@@ -107,4 +125,23 @@ fn main() -> Result<()> {
     }
     println!("EVM Groth16/Plonk compression/universal verifier/FeeV2 remain untested.");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_shard_size;
+
+    #[test]
+    fn accepts_only_supported_small_shards() {
+        for value in ["65536", "131072", "262144"] {
+            assert_eq!(parse_shard_size(value).unwrap().to_string(), value);
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_or_larger_shards() {
+        for value in ["", "0", "-1", "17", "131073", "524288", "invalid"] {
+            assert!(parse_shard_size(value).is_err(), "{value}");
+        }
+    }
 }

@@ -313,20 +313,26 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
 
 /// Parse DCAP contracts from JSON
 fn parse_dcap_contracts(json: &serde_json::Value, version: &str) -> Result<DcapContracts> {
-    let key = if Version::from_str(version)? == Version::V2_0 {
+    let v2 = Version::from_str(version)? == Version::V2_0;
+    let key = if v2 {
         "AutomataDcapAttestationFeeV2"
     } else {
         "AutomataDcapAttestationFee"
     };
+    let router_key = if v2 { "PCCSRouterV2" } else { "PCCSRouter" };
+    let router: Address = json[router_key]
+        .as_str()
+        .ok_or_else(|| anyhow!("Missing {router_key}"))?
+        .parse()?;
+    if v2 && router.is_zero() {
+        return Err(anyhow!("PCCSRouterV2 must not be zero"));
+    }
     Ok(DcapContracts {
         dcap_attestation: json[key]
             .as_str()
             .ok_or_else(|| anyhow!("Missing {key}"))?
             .parse()?,
-        pccs_router: json["PCCSRouter"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing PCCSRouter"))?
-            .parse()?,
+        pccs_router: router,
     })
 }
 
@@ -347,6 +353,22 @@ mod tests {
             .dcap_attestation;
         config["AutomataDcapAttestationFeeV2"] =
             json!("0x3333333333333333333333333333333333333333");
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        config["PCCSRouterV2"] = json!("0x0000000000000000000000000000000000000000");
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        config["PCCSRouterV2"] = json!("0x4444444444444444444444444444444444444444");
+        assert_eq!(
+            parse_dcap_contracts(&config, "v2.0").unwrap().pccs_router,
+            "0x4444444444444444444444444444444444444444"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            parse_dcap_contracts(&config, "v1.1").unwrap().pccs_router,
+            "0x2222222222222222222222222222222222222222"
+                .parse::<Address>()
+                .unwrap()
+        );
         assert_eq!(
             parse_dcap_contracts(&config, "v1.1")
                 .unwrap()

@@ -5,6 +5,10 @@
 > and gas results below are historical, not acceptance for the current source.
 > See [current revision and release gates](dcap-v2-min-check.md).
 
+The revised `359def3` official-image builds and exact-program guest regression
+are recorded in [the current build report](dcap-v2-current-build.md). The old
+IDs/results below must not be used for the minCheck/Keccak deployment.
+
 ## Agreed release criterion (corrected 2026-09-11)
 
 Freeze the image **digest and platform**, source commit, lockfiles, build flags

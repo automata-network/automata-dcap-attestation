@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "BUILD_AND_GUEST_VERIFIED_NOT_RELEASE_APPROVED",
+  "sourceCommit": "359def3bce58ba269c48373817f48b7144424f14",
+  "sourceArchiveSha256": "fb9d457dc225511d284f21139bd03d71b46c716f7caccb8c2ff1ab88e33af09c",
+  "outputFormat": "2.1",
+  "fullQuoteHashAlgorithm": "keccak256",
+  "onChainRegistration": "NOT_RUN",
+  "programs": [
+    {
+      "backend": 1,
+      "name": "risc0",
+      "id": "0x7b60cf33cc76f0e60d143c445a022e8a3b3915ce5fb51f1a3673e8a509238b1b",
+      "buildSourceCommit": "359def3bce58ba269c48373817f48b7144424f14",
+      "artifactSha256": "2934e1f685f521a38d5cfbfc7f25d9d634c612d1fbc1b277cef6b051b3c87dae",
+      "artifactBytes": 1862448,
+      "evidenceSha256": "00531ce4ceb35c4dc4da5244f33c60bed9c00538096b25826cd80fdaf51d8673",
+      "image": "risczero/risc0-guest-builder:r0.1.88.0@sha256:3e12f71bacd27527a61dea96fa0e53e468c99aa261d3a1019b593f6dbd943eb3",
+      "platform": "linux/amd64",
+      "guestPositiveCases": 5,
+      "guestNegativeCases": 8,
+      "localSgxV3Proof": {
+        "format": "risc0-composite",
+        "status": "CRYPTOGRAPHIC_VERIFICATION_AND_READBACK_PASS",
+        "journalBytes": 833,
+        "proofSha256": "49f2177aceb5706070894d348b66f44749af1981f28dcd37b766a4d757bebee7",
+        "negativeCases": 3,
+        "elapsed": "1:02:58",
+        "maxRssKiB": 3694716
+      },
+      "evmProofAcceptance": "PENDING"
+    },
+    {
+      "backend": 2,
+      "name": "sp1",
+      "id": "0x008a2b48b8290017e166630a5872c76383ad788e4a4aa3481a7d2c8c576a4d1a",
+      "buildSourceCommit": "359def3bce58ba269c48373817f48b7144424f14",
+      "artifactSha256": "5663ae20a40d9ebf521ac32c2e13ac6f3f83cf680d22f34d483b2354b89210f2",
+      "artifactBytes": 1777324,
+      "evidenceSha256": "35ed1f20fcfaae6911b01be2a5157bd6c3675ace97065470302e87c95c2be4c0",
+      "image": "ghcr.io/succinctlabs/sp1:v5.2.2@sha256:7b5582c3773b0238192fbd5d6a37f5eb3166d3a47a1a1798ecc7847d2194d04f",
+      "platform": "linux/amd64",
+      "guestPositiveCases": 5,
+      "guestNegativeCases": 8,
+      "localSgxV3Proof": {
+        "format": "sp1-core",
+        "status": "RESOURCE_GUARD_STOPPED_NO_COMPLETE_PROOF",
+        "attempts": [
+          {"shardSize": 262144, "elapsed": "7:26.70", "exitCode": 143, "availableKiBAtStop": 1538632},
+          {"shardSize": 131072, "elapsed": "13:14.29", "exitCode": 143, "availableKiBAtStop": 1411244}
+        ],
+        "nextStep": "Run the exact-program ARM64 offline handoff on a machine with sufficient free memory"
+      },
+      "evmProofAcceptance": "PENDING"
+    }
+  ]
+}

@@ -29,10 +29,21 @@ Zero's official BuildKit compilation uses the Docker VM's resource allocation.
 Do not change Desktop, images or tools between A and B. Emulation can still fail
 in a full compile even when a version-query preflight passes.
 
-Both backends' returned A/B build evidence and exact-program regression now
-pass for source `81646e5`; see the
+The previous backends' returned A/B build evidence and exact-program regression
+passed only for historical source `81646e5`; see the
 [verified results](../../../../../docs/dcap-v2-container-rebuild.md#returned-mac-build-evidence-2026-09-11).
-This does not establish real-proof/universal-verifier compatibility.
+Those IDs are NOT valid release candidates for the minCheck/Keccak revision.
+The current handoff freezes source `359def3bce58ba269c48373817f48b7144424f14`.
+Its returned A/B builds and exact-program execution now pass; real proofs remain
+a separate gate. See [current evidence and IDs](../../../../../docs/dcap-v2-current-build.md).
+
+Validate returned archives before extraction with `verify-returned.py BACKEND
+ARCHIVE COMMIT NEW_OUTPUT_DIRECTORY`. It checks archive paths/types, the exact
+source archive and harness hashes, pinned image/platform, guest locks, A/B bytes
+and reported native IDs. It never executes archived scripts. Independently
+recompute native IDs while running the returned programs against real fixtures;
+the archive check alone is not guest execution or cryptographic proof verification.
+Run archive rejection tests with `python3 -B test-returned.py` from this directory.
 
 ## Host orchestration tools
 
@@ -98,7 +109,7 @@ On the original development machine, from the repository root:
 
 ```sh
 bash rust-crates/libraries/zkvm/methods/docker/prepare-official-handoff.sh \
-  81646e5754a8124d4a70a483882f11b515c98c7b
+  359def3bce58ba269c48373817f48b7144424f14
 ```
 
 Transfer the printed `dcap-official-handoff.tar.gz` to the Mac by your normal

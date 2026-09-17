@@ -73,6 +73,7 @@ type DcapContracts struct {
 	DcapAttestationFee   common.Address // AutomataDcapAttestationFee - base attestation with fee
 	DcapPortal           common.Address // Optional
 	PccsRouter           common.Address
+	PccsRouterV2         common.Address
 	V3QuoteVerifier      common.Address
 	V4QuoteVerifier      common.Address
 	V5QuoteVerifier      common.Address

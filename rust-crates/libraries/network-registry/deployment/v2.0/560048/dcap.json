@@ -1,0 +1,13 @@
+{
+  "AutomataDcapAttestationFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+  "PCCSRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+  "V3QuoteVerifier": "0x8f0Cb0E0ee1d7D65E7330870631A5DE140E7c844",
+  "V4QuoteVerifier": "0x0da990aA59b2Df2DA308b8034D59F5DeDe89aeDa",
+  "V5QuoteVerifier": "0xE03BF6560A88c631649d6906c077c7021927656e",
+  "PCKHelperV2": "0xda2f2732ec090d56c39fd8b93fa63adfc1d7c73a",
+  "PCCSRouterV2": "0x238aebbc0ea2911d046298a899cff9f9e2c1d1f4",
+  "AutomataDcapAttestationFeeV2": "0x8bf733141aa089c4e2d8dd831ab2a460168caa81",
+  "V3QuoteVerifierV2": "0x2ea0959c831c8e0cacbbc2455080bd5df30e1342",
+  "V4QuoteVerifierV2": "0xe1e19c628151b5674fb6d1cd147f1a53e7ff1d55",
+  "V5QuoteVerifierV2": "0xd2db1a8a754c71091c0b9461f9ce1c70e72ae378"
+}

@@ -1,0 +1,20 @@
+{
+  "status": "TEST_ONLY",
+  "chainId": 560048,
+  "sourceCommit": "359def3bce58ba269c48373817f48b7144424f14",
+  "owner": "REPLACE_WITH_TEST_DEPLOYMENT_OWNER",
+  "legacyFee": "0xaDdeC7e85c2182202b66E331f2a4A0bBB2cEEa1F",
+  "legacyRouter": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+  "p256": "REPLACE_WITH_VERIFIED_P256_ADDRESS",
+  "evaluations": [20, 21],
+  "programs": [],
+  "contracts": {
+    "AutomataDcapAttestationFeeV2": "REPLACE_AFTER_DEPLOYMENT",
+    "PCCSRouterV2": "REPLACE_AFTER_DEPLOYMENT",
+    "PCKHelperV2": "REPLACE_AFTER_DEPLOYMENT",
+    "V3QuoteVerifierV2": "REPLACE_AFTER_DEPLOYMENT",
+    "V4QuoteVerifierV2": "REPLACE_AFTER_DEPLOYMENT",
+    "V5QuoteVerifierV2": "REPLACE_AFTER_DEPLOYMENT"
+  },
+  "transactions": []
+}
