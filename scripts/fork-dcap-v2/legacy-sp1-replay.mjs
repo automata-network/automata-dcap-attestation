@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Recover a real public legacy proof without committing the full source logs.
-// Read-only: cryptographic acceptance and present-state legacy behavior parity
-// are separate results. This is not an ATKJ or V2 proof fixture.
+// Read-only: cryptographic acceptance and present-state legacy behavior are
+// separate results. This is not an ATKJ or V2 proof fixture. Compact V2
+// exposes no legacy selectors, so legacy behavior is checked on the
+// independent legacy contract only, plus explicit disabled-selector negatives
+// on the V2 address.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
@@ -74,19 +77,27 @@ try {
     if (!revertData) throw new Error(name + ': unexpectedly accepted');
     report.negatives.push({name, status: 'REJECTED', revertData});
   }
+  // Compact V2 deliberately exposes no legacy selectors. The independent legacy
+  // contract keeps its own behavior; the V2 address must reject the old entrypoints.
+  const v2 = deployment.contracts.AutomataDcapAttestationV2.address;
+  report.legacySelectorsDisabledOnV2 = [];
+  for (const [name, selector] of [['verifyAndAttestOnChain(bytes,uint32)', '0x1beaf6d8'],
+    ['verifyAndAttestWithZKProof(bytes,uint8,bytes,bytes32,uint32)', '0x6199c20a']]) {
+    let revertData;
+    try { await rpc(endpoint, 'eth_call', [{to: v2, data: selector + '00'.repeat(36)}, before.number]); }
+    catch (error) { revertData = revertOnly(error); }
+    if (!revertData) throw new Error(name + ': legacy selector unexpectedly present on V2');
+    report.legacySelectorsDisabledOnV2.push({name, selector, status: 'REJECTED'});
+  }
   for (const evaluation of [0, 17, 18, 19, 20, 21]) {
-    const data = encode('verifyAndAttestWithZKProof(bytes,uint8,bytes,bytes32,uint32)', journalHex, 2, proofHex, id, evaluation), results = [];
-    for (const to of [legacy, deployment.contracts.AutomataDcapAttestationFeeV2.address]) {
-      let wire;
-      try { wire = await call(to, data); } catch (error) { results.push({reverted: true, revertData: revertOnly(error)}); continue; }
-      const [success, output] = decode('bool,bytes', wire);
-      if (success && output !== '0x' + expectedOutput.toString('hex')) throw new Error('Accepted output differs from the authenticated source event');
-      results.push({reverted: false, success, output});
-    }
-    if (JSON.stringify(results[0]) !== JSON.stringify(results[1])) throw new Error('Legacy behavior changed for evaluation ' + evaluation);
-    report.replay.push({evaluation, legacy: results[0], feeV2Legacy: results[1], equal: true});
+    const data = encode('verifyAndAttestWithZKProof(bytes,uint8,bytes,bytes32,uint32)', journalHex, 2, proofHex, id, evaluation);
+    let wire;
+    try { wire = await call(legacy, data); } catch (error) { report.replay.push({evaluation, legacy: {reverted: true, revertData: revertOnly(error)}}); continue; }
+    const [success, output] = decode('bool,bytes', wire);
+    if (success && output !== '0x' + expectedOutput.toString('hex')) throw new Error('Accepted output differs from the authenticated source event');
+    report.replay.push({evaluation, legacy: {reverted: false, success, output}});
   }
   if ((await rpc(endpoint, 'eth_getBlockByNumber', ['latest', false])).hash !== before.hash) throw new Error('Concurrent local writes');
   report.status = 'GATEWAY_CRYPTO_AND_CURRENT_LEGACY_PARITY_PASS'; save();
-  console.log(`${report.status}: 3 crypto negatives, 6 legacy parity cases; accepted legacy cases=${report.replay.filter(r => r.legacy.success).length}; ATKJ=${report.atkJGuardAndMagicPresent}`);
+  console.log(`${report.status}: 3 crypto negatives, 2 disabled-selector V2 checks, 6 legacy cases; accepted legacy cases=${report.replay.filter(r => r.legacy.success).length}; ATKJ=${report.atkJGuardAndMagicPresent}`);
 } catch (error) { report.status = 'FAILED'; report.error = error.message; save(); throw error; }

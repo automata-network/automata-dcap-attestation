@@ -16,6 +16,9 @@ contract ForkGasProbe {
             (bool ok, bytes memory result) = target.call{value: msg.value / 2}(input);
             uint256 spent = beforeGas - gasleft();
             require(ok, "target reverted");
+            // Compact V2 raw returns (bool,bytes,bytes); legacy returns (bool,bytes).
+            // The first bytes value is the authenticated output in both formats;
+            // trailing fields are ignored by abi.decode.
             (bool accepted, bytes memory output) = abi.decode(result, (bool, bytes));
             require(accepted, "target rejected");
             bytes32 hash = keccak256(output);

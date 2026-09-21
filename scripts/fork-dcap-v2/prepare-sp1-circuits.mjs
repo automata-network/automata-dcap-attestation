@@ -1,6 +1,13 @@
 #!/usr/bin/env node
-// Verify/extract the existing official setup. Never generates a keypair.
+// RETIRED for compact V2: the official v5.0.0 Groth16 circuit bundle is tied to
+// the removed SP1 v5 checkpoint/gnark protocol and must not feed SP1 6.8.0
+// proving. SP1 6.8.0 proves Groth16 through the full SDK pipeline
+// (sp1_v2_prove_local --kind groth16) with no external circuit download.
+// Retained below solely as a historical download-integrity reference.
 import fs from 'node:fs';
+if (process.env.DCAP_ALLOW_RETIRED_SP1_V5_TOOLS !== 'historical-reference') {
+  throw new Error('Retired with compact V2: the v5.0.0 circuit bundle is incompatible with SP1 6.8.0. Use sp1_v2_prove_local --kind groth16; no external circuit download is required.');
+}
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';

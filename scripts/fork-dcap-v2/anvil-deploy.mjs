@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 // Fork-only transaction replay. Never takes a private key or a public write RPC.
+// Compact V2: deploys an isolated Router/PCKHelper/AttestationV2 stack. The
+// shared legacy Router is never reconfigured; the only shared-state writes are
+// additive reader grants for the new Router and the fixture collateral upserts.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -42,13 +45,15 @@ if (info.environment?.chainId !== pin.chainId || info.forkConfig?.forkBlockNumbe
     (!pin.network && info.network && info.network!=='ethereum'))
   throw new Error('Expected a fresh, exact reviewed fork/runtime; do not reuse mutated state');
 const registry = JSON.parse(fs.readFileSync(path.join(root, `rust-crates/libraries/network-registry/deployment/current/${pin.chainId}/dcap.json`)));
-const report = {schema:1, status:'IN_PROGRESS', rpc:endpoint, origin:info, profile, transactions:[], contracts:{}, legacy:registry};
+const report = {schema:1, status:'IN_PROGRESS', rpc:endpoint, origin:info, profile, transactions:[], contracts:{},
+  legacy:registry, readers:[], programs:{},
+  isolation:'Isolated V2 stack: new PCCSRouter/PCKHelper/AttestationV2/quote verifiers. The legacy Router is never reconfigured (no setConfig/helper switch). Shared-state writes are limited to additive reader grants for the new Router on existing resolver storage and the fixture collateral upserts below.'};
 const save = () => fs.writeFileSync(output, JSON.stringify(report,null,2)+'\n');
 save();
 const call = async (to, sig, returns, ...args) => JSON.parse(cast('abi-decode','--json',`f()(${returns})`,
   await rpc('eth_call', [{to,data:calldata(sig,...args)},'latest'])));
-const router = registry.PCCSRouter, legacy = registry.AutomataDcapAttestationFee;
-const owner = (await call(router,'owner()','address'))[0];
+const legacyRouter = registry.PCCSRouter, legacy = registry.AutomataDcapAttestationFee;
+const owner = (await call(legacyRouter,'owner()','address'))[0];
 await rpc('anvil_impersonateAccount',[owner]);
 const impersonated = new Set([owner]);
 await rpc('anvil_setBalance',[owner,'0x56bc75e2d63100000']); // Local-only 100 ETH.
@@ -80,45 +85,103 @@ async function deploy(name, types='', args=[]) {
   report.contracts[name] = {address:receipt.contractAddress,runtimeBytes}; save();
   return receipt.contractAddress;
 }
+// Frozen compact-journal collateral-hash offsets (see docs/dcap-v2-revision-progress.md):
+// fmspc bytes 10..16, six collateral hashes start at byte 61 (32 bytes each,
+// TCB Info hash first, QE identity hash second). Do not use the retired
+// inline-body 289-byte offsets (130/194) here.
+const FMSPC_HEX=[20,32], TCB_HASH_HEX=[122,186], QE_HASH_HEX=[186,250];
 try {
   const keys = ['tcbEvalDaoAddr','pcsDaoAddr','pckDaoAddr','pckHelperAddr','crlHelperAddr','fmspcTcbHelperAddr'];
   const original=[];
-  for(const key of keys) original.push((await call(router,`${key}()`,'address'))[0]);
+  for(const key of keys) original.push((await call(legacyRouter,`${key}()`,'address'))[0]);
   report.originalRouter=Object.fromEntries(keys.map((k,i)=>[k,original[i]])); report.owner=owner; save();
   const p256=(await call(original[1],'P256_VERIFIER()','address'))[0];
+  const evaluations=[17,18,19,20,21];
+  const versioned={};
+  for(const evaluation of evaluations) {
+    versioned[evaluation]={
+      qe:(await call(legacyRouter,'qeIdDaoVersionedAddr(uint32)','address',evaluation))[0],
+      fmspc:(await call(legacyRouter,'fmspcTcbDaoVersionedAddr(uint32)','address',evaluation))[0],
+    };
+    if(BigInt(versioned[evaluation].qe)===0n||BigInt(versioned[evaluation].fmspc)===0n)
+      throw new Error(`Missing versioned DAO for evaluation ${evaluation}`);
+  }
+  report.versionedDAOs=versioned; save();
+  // Isolated stack: nothing here mutates the shared legacy Router.
   const helper=await deploy('PCKHelper');
-  const fee=await deploy('AutomataDcapAttestationFeeV2','address',[owner]);
+  const router=await deploy('PCCSRouter','address,address,address,address,address,address,address',
+    [owner,original[0],original[1],original[2],helper,original[4],original[5]]);
+  const attestation=await deploy('AutomataDcapAttestationV2','address',[owner]);
   const bp=(await call(legacy,'getBp()','uint16'))[0];
-  await send('fee.copyBp',fee,'setBp(uint16)',bp);
-  await send('fee.pauseV2',fee,'setZkV2Paused(bool)',true);
+  await send('attestation.copyBp',attestation,'setBp(uint16)',bp);
+  await send('attestation.pauseV2',attestation,'setZkV2Paused(bool)',true);
   for(const version of [3,4,5]) {
     const verifier=await deploy(`V${version}QuoteVerifier`,'address,address',[p256,router]);
-    await send(`fee.setV${version}`,fee,'setQuoteVerifier(address)',verifier);
+    await send(`attestation.setV${version}`,attestation,'setQuoteVerifier(address)',verifier);
     await send(`router.authorizeV${version}`,router,'setAuthorized(address,bool)',verifier,true);
   }
-  await send('router.authorizeFeeV2',router,'setAuthorized(address,bool)',fee,true);
-  for(const kind of [1,2]) {
-    const universal=(await call(legacy,'zkVerifier(uint8)','address',kind))[0];
-    const id=(await call(legacy,'programIdentifier(uint8)','bytes32',kind))[0];
-    const ids=(await call(legacy,'programIdentifiers(uint8)','bytes32[]',kind))[0];
-    if(BigInt(universal)===0n && BigInt(id)===0n && ids.length===0) continue;
-    if(profile==='op-sepolia-karst')throw new Error('OP backend scope changed; review instead of enabling ZK');
-    if(BigInt(universal)===0n || BigInt(id)===0n) throw new Error('Incomplete legacy backend');
-    await send(`fee.legacyConfig.${kind}`,fee,'setZkConfiguration(uint8,(bytes32,address))',kind,`(${id},${universal})`);
-    for(const other of ids) if(other!==id) await send(`fee.legacyId.${kind}`,fee,'updateProgramIdentifier(uint8,bytes32)',kind,other);
-    if(ids.some(other=>other!==id)) await send(`fee.legacyDefault.${kind}`,fee,'updateProgramIdentifier(uint8,bytes32)',kind,id);
-    const v2=kind===1 ? '0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b' : '0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170';
-    await send(`fee.v2Config.${kind}`,fee,'setZkConfigurationV2(uint8,(bytes32,address))',kind,`(${v2},${universal})`);
+  await send('router.authorizeAttestation',router,'setAuthorized(address,bool)',attestation,true);
+  await send('router.enableCallerRestriction',router,'enableCallerRestriction()');
+  for(const evaluation of evaluations) {
+    await send(`router.cloneQeDao.${evaluation}`,router,'setQeIdDaoVersionedAddr(uint32,address)',evaluation,versioned[evaluation].qe);
+    await send(`router.cloneFmspcDao.${evaluation}`,router,'setFmspcTcbDaoVersionedAddr(uint32,address)',evaluation,versioned[evaluation].fmspc);
   }
+  // Additive reader grants: the only shared-contract writes. Never DAO/writer
+  // permission; resolver owners are impersonated locally on the fork only.
+  const readerDaos=[original[0],original[1],original[2],
+    ...evaluations.flatMap(e=>[versioned[e].qe,versioned[e].fmspc])];
+  const resolvers=new Map();
+  for(const dao of readerDaos) {
+    const resolver=(await call(dao,'resolver()','address'))[0];
+    const key=resolver.toLowerCase();
+    if(!resolvers.has(key)) resolvers.set(key,{resolver,daos:[]});
+    resolvers.get(key).daos.push(dao);
+  }
+  for(const {resolver,daos} of resolvers.values()) {
+    const authorized=(await call(resolver,'isAuthorizedCaller(address)','bool',router))[0];
+    if(authorized) { report.readers.push({resolver,daos,alreadyAuthorized:true}); continue; }
+    const storageOwner=(await call(resolver,'owner()','address'))[0];
+    await rpc('anvil_impersonateAccount',[storageOwner]);impersonated.add(storageOwner);
+    await rpc('anvil_setBalance',[storageOwner,'0x56bc75e2d63100000']);
+    await tx(`reader.grant.${resolver.slice(2,10)}`,resolver,calldata('setCallerAuthorization(address,bool)',router,true),storageOwner);
+    if(!(await call(resolver,'isAuthorizedCaller(address)','bool',router))[0]) throw new Error('Reader grant readback failed');
+    report.readers.push({resolver,daos,owner:storageOwner});
+  }
+  // ZK backends: reuse only the verifier ADDRESS from the legacy deployment.
+  // Compact strict/minimal program IDs must be supplied explicitly; historical
+  // inline-body IDs are never silently registered as compact programs.
+  const envOr=(name,fallback)=>process.env[name]??fallback;
+  for(const [kind,name] of [[1,'risc0'],[2,'sp1']]) {
+    const legacyUniversal=(await call(legacy,'zkVerifier(uint8)','address',kind))[0];
+    const universal=envOr(name==='risc0'?'DCAP_RISC0_V2_VERIFIER':'DCAP_SP1_V2_VERIFIER',legacyUniversal);
+    const strictId=envOr(name==='risc0'?'DCAP_RISC0_STRICT_ID':'DCAP_SP1_STRICT_ID','');
+    const minimalId=envOr(name==='risc0'?'DCAP_RISC0_MINIMAL_ID':'DCAP_SP1_MINIMAL_ID','');
+    for(const id of [strictId,minimalId]) if(id && !/^0x[0-9a-fA-F]{64}$/.test(id)) throw new Error(`Invalid ${name} program ID`);
+    if(!strictId && !minimalId && BigInt(legacyUniversal)===0n) continue;
+    if(profile==='op-sepolia-karst')throw new Error('OP backend scope changed; review instead of enabling ZK');
+    if(BigInt(universal)===0n) throw new Error('Missing V2 ZK verifier');
+    await send(`attestation.setZkVerifierV2.${name}`,attestation,'setZkVerifierV2(uint8,address)',kind,universal);
+    const row={verifier:universal};
+    if(strictId) {
+      await send(`attestation.addStrict.${name}`,attestation,'addProgramIdentifierV2(uint8,bytes32,bool)',kind,strictId,false);
+      await send(`attestation.defaultStrict.${name}`,attestation,'setDefaultProgramIdentifierV2(uint8,bytes32)',kind,strictId);
+      row.strictId=strictId;
+    }
+    if(minimalId) {
+      await send(`attestation.addMinimal.${name}`,attestation,'addProgramIdentifierV2(uint8,bytes32,bool)',kind,minimalId,true);
+      row.minimalId=minimalId;
+    }
+    report.programs[name]=row;
+  }
+  report.zkConfigurationScope=profile==='sepolia-osaka'
+    ?'explicit-env-or-legacy-verifier-address-only; compact program IDs never derived from historical inline-body defaults'
+    :'raw-only; full-history-open';
+  save();
   // The pinned Ethereum Sepolia Fee's genesis-to-pin ZkRouteAdded/ZkRouteFrozen queries
   // both returned [], as recorded in the fork report. Do not generalize this
   // no-override migration to other chains without their route inventory.
   // OP has no registered backend/ID; full historical route inventory remains
   // separate from this raw-only local rehearsal and is not claimed complete.
-  report.routeMigrationScope=profile==='sepolia-osaka'?'observed-empty-Fee-overrides':'raw-only-no-active-backends; full-history-open';
-  for(let i=0;i<keys.length;i++) if((await call(router,`${keys[i]}()`,'address'))[0]!==original[i]) throw new Error('Router changed before switch');
-  const next=[...original];next[3]=helper;
-  await send('router.switchPckHelper',router,'setConfig(address,address,address,address,address,address)',...next);
   for(const fixtureName of ['ata-sgx-v3','ata-tdx-v4','v5']) {
     const fixture=JSON.parse(fs.readFileSync(path.join(root,`evm/forge-test/assets/v2/fixtures/${fixtureName}.json`)));
     const pcs=original[1];
@@ -134,8 +197,8 @@ try {
       }
     }
     const expected=fixture.expectedJournal.slice(2);
-    const fmspc='0x'+expected.slice(20,32), tcbType=fixtureName==='ata-sgx-v3'?0:1;
-    const dao=(await call(router,'fmspcTcbDaoVersionedAddr(uint32)','address',fixture.tcbEvaluationDataNumber))[0];
+    const fmspc='0x'+expected.slice(...FMSPC_HEX), tcbType=fixtureName==='ata-sgx-v3'?0:1;
+    const dao=(await call(legacyRouter,'fmspcTcbDaoVersionedAddr(uint32)','address',fixture.tcbEvaluationDataNumber))[0];
     const key=(await call(dao,'FMSPC_TCB_KEY(uint8,bytes6,uint32)','bytes32',tcbType,fmspc,3))[0];
     const hash=(await call(dao,'getTcbInfoContentHash(bytes32)','bytes32',key))[0];
     const validNow=async (target, collateralKey)=> {
@@ -144,7 +207,7 @@ try {
       const timestamp=BigInt(block.timestamp);
       return BigInt(issued)!==0n && BigInt(issued)<=timestamp && timestamp<=BigInt(expires);
     };
-    if(hash.toLowerCase()!=='0x'+expected.slice(130,194) || !await validNow(dao,key)) {
+    if(hash.toLowerCase()!=='0x'+expected.slice(...TCB_HASH_HEX) || !await validNow(dao,key)) {
       const plan=JSON.parse(fs.readFileSync(path.join(root,`evm/forge-test/assets/v2/local-fork/${fmspc.slice(2)}-${tcbType}.json`)));
       const signed=JSON.parse(fixture.tcbInfoJson);
       if(JSON.stringify(signed.tcbInfo)!==plan.raw) throw new Error('Async plan/raw mismatch');
@@ -161,12 +224,12 @@ try {
       const storage=(await call(dao,'resolver()','address'))[0];
       const previous=(await call(storage,'collateralPointer(bytes32)','bytes32',key))[0];
       await send(`${fixtureName}.async.finalize`,dao,'finalizeAsyncUpsert(bytes32,bytes32)',previous,ref);
-      if((await call(dao,'getTcbInfoContentHash(bytes32)','bytes32',key))[0].toLowerCase()!=='0x'+expected.slice(130,194)) throw new Error('Async hash mismatch');
+      if((await call(dao,'getTcbInfoContentHash(bytes32)','bytes32',key))[0].toLowerCase()!=='0x'+expected.slice(...TCB_HASH_HEX)) throw new Error('Async hash mismatch');
     }
     if(!await validNow(dao,key)) throw new Error('FMSPC collateral not valid at the actual block timestamp');
-    const qe=(await call(router,'qeIdDaoVersionedAddr(uint32)','address',fixture.tcbEvaluationDataNumber))[0];
+    const qe=(await call(legacyRouter,'qeIdDaoVersionedAddr(uint32)','address',fixture.tcbEvaluationDataNumber))[0];
     const qeKey=(await call(qe,'ENCLAVE_ID_KEY(uint256,uint256)','bytes32',tcbType===0?0:2,4))[0];
-    if((await call(qe,'getIdentityContentHash(bytes32)','bytes32',qeKey))[0].toLowerCase()!=='0x'+expected.slice(194,258) || !await validNow(qe,qeKey)) {
+    if((await call(qe,'getIdentityContentHash(bytes32)','bytes32',qeKey))[0].toLowerCase()!=='0x'+expected.slice(...QE_HASH_HEX) || !await validNow(qe,qeKey)) {
       const qeOwner=(await call(qe,'owner()','address'))[0];
       await rpc('anvil_impersonateAccount',[qeOwner]);impersonated.add(qeOwner);
       await rpc('anvil_setBalance',[qeOwner,'0x56bc75e2d63100000']);
@@ -176,7 +239,7 @@ try {
       await tx(`${fixtureName}.qe.upsert`,qe,signedTupleCalldata('upsertEnclaveIdentity(uint256,uint256,(string,bytes))',[tcbType===0?0:2,4],
         JSON.stringify(identity.enclaveIdentity),'0x'+identity.signature.replace(/^0x/,'')));
     }
-    if((await call(qe,'getIdentityContentHash(bytes32)','bytes32',qeKey))[0].toLowerCase()!=='0x'+expected.slice(194,258) || !await validNow(qe,qeKey)) throw new Error('QE upsert hash/validity mismatch');
+    if((await call(qe,'getIdentityContentHash(bytes32)','bytes32',qeKey))[0].toLowerCase()!=='0x'+expected.slice(...QE_HASH_HEX) || !await validNow(qe,qeKey)) throw new Error('QE upsert hash/validity mismatch');
   }
   for(const [kind,name] of [[0,'sgx'],[1,'tdx']]) {
     const key=(await call(original[0],'TCB_EVAL_KEY(uint8)','bytes32',kind))[0];
@@ -192,9 +255,10 @@ try {
       await tx(`tcbEvaluation.${name}.upsert`,original[0],signedTupleCalldata('upsertTcbEvaluationData((string,bytes))',[],
         JSON.stringify(payload.tcbEvaluationDataNumbers),'0x'+payload.signature.replace(/^0x/,'')));
     }
-    const number=(await call(router,'getStandardTcbEvaluationDataNumber(uint8)','uint32',kind))[0];
+    const number=(await call(legacyRouter,'getStandardTcbEvaluationDataNumber(uint8)','uint32',kind))[0];
     if(Number(number)!==20)throw new Error('Standard evaluation differs from the prepared fixture set; prepare matching signed collateral');
   }
+  for(let i=0;i<keys.length;i++) if((await call(legacyRouter,`${keys[i]}()`,'address'))[0]!==original[i]) throw new Error('Legacy Router changed during isolated deployment');
   report.status='DEPLOYMENT_AND_COLLATERAL_TRANSACTIONS_PASS'; report.sdkAndZkAcceptance='NOT_RUN';save();
 } catch(error) { report.status='FAILED';report.error=error.message;save();throw error; }
 finally { for(const account of impersonated) await rpc('anvil_stopImpersonatingAccount',[account]); }

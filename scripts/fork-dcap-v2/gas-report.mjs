@@ -89,21 +89,28 @@ for(const item of transactions) {
     if(length<9n || offset+32n+length>BigInt(bytes.length))throw new Error('Invalid journal length');
     const journal=bytes.subarray(start+32,start+32+Number(length));
     if(journal.readUInt16BE(0)!==2 || journal.readUInt16BE(2)!==1 || journal[4]!==6)throw new Error('Unexpected OutputV2 format');
+    // V2 ZK overloads: short (journal,backend,proof) = 35a9f4b4 using the strict
+    // default ID; long (…,identifier,evalNumber,minCheck) = 6f1b4168.
     const selector=bytes.subarray(0,4).toString('hex');
-    if(!['35a9f4b4','50d0092e'].includes(selector) || bytes.length<(selector==='50d0092e'?164:100))throw new Error('Unexpected V2 ZK overload');
+    if(!['35a9f4b4','6f1b4168'].includes(selector) || bytes.length<(selector==='6f1b4168'?196:100))throw new Error('Unexpected V2 ZK overload');
     const backend=BigInt('0x'+bytes.subarray(36,68).toString('hex'));
     if(backend!==BigInt(item.backend) || ![1n,2n].includes(backend))throw new Error('SDK backend does not match confirmed calldata');
     const proofOffset=4n+BigInt('0x'+bytes.subarray(68,100).toString('hex'));
     if(proofOffset+32n>BigInt(bytes.length))throw new Error('Invalid proof offset');
     const proofAt=Number(proofOffset),proofLength=BigInt('0x'+bytes.subarray(proofAt,proofAt+32).toString('hex'));
-    if(proofLength!==260n || proofOffset+32n+proofLength>BigInt(bytes.length))throw new Error('Unexpected EVM proof frame');
     const proof=bytes.subarray(proofAt+32,proofAt+32+Number(proofLength));
+    // Framing by proof family: SP1 v6 Groth16 EVM encoding is 356 bytes
+    // (selector 0x4388a21c); RISC Zero Groth16 seals are 260 bytes.
+    const expectedProofLength=proof.subarray(0,4).toString('hex')==='4388a21c'?356n:260n;
+    if(proofLength!==expectedProofLength || proofOffset+32n+proofLength>BigInt(bytes.length))throw new Error('Unexpected EVM proof frame');
     // Resolve an automatic ID at the confirmed transaction's historical block,
     // not at latest, so subsequent configuration changes cannot rewrite evidence.
-    const programId=selector==='50d0092e'?'0x'+bytes.subarray(100,132).toString('hex'):
+    // programIdentifierV2(uint8) keeps selector 0xbe29ec0f.
+    const programId=selector==='6f1b4168'?'0x'+bytes.subarray(100,132).toString('hex'):
       await rpc('eth_call',[{to:transaction.to,data:'0xbe29ec0f'+backend.toString(16).padStart(64,'0')},receipt.blockNumber]);
     if(!/^0x[0-9a-fA-F]{64}$/.test(programId))throw new Error('Invalid confirmed program ID');
-    journalMetadata={formatMajor:2,formatMinor:1,quoteVersion:journal.readUInt16BE(5),quoteBodyType:journal.readUInt16BE(7),journalBytes:journal.length,journalSha256:crypto.createHash('sha256').update(journal).digest('hex'),backend:Number(backend),programId,proofSelector:'0x'+proof.subarray(0,4).toString('hex'),proofSha256:crypto.createHash('sha256').update(proof).digest('hex')};
+    const minCheck=selector==='6f1b4168'?bytes[195]!==0:false;
+    journalMetadata={formatMajor:2,formatMinor:1,quoteVersion:journal.readUInt16BE(5),quoteBodyType:journal.readUInt16BE(7),journalBytes:journal.length,journalSha256:crypto.createHash('sha256').update(journal).digest('hex'),backend:Number(backend),programId,minCheck,proofSelector:'0x'+proof.subarray(0,4).toString('hex'),proofSha256:crypto.createHash('sha256').update(proof).digest('hex')};
     item.label=item.label.replace(/\.zk\.backend-([12])\./,`.zk.backend-$1.quote-v${journalMetadata.quoteVersion}.body-${journalMetadata.quoteBodyType}.`);
   }
   const zeroBytes=bytes.filter(b=>b===0).length;

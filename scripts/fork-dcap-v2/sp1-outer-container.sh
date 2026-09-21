@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# Resource fallback only: resume a real compressed proof with the same native
-# ARM64 host helper/program. No new guest build, setup, Docker socket or network.
+# RETIRED for compact V2: the v5 core/outer checkpoint protocol (and its
+# sp1_v2_compress_local helper) is incompatible with SP1 6.8.0 and the helper
+# now fails closed. Use the full SDK pipeline instead:
+#   sp1_v2_prove_local PROGRAM INPUT PROOF --kind groth16 [--minimal]
+# See rust-crates/libraries/zkvm/methods/sp1/README.md. No v6-resume workflow
+# is accepted yet. Retained below solely as a historical resource-budget
+# reference, not executable.
 set -euo pipefail
+echo 'Historical SP1 v5 outer-container handoff disabled for compact V2. Use the SP1 6.8.0 sp1_v2_prove_local runner; do not reuse old helpers, checkpoints or IDs.' >&2
+exit 2
 if [[ $# != 2 ]]; then
   echo 'Usage: bash sp1-outer-container.sh HANDOFF_DIRECTORY NEW_RESULT_DIRECTORY' >&2
   exit 2

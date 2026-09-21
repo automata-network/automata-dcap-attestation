@@ -4,9 +4,16 @@
 > not current acceptance. `DcapV2ForkTest` now uses compact fixtures, rejects old
 > selectors and requires explicit `DCAP_RISC0_STRICT_ID` / `DCAP_SP1_STRICT_ID`
 > for new real proofs. Optional `DCAP_*_V2_VERIFIER` selects a reviewed verifier
-> (SP1 v6 compatibility must be verified). The older standalone Anvil/gas/replay
-> orchestration still needs migration; do not run it as compact acceptance.
-> See [current revision status](../../docs/dcap-v2-revision-progress.md).
+> (SP1 v6 compatibility must be verified); optional `DCAP_*_MINIMAL_ID` registers
+> reviewed minimal programs without changing the strict default. The standalone
+> Anvil/gas/replay orchestration (`anvil-deploy`, `manifest-readback`,
+> `negative-gas`, `compare-gas`, `gas-report`, `legacy-sp1-replay`) has been
+> migrated to the compact V2 isolated stack: a new Router/PCKHelper/
+> AttestationV2 deployment that never reconfigures the shared legacy Router.
+> `proof-matrix.mjs` and the SP1 v5 checkpoint/gnark tools are retired
+> historical references and fail closed. Do not run any of it as compact
+> acceptance until the P1–P3 gates in
+> [current revision status](../../docs/dcap-v2-revision-progress.md) pass.
 
 Run from the repository root unless stated otherwise. These are acceptance
 tools, not production deployment scripts. No operator key, broadcast to public
@@ -119,7 +126,18 @@ anvil --host 127.0.0.1 --port 18545 \
 
 The default deployment runner requires a fresh, exact Ethereum Sepolia fork and
 Paris artifacts from the profile above. It impersonates accounts only on this
-local node and records real transaction receipts; V2 ZK remains paused.
+local node and records real transaction receipts. It deploys the isolated
+compact V2 stack (new `PCCSRouter` + `PCKHelper` sharing the five legacy DAO
+dependencies, `AutomataDcapAttestationV2`, and V3/V4/V5 verifiers wired to the
+new Router), grants the new Router additive reader permission on the existing
+resolver storage, clones the evaluation 17–21 versioned DAO pointers, and
+leaves V2 ZK paused. It never calls `setConfig` on the shared legacy Router.
+Compact program IDs are never derived from historical inline-body defaults:
+set `DCAP_RISC0_STRICT_ID` / `DCAP_SP1_STRICT_ID` (and optionally
+`DCAP_RISC0_MINIMAL_ID` / `DCAP_SP1_MINIMAL_ID`) to register audited compact
+programs, and optionally `DCAP_RISC0_V2_VERIFIER` / `DCAP_SP1_V2_VERIFIER` to
+override the verifier address reused from the legacy deployment (SP1 v6
+compatibility must be verified before use).
 
 ```bash
 node scripts/fork-dcap-v2/anvil-deploy.mjs \
@@ -181,9 +199,10 @@ OP rollout/rollback or total user-fee acceptance.
 
 For negative transaction gas, use an exclusively owned local Anvil instance
 with no concurrent writers. This records positive controls and rejection
-receipts/traces, then restores its exact initial snapshot (including the test's
-temporary pause/freeze). It removes only the temporary test transactions from
-the local chain; their measured evidence remains in the output file:
+receipts/traces against the compact `AutomataDcapAttestationV2`, then restores
+its exact initial snapshot (including the test's temporary pause/freeze). It
+removes only the temporary test transactions from the local chain; their
+measured evidence remains in the output file:
 
 ```bash
 node scripts/fork-dcap-v2/negative-gas.mjs \
@@ -192,9 +211,12 @@ node scripts/fork-dcap-v2/negative-gas.mjs \
 ```
 
 Returned `false` and transaction reverts are distinct outcomes. The script checks
-both and forbids accepted events on negatives. Gas is cap-dependent for invalid
-precompile inputs; no worst-case bound is implied. Local snapshot restoration
-must not be confused with reversing a production route freeze.
+both and forbids accepted `AttestationSubmittedV2` events on negatives; raw
+acceptance additionally requires a non-empty authenticated quote body (V2 raw
+returns `(bool,bytes,bytes)`). The matrix includes the compact-specific
+program-mode-mismatch rejection. Gas is cap-dependent for invalid precompile
+inputs; no worst-case bound is implied. Local snapshot restoration must not be
+confused with reversing a production route freeze.
 
 ### SDK collateral acquisition and input parity
 
@@ -233,10 +255,13 @@ change the pinned timestamp to make acquisition pass.
 ### Deployment readback, legacy comparison and cold/warm transactions
 
 The full Foundry suite also executes `DeployDcapV2` itself in simulation, covering
-staged configuration, legacy IDs/defaults, expected-current helper guards and
-rollback. The readback runner separately checks all five transaction-deployed
-runtimes (including immutable values), constructor getters, ownership, fees,
-four reader authorizations, Router dependencies, IDs and the paused V2 state.
+staged configuration, helper guards and rollback of the script's own stages. The
+readback runner separately checks all six transaction-deployed runtimes (including
+immutable values), constructor getters, ownership, fees, the four Router reader
+authorizations, the isolated Router dependencies (five shared DAOs + new helper),
+the evaluation 17–21 versioned-DAO clones, the shared resolver reader grants, V2
+program modes and the paused V2 state. It also verifies the shared legacy Router
+is byte-identical and still points at its original helper.
 
 ```bash
 node scripts/fork-dcap-v2/manifest-readback.mjs \
@@ -247,13 +272,16 @@ node scripts/fork-dcap-v2/compare-gas.mjs \
 ```
 
 The probe is test-only and calls real verifiers twice in one transaction, checking
-equal accepted outputs. Its first/repeated-call measurements include call/payment
-overhead and warmed accounts/storage; they are not standalone transaction gas.
-The comparison also records direct legacy/FeeV2-old/V2 raw receipts for V3/V4/V5,
-helper rollback and legacy address/selector availability, then restores the exact
-starting snapshot. Add any number of already crypto-verified EVM proof files for
-ZK cold/warm measurements. Pass real proofs only; the report is not itself a
-substitute for native or universal verifier proof validation.
+equal accepted outputs (compact V2 raw returns `(bool,bytes,bytes)`; the probe
+hashes the authenticated output). Its first/repeated-call measurements include
+call/payment overhead and warmed accounts/storage; they are not standalone
+transaction gas. The comparison records direct legacy/V2 raw receipts for
+V3/V4/V5 (legacy and compact output formats intentionally differ and are not
+byte-compared) and verifies read-only that the shared legacy Router was never
+reconfigured, then restores the exact starting snapshot. Add any number of
+already crypto-verified EVM proof files for ZK cold/warm measurements. Pass real
+proofs only; the report is not itself a substitute for native or universal
+verifier proof validation.
 
 Retain a compact derivative rather than committing full receipts/traces:
 
@@ -271,6 +299,12 @@ Component totals must reconcile to each receipt. They do not isolate every
 internal Solidity function, and intrinsic gas is not added again to those totals.
 The summary is evidence of measured local calls, not release approval.
 
+> HISTORICAL (inline-body revision): the six-cell reconciliation below targeted
+> retired old-format 260-byte proofs and historical program IDs.
+> `proof-matrix.mjs` now fails closed and must not be used for compact V2
+> acceptance. A compact replacement awaits real P2 proofs and the P3 fork
+> evidence; keep the original `evm-proof.json` files immutable either way.
+
 After all six proof cells finish, reconcile their exact proof/program/journal
 identity with the receipt-derived SDK/gas evidence:
 
@@ -281,14 +315,15 @@ node scripts/fork-dcap-v2/proof-matrix.mjs \
   "$DCAP_SP1_SGX_PROOF" "$DCAP_SP1_TDX_PROOF" "$DCAP_SP1_V5_PROOF"
 ```
 
-This expects 63 selected deployment/raw/ZK SDK transactions, six negative runs
-and 15 cold/warm pairs from the complete recipe. It requires each real proof to
-match four confirmed Go/Rust explicit/default transactions and its own rejection
-run. It fails on missing/duplicate cells or hash mismatches. This offline
-reconciliation is not a replacement for the preceding cryptographic/fork tests.
-Keep the original `evm-proof.json` immutable: its `forkVerification: NOT_RUN`
-describes the time of native export. Subsequent fork acceptance is recorded in
-the SDK receipts and reconciled matrix, not by rewriting that source artifact.
+This expected 63 selected deployment/raw/ZK SDK transactions, six negative runs
+and 15 cold/warm pairs from the complete historical recipe. It required each
+real proof to match four confirmed Go/Rust explicit/default transactions and its
+own rejection run. It fails on missing/duplicate cells or hash mismatches. This
+offline reconciliation is not a replacement for the preceding
+cryptographic/fork tests. Keep the original `evm-proof.json` immutable: its
+`forkVerification: NOT_RUN` describes the time of native export. Subsequent fork
+acceptance is recorded in the SDK receipts and reconciled matrix, not by
+rewriting that source artifact.
 
 Recover and check a bounded public legacy SP1 proof without retaining bulk logs:
 
@@ -301,10 +336,13 @@ This read-only runner fetches pinned Sepolia transaction
 `0x77eb616e2eced89e1005f5df8f026b888ac96438c01ec2265bf9e795f1241db1`,
 checks its successful canonical Fee event and historical program ID, then
 verifies the recovered proof on the existing local gateway. Three cryptographic
-negatives and old-Fee/FeeV2-old-selector behavior at six evaluation selections
-are checked separately. At the September 14 fork state both Fee paths reject
-the old collateral identically; this is not a legacy successful-attestation or
-ATKJ proof result. No transaction is broadcast, even to the local node.
+negatives are checked on the gateway. Compact V2 deliberately exposes no legacy
+selectors, so current-state behavior is checked on the independent legacy
+contract only (six evaluation selections), plus explicit disabled-selector
+negatives proving the old entrypoints revert on the V2 address. At the
+September 14 fork state the legacy Fee rejected the old collateral; this is not
+a legacy successful-attestation or ATKJ proof result. No transaction is
+broadcast, even to the local node.
 
 Timestamp-policy regression: raw uses the current block timestamp; ZK uses the
 timestamp authenticated in its journal. Advancing the current block past signed
@@ -386,6 +424,18 @@ Import `r0-docker-result/proof.json` with the same `import` command above, using
 the original program/input/succinct receipt. `DCAP_R0_PLATFORM=linux/amd64` selects
 the other reviewed manifest if needed; pull it explicitly first. A container exit
 of zero is not proof acceptance until the independent importer and fork pass.
+
+> RETIRED SP1 v5 proving chain (historical reference only): everything from here
+> through the `sp1-outer-container.sh` paragraph below belongs to the removed
+> SP1 5.2.2 core/shrink/outer/gnark checkpoint protocol. The
+> `sp1_v2_compress_local` / `sp1_v2_import_gnark` helpers now fail closed,
+> `sp1-gnark-local.sh`, `sp1-outer-container.sh` and `prepare-sp1-circuits.mjs`
+> are retired, and `sp1-core-on-mac.sh` exits immediately. SP1 6.8.0 proves
+> Groth16 through the single SDK runner
+> `sp1_v2_prove_local PROGRAM INPUT PROOF --kind groth16 [--minimal]`
+> (see `rust-crates/libraries/zkvm/methods/sp1/README.md`); no accepted
+> intermediate-checkpoint resume workflow exists yet. Do not run any retired
+> command as compact V2 acceptance.
 
 SP1 core → compressed can resume without generating the core proof again:
 
@@ -552,10 +602,11 @@ DCAP_FORK_FIXTURE=ata-sgx-v3
 ```
 
 They must be exported or supplied on the same command invocation. The test calls
-the fork's existing universal verifier and new FeeV2, and covers altered proof,
-journal, format, IDs, framing, evaluation, pause and route freeze. No proof file
-means an explicit skip, **not** a successful real-proof gate. Each backend and
-quote-layout cell, SDK ZK transactions and rollback still needs its own result.
+the fork's existing universal verifier and the compact V2 entrypoint, and covers
+altered proof, journal, format, IDs, framing, evaluation, pause and route
+freeze. No proof file means an explicit skip, **not** a successful real-proof
+gate. Each backend and quote-layout cell, SDK ZK transactions and rollback still
+needs its own result.
 
 After the real proof gate, the SDK runners exercise the same proof on the local
 Anvil deployment, including both signed transaction overloads and exact events.

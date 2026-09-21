@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Read-only verification of the local deployment, not production release approval.
+// Read-only verification of the local isolated V2 deployment, not production release approval.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -28,11 +28,12 @@ const at=block.number;
 const call=async(to,sig,returns,...args)=>JSON.parse(cast('abi-decode','--json',`f()(${returns})`,await rpc('eth_call',[{to,data:cast('calldata',sig,...args.map(String))},at])))[0];
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
 const word=x=>BigInt(x).toString(16).padStart(64,'0');
-const fee=d.contracts.AutomataDcapAttestationFeeV2.address,router=d.legacy.PCCSRouter,legacy=d.legacy.AutomataDcapAttestationFee;
+const v2=d.contracts.AutomataDcapAttestationV2.address,router=d.contracts.PCCSRouter.address,helper=d.contracts.PCKHelper.address;
+const legacyRouter=d.legacy.PCCSRouter,legacy=d.legacy.AutomataDcapAttestationFee;
 const p256=await call(d.originalRouter.pcsDaoAddr,'P256_VERIFIER()','address');
-const manifest={schema:1,status:'IN_PROGRESS',scope:'Sepolia local fork readback only; no release approval or current registry promotion',origin:d.origin,readbackBlock:{number:at,hash:block.hash},
+const manifest={schema:1,status:'IN_PROGRESS',scope:'Sepolia local fork readback of the isolated V2 stack only; no release approval or current registry promotion',origin:d.origin,readbackBlock:{number:at,hash:block.hash},
   source:{dcapHead:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),pccsHead:execFileSync('git',['-C','evm/lib/automata-on-chain-pccs','rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),
-    finalReleaseCommitFrozen:false,hostLockSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'rust-crates/Cargo.lock'))).digest('hex')},contracts:{},router:{address:router},backends:{},errors:[]};
+    finalReleaseCommitFrozen:false,hostLockSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'rust-crates/Cargo.lock'))).digest('hex')},contracts:{},router:{address:router},legacyRouter:{address:legacyRouter},backends:{},errors:[]};
 const save=()=>fs.writeFileSync(output,JSON.stringify(manifest,null,2)+'\n');save();
 try {
   for(const [name,c] of Object.entries(d.contracts)) {
@@ -54,29 +55,40 @@ try {
       const version=Number(name[1]);
       if(JSON.stringify([...observed].sort())!==JSON.stringify([word(router),word(p256),word(version)].sort()))throw new Error('Unreviewed immutable values');
       row.router=await call(c.address,'pccsRouter()','address');row.quoteVersion=Number(await call(c.address,'quoteVersion()','uint16'));row.p256=await call(c.address,'P256_VERIFIER()','address');
-      if(!same(row.router,router)||!same(row.p256,p256)||row.quoteVersion!==version||!same(await call(fee,'quoteVerifiers(uint16)','address',version),c.address))throw new Error('Constructor/registration mismatch');
+      if(!same(row.router,router)||!same(row.p256,p256)||row.quoteVersion!==version||!same(await call(v2,'quoteVerifiers(uint16)','address',version),c.address))throw new Error('Constructor/registration mismatch');
     } else if(observed.length)throw new Error('Unexpected immutables');
     manifest.contracts[name]=row;
   }
-  manifest.owner=await call(fee,'owner()','address');manifest.router.owner=await call(router,'owner()','address');
-  if(!same(manifest.owner,d.owner)||!same(manifest.router.owner,d.owner))throw new Error('Owner mismatch');
-  manifest.feeBasisPoints=Number(await call(fee,'getBp()','uint16'));
-  if(manifest.feeBasisPoints!==Number(await call(legacy,'getBp()','uint16')))throw new Error('Fee migration mismatch');
-  manifest.zkV2Paused=await call(fee,'zkV2Paused()','bool');
-  if(!manifest.zkV2Paused)throw new Error('V2 must remain paused pending final gates');
-  for(const [key,old] of Object.entries(d.originalRouter)) {
-    const value=await call(router,key+'()','address');
-    if(!same(value,key==='pckHelperAddr'?d.contracts.PCKHelper.address:old))throw new Error('Router dependency changed');
-    manifest.router[key]=value;
-  }
-  const routerCode=await rpc('eth_getCode',[router,at]);
-  if(cast('keccak',routerCode)!=='0xae9272895bd590692d290737e5485f1164d140873d902f3e3665bbdd06debe82')throw new Error('Unreviewed Router layout/code');
-  // The reviewed Router packs caller restriction in slot 1 byte 0, followed by
-  // tcbEvalDao. Validate both before decoding its authorization mapping in slot 0.
+  // The isolated Router is the same PCCSRouter artifact as the shared one; its
+  // live runtime hash must match the untouched legacy Router runtime.
+  const routerCode=await rpc('eth_getCode',[router,at]),legacyRouterCode=await rpc('eth_getCode',[legacyRouter,at]);
+  manifest.router.codeHash=cast('keccak',routerCode);
+  if(manifest.router.codeHash!==cast('keccak',legacyRouterCode))throw new Error('Isolated Router runtime differs from the shared Router artifact');
+  // Router packs caller restriction in slot 1 byte 0, followed by tcbEvalDao.
+  // Validate both before decoding its authorization mapping in slot 0.
   const packed=BigInt(await rpc('eth_getStorageAt',[router,'0x1',at]));
-  if(((packed>>8n)&((1n<<160n)-1n))!==BigInt(manifest.router.tcbEvalDaoAddr))throw new Error('Router layout mismatch');
-  if((packed&255n)>1n)throw new Error('Invalid restriction boolean');
-  manifest.router.callerRestriction=(packed&255n)===1n;
+  const tcbEvalDao=await call(router,'tcbEvalDaoAddr()','address');
+  if(((packed>>8n)&((1n<<160n)-1n))!==BigInt(tcbEvalDao))throw new Error('Router layout mismatch');
+  if((packed&255n)!==1n)throw new Error('Caller restriction must be enabled on the isolated Router');
+  manifest.router.callerRestriction=true;
+  manifest.owner=await call(v2,'owner()','address');manifest.router.owner=await call(router,'owner()','address');
+  if(!same(manifest.owner,d.owner)||!same(manifest.router.owner,d.owner))throw new Error('Owner mismatch');
+  manifest.feeBasisPoints=Number(await call(v2,'getBp()','uint16'));
+  if(manifest.feeBasisPoints!==Number(await call(legacy,'getBp()','uint16')))throw new Error('Fee migration mismatch');
+  manifest.zkV2Paused=await call(v2,'zkV2Paused()','bool');
+  if(!manifest.zkV2Paused)throw new Error('V2 must remain paused pending final gates');
+  // The isolated Router points at the five shared dependencies plus the new
+  // helper; the legacy Router must still point at its original helper.
+  const keys=['tcbEvalDaoAddr','pcsDaoAddr','pckDaoAddr','pckHelperAddr','crlHelperAddr','fmspcTcbHelperAddr'];
+  for(const key of keys) {
+    const value=await call(router,key+'()','address');
+    const expected=key==='pckHelperAddr'?helper:d.originalRouter[key];
+    if(!same(value,expected))throw new Error('Isolated Router dependency mismatch');
+    manifest.router[key]=value;
+    const legacyValue=await call(legacyRouter,key+'()','address');
+    if(!same(legacyValue,d.originalRouter[key]))throw new Error('Legacy Router was reconfigured');
+    manifest.legacyRouter[key]=legacyValue;
+  }
   manifest.router.authorizedNewReaders={};
   for(const [name,c] of Object.entries(d.contracts).filter(([name])=>name!=='PCKHelper')) {
     const slot=cast('keccak',cast('abi-encode','f(address,uint256)',c.address,'0'));
@@ -84,28 +96,51 @@ try {
     if(!enabled)throw new Error('New reader unauthorized');manifest.router.authorizedNewReaders[name]={address:c.address,enabled};
   }
   manifest.router.versionedDAOs={};
+  manifest.legacyRouter.versionedDAOs={};
   for(const evaluation of [17,18,19,20,21]) {
     const row={};for(const name of ['qeIdDaoVersionedAddr','fmspcTcbDaoVersionedAddr'])row[name]=await call(router,name+'(uint32)','address',evaluation);
+    const legacyRow={};for(const name of ['qeIdDaoVersionedAddr','fmspcTcbDaoVersionedAddr'])legacyRow[name]=await call(legacyRouter,name+'(uint32)','address',evaluation);
+    if(JSON.stringify(row)!==JSON.stringify(legacyRow))throw new Error('Versioned DAO clone mismatch');
     manifest.router.versionedDAOs[evaluation]=row;
   }
-  for(const [name,kind,selector,id] of [
-    ['risc0',1,'0x73c457ba','0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b'],
-    ['sp1',2,'0xa4594c59','0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170'],
-  ]) {
-    const oldIds=await call(legacy,'programIdentifiers(uint8)','bytes32[]',kind),copied=await call(fee,'programIdentifiers(uint8)','bytes32[]',kind);
-    if(JSON.stringify([...oldIds].sort())!==JSON.stringify([...copied].sort()))throw new Error('Legacy IDs changed');
-    const oldDefault=await call(legacy,'programIdentifier(uint8)','bytes32',kind),universal=await call(legacy,'zkVerifier(uint8)','address',kind);
-    if(!same(await call(fee,'programIdentifier(uint8)','bytes32',kind),oldDefault)||!same(await call(fee,'zkVerifier(uint8)','address',kind),universal))throw new Error('Legacy backend changed');
-    if(!same(await call(fee,'programIdentifierV2(uint8)','bytes32',kind),id)||!same(await call(fee,'zkVerifierV2(uint8,bytes4)','address',kind,selector),universal))throw new Error('V2 backend mismatch');
-    const v2Ids=await call(fee,'programIdentifiersV2(uint8)','bytes32[]',kind);
-    if(v2Ids.length!==1 || !same(v2Ids[0],id))throw new Error('Unreviewed V2 IDs');
-    manifest.backends[name]={universalVerifier:universal,legacyProgramIds:oldIds,legacyDefaultProgramId:oldDefault,v2ProgramIds:v2Ids,v2DefaultProgramId:id,testedProofSelector:selector,
-      universalCodeHash:cast('keccak',await rpc('eth_getCode',[universal,at])),universalReusedUnchanged:true};
+  manifest.readers={};
+  for(const [index,r] of (d.readers??[]).entries()) {
+    if(!(await call(r.resolver,'isAuthorizedCaller(address)','bool',router)))throw new Error('Shared resolver missing reader grant');
+    manifest.readers[index]={resolver:r.resolver,daos:r.daos};
   }
-  const picoIds=await call(fee,'programIdentifiersV2(uint8)','bytes32[]',3),picoId=await call(fee,'programIdentifierV2(uint8)','bytes32',3);
+  for(const [name,kind] of [['risc0',1],['sp1',2]]) {
+    const configured=d.programs?.[name];
+    const universal=await call(v2,'zkVerifierV2(uint8)','address',kind);
+    const strictId=await call(v2,'programIdentifierV2(uint8)','bytes32',kind);
+    const ids=await call(v2,'programIdentifiersV2(uint8)','bytes32[]',kind);
+    const oldIds=await call(legacy,'programIdentifiers(uint8)','bytes32[]',kind),oldDefault=await call(legacy,'programIdentifier(uint8)','bytes32',kind);
+    manifest.backends[name]={universalVerifier:universal,v2ProgramIds:ids,v2DefaultProgramId:strictId,
+      legacyProgramIds:oldIds,legacyDefaultProgramId:oldDefault,universalReusedUnchanged:configured?same(universal,configured.verifier):same(universal,await call(legacy,'zkVerifier(uint8)','address',kind))};
+    if(configured) {
+      if(!same(universal,configured.verifier))throw new Error('V2 verifier mismatch');
+      if(configured.strictId) {
+        if(!same(strictId,configured.strictId))throw new Error('Strict default mismatch');
+        const [registered,minCheck]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.strictId);
+        if(!registered||minCheck)throw new Error('Strict program mode mismatch');
+      } else if(BigInt(strictId)!==0n)throw new Error('Unexpected strict default');
+      if(configured.minimalId) {
+        const [registered,minCheck]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.minimalId);
+        if(!registered||!minCheck)throw new Error('Minimal program mode mismatch');
+      }
+      if(ids.length!==Number(Boolean(configured.strictId))+Number(Boolean(configured.minimalId)))throw new Error('Unreviewed V2 program IDs');
+    } else {
+      if(ids.length!==0 || BigInt(strictId)!==0n || BigInt(universal)===0n)throw new Error('Unexpected V2 ZK configuration');
+    }
+    // Historical inline-body IDs must never be migrated into the compact V2 registry.
+    for(const id of oldIds) {
+      const [registered]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,id);
+      if(registered)throw new Error('Historical program migrated into compact V2');
+    }
+  }
+  const picoIds=await call(v2,'programIdentifiersV2(uint8)','bytes32[]',3),picoId=await call(v2,'programIdentifierV2(uint8)','bytes32',3);
   if(picoIds.length || BigInt(picoId)!==0n)throw new Error('Unexpected Pico expansion');
   manifest.backends.pico={status:'N/A_LOCAL_ONLY',v2ProgramIds:[],v2DefaultProgramId:picoId};
   if((await rpc('eth_getBlockByNumber',['latest',false])).hash!==block.hash)throw new Error('Concurrent local writes during manifest readback');
   manifest.status='FORK_CONFIG_AND_RUNTIME_READBACK_PASS_NOT_RELEASE_APPROVAL';save();
-  console.log('Five deployed runtimes, immutables, ownership, four readers, Router, fees and legacy/V2 IDs verified; V2 remains paused.');
+  console.log('Six deployed runtimes, immutables, ownership, four readers, isolated Router, fees and V2 program modes verified; V2 remains paused.');
 }catch(error){manifest.status='FAILED';manifest.errors.push(error.message);save();throw error;}

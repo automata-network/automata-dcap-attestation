@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Local-only transaction benchmark and helper rollback. Uses real deployed
+// Local-only transaction benchmark and isolation check. Uses real deployed
 // verifiers and signed collateral; restores the complete starting snapshot.
+// Compact V2: the isolated stack never reconfigures the shared legacy Router,
+// so there is no helper rollback; isolation is verified read-only instead.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -24,14 +26,12 @@ async function rpc(method,params=[]) {
 const info=await rpc('anvil_nodeInfo'),origin=deployment.origin;
 if(info.environment?.chainId!==11155111 || info.forkConfig?.forkBlockNumber!==11689923 || info.hardFork!=='Osaka' ||
    (info.network && info.network!=='ethereum') || origin.currentBlockHash!=='0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096')throw new Error('Wrong reviewed fork/runtime');
-const fee=deployment.contracts.AutomataDcapAttestationFeeV2.address,legacy=deployment.legacy.AutomataDcapAttestationFee;
-const router=deployment.legacy.PCCSRouter,owner=deployment.owner,actor='0x'+crypto.randomBytes(20).toString('hex');
+const fee=deployment.contracts.AutomataDcapAttestationV2.address,legacy=deployment.legacy.AutomataDcapAttestationFee;
+const router=deployment.contracts.PCCSRouter.address,legacyRouter=deployment.legacy.PCCSRouter,owner=deployment.owner,actor='0x'+crypto.randomBytes(20).toString('hex');
 const call=async(to,sig,returns,...args)=>decode(returns,await rpc('eth_call',[{from:actor,to,data:encode(sig,...args)},'latest']));
 const keys=['tcbEvalDaoAddr','pcsDaoAddr','pckDaoAddr','pckHelperAddr','crlHelperAddr','fmspcTcbHelperAddr'];
-const config=[];for(const k of keys)config.push((await call(router,k+'()','address'))[0]);
-if(config[3].toLowerCase()!==deployment.contracts.PCKHelper.address.toLowerCase())throw new Error('Unexpected starting helper');
 const before=await rpc('eth_getBlockByNumber',['latest',false]),snapshot=await rpc('evm_snapshot');
-const report={schema:1,status:'IN_PROGRESS',scope:'Same-Sepolia local transactions: legacy/V2 raw comparison, actual cold/warm calls and helper rollback; test snapshot restored. Not production transactions or pure function-gas estimates.',origin:info,results:[],comparisons:[]};
+const report={schema:1,status:'IN_PROGRESS',scope:'Same-Sepolia local transactions: legacy/V2 raw comparison, actual cold/warm calls and read-only isolation verification; test snapshot restored. Not production transactions or pure function-gas estimates. Legacy and compact V2 outputs intentionally differ in format and are not byte-compared.',origin:info,results:[],comparisons:[]};
 const save=()=>fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');save();
 const sampleTopic=cast('keccak','Sample(uint256,uint256,bytes32)');
 async function tx(label,to,input,{from=actor,admin=false,probe=false,creation=false}={}) {
@@ -47,7 +47,11 @@ async function tx(label,to,input,{from=actor,admin=false,probe=false,creation=fa
   if(BigInt(receipt.status)!==1n){report.results.push({label,transactionHash:hash,status:'REVERTED',receipt,trace});save();throw new Error(label+': transaction reverted');}
   if(BigInt(trace.gasUsed)!==BigInt(receipt.gasUsed))throw new Error('Receipt/trace mismatch');
   let output;
-  if(!admin && !probe && !creation){const [ok,result]=decode('bool,bytes',trace.output);if(!ok)throw new Error(label+': rejected');output=result;}
+  if(!admin && !probe && !creation){
+    // Legacy raw returns (bool,bytes); compact V2 raw returns (bool,bytes,bytes).
+    const tuple=sameAddress(to,fee)?'bool,bytes,bytes':'bool,bytes';
+    const decoded=decode(tuple,trace.output);if(!decoded[0])throw new Error(label+': rejected');output=decoded[1];
+  }
   const bytes=Buffer.from(input.slice(2),'hex'),zeros=bytes.filter(b=>b===0).length;
   const intrinsic=21000+4*zeros+16*(bytes.length-zeros)+(creation?32000+2*Math.ceil(bytes.length/32):0);
   const samples=receipt.logs.filter(l=>l.topics[0]===sampleTopic).map(l=>({index:Number(BigInt(l.topics[1])),...Object.fromEntries(decode('uint256,bytes32',l.data).map((v,i)=>[i===0?'callGas':'outputHash',v]))}));
@@ -57,6 +61,7 @@ async function tx(label,to,input,{from=actor,admin=false,probe=false,creation=fa
   report.results.push(row);save();console.log(`${label}: gas=${row.gasUsed}${probe?' cold/warm='+samples.map(s=>s.callGas).join('/') : ''}`);
   return {row,output};
 }
+const sameAddress=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
 const raw=(v2,f)=>encode(v2?'verifyAndAttestOnChainV2(bytes,uint32,bool)':'verifyAndAttestOnChain(bytes,uint32)',f.quote,f.tcbEvaluationDataNumber,...(v2?[false]:[]));
 let failure;
 try {
@@ -68,32 +73,33 @@ try {
   const probe=created.receipt.contractAddress;
   const fixtures=['ata-sgx-v3','ata-tdx-v4','v5'].map(name=>({name,...JSON.parse(fs.readFileSync(path.join(root,`evm/forge-test/assets/v2/fixtures/${name}.json`)))}));
   for(const f of fixtures) {
-    const a=await call(legacy,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
-    const b=await call(fee,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
-    if(!a[0] || !b[0] || a[1]!==b[1])throw new Error('Legacy client address migration output mismatch');
+    const [legacyOk]=await call(legacy,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
+    const [v2Ok]=await call(fee,'verifyAndAttestOnChainV2(bytes,uint32,bool)','bool,bytes,bytes',f.quote,f.tcbEvaluationDataNumber,false);
+    if(!legacyOk||!v2Ok)throw new Error('Legacy/V2 raw availability mismatch');
     const costs={};
-    for(const [kind,target,v2] of [['legacy',legacy,false],['fee-v2-legacy-selector',fee,false],['v2',fee,true]]) {
+    for(const [kind,target,v2] of [['legacy',legacy,false],['v2',fee,true]]) {
       const input=raw(v2,f),{row,output}=await tx(`raw.${f.name}.${kind}`,target,input);
       costs[kind]=row.gasUsed;
-      if(v2){const expected=Buffer.from(f.expectedJournal.slice(2),'hex'),block=await rpc('eth_getBlockByNumber',[row.receipt.blockNumber,false]);expected.writeBigUInt64BE(BigInt(block.timestamp),57);if(output!=='0x'+expected.toString('hex'))throw new Error('V2 journal mismatch');}
+      if(v2){
+        const expected=Buffer.from(f.expectedJournal.slice(2),'hex'),block=await rpc('eth_getBlockByNumber',[row.receipt.blockNumber,false]);
+        // Compact V2 journal timestamp lives at bytes 53..61.
+        expected.writeBigUInt64BE(BigInt(block.timestamp),53);
+        if(output!=='0x'+expected.toString('hex'))throw new Error('V2 journal mismatch');
+      }
       await tx(`cold-warm.${f.name}.${kind}`,probe,encode('probe(address,bytes)',target,input),{probe:true});
     }
     report.comparisons.push({fixture:f.name,...costs,v2MinusLegacy:costs.v2-costs.legacy,v2DeltaPercent:100*(costs.v2-costs.legacy)/costs.legacy});save();
   }
-  await tx('admin.pause-before-rollback',fee,encode('setZkV2Paused(bool)',true),{from:owner,admin:true});
-  const rollback=[...config];rollback[3]=deployment.originalRouter.pckHelperAddr;
-  await tx('admin.restore-legacy-helper',router,encode('setConfig(address,address,address,address,address,address)',...rollback),{from:owner,admin:true});
+  // No shared-state rollback exists in the isolated deployment. Verify
+  // read-only that the legacy Router is untouched and both entries still work.
+  for(let i=0;i<keys.length;i++)if(!sameAddress((await call(legacyRouter,keys[i]+'()','address'))[0],deployment.originalRouter[keys[i]]))throw new Error('Legacy Router was reconfigured');
+  if(!sameAddress((await call(router,'pckHelperAddr()','address'))[0],deployment.contracts.PCKHelper.address))throw new Error('Isolated Router helper mismatch');
   for(const f of fixtures) {
-    const a=await call(legacy,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
-    const b=await call(fee,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
-    if(!a[0] || !b[0] || a[1]!==b[1])throw new Error('Legacy unavailable after helper/client rollback');
-    let rejected=false;
-    try {rejected=!(await call(fee,'verifyAndAttestOnChainV2(bytes,uint32,bool)','bool,bytes',f.quote,f.tcbEvaluationDataNumber,false))[0];}
-    catch(error) {if(!/execution reverted/i.test(error.message))throw error;rejected=true;}
-    if(!rejected)throw new Error('V2 accepted after legacy helper rollback');
+    const [legacyOk]=await call(legacy,'verifyAndAttestOnChain(bytes,uint32)','bool,bytes',f.quote,f.tcbEvaluationDataNumber);
+    const [v2Ok]=await call(fee,'verifyAndAttestOnChainV2(bytes,uint32,bool)','bool,bytes,bytes',f.quote,f.tcbEvaluationDataNumber,false);
+    if(!legacyOk||!v2Ok)throw new Error('Raw availability changed after comparison');
   }
-  for(let i=0;i<keys.length;i++)if((await call(router,keys[i]+'()','address'))[0].toLowerCase()!==rollback[i].toLowerCase())throw new Error('Rollback dependency mismatch');
-  await tx('admin.replay-helper-switch',router,encode('setConfig(address,address,address,address,address,address)',...config),{from:owner,admin:true});
+  report.rollbackChecks='PASS';
   if(proofFiles.length)await tx('admin.unpause-for-real-zk-probes',fee,encode('setZkV2Paused(bool)',false),{from:owner,admin:true});
   const measuredProofCells=new Set();
   for(const proofFile of proofFiles) {
@@ -107,7 +113,8 @@ try {
     const input=encode('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)',p.journal,p.backend,p.proof,p.programId,20,false);
     await tx(`cold-warm.zk.${cell}`,probe,encode('probe(address,bytes)',fee,input),{probe:true});
   }
-  report.rollbackChecks='PASS';
+  if(proofFiles.length)await tx('admin.repause-after-real-zk-probes',fee,encode('setZkV2Paused(bool)',true),{from:owner,admin:true});
+  report.isolationChecks='PASS';
 }catch(error){failure=error;report.error=error.message;}
 finally {
   try {
@@ -119,4 +126,4 @@ finally {
   report.status=failure?'FAILED':'PASS';save();
 }
 if(failure)throw failure;
-console.log('Comparison/rollback complete; original local snapshot restored.');
+console.log('Comparison/isolation complete; original local snapshot restored.');

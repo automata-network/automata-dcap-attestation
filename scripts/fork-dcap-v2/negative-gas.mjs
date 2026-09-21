@@ -11,7 +11,7 @@ if(deployment.status!=='DEPLOYMENT_AND_COLLATERAL_TRANSACTIONS_PASS' || payload.
 if(payload.journal!==fixture.expectedJournal)throw new Error('Proof/fixture mismatch');
 const endpoint=new URL(deployment.rpc);
 if(endpoint.protocol!=='http:' || endpoint.hostname!=='127.0.0.1' || endpoint.username || endpoint.password)throw new Error('Loopback Anvil only');
-const fee=deployment.contracts.AutomataDcapAttestationFeeV2.address,owner=deployment.owner;
+const fee=deployment.contracts.AutomataDcapAttestationV2.address,owner=deployment.owner;
 const actor='0x'+crypto.randomBytes(20).toString('hex');
 const cast=(...args)=>execFileSync('cast',args,{encoding:'utf8',maxBuffer:4*1024*1024}).trim();
 const data=(sig,...args)=>cast('calldata',sig,...args.map(String));
@@ -29,7 +29,7 @@ const report={schema:1,status:'IN_PROGRESS',chainId:11155111,forkBlock:11689923,
   scope:'Locally impersonated test transactions; original node snapshot is restored after recording receipts/traces. Reverts and returned false are distinguished. These are not SDK-signed or public transactions.',
   limitations:'Negative gas depends on the explicit gas cap, especially invalid curve points/precompile failures. Call tracing does not separate refund/floor accounting. No L2 data fees.',results:[]};
 const save=()=>fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');save();
-const event=cast('keccak','AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes)');
+const event=cast('keccak','AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes32,bool,bytes)');
 async function transaction(label,calldata,{admin=false,expect='reject',gas=2000000}={}) {
   const hash=await rpc('eth_sendTransaction',[{from:admin?owner:actor,to:fee,data:calldata,gas:'0x'+gas.toString(16),gasPrice:'0x3b9aca00',value:admin?'0x0':'0x16345785d8a0000'}]);
   let receipt;
@@ -37,16 +37,24 @@ async function transaction(label,calldata,{admin=false,expect='reject',gas=20000
   if(!receipt)throw new Error('Receipt unavailable');
   const trace=await rpc('debug_traceTransaction',[hash,{tracer:'callTracer'}]);
   const reverted=BigInt(receipt.status)===0n;
-  let accepted=false,returned=null;
-  if(!reverted && !admin){returned=JSON.parse(cast('abi-decode','--json','f()(bool,bytes)',trace.output));accepted=returned[0];}
+  let accepted=false,output=null,quoteBody=null;
+  // Raw V2 returns (bool,bytes,bytes); ZK V2 returns (bool,bytes).
+  const isRaw=calldata.startsWith('0xcaf3ffa9')||calldata.startsWith('0x569d0f33');
+  if(!reverted && !admin){
+    const returned=JSON.parse(cast('abi-decode','--json',isRaw?'f()(bool,bytes,bytes)':'f()(bool,bytes)',trace.output));
+    accepted=returned[0];output=returned[1];if(isRaw)quoteBody=returned[2];
+  }
   const acceptedEvents=receipt.logs.filter(log=>log.address.toLowerCase()===fee.toLowerCase() && log.topics[0]===event && BigInt('0x'+log.data.slice(2,66))!==0n).length;
-  const row={label,hash,gasLimit:gas,gasUsed:Number(BigInt(receipt.gasUsed)),calldataBytes:(calldata.length-2)/2,reverted,accepted,returned,acceptedEvents,receipt,trace};
+  const row={label,hash,gasLimit:gas,gasUsed:Number(BigInt(receipt.gasUsed)),calldataBytes:(calldata.length-2)/2,reverted,accepted,output,quoteBody,acceptedEvents,receipt,trace};
   report.results.push(row);save();
-  if(admin?reverted:expect==='accept'?reverted||!accepted||acceptedEvents!==1:accepted||acceptedEvents!==0)throw new Error(`${label}: unexpected acceptance/receipt`);
+  const unexpected=admin?reverted:
+    expect==='accept'?(reverted||!accepted||acceptedEvents!==1||(isRaw&&(!quoteBody||quoteBody==='0x'))):
+    (accepted||acceptedEvents!==0);
+  if(unexpected)throw new Error(`${label}: unexpected acceptance/receipt`);
   console.log(`${label}: gas=${row.gasUsed} reverted=${reverted} accepted=${accepted}`);
 }
 const raw=(quote)=>data('verifyAndAttestOnChainV2(bytes,uint32,bool)',quote,fixture.tcbEvaluationDataNumber,false);
-const zk=(journal=payload.journal,proof=payload.proof,id=payload.programId,evalNumber=fixture.tcbEvaluationDataNumber)=>data('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)',journal,payload.backend,proof,id,evalNumber,false);
+const zk=(journal=payload.journal,proof=payload.proof,id=payload.programId,evalNumber=fixture.tcbEvaluationDataNumber,minCheck=false)=>data('verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)',journal,payload.backend,proof,id,evalNumber,minCheck);
 const flip=(value,index)=>{const bytes=Buffer.from(value.slice(2),'hex');bytes[index]^=1;return '0x'+bytes.toString('hex');};
 let failure;
 try {
@@ -62,6 +70,7 @@ try {
   await transaction('zk.journal',zk(flip(payload.journal,25)));
   await transaction('zk.output-major',zk(flip(payload.journal,1)));
   await transaction('zk.program-id',zk(payload.journal,payload.proof,flip(payload.programId,31)));
+  await transaction('zk.mode-mismatch',zk(payload.journal,payload.proof,payload.programId,fixture.tcbEvaluationDataNumber,true));
   await transaction('zk.truncated',zk(payload.journal,'0x01'));
   await transaction('zk.evaluation',zk(payload.journal,payload.proof,payload.programId,4294967295));
   await transaction('admin.pause',data('setZkV2Paused(bool)',true),{admin:true,gas:100000});

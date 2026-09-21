@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Run only the final official gnark stage, after independent outer verification
-# and witness preparation. Import the result with sp1_v2_import_gnark afterward.
+# RETIRED for compact V2: the v5 gnark transport, v5.0.0 circuit bundle and
+# sp1_v2_import_gnark importer are incompatible with SP1 6.8.0 (the importer now
+# fails closed). SP1 6.8.0 proves Groth16 through the full SDK pipeline:
+#   sp1_v2_prove_local PROGRAM INPUT PROOF --kind groth16 [--minimal]
+# Its .evm.json carries the SDK-encoded journal/proof/selector. Retained below
+# solely as a historical resource-budget reference, not executable.
 set -euo pipefail
+echo 'Historical SP1 v5 gnark stage disabled for compact V2. Use the SP1 6.8.0 sp1_v2_prove_local runner; do not reuse old circuits, witnesses or transports.' >&2
+exit 2
 if [[ $# != 3 ]]; then
   echo 'Usage: bash sp1-gnark-local.sh VERIFIED_WITNESS_DIRECTORY OFFICIAL_CIRCUIT_DIRECTORY NEW_RESULT_DIRECTORY' >&2
   exit 2

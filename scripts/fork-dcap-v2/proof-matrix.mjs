@@ -1,7 +1,14 @@
 #!/usr/bin/env node
-// Offline reconciliation of the six scoped real-proof cells. This consumes
-// receipt/trace-derived reports, not untrusted claims as a proof verifier.
+// HISTORICAL (inline-body revision): this reconciled the retired six-cell run
+// against old-format 260-byte proofs and historical program IDs. Compact V2
+// journals, program IDs and SP1 v6 356-byte proofs are incompatible; do not
+// run this as compact-V2 acceptance. A compact replacement awaits real P2
+// proofs plus the P3 fork evidence.
 import fs from 'node:fs';
+if (process.env.DCAP_ALLOW_RETIRED_PROOF_MATRIX !== 'historical-reference') {
+  throw new Error('proof-matrix.mjs targets the retired inline-body revision (old program IDs, 260-byte proofs). Compact V2 acceptance must not use it.');
+}
+
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
