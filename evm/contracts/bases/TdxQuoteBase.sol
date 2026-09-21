@@ -17,6 +17,29 @@ import "./tcb/TCBInfoV3Base.sol";
 abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
     using LibString for string;
 
+    /// @dev Unlike the legacy path, Rust production also evaluates TDX_00 identity levels.
+    function checkTdxModuleTcbStatus(bytes16 svn, TDXModule memory base, TDXModuleIdentity[] memory identities, bool v2)
+        internal
+        pure
+        returns (bool, TCBStatus, bytes memory, bytes8)
+    {
+        if (!v2) return checkTdxModuleTcbStatus(svn, base, identities);
+        (bool found, TDXModuleIdentity memory identity) = findTdxModuleIdentity(identities, uint8(svn[1]));
+        if (found) {
+            for (uint256 i; i < identity.tcbLevels.length; ++i) {
+                if (uint8(svn[0]) >= identity.tcbLevels[i].isvsvn) {
+                    return (
+                        true,
+                        identity.tcbLevels[i].status,
+                        svn[1] == 0 ? base.mrsigner : identity.mrsigner,
+                        svn[1] == 0 ? base.attributes : identity.attributes
+                    );
+                }
+            }
+        }
+        return (false, TCBStatus.TCB_UNRECOGNIZED, base.mrsigner, base.attributes);
+    }
+
     function checkTdxModule(
         bytes memory mrsignerSeam,
         bytes memory expectedMrSignerSeam,
@@ -46,12 +69,12 @@ abstract contract TdxQuoteBase is QuoteVerifierBase, TCBInfoV3Base {
         }
     }
 
-     /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
-    function checkTdxModuleTcbStatus(bytes16 teeTcbSvn, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities)
-        internal
-        pure
-        returns (bool, TCBStatus, bytes memory, bytes8)
-    {
+    /// @dev https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L62-L97
+    function checkTdxModuleTcbStatus(
+        bytes16 teeTcbSvn,
+        TDXModule memory tdxModule,
+        TDXModuleIdentity[] memory tdxModuleIdentities
+    ) internal pure returns (bool, TCBStatus, bytes memory, bytes8) {
         uint8 tdxModuleIsvSvn = uint8(teeTcbSvn[0]);
         uint8 tdxModuleVersion = uint8(teeTcbSvn[1]);
         bytes memory expectedMrSignerSeam = tdxModule.mrsigner;

@@ -1,0 +1,133 @@
+//! Local RISC Zero V2 execution, journal parity and optional rejection checks.
+//! This does not generate receipts, contact Bonsai or register a program.
+#[path = "../../dcap-rs/tests/support/v2_negative_cases.rs"]
+mod negative_cases;
+use anyhow::{Context, Result, ensure};
+use risc0_zkvm::{Executor, ExecutorEnv, ExitCode, ExternalProver, compute_image_id};
+
+const EXECUTION_CYCLE_LIMIT: u64 = 500_000_000;
+
+fn execution_env(input: &[u8]) -> Result<ExecutorEnv<'_>> {
+    ExecutorEnv::builder()
+        .write_slice(input)
+        .session_limit(Some(EXECUTION_CYCLE_LIMIT))
+        .build()
+}
+
+fn main() -> Result<()> {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    ensure!(
+        args.len() >= 2
+            && args.len() <= 4
+            && args[2..]
+                .iter()
+                .all(|a| a == "--negative" || a == "--minimal" || a == "--expect-reject"),
+        "usage: risc0_v2_execute <V2 program binary> <V2 ABI input> [--negative] [--minimal] [--expect-reject]"
+    );
+    let expect_reject = args.iter().any(|a| a == "--expect-reject");
+    ensure!(
+        !(expect_reject && args.iter().any(|a| a == "--negative")),
+        "--expect-reject checks the primary input itself and cannot combine with --negative"
+    );
+    ensure!(
+        !risc0_zkvm::ProverOpts::default().dev_mode(),
+        "RISC0_DEV_MODE must be disabled for validation"
+    );
+    let version = std::process::Command::new("r0vm")
+        .arg("--version")
+        .output()
+        .context("r0vm 3.0.3 must be installed")?;
+    ensure!(
+        version.status.success()
+            && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.0.3",
+        "local validation requires r0vm 3.0.3"
+    );
+    let elf = std::fs::read(&args[0]).context("read V2 program binary")?;
+    let input = std::fs::read(&args[1]).context("read V2 ABI input")?;
+    let minimal = args.iter().any(|a| a == "--minimal");
+    let verify = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal
+    } else {
+        dcap_rs::v2::verify_guest_input_v2
+    };
+    let minimal_label = if minimal {
+        "DCAP V2 minimal verification:"
+    } else {
+        "DCAP V2 verification:"
+    };
+    // Mode-divergent policy fixtures (e.g. the Alibaba migration-service quote)
+    // must be rejected natively in this mode and rejected by the guest as well.
+    if expect_reject {
+        let rejection = verify(&input).expect_err("native V2 unexpectedly accepted policy input");
+        println!("mode={}", if minimal { "minimal" } else { "strict" });
+        println!("native_rejection={rejection}");
+        let executor = ExternalProver::new("local-execution", "r0vm");
+        println!("r0vm_version=3.0.3");
+        println!("native_program_id=0x{}", compute_image_id(&elf)?);
+        let error = executor
+            .execute(execution_env(&input)?, &elf)
+            .expect_err("RISC Zero V2 unexpectedly accepted policy input");
+        let cause = error.root_cause().to_string();
+        ensure!(
+            cause.starts_with("Guest panicked:") && cause.contains(minimal_label),
+            "unexpected RISC Zero policy rejection: {error:#}"
+        );
+        println!("policy_rejection=native_and_guest=PASS");
+        println!("Execution only: no proof generated or universal verifier checked.");
+        return Ok(());
+    }
+    let expected = verify(&input).context("native V2 verification")?;
+    println!("mode={}", if minimal { "minimal" } else { "strict" });
+
+    // Explicit local subprocess: never select Bonsai or a prover from environment.
+    // Only Executor::execute is called, not Prover::prove or a DEV_MODE receipt.
+    let executor = ExternalProver::new("local-execution", "r0vm");
+    println!("r0vm_version=3.0.3");
+    println!("native_program_id=0x{}", compute_image_id(&elf)?);
+    let session = executor
+        .execute(execution_env(&input)?, &elf)
+        .context("RISC Zero execution")?;
+    ensure!(
+        session.exit_code == ExitCode::Halted(0),
+        "guest did not halt successfully"
+    );
+    ensure!(
+        session.journal.bytes == expected,
+        "RISC Zero/native V2 journal mismatch"
+    );
+    let parsed = automata_dcap_zkvm::parse_output_v2(&session.journal.bytes)
+        .context("SDK V2 journal decoding")?;
+    println!(
+        "user_cycles={} journal_bytes={} parity=PASS",
+        session.cycles(),
+        session.journal.bytes.len()
+    );
+    println!(
+        "quote_version={} output_format={}.{} piid_present={}",
+        parsed.quote_version,
+        parsed.format_major_version,
+        parsed.format_minor_version,
+        parsed.piid_present
+    );
+
+    if args.iter().any(|a| a == "--negative") {
+        for (name, invalid) in negative_cases::negative_inputs(&input)? {
+            ensure!(
+                verify(&invalid).is_err(),
+                "native V2 unexpectedly accepted {name}"
+            );
+            let result = executor.execute(execution_env(&invalid)?, &elf);
+            let error = result.expect_err("RISC Zero V2 unexpectedly accepted invalid input");
+            // The pinned r0vm reports guest aborts through this error message.
+            // Do not count cycle limits, transport errors or arbitrary faults as rejection.
+            let cause = error.root_cause().to_string();
+            ensure!(
+                cause.starts_with("Guest panicked:") && cause.contains(minimal_label),
+                "unexpected RISC Zero failure for {name}: {error:#}"
+            );
+            println!("rejection={name} native_and_guest=PASS");
+        }
+    }
+    println!("Execution only: no proof generated or universal verifier checked.");
+    Ok(())
+}

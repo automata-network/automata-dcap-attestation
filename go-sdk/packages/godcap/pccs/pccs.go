@@ -182,9 +182,11 @@ type TcbInfo struct {
 }
 
 // Encode serializes TcbInfo to JSON
-func (t *TcbInfo) Encode() []byte {
-	data, _ := json.Marshal(t)
-	return data
+func (t *TcbInfo) Encode() ([]byte, error) {
+	if t == nil {
+		return nil, logex.NewError("missing TCB info")
+	}
+	return json.Marshal(t)
 }
 
 // GetTcbInfo retrieves TCB information by type, FMSPC, and version (uses default DAO)
@@ -234,9 +236,11 @@ type EnclaveIdentityInfo struct {
 }
 
 // Encode serializes EnclaveIdentityInfo to JSON
-func (e *EnclaveIdentityInfo) Encode() []byte {
-	data, _ := json.Marshal(e)
-	return data
+func (e *EnclaveIdentityInfo) Encode() ([]byte, error) {
+	if e == nil {
+		return nil, logex.NewError("missing enclave identity")
+	}
+	return json.Marshal(e)
 }
 
 // GetEnclaveID retrieves enclave identity information by ID and version (uses default DAO)
@@ -281,4 +285,3 @@ func (p *Client) GetEnclaveIDWithEvalNum(ctx context.Context, enclaveId uint8, v
 	info.Signature = hex.EncodeToString(result.Signature)
 	return &info, nil
 }
-

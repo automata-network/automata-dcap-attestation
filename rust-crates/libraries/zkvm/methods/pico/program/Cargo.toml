@@ -1,0 +1,30 @@
+[package]
+name = "dcap-pico-guest-v2"
+version = "0.1.0"
+edition = "2021"
+
+# Standalone crate - not part of workspace
+# Required for zkVM compilation with specific patches
+[workspace]
+
+[[bin]]
+name = "dcap-pico-guest-v2-minimal"
+path = "src/minimal.rs"
+
+[[bin]]
+name = "dcap-pico-guest-v2"
+path = "src/main.rs"
+
+[dependencies]
+pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6" }
+dcap-rs = { path = "../../../../dcap-rs" }
+
+# Pico-specific crypto patches
+[patch.crates-io]
+sha2 = { git = "https://github.com/brevis-network/hashes", tag = "pico-patch-v1.0.1-sha2-v0.10.8" }
+ecdsa = { git = "https://github.com/brevis-network/signatures", tag = "pico-patch-v1.0.1-ecdsa-0.16.9" }
+tiny-keccak = { git = "https://github.com/brevis-network/tiny-keccak", tag = "pico-patch-v1.0.0-keccak-v2.0.2" }
+
+# The ECDSA patch's unversioned pico-patch-libs Git dependency is pinned to the
+# v1.1.6 commit in Cargo.lock. Do not regenerate/update this lock without retaining
+# that pin (see ../README.md); the build driver always uses --locked.

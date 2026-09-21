@@ -1,0 +1,240 @@
+[
+  {
+    "type": "function",
+    "name": "programIdentifierV2",
+    "inputs": [
+      {
+        "name": "backend",
+        "type": "uint8",
+        "internalType": "enum ZkCoProcessorType"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "programIdentifiersV2",
+    "inputs": [
+      {
+        "name": "backend",
+        "type": "uint8",
+        "internalType": "enum ZkCoProcessorType"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "verifyAndAttestOnChainV2",
+    "inputs": [
+      {
+        "name": "rawQuote",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "tcbEvaluationDataNumber",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "quoteBody",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "verifyAndAttestOnChainV2",
+    "inputs": [
+      {
+        "name": "rawQuote",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "quoteBody",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "verifyAndAttestWithZKProofV2",
+    "inputs": [
+      {
+        "name": "journal",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "backend",
+        "type": "uint8",
+        "internalType": "enum ZkCoProcessorType"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "verifyAndAttestWithZKProofV2",
+    "inputs": [
+      {
+        "name": "journal",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "backend",
+        "type": "uint8",
+        "internalType": "enum ZkCoProcessorType"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "identifier",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "tcbEvaluationDataNumber",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "event",
+    "name": "AttestationSubmittedV2",
+    "inputs": [
+      {
+        "name": "success",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "verifierType",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ZkCoProcessorType"
+      },
+      {
+        "name": "formatMajorVersion",
+        "type": "uint16",
+        "indexed": true,
+        "internalType": "uint16"
+      },
+      {
+        "name": "formatMinorVersion",
+        "type": "uint16",
+        "indexed": true,
+        "internalType": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "programIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
+      },
+      {
+        "name": "output",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "chainId": 560048,
+  "owner": "REPLACE_WITH_NEW_DEPLOYMENT_OWNER",
+  "accounts": {
+    "REPLACE_WITH_NEW_DEPLOYMENT_OWNER": "foundry-keystore-name",
+    "REPLACE_WITH_ACTUAL_STORAGE_OWNER": "storage-owner-keystore-name"
+  },
+  "deploySp1Groth16V6": false,
+  "programs": []
+}

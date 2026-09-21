@@ -1,0 +1,21 @@
+{
+  "AutomataDaoStorage": "0x6726B94566618B17fA475af862aC73C5b7b41C56",
+  "AutomataEnclaveIdentityDao": "0xd74e880029cd3B6b434f16beA5F53A06989458Ee",
+  "AutomataEnclaveIdentityDaoVersioned_tcbeval_17": "0x29aaB215aeE14D4D843C57521BbF2D3B17b45810",
+  "AutomataEnclaveIdentityDaoVersioned_tcbeval_18": "0x6eE9602b90E8C451FfBCc8d5Dc9C8A3BF0A4fA56",
+  "AutomataEnclaveIdentityDaoVersioned_tcbeval_19": "0x5A4636EA4Bd9DDD5bA78E9405e2FA420317329D0",
+  "AutomataEnclaveIdentityDaoVersioned_tcbeval_20": "0xD5Fdf78606B4D1980F78f1f0E24920D3E79AcBCF",
+  "AutomataFmspcTcbDao": "0xd3A3f34E8615065704cCb5c304C0cEd41bB81483",
+  "AutomataFmspcTcbDaoVersioned_tcbeval_17": "0x3d47b3E543dC4f7557E553e343F32DE0Eb15C306",
+  "AutomataFmspcTcbDaoVersioned_tcbeval_18": "0x62E8Cd513B12F248804123f7ed12A0601B79FBAc",
+  "AutomataFmspcTcbDaoVersioned_tcbeval_19": "0x43cdd3490785059423A17a90C1d8f46382C518D2",
+  "AutomataFmspcTcbDaoVersioned_tcbeval_20": "0xDE5EfA54Ca90549FB1544e07C6a4298BB4124d14",
+  "AutomataPckDao": "0xa4615C2a260413878241ff7605AD9577feB356A5",
+  "AutomataPcsDao": "0xB270cD8550DA117E3accec36A90c4b0b48daD342",
+  "AutomataTcbEvalDao": "0xcF614258C68730D8cB9713AcAe425875D1FDb370",
+  "EnclaveIdentityHelper": "0x635A8A01e84cDcE1475FCeB7D57FEcadD3d1a0A0",
+  "FmspcTcbHelper": "0x181dc716922c84554aeA8bafa07c906F4e4C15B2",
+  "PCKHelper": "0xeD75bb6543c53d49f4445055Ba18380068025370",
+  "TcbEvalHelper": "0xc02eCE21bD137410bc8edD30886bA6C7d255F3cC",
+  "X509CRLHelper": "0xA454FB9522631D586f3A790c6CDc6f1B70Ca903C"
+}

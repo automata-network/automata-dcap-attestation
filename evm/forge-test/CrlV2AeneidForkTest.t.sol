@@ -37,7 +37,9 @@ contract CrlV2AeneidForkTest is Test {
         if (bytes(storyRpcUrl).length == 0) {
             vm.skip(true, "STORY_RPC_URL is required for the Aeneid fork suite");
         }
-        vm.createSelectFork(storyRpcUrl);
+        // Explicit pin: CLI --fork-block-number does not pin this cheatcode's fork.
+        vm.createSelectFork(storyRpcUrl, vm.envUint("STORY_FORK_BLOCK"));
+        require(block.chainid == 1315, "expected Story Aeneid chain ID");
         crl57 = vm.parseBytes(vm.readLine("forge-test/assets/crl/platform-57-20260716.hex"));
         crl129 = vm.parseBytes(vm.readLine("forge-test/assets/crl/platform-129-20260716.hex"));
 
@@ -87,7 +89,25 @@ contract CrlV2AeneidForkTest is Test {
         assertEq(router.crlHelperAddr(), address(crlV2));
     }
 
-    function testForkUpsert57And129ShrinkRollbackAndGas() public {
+    // The old 57/129 transition requires matching historical ledger state, not
+    // merely a clock warp over today's newer CRL. Missing archival coverage must
+    // remain an explicit skip/release gap rather than bypassing anti-rollback.
+    function _requireHistoricalFixtureBlock() private {
+        if (block.timestamp <= 1784202218 || block.timestamp >= 1786781829) {
+            vm.skip(true, "57/129 replay requires an archival fork inside the July/August fixture window");
+        }
+    }
+
+    function testForkRejectsExpiredHistoricalCrlAtCurrentTime() public {
+        if (block.timestamp <= 1786794218) vm.skip(true, "expiry negative requires a post-expiry fork");
+        vm.expectRevert(abi.encodeWithSelector(PcsDaoV2.Crl_Expired.selector, CA.PLATFORM));
+        pcsV2.upsertPckCrl(CA.PLATFORM, crl57);
+        vm.expectRevert(abi.encodeWithSelector(PcsDaoV2.Crl_Expired.selector, CA.PLATFORM));
+        pcsV2.upsertPckCrl(CA.PLATFORM, crl129);
+    }
+
+    function testForkHistoricalUpsert57And129ShrinkRollbackAndGas() public {
+        _requireHistoricalFixtureBlock();
         uint256 initialState = vm.snapshotState();
 
         uint256 before57 = gasleft();
@@ -134,7 +154,22 @@ contract CrlV2AeneidForkTest is Test {
         console2.log("fork V1 stored PLATFORM CRL atomic migration gas", migrationGas);
     }
 
-    function testForkUpsert129CompletesExactIndexInSameTransaction() public {
+    function testForkCurrentSignedCrlUpsertAndIndex() public {
+        string memory file = vm.envOr("DCAP_CURRENT_PLATFORM_CRL", string(""));
+        if (bytes(file).length == 0) vm.skip(true, "provide a fresh Intel-signed DER CRL for current-time upsert");
+        bytes memory current = vm.readFileBinary(file);
+        bytes memory previous = router.getCrl(CA.PLATFORM);
+        assertNotEq(keccak256(previous), keccak256(current), "newer signed CRL required");
+        pcsV2.indexStoredCrl(CA.PLATFORM, keccak256(previous));
+        uint256 beforeGas = gasleft();
+        pcsV2.upsertPckCrl(CA.PLATFORM, current);
+        console2.log("fork current signed CRL upsert+index gas", beforeGas - gasleft());
+        _assertStoredCrl(current);
+        assertTrue(crlV2.indexedCrls(keccak256(current)));
+    }
+
+    function testForkHistoricalUpsert129CompletesExactIndexInSameTransaction() public {
+        _requireHistoricalFixtureBlock();
         bytes32 derHash = keccak256(crl129);
         uint256 beforeUpsert = gasleft();
         pcsV2.upsertPckCrl(CA.PLATFORM, crl129);
@@ -145,7 +180,8 @@ contract CrlV2AeneidForkTest is Test {
         console2.log("fork V2 129-entry atomic upsert+index gas", upsertGas);
     }
 
-    function testForkRealSigned57EntryReissueReusesExactIndex() public {
+    function testForkHistoricalRealSigned57EntryReissueReusesExactIndex() public {
+        _requireHistoricalFixtureBlock();
         bytes memory previousCrl = router.getCrl(CA.PLATFORM);
         bytes32 previousDerHash = keccak256(previousCrl);
         bytes32 currentDerHash = keccak256(crl57);

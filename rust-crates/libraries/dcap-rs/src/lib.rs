@@ -43,6 +43,10 @@ pub mod trust_store;
 pub mod types;
 /// Utility functions for expiration checking and data handling.
 pub mod utils;
+#[cfg(feature = "full")]
+pub mod v2;
+#[cfg(feature = "full")]
+pub use v2::verify_dcap_quote_v2;
 
 #[cfg(feature = "full")]
 use std::time::SystemTime;

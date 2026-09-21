@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { TcbId } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
+import {TcbId} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import "../bases/QuoteVerifierBase.sol";
 import "../bases/tcb/TCBInfoV2Base.sol";
 import "../types/Errors.sol";
@@ -16,11 +16,27 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         external
         view
         override
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, false);
+    }
+
+    function verifyQuoteV2(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber)
+        external
+        view
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, true);
+    }
+
+    function _verifyQuote(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber, bool withIdentity)
+        private
+        view
         returns (bool success, bytes memory output)
     {
         string memory reason;
         AuthData memory authData;
-        (success, reason, authData) = _parseV3Quote(header, rawQuote);
+        (success, reason, authData) = _parseV3Quote(header, rawQuote, withIdentity);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -35,16 +51,15 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        (TCBLevelsObj[] memory tcbLevels,,) = pccsRouter.getFmspcTcbV3(
-            TcbId.SGX,
-            bytes6(pckTcb.fmspcBytes), 
-            result.tcbEvalNumber
-        );
+        (TCBLevelsObj[] memory tcbLevels,,) =
+            pccsRouter.getFmspcTcbV3(TcbId.SGX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber);
         TCBStatus tcbStatus;
         bool statusFound;
+        uint256 selected;
         for (uint256 i = 0; i < tcbLevels.length; i++) {
             (statusFound, tcbStatus) = getSGXTcbStatus(pckTcb, tcbLevels[i]);
             if (statusFound) {
+                selected = i;
                 break;
             }
         }
@@ -60,13 +75,14 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
             tcbStatus: uint8(tcbStatus),
             fmspcBytes: bytes6(pckTcb.fmspcBytes),
             quoteBody: rawBody,
-            advisoryIDs: new string[](0)
+            advisoryIDs: withIdentity ? tcbLevels[selected].advisoryIDs : new string[](0)
         });
         output = serializeOutput(out);
+        if (withIdentity) output = identityEnvelope(output, authData.certification);
         success = true;
     }
 
-    function _parseV3Quote(Header calldata header, bytes calldata quote)
+    function _parseV3Quote(Header calldata header, bytes calldata quote, bool withIdentity)
         private
         view
         returns (bool success, string memory reason, AuthData memory authData)
@@ -87,13 +103,13 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         offset += 4;
         // we don't strictly require the auth data to be equal to the provided length
         // but this ignores any trailing bytes after the indicated length allocated for authData
-        if (quote.length - offset < localAuthDataSize) {
+        if (quote.length - offset < localAuthDataSize || (withIdentity && quote.length - offset != localAuthDataSize)) {
             return (false, ADS, authData);
         }
 
         // at this point, we have verified the length of the entire quote to be correct
         // parse authData
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize], withIdentity);
         if (!success) {
             return (false, ADF, authData);
         }
@@ -113,17 +129,20 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
      * [580+Y:584+Y] bytes: certSize (Z)
      * [584+Y:584+Y+Z] bytes: certData
      */
-    function _parseAuthData(bytes calldata rawAuthData)
+    function _parseAuthData(bytes calldata rawAuthData, bool withIdentity)
         private
         view
         returns (bool success, AuthData memory authData)
     {
+        // Include the fixed QE authentication prefix and the six-byte certification header.
+        if (withIdentity && rawAuthData.length < 584) return (false, authData);
         authData.ecdsa256BitSignature = rawAuthData[0:64];
         authData.ecdsaAttestationKey = rawAuthData[64:128];
         authData.qeReport = rawAuthData[128:512];
         authData.qeReportSignature = rawAuthData[512:576];
         uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[576:578]));
         uint256 offset = 578;
+        if (withIdentity && qeAuthDataSize > rawAuthData.length - offset - 6) return (false, authData);
         authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
         offset += qeAuthDataSize;
 
@@ -136,11 +155,13 @@ contract V3QuoteVerifier is QuoteVerifierBase, TCBInfoV2Base {
         offset += 2;
         uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
         offset += 4;
+        if (withIdentity && certDataSize != rawAuthData.length - offset) return (false, authData);
         bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
 
         // parsing complete, now we need to decode some raw data
 
-        (success, authData.certification) = getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
+        (success, authData.certification) =
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData, withIdentity);
         if (!success) {
             return (false, authData);
         }
