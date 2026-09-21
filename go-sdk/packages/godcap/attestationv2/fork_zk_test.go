@@ -1,4 +1,4 @@
-package feev2
+package attestationv2
 
 import (
 	"bytes"
@@ -65,7 +65,7 @@ func TestForkRealZKV2SDK(t *testing.T) {
 		t.Fatal(err)
 	}
 	requireReviewedFork(t, deployment.Origin, info)
-	address := deployment.Contracts["AutomataDcapAttestationFeeV2"].Address
+	address := deployment.Contracts["AutomataDcapAttestationV2"].Address
 	client, err := New(address, backend)
 	if err != nil {
 		t.Fatal(err)

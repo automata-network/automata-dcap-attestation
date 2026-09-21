@@ -39,7 +39,7 @@ rustup toolchain install nightly-2025-08-04 --profile minimal --component rust-s
 cargo build --release --locked --manifest-path rust-crates/libraries/zkvm/methods/pico/Cargo.toml
 ```
 
-Output: `rust-crates/libraries/zkvm/artifacts/v2.0/pico.elf` (not tracked by Git).
+Output: `rust-crates/libraries/zkvm/artifacts/v2.0/pico-strict.elf` (not tracked by Git).
 No `cargo-pico` installation or separate Pico Rust compiler is needed.
 
 ## Lockfile maintenance
@@ -78,7 +78,7 @@ cargo +nightly-2025-08-04 run --locked \
   --manifest-path rust-crates/Cargo.toml \
   -p automata-dcap-zkvm --features pico --example pico_v2_execute \
   --target-dir rust-crates/target -- \
-  rust-crates/libraries/zkvm/artifacts/v2.0/pico.elf /path/to/v2-input.bin
+  rust-crates/libraries/zkvm/artifacts/v2.0/pico-strict.elf /path/to/v2-input.bin
 ```
 
 This prints the native verifying-key identifier and executes the guest using

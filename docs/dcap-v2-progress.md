@@ -1,5 +1,12 @@
 # DCAP V2 implementation
 
+> Historical inline-body V2 checkpoint/runbook. The compact revision changes the
+> entrypoint, journal, event, mode-specific IDs and SP1 target version. These old
+> build/proof/deployment results do not establish acceptance of the new revision.
+> See [current revision status](dcap-v2-revision-progress.md),
+> [design](dcap-v2-design.md), and the
+> [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md).
+
 > Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
 > fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
 > and gas results below are historical, not acceptance for the current source.
@@ -414,7 +421,7 @@ forge test --no-match-contract CrlV2AeneidForkTest -vv
 forge build --skip test --sizes
 cargo test -p dcap-rs --lib --test output_v2 -p automata-dcap-network-registry -p automata-dcap-utils --offline
 cargo check --workspace --offline --target-dir target
-go test ./go-sdk/packages/godcap/feev2 ./go-sdk/packages/godcap/parser ./go-sdk/packages/godcap/registry
+go test ./go-sdk/packages/godcap/attestationv2 ./go-sdk/packages/godcap/parser ./go-sdk/packages/godcap/registry
 ```
 
 ## Outstanding build/release gates

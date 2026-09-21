@@ -1,5 +1,13 @@
 # Fork-only acceptance runners
 
+> Compact revision: the historical inline-body/SP1 v5 six-cell result below is
+> not current acceptance. `DcapV2ForkTest` now uses compact fixtures, rejects old
+> selectors and requires explicit `DCAP_RISC0_STRICT_ID` / `DCAP_SP1_STRICT_ID`
+> for new real proofs. Optional `DCAP_*_V2_VERIFIER` selects a reviewed verifier
+> (SP1 v6 compatibility must be verified). The older standalone Anvil/gas/replay
+> orchestration still needs migration; do not run it as compact acceptance.
+> See [current revision status](../../docs/dcap-v2-revision-progress.md).
+
 Run from the repository root unless stated otherwise. These are acceptance
 tools, not production deployment scripts. No operator key, broadcast to public
 RPC, remote proving service or new trusted setup is used. The scoped six-cell V2
@@ -123,7 +131,7 @@ Inside `go-sdk/`:
 ```bash
 DCAP_ANVIL_REPORT="$DCAP_RUN/deployment.json" \
 DCAP_SDK_GAS_REPORT="$DCAP_RUN/go-raw.json" \
-go test ./packages/godcap/feev2 -run TestForkRawV2 -count=1 -v
+go test ./packages/godcap/attestationv2 -run TestForkRawV2 -count=1 -v
 ```
 
 Back at the root, Rust/native parity (do not run concurrently with fork writes):
@@ -200,7 +208,7 @@ These commands do not contact a paid or remote prover:
 ```bash
 DCAP_ANVIL_REPORT="$DCAP_RUN/deployment.json" \
 DCAP_COLLATERAL_GO_OUT="$DCAP_RUN/go-inputs" \
-go test ./go-sdk/packages/godcap/feev2 -run '^TestForkV2CollateralAcquisition$' -count=1 -v
+go test ./go-sdk/packages/godcap/attestationv2 -run '^TestForkV2CollateralAcquisition$' -count=1 -v
 cargo run --release --locked --manifest-path rust-crates/Cargo.toml \
   -p automata-dcap-zkvm --example fork_v2_collateral -- \
   "$DCAP_RUN/deployment.json" evm/forge-test/assets/v2/fixtures \
@@ -558,7 +566,7 @@ They restore the original ZK pause setting even when a check fails:
 DCAP_ANVIL_REPORT="$DCAP_RUN/deployment.json" \
 DCAP_EVM_PROOF="$DCAP_VERIFIED_EVM_PROOF" \
 DCAP_ZK_SDK_REPORT="$DCAP_RUN/go-zk.json" \
-go test ./packages/godcap/feev2 -run '^TestForkRealZKV2SDK$' -count=1 -v
+go test ./packages/godcap/attestationv2 -run '^TestForkRealZKV2SDK$' -count=1 -v
 
 # From the repository root; no concurrent writes to this Anvil instance.
 cargo run --release --locked --manifest-path rust-crates/Cargo.toml \

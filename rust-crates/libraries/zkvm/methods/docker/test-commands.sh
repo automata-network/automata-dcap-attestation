@@ -14,4 +14,10 @@ test "$test_status" -eq 2
 test_status=0
 bash "$test_scripts/reproduce-official.sh" unknown HEAD >/dev/null 2>&1 || test_status=$?
 test "$test_status" -eq 2
-printf '%s\n' '5 Docker build command/argument checks passed (no Docker execution).'
+test_status=0
+bash "$test_scripts/run-handoff.sh" risc0 unknown >/dev/null 2>&1 || test_status=$?
+test "$test_status" -eq 2
+test_status=0
+bash "$test_scripts/run-handoff.sh" risc0 strict extra >/dev/null 2>&1 || test_status=$?
+test "$test_status" -eq 2
+printf '%s\n' '7 Docker build command/argument checks passed (no Docker execution).'

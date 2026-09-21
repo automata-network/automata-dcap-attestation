@@ -1,5 +1,5 @@
-// Package feev2 calls the identity-bearing entrypoint directly, without DcapPortal.
-package feev2
+// Package attestationv2 calls the identity-bearing entrypoint directly, without DcapPortal.
+package attestationv2
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// ABI is generated from the FeeV2 artifact, restricted to application-facing methods/events.
+// ABI is generated from the AttestationV2 artifact, restricted to application-facing methods/events.
 //
 //go:embed abi.json
 var ABI string
@@ -26,7 +26,7 @@ type Client struct {
 
 func New(address common.Address, backend bind.ContractBackend) (*Client, error) {
 	if address == (common.Address{}) {
-		return nil, fmt.Errorf("FeeV2 address is required")
+		return nil, fmt.Errorf("AttestationV2 address is required")
 	}
 	parsed, err := abi.JSON(strings.NewReader(ABI))
 	if err != nil {
@@ -41,7 +41,7 @@ func (c *Client) method(signature string) (string, error) {
 			return name, nil
 		}
 	}
-	return "", fmt.Errorf("FeeV2 ABI missing %s", signature)
+	return "", fmt.Errorf("AttestationV2 ABI missing %s", signature)
 }
 
 func (c *Client) call(opts *bind.CallOpts, signature string, args ...interface{}) ([]interface{}, error) {
@@ -59,15 +59,15 @@ func verificationOutput(result []interface{}, err error) ([]byte, error) {
 		return nil, err
 	}
 	if len(result) != 2 {
-		return nil, fmt.Errorf("invalid FeeV2 return arity")
+		return nil, fmt.Errorf("invalid AttestationV2 return arity")
 	}
 	success, ok := result[0].(bool)
 	if !ok {
-		return nil, fmt.Errorf("invalid FeeV2 success value")
+		return nil, fmt.Errorf("invalid AttestationV2 success value")
 	}
 	output, ok := result[1].([]byte)
 	if !ok {
-		return nil, fmt.Errorf("invalid FeeV2 output value")
+		return nil, fmt.Errorf("invalid AttestationV2 output value")
 	}
 	if !success {
 		return nil, fmt.Errorf("DCAP V2 verification failed: %s", output)
@@ -78,14 +78,44 @@ func verificationOutput(result []interface{}, err error) ([]byte, error) {
 	return output, nil
 }
 
-// VerifyAndAttestOnChainV2 uses strict verification unless minCheck is true.
-// Minimal mode skips workload attributes only, never authentication or V2 framing.
-func (c *Client) VerifyAndAttestOnChainV2(opts *bind.CallOpts, quote []byte, tcbEval uint32, minCheck bool) ([]byte, error) {
-	return verificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, tcbEval, minCheck))
+type RawVerificationV2 struct {
+	Output    []byte
+	QuoteBody []byte
 }
 
-func (c *Client) VerifyAndAttestOnChainV2Default(opts *bind.CallOpts, quote []byte) ([]byte, error) {
-	return verificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes)", quote))
+func rawVerificationOutput(result []interface{}, err error) (*RawVerificationV2, error) {
+	if err != nil {
+		return nil, err
+	}
+	if len(result) != 3 {
+		return nil, fmt.Errorf("invalid raw V2 return arity")
+	}
+	output, err := verificationOutput(result[:2], nil)
+	if err != nil {
+		return nil, err
+	}
+	body, ok := result[2].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("invalid raw V2 body")
+	}
+	parsed, err := parser.ParseOutputV2(output)
+	if err != nil {
+		return nil, err
+	}
+	if err := parsed.ValidateQuoteBody(body); err != nil {
+		return nil, err
+	}
+	return &RawVerificationV2{Output: output, QuoteBody: body}, nil
+}
+
+// VerifyAndAttestOnChainV2 uses strict verification unless minCheck is true.
+// Minimal mode skips workload attributes only, never authentication or V2 framing.
+func (c *Client) VerifyAndAttestOnChainV2(opts *bind.CallOpts, quote []byte, tcbEval uint32, minCheck bool) (*RawVerificationV2, error) {
+	return rawVerificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, tcbEval, minCheck))
+}
+
+func (c *Client) VerifyAndAttestOnChainV2Default(opts *bind.CallOpts, quote []byte) (*RawVerificationV2, error) {
+	return rawVerificationOutput(c.call(opts, "verifyAndAttestOnChainV2(bytes)", quote))
 }
 
 func (c *Client) ProgramIdentifierV2(opts *bind.CallOpts, backend uint8) ([32]byte, error) {
@@ -114,6 +144,9 @@ func (c *Client) VerifyAndAttestWithZKProofV2(opts *bind.CallOpts, journal []byt
 	}
 	var program [32]byte
 	if id == nil {
+		if minCheck {
+			return nil, fmt.Errorf("minimal verification requires an explicit minimal program ID")
+		}
 		var err error
 		program, err = c.ProgramIdentifierV2(opts, backend)
 		if err != nil {
@@ -154,6 +187,8 @@ type AttestationSubmittedV2 struct {
 	VerifierType       uint8
 	FormatMajorVersion uint16
 	FormatMinorVersion uint16
+	ProgramIdentifier  [32]byte
+	MinCheck           bool
 	Output             []byte
 	Raw                types.Log
 }

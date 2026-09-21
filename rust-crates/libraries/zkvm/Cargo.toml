@@ -49,7 +49,7 @@ required-features = ["risc0"]
 [features]
 default = []
 risc0 = ["dep:risc0-zkvm", "dep:risc0-ethereum-contracts", "dep:risc0-groth16", "dep:boundless-market"]
-sp1 = ["dep:sp1-sdk", "dep:sp1-prover", "dep:sp1-stark"]
+sp1 = ["dep:sp1-sdk"]
 pico = ["dep:pico-sdk", "dep:num", "dep:num-bigint", "dep:p3-field"]
 
 [dependencies]
@@ -83,9 +83,7 @@ risc0-groth16 = { version = "=3.0.2", optional = true }
 boundless-market = { version = "~1.0", optional = true }
 
 # SP1 specific dependencies (feature-gated)
-sp1-sdk = { version = "^5.2.0", optional = true }
-sp1-prover = { version = "=5.2.2", optional = true }
-sp1-stark = { version = "=5.2.2", optional = true }
+sp1-sdk = { version = "=6.8.0", features = ["network"], optional = true }
 
 # Pico specific dependencies (feature-gated)
 pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6", optional = true }

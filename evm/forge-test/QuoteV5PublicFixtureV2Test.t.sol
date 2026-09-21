@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import "./utils/PCCSSetupBase.sol";
 import {V5QuoteVerifier} from "../contracts/verifiers/V5QuoteVerifier.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {OutputV2Codec} from "../contracts/utils/OutputV2Codec.sol";
 import {OutputV2} from "../contracts/types/OutputV2.sol";
 
@@ -14,7 +14,7 @@ contract QuoteV5PublicFixtureV2Test is PCCSSetupBase {
     using LibString for string;
 
     string internal fixture;
-    AutomataDcapAttestationFeeV2 internal fee;
+    AutomataDcapAttestationV2 internal fee;
     uint32 internal evaluationNumber;
 
     function setUp() public override {
@@ -63,7 +63,7 @@ contract QuoteV5PublicFixtureV2Test is PCCSSetupBase {
         enclaveIdDao.upsertEnclaveIdentity(uint256(parsed.id), 4, identity);
 
         V5QuoteVerifier verifier = new V5QuoteVerifier(P256_VERIFIER, address(router));
-        fee = new AutomataDcapAttestationFeeV2(admin);
+        fee = new AutomataDcapAttestationV2(admin);
         fee.setQuoteVerifier(address(verifier));
         router.setAuthorized(address(verifier), true);
         router.setAuthorized(address(fee), true);
@@ -83,7 +83,7 @@ contract QuoteV5PublicFixtureV2Test is PCCSSetupBase {
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
         // Explicit evaluation selection avoids introducing a separate live TCB
         // evaluation-number lookup; the TCB/QE collateral itself is authenticated.
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(quote, evaluationNumber, false);
+        (bool success, bytes memory journal, bytes memory body) = fee.verifyAndAttestOnChainV2(quote, evaluationNumber, false);
         assertTrue(success, string(journal));
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
         OutputV2 memory output = this.decode(journal);
@@ -91,11 +91,12 @@ contract QuoteV5PublicFixtureV2Test is PCCSSetupBase {
         assertEq(output.formatMinorVersion, 1);
         assertEq(output.quoteVersion, 5);
         assertEq(output.quoteBodyType, 3);
-        assertEq(output.quoteBody.length, 648);
+        assertEq(body.length, 648);
+        assertEq(output.quoteBodyHash, keccak256(body));
         assertEq(output.fullQuoteHash, keccak256(quote));
         assertTrue(output.piidPresent);
         for (uint256 i = 600; i < 648; ++i) {
-            assertEq(output.quoteBody[i], bytes1(0));
+            assertEq(body[i], bytes1(0));
         }
     }
 
@@ -112,7 +113,7 @@ contract QuoteV5PublicFixtureV2Test is PCCSSetupBase {
         (bool ok, bytes memory result) = address(fee)
             .call(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, evaluationNumber, minCheck));
         if (ok) {
-            (bool success,) = abi.decode(result, (bool, bytes));
+            (bool success,,) = abi.decode(result, (bool, bytes, bytes));
             assertFalse(success, "invalid quote accepted");
         }
     }

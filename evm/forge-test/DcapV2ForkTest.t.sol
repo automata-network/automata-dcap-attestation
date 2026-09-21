@@ -6,7 +6,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {JSONParserLib} from "solady/utils/JSONParserLib.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {AutomataDcapAttestationFee} from "../contracts/AutomataDcapAttestationFee.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {ZkCoProcessorType, ZkCoProcessorConfig} from "../contracts/AttestationEntrypointBase.sol";
 import {PCCSRouter} from "../contracts/PCCSRouter.sol";
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
@@ -50,19 +50,21 @@ contract DcapV2ForkTest is Test {
     using LibString for string;
     PCCSRouter internal router;
     AutomataDcapAttestationFee internal legacy;
-    AutomataDcapAttestationFeeV2 internal fee;
+    AutomataDcapAttestationV2 internal fee;
     address internal owner;
     address internal helper;
     address[3] internal verifiers;
     address[6] internal original;
     uint256 internal chainTimestamp;
-    bytes32 internal constant V2_EVENT = keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes)");
+    bytes32 internal constant V2_EVENT =
+        keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes32,bool,bytes)");
 
     receive() external payable {}
 
     function setUp() public {
         string memory rpc = vm.envOr("DCAP_FORK_RPC", string(""));
-        if (bytes(rpc).length == 0) { vm.skip(true, "DCAP_FORK_RPC required"); return; }
+        if (bytes(rpc).length == 0) vm.skip(true, "DCAP_FORK_RPC required");
+        return;
         vm.createSelectFork(rpc, vm.envUint("DCAP_FORK_BLOCK"));
         assertEq(block.chainid, vm.envUint("DCAP_FORK_CHAIN"), "wrong chain");
         string memory executionVersion = vm.envOr("DCAP_FORK_EVM", string(""));
@@ -70,8 +72,13 @@ contract DcapV2ForkTest is Test {
             IForkEvm(address(vm)).setEvmVersion(executionVersion);
         }
         chainTimestamp = block.timestamp;
-        string memory registry = vm.readFile(string.concat(
-            "../rust-crates/libraries/network-registry/deployment/current/", vm.toString(block.chainid), "/dcap.json"));
+        string memory registry = vm.readFile(
+            string.concat(
+                "../rust-crates/libraries/network-registry/deployment/current/",
+                vm.toString(block.chainid),
+                "/dcap.json"
+            )
+        );
         router = PCCSRouter(vm.parseJsonAddress(registry, ".PCCSRouter"));
         legacy = AutomataDcapAttestationFee(vm.parseJsonAddress(registry, ".AutomataDcapAttestationFee"));
         require(address(router).code.length != 0 && address(legacy).code.length != 0, "missing deployed contracts");
@@ -80,8 +87,10 @@ contract DcapV2ForkTest is Test {
         address p256 = PcsDao(original[1]).P256_VERIFIER();
         // Native precompiles have no bytecode. Require an explicit execution
         // hardfork instead of replacing them with a mock or software verifier.
-        require(p256.code.length != 0 || (p256 == address(0x100) && bytes(executionVersion).length != 0),
-            "native P256 precompile requires an explicit fork configuration");
+        require(
+            p256.code.length != 0 || (p256 == address(0x100) && bytes(executionVersion).length != 0),
+            "native P256 precompile requires an explicit fork configuration"
+        );
         vm.deal(address(this), 20 ether);
         vm.txGasPrice(1 gwei);
         vm.startPrank(owner);
@@ -89,7 +98,7 @@ contract DcapV2ForkTest is Test {
         helper = address(new PCKHelper());
         console2.log("deployment PCKHelper gas", beforeGas - gasleft());
         beforeGas = gasleft();
-        fee = new AutomataDcapAttestationFeeV2(owner);
+        fee = new AutomataDcapAttestationV2(owner);
         console2.log("deployment FeeV2 gas", beforeGas - gasleft());
         beforeGas = gasleft();
         verifiers[0] = address(new V3QuoteVerifier(p256, address(router)));
@@ -107,59 +116,65 @@ contract DcapV2ForkTest is Test {
             router.setAuthorized(verifiers[i], true);
         }
         router.setAuthorized(address(fee), true);
-        for (uint8 kind = 1; kind <= 2; ++kind) _copyDefaults(kind);
+        for (uint8 kind = 1; kind <= 2; ++kind) {
+            _copyDefaults(kind);
+        }
         router.setConfig(original[0], original[1], original[2], helper, original[4], original[5]);
         vm.stopPrank();
     }
 
     function _config() internal view returns (address[6] memory) {
-        return [router.tcbEvalDaoAddr(), router.pcsDaoAddr(), router.pckDaoAddr(),
-            router.pckHelperAddr(), router.crlHelperAddr(), router.fmspcTcbHelperAddr()];
+        return [
+            router.tcbEvalDaoAddr(),
+            router.pcsDaoAddr(),
+            router.pckDaoAddr(),
+            router.pckHelperAddr(),
+            router.crlHelperAddr(),
+            router.fmspcTcbHelperAddr()
+        ];
     }
 
     function _copyDefaults(uint8 kind) internal {
         ZkCoProcessorType backend = ZkCoProcessorType(kind);
         address universal = legacy.zkVerifier(backend);
-        bytes32 latest = legacy.programIdentifier(backend);
-        bytes32[] memory ids = legacy.programIdentifiers(backend);
-        if (universal == address(0) && latest == bytes32(0) && ids.length == 0) return;
-        require(universal.code.length != 0 && latest != bytes32(0), "incomplete legacy default configuration");
-        fee.setZkConfiguration(backend, ZkCoProcessorConfig(latest, universal));
-        for (uint256 i; i < ids.length; ++i) {
-            if (fee.programIdentifier(backend) != ids[i]) fee.updateProgramIdentifier(backend, ids[i]);
+        if (universal.code.length == 0) return;
+        // New compact programs must be supplied explicitly; historical inline-body
+        // IDs are never silently registered as compact strict programs.
+        universal = vm.envOr(kind == 1 ? "DCAP_RISC0_V2_VERIFIER" : "DCAP_SP1_V2_VERIFIER", universal);
+        fee.setZkVerifierV2(backend, universal);
+        bytes32 id = vm.envOr(kind == 1 ? "DCAP_RISC0_STRICT_ID" : "DCAP_SP1_STRICT_ID", bytes32(0));
+        if (id != bytes32(0)) {
+            fee.addProgramIdentifierV2(backend, id, false);
+            fee.setDefaultProgramIdentifierV2(backend, id);
         }
-        if (fee.programIdentifier(backend) != latest) fee.updateProgramIdentifier(backend, latest);
-        bytes32 id = kind == 1
-            ? bytes32(0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b)
-            : bytes32(0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170);
-        fee.setZkConfigurationV2(backend, ZkCoProcessorConfig(id, universal));
-        // Full historical route inventory is a separate acceptance item, not inferred here.
     }
 
     function testForkDeploymentConfigurationAndRollback() public {
         address[6] memory current = _config();
-        for (uint256 i; i < 6; ++i) assertEq(current[i], i == 3 ? helper : original[i]);
+        for (uint256 i; i < 6; ++i) {
+            assertEq(current[i], i == 3 ? helper : original[i]);
+        }
         assertEq(fee.getBp(), legacy.getBp());
         assertTrue(fee.zkV2Paused());
         for (uint8 kind = 1; kind <= 2; ++kind) {
             ZkCoProcessorType backend = ZkCoProcessorType(kind);
-            assertEq(fee.programIdentifier(backend), legacy.programIdentifier(backend));
-            bytes32[] memory ids = legacy.programIdentifiers(backend);
-            bytes32[] memory migrated = fee.programIdentifiers(backend);
-            assertEq(ids.length, migrated.length);
-            for (uint256 i; i < ids.length; ++i) {
-                bool found; for (uint256 j; j < migrated.length; ++j) if (ids[i] == migrated[j]) found = true;
-                assertTrue(found, "missing legacy ID");
+            bytes32[] memory historical = legacy.programIdentifiers(backend);
+            for (uint256 i; i < historical.length; ++i) {
+                (bool registered,) = fee.programModeV2(backend, historical[i]);
+                assertFalse(registered, "historical program migrated into compact V2");
             }
         }
-        vm.expectRevert(); fee.setZkV2Paused(false);
+        vm.expectRevert();
+        fee.setZkV2Paused(false);
         vm.startPrank(owner);
         fee.setZkV2Paused(false);
         fee.setZkV2Paused(true);
         router.setConfig(original[0], original[1], original[2], original[3], original[4], original[5]);
         vm.stopPrank();
         current = _config();
-        for (uint256 i; i < 6; ++i) assertEq(current[i], original[i]);
+        for (uint256 i; i < 6; ++i) {
+            assertEq(current[i], original[i]);
+        }
     }
 
     /// Run the operator's actual staged script in simulation, not just the
@@ -167,31 +182,22 @@ contract DcapV2ForkTest is Test {
     function testForkDeploymentScriptStagesAndGuards() public {
         DeployDcapV2 script = new DeployDcapV2();
         DeployDcapV2.Deployment memory d = script.deploy(owner, address(router), PcsDao(original[1]).P256_VERIFIER());
-        AutomataDcapAttestationFeeV2 staged = AutomataDcapAttestationFeeV2(d.fee);
+        AutomataDcapAttestationV2 staged = AutomataDcapAttestationV2(d.attestation);
         address[6] memory beforeConfig = _config();
         script.configure(owner, router, legacy, d);
         assertTrue(staged.zkV2Paused());
         assertEq(staged.getBp(), legacy.getBp());
-        assertEq(keccak256(abi.encode(_config())), keccak256(abi.encode(beforeConfig)), "configure switched helper early");
+        assertEq(
+            keccak256(abi.encode(_config())), keccak256(abi.encode(beforeConfig)), "configure switched helper early"
+        );
         for (uint8 kind = 1; kind <= 2; ++kind) {
             ZkCoProcessorType backend = ZkCoProcessorType(kind);
-            bytes4[] memory selectors = new bytes4[](1);
-            selectors[0] = kind == 1 ? bytes4(0x73c457ba) : bytes4(0xa4594c59);
-            script.migrateLegacyBackend(owner, legacy, staged, backend, selectors);
-            assertEq(staged.programIdentifier(backend), legacy.programIdentifier(backend));
-            bytes32[] memory ids = legacy.programIdentifiers(backend);
-            bytes32[] memory migrated = staged.programIdentifiers(backend);
-            assertEq(ids.length, migrated.length);
-            for (uint256 i; i < ids.length; ++i) {
-                bool found;
-                for (uint256 j; j < migrated.length; ++j) if (ids[i] == migrated[j]) found = true;
-                assertTrue(found, "script dropped a legacy program");
+            assertEq(staged.programIdentifiersV2(backend).length, 0);
+            bytes32 strictId = fee.programIdentifierV2(backend);
+            if (strictId != bytes32(0)) {
+                script.configureV2Backend(owner, staged, backend, strictId, fee.zkVerifierV2(backend));
+                assertEq(staged.programIdentifierV2(backend), strictId);
             }
-            address universal = legacy.zkVerifier(backend);
-            assertEq(staged.zkVerifier(backend, selectors[0]), legacy.zkVerifier(backend, selectors[0]));
-            script.configureV2Backend(owner, staged, backend, fee.programIdentifierV2(backend), universal);
-            assertEq(staged.programIdentifierV2(backend), fee.programIdentifierV2(backend));
-            assertEq(staged.programIdentifier(backend), legacy.programIdentifier(backend), "V2 changed legacy default");
         }
         vm.expectRevert("Router state changed");
         script.switchHelper(owner, router, original[3], d.helper);
@@ -199,11 +205,17 @@ contract DcapV2ForkTest is Test {
         script.switchHelper(owner, router, helper, address(0xbeef));
         script.switchHelper(owner, router, helper, d.helper);
         address[6] memory changed = _config();
-        for (uint256 i; i < 6; ++i) assertEq(changed[i], i == 3 ? d.helper : beforeConfig[i]);
+        for (uint256 i; i < 6; ++i) {
+            assertEq(changed[i], i == 3 ? d.helper : beforeConfig[i]);
+        }
         vm.expectRevert("Router state changed");
         script.switchHelper(owner, router, helper, original[3]);
         script.switchHelper(owner, router, d.helper, helper);
-        assertEq(keccak256(abi.encode(_config())), keccak256(abi.encode(beforeConfig)), "script rollback altered dependencies");
+        assertEq(
+            keccak256(abi.encode(_config())),
+            keccak256(abi.encode(beforeConfig)),
+            "script rollback altered dependencies"
+        );
         vm.prank(owner);
         staged.setZkV2Paused(false);
         address risc0Universal = legacy.zkVerifier(ZkCoProcessorType.RiscZero);
@@ -214,9 +226,10 @@ contract DcapV2ForkTest is Test {
     /// Validate observed historical guards before any proof decoding. These are
     /// rejection tests, not claims to possess valid old-format proofs.
     function testForkRiscZeroHistoricalRouteGuards() public {
-        if (block.chainid != 11155111) { vm.skip(true, "historical route catalog is Sepolia-specific"); return; }
+        if (block.chainid != 11155111) vm.skip(true, "historical route catalog is Sepolia-specific");
+        return;
         IForkRiscZeroRouter universal = IForkRiscZeroRouter(legacy.zkVerifier(ZkCoProcessorType.RiscZero));
-        assertEq(fee.zkVerifier(ZkCoProcessorType.RiscZero), address(universal));
+        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero), address(universal));
         assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, 0x73c457ba), address(universal));
         bytes4[2] memory removed = [bytes4(0x50bd1769), bytes4(0xc101b42b)];
         for (uint256 i; i < removed.length; ++i) {
@@ -224,8 +237,15 @@ contract DcapV2ForkTest is Test {
             vm.expectRevert(abi.encodeWithSignature("SelectorRemoved(bytes4)", removed[i]));
             universal.verify(abi.encodePacked(removed[i]), bytes32(0), bytes32(0));
         }
-        bytes4[7] memory stopped = [bytes4(0x9f39696c), bytes4(0xbfca9ccb), bytes4(0xf443ad7b),
-            bytes4(0xf2e6e6dc), bytes4(0x80479d24), bytes4(0x0f63ffd5), bytes4(0xf536085a)];
+        bytes4[7] memory stopped = [
+            bytes4(0x9f39696c),
+            bytes4(0xbfca9ccb),
+            bytes4(0xf443ad7b),
+            bytes4(0xf2e6e6dc),
+            bytes4(0x80479d24),
+            bytes4(0x0f63ffd5),
+            bytes4(0xf536085a)
+        ];
         for (uint256 i; i < stopped.length; ++i) {
             assertGt(uint160(universal.verifiers(stopped[i])), 1);
             vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
@@ -236,16 +256,25 @@ contract DcapV2ForkTest is Test {
     function _fixture(string memory name) internal view returns (string memory) {
         return vm.readFile(string.concat("forge-test/assets/v2/fixtures/", name, ".json"));
     }
-    function decode(bytes calldata journal) external pure returns (OutputV2 memory) { return OutputV2Codec.decode(journal); }
+
+    function decode(bytes calldata journal) external pure returns (OutputV2 memory) {
+        return OutputV2Codec.decode(journal);
+    }
+
     function _signed(string memory json, string memory key) internal pure returns (string memory) {
         JSONParserLib.Item[] memory children = JSONParserLib.parse(json).children();
-        for (uint256 i; i < children.length; ++i) if (JSONParserLib.decodeString(children[i].key()).eq(key)) return children[i].value();
+        for (uint256 i; i < children.length; ++i) {
+            if (JSONParserLib.decodeString(children[i].key()).eq(key)) return children[i].value();
+        }
         revert("missing signed object");
     }
+
     function _cert(PcsDao pcs, CA ca, bytes memory cert) internal {
-        vm.prank(address(0)); (bytes memory existing,) = pcs.getCertificateById(ca);
+        vm.prank(address(0));
+        (bytes memory existing,) = pcs.getCertificateById(ca);
         if (keccak256(existing) != keccak256(cert)) pcs.upsertPcsCertificates(ca, cert);
     }
+
     function _upsert(string memory fixture) internal returns (uint32 eval) {
         eval = uint32(vm.parseJsonUint(fixture, ".tcbEvaluationDataNumber"));
         OutputV2 memory expected = this.decode(vm.parseJsonBytes(fixture, ".expectedJournal"));
@@ -253,10 +282,12 @@ contract DcapV2ForkTest is Test {
         _cert(pcs, CA.ROOT, vm.parseJsonBytes(fixture, ".rootCaCertificate"));
         _cert(pcs, CA.PLATFORM, vm.parseJsonBytes(fixture, ".platformCaCertificate"));
         _cert(pcs, CA.SIGNING, vm.parseJsonBytes(fixture, ".tcbSigningCertificate"));
-        vm.prank(address(0)); (,bytes memory crl) = pcs.getCertificateById(CA.ROOT);
+        vm.prank(address(0));
+        (, bytes memory crl) = pcs.getCertificateById(CA.ROOT);
         bytes memory wanted = vm.parseJsonBytes(fixture, ".rootCaCrl");
         if (keccak256(crl) != keccak256(wanted)) pcs.upsertRootCACrl(wanted);
-        vm.prank(address(0)); (,crl) = pcs.getCertificateById(CA.PLATFORM);
+        vm.prank(address(0));
+        (, crl) = pcs.getCertificateById(CA.PLATFORM);
         wanted = vm.parseJsonBytes(fixture, ".pckCrl");
         if (keccak256(crl) != keccak256(wanted)) pcs.upsertPckCrl(CA.PLATFORM, wanted);
         address fmspcAddr = router.fmspcTcbDaoVersionedAddr(eval);
@@ -268,13 +299,16 @@ contract DcapV2ForkTest is Test {
         uint256 qeType = expected.quoteBodyType == 1 ? 0 : 2;
         bytes32 fmspcKey = fmspc.FMSPC_TCB_KEY(tcbType, expected.fmspc, 3);
         (uint64 fmspcIssued, uint64 fmspcExpires) = fmspc.getCollateralValidity(fmspcKey);
-        if (fmspc.getTcbInfoContentHash(fmspcKey) != expected.collateralHashes[0]
-            || fmspcIssued == 0 || block.timestamp < fmspcIssued || block.timestamp > fmspcExpires) {
+        if (
+            fmspc.getTcbInfoContentHash(fmspcKey) != expected.collateralHashes[0] || fmspcIssued == 0
+                || block.timestamp < fmspcIssued || block.timestamp > fmspcExpires
+        ) {
             uint256 role = IForkRoles(fmspcAddr).ATTESTER_ROLE();
             vm.prank(IForkRoles(fmspcAddr).owner());
             IForkRoles(fmspcAddr).grantRoles(address(this), role);
             string memory tcb = vm.parseJsonString(fixture, ".tcbInfoJson");
-            (bool asyncDao, bytes memory protocol) = fmspcAddr.staticcall(abi.encodeWithSignature("asyncUpsertProtocolVersion()"));
+            (bool asyncDao, bytes memory protocol) =
+                fmspcAddr.staticcall(abi.encodeWithSignature("asyncUpsertProtocolVersion()"));
             if (asyncDao && protocol.length == 32) {
                 assertEq(abi.decode(protocol, (uint8)), 2, "unsupported async upsert protocol");
                 _asyncTcb(FmspcTcbDaoV2(fmspcAddr), tcb, expected);
@@ -286,13 +320,19 @@ contract DcapV2ForkTest is Test {
         (uint64 qeIssued, uint64 qeExpires) = qe.getCollateralValidity(qeKey);
         // Body hashes can stay identical across signed collateral renewals.
         // Matching a content hash is not evidence of a currently valid cache.
-        if (qe.getIdentityContentHash(qeKey) != expected.collateralHashes[1]
-            || qeIssued == 0 || block.timestamp < qeIssued || block.timestamp > qeExpires) {
+        if (
+            qe.getIdentityContentHash(qeKey) != expected.collateralHashes[1] || qeIssued == 0
+                || block.timestamp < qeIssued || block.timestamp > qeExpires
+        ) {
             uint256 role = IForkRoles(qeAddr).ATTESTER_ROLE();
             vm.prank(IForkRoles(qeAddr).owner());
             IForkRoles(qeAddr).grantRoles(address(this), role);
             string memory identity = vm.parseJsonString(fixture, ".qeIdentityJson");
-            qe.upsertEnclaveIdentity(qeType, 4, EnclaveIdentityJsonObj(_signed(identity, "enclaveIdentity"), vm.parseJsonBytes(identity, ".signature")));
+            qe.upsertEnclaveIdentity(
+                qeType,
+                4,
+                EnclaveIdentityJsonObj(_signed(identity, "enclaveIdentity"), vm.parseJsonBytes(identity, ".signature"))
+            );
         }
     }
 
@@ -301,8 +341,9 @@ contract DcapV2ForkTest is Test {
         string memory directory = vm.envOr("DCAP_FORK_ASYNC_DIR", string(""));
         string memory file = bytes(directory).length == 0
             ? vm.envString("DCAP_FORK_ASYNC_PAYLOAD")
-            : string.concat(directory, "/", vm.parseJsonString(raw, ".fmspc"), "-",
-                expected.quoteBodyType == 1 ? "0" : "1", ".json");
+            : string.concat(
+                directory, "/", vm.parseJsonString(raw, ".fmspc"), "-", expected.quoteBodyType == 1 ? "0" : "1", ".json"
+            );
         string memory plan = vm.readFile(file);
         assertEq(vm.parseJsonString(plan, ".raw"), raw, "async plan belongs to different signed JSON");
         bytes32 refId = keccak256(abi.encode(address(this), address(dao), raw));
@@ -343,7 +384,7 @@ contract DcapV2ForkTest is Test {
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
         vm.recordLogs();
         beforeGas = gasleft();
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+        (bool success, bytes memory journal,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         console2.log("raw verification internal-call gas", beforeGas - gasleft());
         assertTrue(success, string(journal));
         OutputV2 memory expected = this.decode(vm.parseJsonBytes(fixture, ".expectedJournal"));
@@ -351,7 +392,8 @@ contract DcapV2ForkTest is Test {
         assertEq(journal, OutputV2Codec.encode(expected), "fork-time output mismatch");
         _assertSuccessEvent(vm.getRecordedLogs(), ZkCoProcessorType.None, journal);
         beforeGas = gasleft();
-        (bool minimalSuccess, bytes memory minimalOutput) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, true);
+        (bool minimalSuccess, bytes memory minimalOutput,) =
+            fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, true);
         console2.log("minimal raw verification internal-call gas", beforeGas - gasleft());
         assertTrue(minimalSuccess);
         assertEq(minimalOutput, journal, "minimal raw output mismatch");
@@ -359,9 +401,18 @@ contract DcapV2ForkTest is Test {
         quote[80] ^= 0x01;
         _rejectRaw(quote, eval);
     }
-    function testForkRawSgxV3() public { _raw("ata-sgx-v3"); }
-    function testForkRawTdxV4() public { _raw("ata-tdx-v4"); }
-    function testForkRawTdxV5() public { _raw("v5"); }
+
+    function testForkRawSgxV3() public {
+        _raw("ata-sgx-v3");
+    }
+
+    function testForkRawTdxV4() public {
+        _raw("ata-tdx-v4");
+    }
+
+    function testForkRawTdxV5() public {
+        _raw("v5");
+    }
 
     function testForkRawSignedCollateralExpiryRejected() public {
         string[3] memory names = [string("ata-sgx-v3"), string("ata-tdx-v4"), string("v5")];
@@ -370,13 +421,13 @@ contract DcapV2ForkTest is Test {
             string memory fixture = _fixture(names[i]);
             uint32 eval = _upsert(fixture);
             bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
-            (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+            (bool success,,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
             assertTrue(success, "pre-expiry control failed");
             OutputV2 memory expected = this.decode(vm.parseJsonBytes(fixture, ".expectedJournal"));
             FmspcTcbDao tcb = FmspcTcbDao(router.fmspcTcbDaoVersionedAddr(eval));
             EnclaveIdentityDao qe = EnclaveIdentityDao(router.qeIdDaoVersionedAddr(eval));
-            (, uint64 tcbExpiry) = tcb.getCollateralValidity(
-                tcb.FMSPC_TCB_KEY(expected.quoteBodyType == 1 ? 0 : 1, expected.fmspc, 3));
+            (, uint64 tcbExpiry) =
+                tcb.getCollateralValidity(tcb.FMSPC_TCB_KEY(expected.quoteBodyType == 1 ? 0 : 1, expected.fmspc, 3));
             (, uint64 qeExpiry) = qe.getCollateralValidity(qe.ENCLAVE_ID_KEY(expected.quoteBodyType == 1 ? 0 : 2, 4));
             uint256 expiry = tcbExpiry > qeExpiry ? tcbExpiry : qeExpiry;
             assertGt(expiry, chainTimestamp, "expected currently valid signed collateral");
@@ -391,7 +442,8 @@ contract DcapV2ForkTest is Test {
     function testForkOriginalPaddedTdxRejected() public {
         string memory fixture = _fixture("ata-tdx-v4");
         uint32 eval = _upsert(fixture);
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(vm.parseJsonBytes(fixture, ".quote"), eval, false);
+        (bool success,,) =
+            fee.verifyAndAttestOnChainV2{value: 1 ether}(vm.parseJsonBytes(fixture, ".quote"), eval, false);
         assertTrue(success, "unpadded baseline failed");
         bytes memory padded = vm.parseBytes(vm.readFile("forge-test/assets/v2/quotes/ata-tdx-v4.hex"));
         assertEq(padded.length, 8000);
@@ -415,15 +467,19 @@ contract DcapV2ForkTest is Test {
         _upsert(_fixture("ata-tdx-v4")); // Refresh shared signed TDX QE/cert collateral.
         bytes memory quote = vm.readFileBinary("forge-test/assets/quotes/alibaba_quote_5.dat");
         (bool called, bytes memory returned) = address(fee).call{value: 1 ether}(
-            abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, uint32(20), false));
+            abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, uint32(20), false)
+        );
         if (called) {
             (bool success, bytes memory reason) = abi.decode(returned, (bool, bytes));
             assertFalse(success, "historical migration-service input accepted");
             assertEq(reason, bytes("TCBR"), "unexpected pre-policy failure");
             console2.log("historical Alibaba fork rejection", string(reason));
         } else {
-            assertEq(returned, abi.encodeWithSignature("Error(string)",
-                "TDX migration service TD measurement is not zero"), "unexpected policy revert");
+            assertEq(
+                returned,
+                abi.encodeWithSignature("Error(string)", "TDX migration service TD measurement is not zero"),
+                "unexpected policy revert"
+            );
             console2.log("authentic Alibaba migration-service policy rejection confirmed");
         }
         _rejectRaw(quote, 20);
@@ -434,7 +490,8 @@ contract DcapV2ForkTest is Test {
         uint32 eval = _upsert(fixture);
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
         uint16 oldBp = fee.getBp();
-        vm.prank(owner); fee.setBp(500);
+        vm.prank(owner);
+        fee.setBp(500);
         address payer = makeAddr("fork-only-fee-payer");
         vm.deal(payer, 10 ether);
         vm.prank(payer, payer);
@@ -443,18 +500,21 @@ contract DcapV2ForkTest is Test {
         uint256 beforeBalance = payer.balance;
         uint256 beforeCollected = address(fee).balance;
         vm.prank(payer, payer);
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 0.1 ether}(quote, eval, false);
+        (bool success,,) = fee.verifyAndAttestOnChainV2{value: 0.1 ether}(quote, eval, false);
         assertTrue(success);
         uint256 collected = address(fee).balance - beforeCollected;
         assertGt(collected, 0);
         assertLt(collected, 0.1 ether);
         assertEq(beforeBalance - payer.balance, collected, "excess not refunded to payer");
         address beneficiary = makeAddr("fork-only-fee-beneficiary");
-        vm.expectRevert(); fee.withdraw(beneficiary, collected);
-        vm.prank(owner); fee.withdraw(beneficiary, collected);
+        vm.expectRevert();
+        fee.withdraw(beneficiary, collected);
+        vm.prank(owner);
+        fee.withdraw(beneficiary, collected);
         assertEq(beneficiary.balance, collected);
         assertEq(address(fee).balance, beforeCollected);
-        vm.prank(owner); fee.setBp(oldBp);
+        vm.prank(owner);
+        fee.setBp(oldBp);
         assertEq(fee.getBp(), legacy.getBp(), "live fee settings not restored");
     }
 
@@ -474,10 +534,10 @@ contract DcapV2ForkTest is Test {
         (bool success, bytes memory output) = legacy.verifyAndAttestOnChain{value: 1 ether}(quote, eval);
         assertTrue(success, string(output));
         assertEq(output, oldOutput, "helper switch changed deployed legacy output");
-        (success, output) = fee.verifyAndAttestOnChain{value: 1 ether}(quote, eval);
-        assertTrue(success, string(output));
-        assertEq(output, oldOutput, "FeeV2 legacy selector changed output");
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+        (bool legacySelector,) =
+            address(fee).call(abi.encodeWithSignature("verifyAndAttestOnChain(bytes,uint32)", quote, eval));
+        assertFalse(legacySelector, "new entrypoint exposes legacy selector");
+        (success,,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "V2 baseline before rollback failed");
         // Exercise caller behavior, not only restored Router addresses. The old
         // helper has no combined V2 parser; legacy consumers remain available.
@@ -485,18 +545,23 @@ contract DcapV2ForkTest is Test {
         (success, output) = legacy.verifyAndAttestOnChain{value: 1 ether}(quote, eval);
         assertTrue(success, string(output));
         assertEq(output, oldOutput, "legacy application unavailable after rollback");
-        (success, output) = fee.verifyAndAttestOnChain{value: 1 ether}(quote, eval);
-        assertTrue(success, string(output));
-        assertEq(output, oldOutput, "FeeV2 old selector unavailable after rollback");
         _rejectRaw(quote, eval);
         _switchHelper(helper);
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+        (success,,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "V2 rollout replay failed");
     }
 
-    function testForkLegacySgxCoexistenceAndRollback() public { _legacyCoexistence("ata-sgx-v3"); }
-    function testForkLegacyTdxV4CoexistenceAndRollback() public { _legacyCoexistence("ata-tdx-v4"); }
-    function testForkLegacyTdxV5CoexistenceAndRollback() public { _legacyCoexistence("v5"); }
+    function testForkLegacySgxCoexistenceAndRollback() public {
+        _legacyCoexistence("ata-sgx-v3");
+    }
+
+    function testForkLegacyTdxV4CoexistenceAndRollback() public {
+        _legacyCoexistence("ata-tdx-v4");
+    }
+
+    function testForkLegacyTdxV5CoexistenceAndRollback() public {
+        _legacyCoexistence("v5");
+    }
 
     function _assertSuccessEvent(Vm.Log[] memory logs, ZkCoProcessorType backend, bytes memory journal) internal view {
         uint256 found;
@@ -505,8 +570,16 @@ contract DcapV2ForkTest is Test {
             assertEq(logs[i].topics.length, 3);
             assertEq(uint256(logs[i].topics[1]), 2);
             assertEq(uint256(logs[i].topics[2]), 1);
-            (bool success, ZkCoProcessorType actual, bytes memory output) = abi.decode(logs[i].data, (bool, ZkCoProcessorType, bytes));
-            assertTrue(success); assertEq(uint256(actual), uint256(backend)); assertEq(output, journal);
+            assertEq(
+                logs[i].data,
+                abi.encode(
+                    true,
+                    backend,
+                    backend == ZkCoProcessorType.None ? bytes32(0) : fee.programIdentifierV2(backend),
+                    false,
+                    journal
+                )
+            );
             ++found;
         }
         assertEq(found, 1, "expected exactly one identity-bearing event");
@@ -521,11 +594,16 @@ contract DcapV2ForkTest is Test {
         vm.recordLogs();
         // Pay enough so a negative cannot pass solely on Insufficient_Funds.
         (bool ok, bytes memory result) = address(fee).call{value: 1 ether}(data);
-        if (ok) { (bool accepted,) = abi.decode(result, (bool,bytes)); assertFalse(accepted, "negative accepted"); }
+        if (ok) {
+            (bool accepted,) = abi.decode(result, (bool, bytes));
+            assertFalse(accepted, "negative accepted");
+        }
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].emitter != address(fee) || logs[i].topics.length == 0 || logs[i].topics[0] != V2_EVENT) continue;
-            (bool accepted,,) = abi.decode(logs[i].data, (bool, ZkCoProcessorType, bytes));
+            if (logs[i].emitter != address(fee) || logs[i].topics.length == 0 || logs[i].topics[0] != V2_EVENT) {
+                continue;
+            }
+            (bool accepted,,,,) = abi.decode(logs[i].data, (bool, ZkCoProcessorType, bytes32, bool, bytes));
             assertFalse(accepted, "negative emitted accepted event");
         }
     }
@@ -534,22 +612,28 @@ contract DcapV2ForkTest is Test {
         string memory fixture = _fixture("ata-sgx-v3");
         uint32 eval = _upsert(fixture);
         bytes memory quote = vm.parseJsonBytes(fixture, ".quote");
-        (bool success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+        (bool success,,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "negative baseline failed");
         _rejectRaw(quote, type(uint32).max);
         // A revoked allowlist entry is only a negative when restrictions are
         // enabled. Public-reader mode is a legitimate existing live setting.
-        vm.prank(owner); router.enableCallerRestriction();
-        vm.prank(owner); router.setAuthorized(verifiers[0], false);
+        vm.prank(owner);
+        router.enableCallerRestriction();
+        vm.prank(owner);
+        router.setAuthorized(verifiers[0], false);
         _rejectRaw(quote, eval);
-        vm.prank(owner); router.setAuthorized(verifiers[0], true);
-        (success,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
+        vm.prank(owner);
+        router.setAuthorized(verifiers[0], true);
+        (success,,) = fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, eval, false);
         assertTrue(success, "authorization restore failed");
     }
 
     function testForkRealProof() public {
         string memory proofFile = vm.envOr("DCAP_FORK_PROOF_FILE", string(""));
-        if (bytes(proofFile).length == 0) { vm.skip(true, "real EVM proof not supplied; not a proof success"); return; }
+        if (bytes(proofFile).length == 0) {
+            vm.skip(true, "real EVM proof not supplied; not a proof success");
+            return;
+        }
         string memory fixture = _fixture(vm.envOr("DCAP_FORK_FIXTURE", string("ata-sgx-v3")));
         uint32 eval = _upsert(fixture);
         string memory payload = vm.readFile(proofFile);
@@ -560,10 +644,12 @@ contract DcapV2ForkTest is Test {
         bytes memory journal = vm.parseJsonBytes(payload, ".journal");
         bytes memory proof = vm.parseJsonBytes(payload, ".proof");
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
-        vm.prank(owner); fee.setZkV2Paused(false);
+        vm.prank(owner);
+        fee.setZkV2Paused(false);
         vm.recordLogs();
         uint256 beforeGas = gasleft();
-        (bool success, bytes memory output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
+        (bool success, bytes memory output) =
+            fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
         console2.log("ZK verification internal-call gas", beforeGas - gasleft());
         assertTrue(success, string(output));
         assertEq(output, journal);
@@ -571,16 +657,14 @@ contract DcapV2ForkTest is Test {
         beforeGas = gasleft();
         (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, true);
         console2.log("minimal ZK verification internal-call gas", beforeGas - gasleft());
-        assertTrue(success);
-        assertEq(output, journal, "minimal proof output mismatch");
+        assertFalse(success, "strict ID accepted as minimal");
         uint256 validState = vm.snapshotState();
         OutputV2 memory decoded = this.decode(journal);
         FmspcTcbDao tcb = FmspcTcbDao(router.fmspcTcbDaoVersionedAddr(eval));
         EnclaveIdentityDao qe = EnclaveIdentityDao(router.qeIdDaoVersionedAddr(eval));
-        (, uint64 tcbExpiry) = tcb.getCollateralValidity(
-            tcb.FMSPC_TCB_KEY(decoded.quoteBodyType == 1 ? 0 : 1, decoded.fmspc, 3));
-        (, uint64 qeExpiry) = qe.getCollateralValidity(
-            qe.ENCLAVE_ID_KEY(decoded.quoteBodyType == 1 ? 0 : 2, 4));
+        (, uint64 tcbExpiry) =
+            tcb.getCollateralValidity(tcb.FMSPC_TCB_KEY(decoded.quoteBodyType == 1 ? 0 : 1, decoded.fmspc, 3));
+        (, uint64 qeExpiry) = qe.getCollateralValidity(qe.ENCLAVE_ID_KEY(decoded.quoteBodyType == 1 ? 0 : 2, 4));
         uint256 expiry = tcbExpiry > qeExpiry ? tcbExpiry : qeExpiry;
         assertGt(expiry, chainTimestamp, "expected valid signed proof collateral");
         // ZK collateral is checked at the authenticated journal timestamp, not
@@ -605,21 +689,46 @@ contract DcapV2ForkTest is Test {
         _rejectProof(changed, kind, proof, id, eval);
         _rejectProof(journal, kind, proof, bytes32(uint256(id) ^ 1), eval);
         _rejectProof(journal, kind, proof, legacy.programIdentifier(kind), eval);
-        ZkCoProcessorType other = kind == ZkCoProcessorType.RiscZero
-            ? ZkCoProcessorType.Succinct : ZkCoProcessorType.RiscZero;
+        ZkCoProcessorType other =
+            kind == ZkCoProcessorType.RiscZero ? ZkCoProcessorType.Succinct : ZkCoProcessorType.RiscZero;
         _rejectProof(journal, other, proof, fee.programIdentifierV2(other), eval);
         _rejectProof(journal, kind, hex"01", id, eval);
         _rejectProof(journal, kind, proof, id, type(uint32).max);
-        vm.prank(owner); fee.setZkV2Paused(true);
+        vm.prank(owner);
+        fee.setZkV2Paused(true);
         _rejectProof(journal, kind, proof, id, eval);
-        vm.prank(owner); fee.setZkV2Paused(false);
-        vm.prank(owner); fee.freezeVerifyRoute(kind, bytes4(proof));
+        vm.prank(owner);
+        fee.setZkV2Paused(false);
+        vm.prank(owner);
+        fee.freezeVerifyRoute(kind, bytes4(proof));
         _rejectProof(journal, kind, proof, id, eval);
     }
 
-    function _rejectProof(bytes memory journal, ZkCoProcessorType kind, bytes memory proof, bytes32 id, uint32 eval) internal {
-        _rejectCall(abi.encodeWithSignature("verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)", journal, kind, proof, id, eval, false));
-        _rejectCall(abi.encodeWithSignature("verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)", journal, kind, proof, id, eval, true));
+    function _rejectProof(bytes memory journal, ZkCoProcessorType kind, bytes memory proof, bytes32 id, uint32 eval)
+        internal
+    {
+        _rejectCall(
+            abi.encodeWithSignature(
+                "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)",
+                journal,
+                kind,
+                proof,
+                id,
+                eval,
+                false
+            )
+        );
+        _rejectCall(
+            abi.encodeWithSignature(
+                "verifyAndAttestWithZKProofV2(bytes,uint8,bytes,bytes32,uint32,bool)",
+                journal,
+                kind,
+                proof,
+                id,
+                eval,
+                true
+            )
+        );
     }
 
     function _existingSp1Freezes(bytes memory journal, bytes memory proof, bytes32 id, uint32 eval) internal {
@@ -631,7 +740,9 @@ contract DcapV2ForkTest is Test {
             (address verifier, bool frozen) = gateway.routes(selector);
             assertTrue(verifier.code.length != 0 && frozen, "existing universal freeze missing");
             bytes memory changed = bytes.concat(proof);
-            for (uint256 j; j < 4; ++j) changed[j] = selector[j];
+            for (uint256 j; j < 4; ++j) {
+                changed[j] = selector[j];
+            }
             vm.expectRevert(abi.encodeWithSignature("RouteIsFrozen(bytes4)", selector));
             gateway.verifyProof(id, journal, changed);
             _rejectProof(journal, ZkCoProcessorType.Succinct, changed, id, eval);

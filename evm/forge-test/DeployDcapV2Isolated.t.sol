@@ -4,9 +4,10 @@ pragma solidity ^0.8.27;
 import {Test} from "forge-std/Test.sol";
 import {DeployDcapV2} from "../forge-script/DeployDcapV2.s.sol";
 import {AutomataDcapAttestationFee} from "../contracts/AutomataDcapAttestationFee.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {PCCSRouter} from "../contracts/PCCSRouter.sol";
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
+import {ISP1VerifierV6} from "../contracts/interfaces/ISP1VerifierV6.sol";
 import {ZkCoProcessorType, ZkCoProcessorConfig} from "../contracts/AttestationEntrypointBase.sol";
 import {AutomataDaoStorage} from "@automata-network/on-chain-pccs/automata_pccs/shared/AutomataDaoStorage.sol";
 
@@ -59,14 +60,14 @@ contract DeployDcapV2IsolatedTest is Test {
         assertEq(address(oldFee.quoteVerifiers(3)), address(0));
         assertEq(router.qeIdDaoVersionedAddr(21), address(dao));
         assertEq(router.fmspcTcbDaoVersionedAddr(21), address(dao));
-        AutomataDcapAttestationFeeV2 fee = AutomataDcapAttestationFeeV2(d.fee);
-        assertEq(fee.owner(), owner);
-        assertEq(fee.getBp(), 123);
-        assertTrue(fee.zkV2Paused());
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        assertEq(attestation.owner(), owner);
+        assertEq(attestation.getBp(), 123);
+        assertTrue(attestation.zkV2Paused());
         assertEq(address(V3QuoteVerifier(d.v3).pccsRouter()), address(router));
         assertEq(address(V3QuoteVerifier(d.v4).pccsRouter()), address(router));
         assertEq(address(V3QuoteVerifier(d.v5).pccsRouter()), address(router));
-        assertEq(uint256(vm.load(address(router), keccak256(abi.encode(d.fee, uint256(0))))), 1);
+        assertEq(uint256(vm.load(address(router), keccak256(abi.encode(d.attestation, uint256(0))))), 1);
         assertEq(uint256(vm.load(address(router), keccak256(abi.encode(d.v3, uint256(0))))), 1);
         assertEq(uint256(vm.load(address(router), bytes32(uint256(1)))) & 255, 1);
     }
@@ -87,12 +88,12 @@ contract DeployDcapV2IsolatedTest is Test {
 
     function testCanEnableConfiguredTestZkWithoutChangingLegacy() public {
         (DeployDcapV2.Deployment memory d, PCCSRouter router) = deploy();
-        AutomataDcapAttestationFeeV2 fee = AutomataDcapAttestationFeeV2(d.fee);
-        script.configureV2Backend(owner, fee, ZkCoProcessorType.Succinct, bytes32(uint256(101)), address(dao));
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        script.configureV2Backend(owner, attestation, ZkCoProcessorType.Succinct, bytes32(uint256(101)), address(dao));
         ZkCoProcessorType[] memory backends = new ZkCoProcessorType[](1);
         backends[0] = ZkCoProcessorType.Succinct;
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, fee, backends);
-        assertFalse(fee.zkV2Paused());
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
+        assertFalse(attestation.zkV2Paused());
         assertEq(oldFee.programIdentifier(ZkCoProcessorType.Succinct), bytes32(uint256(99)));
         assertEq(oldRouter.pckHelperAddr(), address(dao));
         assertEq(router.pckHelperAddr(), d.helper);
@@ -113,14 +114,24 @@ contract DeployDcapV2IsolatedTest is Test {
 
     function testRejectBackendExpansionAndPico() public {
         (DeployDcapV2.Deployment memory d,) = deploy();
-        AutomataDcapAttestationFeeV2 fee = AutomataDcapAttestationFeeV2(d.fee);
-        script.configureV2Backend(owner, fee, ZkCoProcessorType.RiscZero, bytes32(uint256(101)), address(dao));
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        script.configureV2Backend(owner, attestation, ZkCoProcessorType.RiscZero, bytes32(uint256(101)), address(dao));
         ZkCoProcessorType[] memory backends = new ZkCoProcessorType[](1);
         backends[0] = ZkCoProcessorType.RiscZero;
-        vm.expectRevert("Reuse existing backend only");
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, fee, backends);
+        vm.expectRevert("No existing backend support");
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
         backends[0] = ZkCoProcessorType.Pico;
         vm.expectRevert("Unsupported backend");
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, fee, backends);
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
+    }
+
+    function testDeployIndependentSp1V6PreservesLegacyVerifier() public {
+        address previous = oldFee.zkVerifier(ZkCoProcessorType.Succinct);
+        address fresh = script.deploySp1Groth16V6(block.chainid, owner);
+        assertEq(ISP1VerifierV6(fresh).VERSION(), "v6.1.0");
+        assertEq(oldFee.zkVerifier(ZkCoProcessorType.Succinct), previous);
+        assertTrue(fresh != previous);
+        vm.expectRevert("Wrong chain");
+        script.deploySp1Groth16V6(block.chainid + 1, owner);
     }
 }

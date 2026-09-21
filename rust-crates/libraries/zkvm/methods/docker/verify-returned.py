@@ -23,6 +23,19 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def verify_image(backend, pin, inspect):
+    check(len(inspect) == 1 and inspect[0]["Os"] == "linux" and inspect[0]["Architecture"] == "amd64", "wrong image platform")
+    reference, manifest = pin.split("@", 1)
+    # OCI image ID is its config digest, not the registry manifest digest.
+    # Containerd-backed Docker may report the manifest digest as Id instead.
+    image_ids = {manifest}
+    if backend == "sp1":
+        image_ids.add("sha256:bb7cf1f247ff29702d21ba33677bc3818f295debad327fa0f779d03b204bd345")
+    check(inspect[0]["Id"] in image_ids, "wrong inspected image")
+    repo_digest = reference.rsplit(":", 1)[0] + "@" + manifest
+    check(repo_digest in inspect[0].get("RepoDigests", []), "wrong repository manifest digest")
+
+
 def verify(backend, archive, commit, output):
     scripts = Path(__file__).resolve().parent
     repo = Path(subprocess.check_output(["git", "-C", str(scripts), "rev-parse", "--show-toplevel"], text=True).strip())
@@ -32,14 +45,14 @@ def verify(backend, archive, commit, output):
     check(not output.exists(), "output already exists")
     pins = {
         "risc0": "risczero/risc0-guest-builder:r0.1.88.0@sha256:3e12f71bacd27527a61dea96fa0e53e468c99aa261d3a1019b593f6dbd943eb3",
-        "sp1": "ghcr.io/succinctlabs/sp1:v5.2.2@sha256:7b5582c3773b0238192fbd5d6a37f5eb3166d3a47a1a1798ecc7847d2194d04f",
+        "sp1": "ghcr.io/succinctlabs/sp1:v6.8.0@sha256:6df25c1a71451b51488534fb94a495ffe456c05921f79c4bcb8ccafe2810870c",
     }
     allowed = {"a.log", "b.log", "preflight.log", "comparison.txt", "environment.txt", "exit-status.txt",
-               "image-reference.txt", "source-commit.txt", "host-tools.sha256", "inputs.sha256", "image-inspect.json"}
+               "image-reference.txt", "source-commit.txt", "program-mode.txt", "host-tools.sha256", "inputs.sha256", "image-inspect.json"}
     allowed.update("scripts/" + f for f in ("common.sh", "docker-no-cache.sh", "reproduce-official.sh"))
     for run in ("a", "b"):
         allowed.update(f"{run}/results/{f}" for f in ("lock.sha256", "native-id.txt", "metadata.json",
-                                                     backend + ".elf", "artifact.sha256", "native-id.stdout"))
+                                                     backend + ".elf", "artifact.sha256", "native-id.stdout", "program-mode.txt"))
     members = {}
     seen = set()
     total = 0
@@ -63,12 +76,13 @@ def verify(backend, archive, commit, output):
     check(set(members) == allowed, "incomplete evidence")
     text = lambda name: members[name].decode().strip()
     check(text("source-commit.txt") == commit, "wrong source commit")
+    mode = text("program-mode.txt")
+    check(mode in ("strict", "minimal"), "invalid program mode")
     check(text("exit-status.txt") == "0", "build failed")
     check(text("comparison.txt") == "PASS: independent official Docker builds match in bytes and native ID.", "missing comparison")
     check(text("image-reference.txt") == pins[backend], "wrong image")
     inspect = json.loads(members["image-inspect.json"])
-    check(len(inspect) == 1 and inspect[0]["Os"] == "linux" and inspect[0]["Architecture"] == "amd64", "wrong image platform")
-    check(inspect[0]["Id"] == pins[backend].split("@", 1)[1], "wrong inspected image")
+    verify_image(backend, pins[backend], inspect)
     inputs = {}
     for line in text("inputs.sha256").splitlines():
         checksum, name = line.split(None, 1)
@@ -86,6 +100,7 @@ def verify(backend, archive, commit, output):
     lock = subprocess.check_output(["git", "-C", str(repo), "show", f"{commit}:{lockpath}"])
     for run in ("a", "b"):
         prefix = f"{run}/results/"
+        check(text(prefix + "program-mode.txt") == mode, "program mode mismatch")
         check(text(prefix + "lock.sha256").split() == [digest(lock), lockpath], "guest lock mismatch")
         check(text(prefix + "artifact.sha256").split() == [digest(members[prefix + backend + ".elf"]), backend + ".elf"], "artifact hash mismatch")
         native = text(prefix + "native-id.txt")
@@ -94,9 +109,9 @@ def verify(backend, archive, commit, output):
         check(len(raw_ids) == 1 and "0x" + raw_ids[0].lower() == native, "ID output mismatch")
         check(b"dcap-" in members[run + ".log"] and b"Finished" in members[run + ".log"], "missing compilation log")
         json.loads(members[prefix + "metadata.json"])
-    for name in (backend + ".elf", "native-id.txt", "lock.sha256"):
+    for name in (backend + ".elf", "native-id.txt", "lock.sha256", "program-mode.txt"):
         check(members["a/results/" + name] == members["b/results/" + name], "A/B mismatch: " + name)
-    summary = {"status": "PAIRED_BUILD_EVIDENCE_PASS_NOT_EXECUTION_OR_PROOF", "backend": backend,
+    summary = {"status": "PAIRED_BUILD_EVIDENCE_PASS_NOT_EXECUTION_OR_PROOF", "backend": backend, "minCheck": mode == "minimal",
                "sourceCommit": commit, "sourceArchiveSha256": inputs["source.tar"], "image": pins[backend],
                "archiveSha256": digest(Path(archive).read_bytes()), "harnessInputs": inputs,
                "lockSha256": digest(lock), "artifactSha256": digest(members["a/results/" + backend + ".elf"]),

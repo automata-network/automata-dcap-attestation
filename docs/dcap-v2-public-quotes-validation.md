@@ -1,5 +1,12 @@
 # Public ATA SGX/TDX V2 validation — 2026-09-11
 
+> Historical inline-body V2 checkpoint/runbook. The compact revision changes the
+> entrypoint, journal, event, mode-specific IDs and SP1 target version. These old
+> build/proof/deployment results do not establish acceptance of the new revision.
+> See [current revision status](dcap-v2-revision-progress.md),
+> [design](dcap-v2-design.md), and the
+> [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md).
+
 > Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
 > fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
 > and gas results below are historical, not acceptance for the current source.
@@ -239,7 +246,7 @@ CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2 cargo test --locked --offline \
   --test output_v2 --test guest_fixtures_v2 --target-dir rust-crates/target
 forge test --root evm --match-contract 'PublicAta(SgxV3|TdxV4)Test' -vv
 forge test --root evm --no-match-contract CrlV2AeneidForkTest -vv
-go test ./go-sdk/packages/godcap/parser ./go-sdk/packages/godcap/feev2 \
+go test ./go-sdk/packages/godcap/parser ./go-sdk/packages/godcap/attestationv2 \
   ./go-sdk/packages/godcap/registry
 ```
 

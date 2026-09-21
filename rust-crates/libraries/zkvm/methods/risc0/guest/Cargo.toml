@@ -9,6 +9,10 @@ rust-version = "1.88"
 [workspace]
 
 [[bin]]
+name = "guest-minimal"
+path = "src/minimal.rs"
+
+[[bin]]
 name = "guest"
 path = "src/main.rs"
 

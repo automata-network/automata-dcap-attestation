@@ -1,4 +1,4 @@
-package feev2
+package attestationv2
 
 import (
 	"bytes"
@@ -53,7 +53,7 @@ func TestForkRawV2CallsTransactionsAndEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	requireReviewedFork(t, deployment.Origin, info)
-	address := deployment.Contracts["AutomataDcapAttestationFeeV2"].Address
+	address := deployment.Contracts["AutomataDcapAttestationV2"].Address
 	client, err := New(address, backend)
 	if err != nil {
 		t.Fatal(err)
@@ -97,15 +97,15 @@ func TestForkRawV2CallsTransactionsAndEvents(t *testing.T) {
 			}
 			opts := &bind.CallOpts{Context: ctx, From: account}
 			actual, err := client.VerifyAndAttestOnChainV2(opts, quote, fixture.Eval, false)
-			if err != nil || !bytes.Equal(actual, wire) {
+			if err != nil || !bytes.Equal(actual.Output, wire) {
 				t.Fatalf("explicit call/parity: %v", err)
 			}
 			actual, err = client.VerifyAndAttestOnChainV2Default(opts, quote)
-			if err != nil || !bytes.Equal(actual, wire) {
+			if err != nil || !bytes.Equal(actual.Output, wire) {
 				t.Fatalf("default call/parity: %v", err)
 			}
 			actual, err = client.VerifyAndAttestOnChainV2(opts, quote, fixture.Eval, true)
-			if err != nil || !bytes.Equal(actual, wire) {
+			if err != nil || !bytes.Equal(actual.Output, wire) {
 				t.Fatalf("minimal call/parity: %v", err)
 			}
 			changed := append([]byte(nil), quote...)

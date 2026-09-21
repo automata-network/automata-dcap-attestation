@@ -1,5 +1,12 @@
 # DCAP V2 fork acceptance — scoped V2 E2E complete; release gates open
 
+> Historical inline-body V2 checkpoint/runbook. The compact revision changes the
+> entrypoint, journal, event, mode-specific IDs and SP1 target version. These old
+> build/proof/deployment results do not establish acceptance of the new revision.
+> See [current revision status](dcap-v2-revision-progress.md),
+> [design](dcap-v2-design.md), and the
+> [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md).
+
 The user authorized this phase on 2026-09-12, including off-chain preparation
 of real EVM-compatible proofs and deployment/integration inside forked networks.
 Proof generation/compression and fork preparation may proceed within the same

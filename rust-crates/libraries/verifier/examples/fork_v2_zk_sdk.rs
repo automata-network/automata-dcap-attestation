@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     let provider = ProviderBuilder::new().connect_http(endpoint.parse()?);
     let info: serde_json::Value = provider.raw_request("anvil_nodeInfo".into(), ()).await?;
     fork_support::validate_origin(&report, &info)?;
-    let address: Address = report["contracts"]["AutomataDcapAttestationFeeV2"]["address"]
+    let address: Address = report["contracts"]["AutomataDcapAttestationV2"]["address"]
         .as_str()
         .context("Fee missing")?
         .parse()?;

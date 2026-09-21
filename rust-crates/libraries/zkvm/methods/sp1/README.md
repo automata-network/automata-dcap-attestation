@@ -1,159 +1,115 @@
-# SP1 V2 guest build and local execution
+# SP1 6.8.0 compact V2 guests
 
-Use the V5 family: CLI/build driver 5.2.2, the host workspace's locked SDK 5.2.2,
-and guest `sp1-zkvm = 5.2.1`. Do not run an unversioned `sp1up` or migrate to V6
-to address a local build error. The guest and driver lockfiles can contain
-compatible transitive 5.2.4 crates; they do not replace the host SDK lockfile.
+Guest, build driver and host SDK are pinned to **6.8.0** in separate lockfiles.
+There are two compile-time modes: strict (the default) and minimal. No guest input
+can switch a strict program into minimal mode. Register their distinct native IDs
+with the corresponding immutable mode; only strict may be the on-chain default.
 
-## Toolchain
+## Toolchains and artifacts
+
+SP1 v6 requires `riscv64im-succinct-zkvm-elf` (ELF64). Old v5 ELF32 programs,
+native IDs, core/outer checkpoints and proofs are incompatible. Existing deployed
+v5 contracts/records are not migrated or relabeled by changing this source.
+
+The upstream 6.8.0 CLI selects `succinct-1.96.0-64bit-v2`. The local build driver
+uses Cargo 1.96.0 and checks for the 64-bit target. On a supported build worker:
 
 ```sh
-sp1up --version v5.2.2
-rustup toolchain install 1.88.0 --profile minimal --no-self-update
+sp1up --version v6.8.0
+rustup toolchain install 1.96.0 --profile minimal --no-self-update
 rustc +succinct --version
-cargo +1.88.0 --version
+rustc +succinct --print target-list
+cargo +1.96.0 --version
 ```
 
-Expected compiler: `rustc 1.88.0-dev`, from the official
-`succinct-1.88.0` distribution, with the
-`riscv32im-succinct-zkvm-elf` standard library. Linux ARM64 is supported.
+Do not overwrite a hand-built v5 toolchain on the current ARM64 VM just to try
+these commands. Its installed succinct toolchain has only the 32-bit target.
+Use the reviewed Mac/AMD64 worker or a separately prepared v6 toolchain.
+The local isolated ARM64 v6 toolchain has built and executed both programs.
+The official v6 Docker image is pinned in `../docker/reproduce-official.sh`;
+fresh paired builds are still pending. The historical v5 Docker recipe is not
+a valid compact release build.
 
-The Succinct distribution does **not** include Cargo. `cargo +succinct` falls
-back to the system Cargo. This is not a sufficient readiness check: Cargo
-1.97.1 passes `--remap-path-scope`, which Rust 1.88 does not accept. The driver
-therefore pins Cargo 1.88 for its child processes and checks its version before
-building. `sp1-build` still explicitly selects the Succinct **rustc**, sysroot,
-RISC-V target and codegen flags. The default system toolchain is not changed.
-
-The guest lockfile pins `ruint` to 1.17.0, matching the host workspace; 1.20.0
-requires Rust 1.90 and cannot be built by succinct-1.88.0. Preserve this pin when
-updating the guest lockfile. The actual guest Cargo build uses `--locked`.
-
-## Canonical release build
-
-Use the official `ghcr.io/succinctlabs/sp1:v5.2.2` image, pinned by digest and
-`linux/amd64`, and compare two clean Docker builds. Equality with a native host
-build is not required. See the [paired Docker build procedure](../../../../../docs/dcap-v2-container-rebuild.md).
-The local command below is for development/execution checks, not the canonical
-release artifact source.
-
-## Local build
-
-From the repository root:
+From repository root, local development build (not reproducibility acceptance):
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo build --release --locked \
+cargo +1.96.0 build --release --locked \
   --manifest-path rust-crates/libraries/zkvm/methods/sp1/Cargo.toml \
   --target-dir rust-crates/target
 ```
 
-The target directory must be named `target` for the upstream SP1 host build
-scripts. The candidate ELF is written to
-`rust-crates/libraries/zkvm/artifacts/v2.0/sp1.elf`. Old embedded ELFs and
-deployment configuration are not modified.
+Outputs: `artifacts/v2.0/sp1-strict.elf` and `sp1-minimal.elf` under the zkvm
+library. The build rejects missing/non-ELF64 artifacts and uses locked dependencies.
+The reviewed v6 crypto patches use the upstream 6.2.0 tags consumed by the
+6.8.0 ecosystem; the lock records exact Git commits. The old top-level v4 ECDSA
+override is removed; upstream v6 dependencies select their own recovery helper.
+Never set `DOCS_RS`, disable VK checks or substitute a dummy verifier map.
 
-Initial builds need network access to fetch the official V5 verifying-key map
-even if Cargo dependencies have been cached. Upstream verifies its SHA-256:
-`5e735f6e44f56e9eee91e5626252663afcc5263287d1c5980367b3f9f930a0e8`.
-Do not substitute a dummy map, disable VK verification or set `DOCS_RS` to
-bypass this dependency.
+## Execute signed quote fixtures
 
-## Execute a real input
-
-Use an ABI input produced by `dcap_rs::v2::encode_guest_input_v2`, with the signed
-quote, full collateral and a fixed verification timestamp:
-
-The checked-in [V3/V4/V5 fixtures](../../../../../evm/forge-test/assets/v2/fixtures/README.md)
-include an offline export command; no prior local diagnostic files are needed.
+Export a frozen V2 ABI input using the offline fixture exporter. Build the host
+runners with the current host lockfile, then pass the exact candidate ELF:
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo run --locked \
-  --manifest-path rust-crates/Cargo.toml \
-  -p automata-dcap-zkvm --features sp1 --example sp1_v2_execute \
-  --target-dir rust-crates/target -- \
-  rust-crates/libraries/zkvm/artifacts/v2.0/sp1.elf /path/to/v2-input.bin --negative
+cargo run --locked --manifest-path rust-crates/Cargo.toml \
+  --target-dir rust-crates/target -p automata-dcap-zkvm --features sp1 \
+  --example sp1_v2_execute -- \
+  /path/to/sp1-strict.elf /path/to/input.bin --negative
 ```
 
-The example explicitly uses the local CPU client without prebuilding the unused
-recursive-program cache (VK checks and default circuit shapes stay enabled),
-prints the native program ID and circuit version, and compares the journal against native V2
-verification. `--negative` additionally checks that native and guest both reject
-eight cases: changed signed body/signature, trailing zeros, truncation,
-unsupported quote version, oversized signature length, and pre-/post-validity
-timestamps. Rejection must be a guest validation panic (exit code 1), not an
-unsupported syscall or the local 500-million-cycle execution limit.
-It does not select a network prover, send a paid proving request,
-generate a proof, or register any program ID.
+Repeat with `sp1-minimal.elf` and `--minimal`. The v6 light client executes
+locally, calculates the native key and checks byte-for-byte native journal parity;
+it neither creates mock proofs nor sends network requests. For negative cases,
+require guest exit status 1 and the expected DCAP validation panic; a host fault
+or transport error is not a successful rejection.
 
-### Low-memory host linking
-
-If GNU `ld` is killed while linking the host example, use the Rust toolchain's
-bundled LLD with limited threads. These flags apply only to the final host
-example, not dependencies or the guest ELF. Run the resulting binary directly
-so that `cargo run` does not relink it with the default linker:
+## Generate or verify local proofs
 
 ```sh
-SP1_HOST_SYSROOT="$(rustc --print sysroot)"
-SP1_HOST_TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
-CARGO_BUILD_JOBS=1 cargo rustc --locked \
-  --manifest-path rust-crates/Cargo.toml \
-  -p automata-dcap-zkvm --features sp1 --example sp1_v2_execute \
-  --target-dir rust-crates/target -- \
-  -C "link-arg=-B${SP1_HOST_SYSROOT}/lib/rustlib/${SP1_HOST_TRIPLE}/bin/gcc-ld" \
-  -C link-arg=-fuse-ld=lld -C link-arg=-Wl,--threads=2
-rust-crates/target/debug/examples/sp1_v2_execute \
-  rust-crates/libraries/zkvm/artifacts/v2.0/sp1.elf /path/to/v2-input.bin --negative
+cargo run --release --locked --manifest-path rust-crates/Cargo.toml \
+  --target-dir rust-crates/target -p automata-dcap-zkvm --features sp1 \
+  --example sp1_v2_prove_local -- \
+  /path/to/sp1-strict.elf /path/to/input.bin /path/to/new-proof.bin --kind groth16
 ```
 
-This fallback was tested on Linux ARM64; it does not alter the default toolchain
-or require a system-wide linker change.
+Kinds: `core` (default), `compressed`, `groth16`, `plonk`. Minimal mode additionally
+requires `--minimal` and the minimal ELF. `--verify` rechecks an existing v6 proof.
+This explicitly selects the CPU prover and the SDK's v6 defaults. The old
+`DCAP_SP1_SHARD_SIZE`/FRI override recipes are refused, not silently reused.
 
-Execution parity does not establish real-proof/universal-verifier compatibility.
-Independent reproducibility and real proof checks remain release prerequisites;
-see the [progress evidence](../../../../../docs/dcap-v2-progress.md).
+The runner verifies cryptography, successful guest exit and the expected journal;
+it tests modified-journal/wrong-key rejection (plus core commitment mutation for
+core proofs). New proof output is exclusive-create. Groth16/Plonk also write
+`new-proof.evm.json` with SDK-encoded proof, journal, native ID, mode and actual
+selector. This is **not** on-chain acceptance; the corresponding v6 verifier must
+support that selector. No new trusted setup is generated by this code.
 
-## Local real-proof diagnostic
+SDK 6.8.0 selects circuit v6.1.0. The isolated Solidity verifier uses the official
+v6.1.0 source and Groth16 selector `0x4388a21c`; its calldata is 356 bytes, not
+the v5 260-byte format. See the deployment coordinator for independent deployment
+without changing a shared verifier or gateway.
 
-The separate `sp1_v2_prove_local` example explicitly selects the local CPU
-prover and a **core** proof. It never chooses the network prover or mock mode.
-Use the canonical Docker ELF:
+The old `sp1_v2_compress_local` and `sp1_v2_import_gnark` executables now fail
+explicitly: their v5-only checkpoint/transport format must not be reused. The v6
+runner currently uses the SDK's complete proving pipeline; resumable v6
+intermediate checkpoints have not been implemented or accepted.
 
-```sh
-CARGO_BUILD_JOBS=2 cargo run --release --locked \
-  --manifest-path rust-crates/Cargo.toml -p automata-dcap-zkvm \
-  --features sp1 --example sp1_v2_prove_local --target-dir rust-crates/target -- \
-  /path/to/canonical/sp1.elf /path/to/v2-input.bin /path/to/new.proof
-```
+## SDK integration
 
-Use the optimized **host** build for real proving; this does not rebuild or
-change the supplied canonical guest ELF. `RUST_LOG=info` enables SDK progress
-logs. An unoptimized dev host can add substantial proving overhead even when
-guest execution already passes. For the low-memory linking fallback, include
-`--release` and run `target/release/examples/sp1_v2_prove_local` afterwards.
+The Rust network client uses async setup/proving and verifies a returned proof
+locally before exporting calldata. It no longer changes global prover/key
+environment variables. Bundled legacy v5 guests are rejected by this v6 SDK.
+A paid remote proof requires an explicitly invoked network-proving workflow.
 
-The runner verifies the proof against the ELF-derived key, compares the entire
-journal with native V2, and rejects a changed journal, wrong verifying key and
-changed proof commitment.
-It writes only after those checks, refusing to overwrite an existing file.
-Append `--verify` to recheck an existing proof without proving again. Default
-VK checks and circuit shapes remain enabled; only the unused recursive cache
-is disabled. `FRI_QUERIES` must be unset or the SDK's default `100`; weakened
-query counts are refused. No guest source or release program ID is changed.
+The Go `attestationv2` contract client accepts opaque journal/proof bytes from
+this pipeline. The Go `sp1.NewV6Client` explicitly selects circuit `v6.1.0` and
+the auction-network Groth16 path, with the five-public-input response decoder
+and 356-byte calldata encoding. Legacy `NewClient` defaults stay unchanged.
+The v6 Go path checks framing, exit/root, journal commitment and requested
+program ID; it does **not** perform Groth16 pairing verification. Verify the proof
+with a trusted SDK or the on-chain verifier before trusting its output. Neither
+paid remote submission nor a live v6 network roundtrip has been acceptance-tested.
 
-The runner uses 2^18-cycle shards, a batch size of one, and a 500-million-cycle
-limit. Optional upstream pipeline settings `TRACE_GEN_WORKERS=1`,
-`CHECKPOINTS_CHANNEL_CAPACITY=1` and `RECORDS_AND_TRACES_CHANNEL_CAPACITY=1`
-limit concurrent buffers, not cryptographic checks. Set memory/wall-clock
-limits outside the runner. On the tested Linux/glibc ARM64 worker,
-`MALLOC_ARENA_MAX=2 RAYON_NUM_THREADS=4` plus those single-buffer settings
-completed the SGX diagnostic in 11:55 with about 7.17 GiB peak RSS. The earlier
-attempt failed allocation under a 10 GiB **virtual address-space** limit; the
-successful retry allowed 24 GiB virtual space and watched actual RSS/system
-available memory separately. This is not a guarantee that every input fits
-8 GiB RAM; leave system headroom and monitor actual memory pressure. Allocator
-and host optimization settings do not weaken FRI/VK checks or change the guest.
-Use the low-memory linking recipe above with this
-example name if needed. A core proof is not an EVM Groth16/Plonk proof;
-compression and actual universal-verifier/FeeV2 acceptance remain required.
-See the [public-quote validation record](../../../../../docs/dcap-v2-public-quotes-validation.md)
-for actual outcomes; a compiled runner or timed-out attempt is not proof success.
+See [revision progress](../../../../../docs/dcap-v2-revision-progress.md) for
+actual test results. Compiling these tools is not guest execution, Docker
+reproducibility, real-proof success or fork acceptance.

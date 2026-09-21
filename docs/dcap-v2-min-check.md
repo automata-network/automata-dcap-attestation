@@ -1,9 +1,9 @@
 # V2 minimal workload checks and Keccak quote commitment
 
 This is a revision of the unreleased V2 feature, not a change to deployed V1.
-OutputV2 remains format 2.1 with the same field offsets and lengths. Earlier
-draft 2.1 artifacts used SHA-256 for fullQuoteHash and are not compatible with
-the revised semantics. Do not register their program IDs as current V2 IDs.
+OutputV2 remains unreleased format 2.1, with the compact 317-byte header defined
+in dcap-v2-design.md. Both the earlier SHA-256 and inline-body 2.1 artifacts are
+incompatible. Do not register their program IDs as current V2 IDs.
 
 ## API and acceptance
 
@@ -35,40 +35,44 @@ verification. Applications must choose the mode themselves rather than blindly
 forwarding an untrusted user's flag. A successful minimal result is authenticated,
 but is not a claim that the workload meets production attribute policy.
 
-OutputV2 carries the full authenticated report body. Applications may apply
-custom checks to DEBUG, TD attributes, MR_SERVICE_TD, measurements and report data.
+OutputV2 carries `keccak256(quoteBody)`, not the body itself. Raw methods return
+`(bool success, bytes output, bytes quoteBody)`; ZK methods return `(bool, bytes)`.
+Applications must hash the separately supplied body and compare it with the
+authenticated `quoteBodyHash` before any custom attribute or measurement checks.
 Neither mode adds freshness, maximum age, challenge binding or application
-measurement allowlists. The event and output do not encode the requested mode:
-log consumers needing strict assurance must inspect the call or recheck the
-authenticated attributes. An event with success alone does not establish strict
-acceptance.
+measurement allowlists. `AttestationSubmittedV2` records the selected mode and
+program ID (zero for raw), plus compact output, never the full body. The output
+alone does not encode mode; applications must use a trusted call/event context.
 
 ## Guest and hash semantics
 
-All three guests call the same minimal-baseline verifier, commit the full
-OutputV2, and keep the `(bytes collateral, bytes quote, uint64 timestamp)` input
-ABI. There is no host-supplied mode claim to trust. FeeV2 applies strict workload
-checks to journal body bytes when required and verifies that exact journal with
-the configured universal verifier. One newly audited guest ID supports both
-modes. The native Rust `verify_dcap_quote_v2` helper remains strict; explicit
-native mode selection uses `verify_dcap_quote_v2_with_min_check`.
+Every backend has two separate binaries/IDs, strict and minimal. Each binary fixes
+its policy at compile time and commits compact OutputV2. The input ABI stays
+`(bytes collateral, bytes quote, uint64 timestamp)` with no caller-controlled mode.
+The registry binds each ID to one immutable mode; ZK calls enforce exact ID/mode
+matching. Registering an ID never changes the strict-only default. The contract
+does not recheck workload attributes from a ZK body because no body is in journal.
+Raw strict checks remain on chain. Native `verify_guest_input_v2` is strict;
+`verify_guest_input_v2_minimal` is minimal.
 
-`fullQuoteHash` at bytes `[257, 289)` is Keccak-256 of the exact raw quote on
+`fullQuoteHash` at bytes `[253, 285)` is Keccak-256 of the exact raw quote on
 both raw and guest paths. RISC Zero still verifies SHA-256 of the journal.
 Fixture/file integrity SHA-256, backend-native IDs and proof digests are not
 changed into Keccak hashes.
 
 Five frozen public quote fixtures retain their signed inputs and collateral.
-Only their 32-byte fullQuoteHash slot and expected-journal integrity digest
-change. Tests compare the revised journals across native Rust and Solidity;
+Their expected journals now use the compact layout, including bodyHash instead
+of the body, revised offsets and expected-journal integrity digests.
+Tests compare the revised journals across native Rust and Solidity;
 tests never regenerate their own expected output.
 
 ## Regression and release gates
 
 Mode tests cover SGX DEBUG, TDX 1.0/1.5 attributes, MR_SERVICE_TD and the same
 journal through all three backend adapters. Adapter unit tests use mocks and
-are not real ZK proof acceptance. The real signed Alibaba V5 quote is rejected
-strictly but accepted minimally in Solidity and native Rust/guest logic.
+are not real ZK proof acceptance. The real signed Alibaba V5 quote exercises
+strict rejection/minimal acceptance in Solidity. Fresh dual-program guest
+execution of a non-production signed fixture remains a separate acceptance gate.
 Public V3/V4/V5 fixtures check byte parity and authentication/framing/time
 negatives under both modes.
 
@@ -81,10 +85,13 @@ cargo test --manifest-path rust-crates/Cargo.toml -p dcap-rs --locked \
   --lib --test guest_fixtures_v2 --test output_v2
 cargo check --manifest-path rust-crates/Cargo.toml -p automata-dcap-verifier \
   --examples --locked
-(cd go-sdk && go test ./packages/godcap/feev2 ./packages/godcap/parser)
+(cd go-sdk && go test ./packages/godcap/attestationv2 ./packages/godcap/parser)
 ```
 
-### Local regression checkpoint (2026-09-16)
+### Historical inline-body regression checkpoint (2026-09-16)
+
+The following results predate the compact revision and do not validate its new
+guests, IDs, proof formats or deployment. See dcap-v2-revision-progress.md.
 
 Run against the edited working tree based on DCAP `357f5d5`, with the existing
 PCCS checkout `75c7673` preserved. Solidity used Foundry 1.8.1, solc 0.8.27,

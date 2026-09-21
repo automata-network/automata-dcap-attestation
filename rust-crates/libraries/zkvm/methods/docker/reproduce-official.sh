@@ -3,12 +3,14 @@
 # environment (including Docker Desktop + Rosetta). No binfmt installation,
 # privileged containers, or Docker socket mounts.
 set -euo pipefail
-if test "$#" -ne 2; then
-  echo 'usage: bash reproduce-official.sh risc0|sp1 COMMIT' >&2
+if test "$#" -lt 2 || test "$#" -gt 3; then
+  echo 'usage: bash reproduce-official.sh risc0|sp1 COMMIT [strict|minimal]' >&2
   exit 2
 fi
 repro_backend="$1"
 repro_commit="$2"
+repro_mode="${3:-strict}"
+case "$repro_mode" in strict|minimal) ;; *) echo 'Expected strict or minimal mode' >&2; exit 2 ;; esac
 repro_scripts="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$repro_scripts/common.sh"
 # Host metadata only. Do NOT replace either official image's own Cargo version.
@@ -26,21 +28,22 @@ case "$repro_backend" in
     repro_cli="$(command -v cargo-risczero)"
     ;;
   sp1)
-    repro_image='ghcr.io/succinctlabs/sp1:v5.2.2@sha256:7b5582c3773b0238192fbd5d6a37f5eb3166d3a47a1a1798ecc7847d2194d04f'
+    export RUSTUP_TOOLCHAIN=1.96.0
+    repro_image='ghcr.io/succinctlabs/sp1:v6.8.0@sha256:6df25c1a71451b51488534fb94a495ffe456c05921f79c4bcb8ccafe2810870c'
     repro_manifest='rust-crates/libraries/zkvm/methods/sp1/program/Cargo.toml'
     repro_cli="${SP1_CARGO_PROVE:-$(command -v cargo-prove || true)}"
-    test -x "$repro_cli" || { echo 'Set SP1_CARGO_PROVE to the installed v5.2.2 cargo-prove binary.' >&2; exit 2; }
+    test -x "$repro_cli" || { echo 'Set SP1_CARGO_PROVE to the installed v6.8.0 cargo-prove binary.' >&2; exit 2; }
     repro_cli="$(repro_physical_file "$repro_cli")"
-    [[ "$("$repro_cli" prove --version)" == 'cargo-prove sp1 (bb91c6f '* ]] || {
-      echo 'Expected the SP1 v5.2.2 CLI (bb91c6f); do not substitute another release.' >&2
+    [[ "$("$repro_cli" prove --version)" == 'cargo-prove sp1 (58c4aea'* ]] || {
+      echo 'Expected the SP1 v6.8.0 CLI (58c4aea); do not substitute another release.' >&2
       exit 2
     }
     ;;
   *) echo 'Unsupported backend; use reproduce-pico.sh for Pico.' >&2; exit 2 ;;
 esac
 test -z "${RISC0_SKIP_BUILD:-}${SP1_SKIP_PROGRAM_BUILD:-}"
-test "$(cargo --version)" = 'cargo 1.88.0 (873a06493 2025-05-10)' || {
-  echo 'Install host metadata tools: rustup toolchain install 1.88.0 --profile minimal' >&2
+[[ "$(cargo --version)" == "cargo $RUSTUP_TOOLCHAIN "* ]] || {
+  echo "Install host metadata tools: rustup toolchain install $RUSTUP_TOOLCHAIN --profile minimal" >&2
   exit 2
 }
 if test -n "${REPRO_SOURCE_ARCHIVE:-}"; then
@@ -84,6 +87,7 @@ mkdir "$repro_work/scripts"
 cp "$repro_scripts/common.sh" "$repro_scripts/reproduce-official.sh" \
   "$repro_scripts/docker-no-cache.sh" "$repro_work/scripts/"
 printf '%s\n' "$repro_commit" > "$repro_work/source-commit.txt"
+printf '%s\n' "$repro_mode" > "$repro_work/program-mode.txt"
 printf '%s\n' "$repro_image" > "$repro_work/image-reference.txt"
 if test -n "${REPRO_SOURCE_ARCHIVE:-}"; then
   cp "$repro_archive" "$repro_work/source.tar"
@@ -143,13 +147,18 @@ for repro_run in a b; do
       cargo risczero build --manifest-path "$repro_manifest"
       # Official SDK 3.x packs the built user ELF with its kernel. Keep the
       # combined program, not just the raw user ELF with a different image ID.
-      cp target/riscv32im-risc0-zkvm-elf/docker/guest.bin "$repro_results/risc0.elf"
+      repro_guest=guest
+      if test "$repro_mode" = minimal; then repro_guest=guest-minimal; fi
+      cp "target/riscv32im-risc0-zkvm-elf/docker/$repro_guest.bin" "$repro_results/risc0.elf"
       r0vm --elf "$repro_results/risc0.elf" --id > "$repro_results/native-id.stdout"
     else
       export SP1_DOCKER_IMAGE="$repro_image"
+      repro_guest=dcap-sp1-guest-v2
+      if test "$repro_mode" = minimal; then repro_guest=dcap-sp1-guest-v2-minimal; fi
       (
         cd "${repro_manifest%/Cargo.toml}"
-        "$repro_cli" prove build --docker --tag v5.2.2 --locked \
+        "$repro_cli" prove build --docker --tag v6.8.0 --locked --no-docker-cache \
+          --binaries "$repro_guest" \
           --workspace-directory "$repro_source" \
           --output-directory "$repro_source/repro-output" --elf-name sp1.elf
       )
@@ -158,6 +167,7 @@ for repro_run in a b; do
         "$repro_cli" prove vkey --elf "$repro_results/sp1.elf" > "$repro_results/native-id.stdout"
     fi
     test -s "$repro_results/$repro_backend.elf"
+    printf '%s\n' "$repro_mode" > "$repro_results/program-mode.txt"
     repro_native_id "$repro_results/native-id.stdout" > "$repro_results/native-id.txt"
     repro_sha256 --check "$repro_results/lock.sha256"
     (

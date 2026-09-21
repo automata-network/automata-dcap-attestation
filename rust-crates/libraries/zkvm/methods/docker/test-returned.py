@@ -16,6 +16,18 @@ commit = subprocess.check_output(["git", "-C", str(script.parent), "rev-parse", 
 
 
 class ArchiveRejections(unittest.TestCase):
+    def test_v6_image_identity(self):
+        manifest = "sha256:6df25c1a71451b51488534fb94a495ffe456c05921f79c4bcb8ccafe2810870c"
+        config = "sha256:bb7cf1f247ff29702d21ba33677bc3818f295debad327fa0f779d03b204bd345"
+        pin = "ghcr.io/succinctlabs/sp1:v6.8.0@" + manifest
+        image = {"Os": "linux", "Architecture": "amd64", "Id": config,
+                 "RepoDigests": ["ghcr.io/succinctlabs/sp1@" + manifest]}
+        module.verify_image("sp1", pin, [image])
+        module.verify_image("sp1", pin, [{**image, "Id": manifest}])
+        for key, value in [("Id", "sha256:" + "0" * 64), ("RepoDigests", []), ("Architecture", "arm64")]:
+            with self.assertRaises(ValueError):
+                module.verify_image("sp1", pin, [{**image, key: value}])
+
     def reject(self, members, message):
         with tempfile.TemporaryDirectory(prefix="dcap-returned-test-") as temp:
             archive = Path(temp) / "bad.tar.gz"

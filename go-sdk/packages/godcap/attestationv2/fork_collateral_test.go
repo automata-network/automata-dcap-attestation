@@ -1,4 +1,4 @@
-package feev2
+package attestationv2
 
 import (
 	"context"

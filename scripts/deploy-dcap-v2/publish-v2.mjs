@@ -16,8 +16,10 @@ const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const encoded = value => JSON.stringify(value, null, 2) + '\n';
 const addr = value => ensure(/^0x[0-9a-f]{40}$/i.test(value) && !same(value, zero), 'Invalid/nonzero address required');
 const componentNames = ['tcbEvalDaoAddr', 'pcsDaoAddr', 'pckDaoAddr', 'pckHelperAddr', 'crlHelperAddr', 'fmspcTcbHelperAddr'];
-const contractKeys = ['AutomataDcapAttestationFeeV2', 'PCCSRouterV2', 'PCKHelperV2',
+const contractKeys = ['AutomataDcapAttestationV2', 'PCCSRouterV2', 'PCKHelperV2',
   'V3QuoteVerifierV2', 'V4QuoteVerifierV2', 'V5QuoteVerifierV2'];
+export const pendingSp1Verifier = 'DEPLOY_SP1_GROTH16_V6_1';
+const sp1VerifierHash = '0x4388a21c687fdd5f218d7e3d13190cac4c5355818d3605fd5fb811df468ee696';
 
 // Keep provider diagnostics without logging the endpoint or its credentials.
 export function createRpcRequest(url, fetchImpl = fetch) {
@@ -55,7 +57,8 @@ export function createRpcRequest(url, fetchImpl = fetch) {
   };
 }
 
-export function validatePlan(p) {
+export function validatePlan(p, {allowPendingVerifier = false} = {}) {
+  ensure(p.deploySp1Groth16V6 === undefined || typeof p.deploySp1Groth16V6 === 'boolean', 'SP1 deployment flag must be boolean');
   ensure(Number.isSafeInteger(p.chainId) && p.chainId > 0, 'Invalid chain ID');
   ensure(p.status === 'TEST_ONLY', 'This publisher is for isolated test deployments, not release promotion');
   ensure(/^[0-9a-f]{40}$/.test(p.sourceCommit), 'Pin source commit');
@@ -66,15 +69,30 @@ export function validatePlan(p) {
   ensure(Array.isArray(p.programs), 'Explicit programs array required (empty means raw-only)');
   const seen = new Set();
   for (const program of p.programs) {
-    ensure([1, 2].includes(program.backend) && !seen.has(program.backend), 'Unsupported/duplicate backend');
-    seen.add(program.backend);
+    ensure(typeof program.minCheck === 'boolean', 'Explicit program mode required');
+    const key = `${program.backend}:${program.minCheck}`;
+    ensure([1, 2].includes(program.backend) && !seen.has(key), 'Unsupported/duplicate backend mode');
+    seen.add(key);
+    if (program.backend === 2) ensure(program.buildSdkVersion === '6.8.0', 'Compact SP1 requires audited SDK 6.8.0 build provenance');
     ensure(/^0x[0-9a-f]{64}$/i.test(program.id) && !same(program.id, zeroId), 'Invalid native ID');
     ensure(/^0x[0-9a-f]{8}$/i.test(program.proofSelector), 'Invalid proof selector');
-    addr(program.verifier);
+    if (program.verifier === pendingSp1Verifier) {
+      ensure(allowPendingVerifier && p.deploySp1Groth16V6 === true && program.backend === 2,
+        'Unresolved SP1 verifier deployment');
+    } else addr(program.verifier);
+    if (p.deploySp1Groth16V6 && program.backend === 2) {
+      ensure(program.proofSelector === sp1VerifierHash.slice(0, 10), 'Independent SP1 v6 deployment supports v6.1.0 Groth16 only');
+    }
     // Provenance references are operator-supplied, not a claim of proof acceptance.
     ensure(program.buildSourceCommit === p.sourceCommit && /^[0-9a-f]{64}$/.test(program.evidenceSha256)
       && /^[0-9a-f]{64}$/.test(program.artifactSha256), 'Missing matching build provenance');
   }
+  for (const program of p.programs) {
+    const strict = p.programs.find(item => item.backend === program.backend && !item.minCheck);
+    ensure(strict && same(strict.verifier, program.verifier), 'Each backend requires a strict default and consistent verifier');
+    ensure(!program.minCheck || !same(strict.id, program.id), 'Strict/minimal IDs must differ');
+  }
+  if (p.deploySp1Groth16V6) ensure(p.programs.some(p => p.backend === 2), 'SP1 deployment requires SP1 programs');
 }
 
 export function makeDocuments(p, legacyDcap, legacyPccs) {
@@ -89,6 +107,12 @@ export function makeDocuments(p, legacyDcap, legacyPccs) {
   contractKeys.forEach(k => ensure(!oldAddresses.has(contracts[k].toLowerCase()), 'New address aliases existing deployment'));
   // Preserve legacy keys: consumers must explicitly select V2 keys, including the Router.
   const dcap = {...legacyDcap, ...contracts};
+  if (p.deploySp1Groth16V6) {
+    addr(p.sp1Groth16Verifier);
+    ensure(!oldAddresses.has(p.sp1Groth16Verifier.toLowerCase()), 'New SP1 verifier aliases legacy deployment');
+    ensure(!Object.values(contracts).some(a => same(a, p.sp1Groth16Verifier)), 'SP1 verifier aliases V2 deployment');
+    dcap.SP1Groth16VerifierV6 = p.sp1Groth16Verifier;
+  }
   const pccs = {...legacyPccs, PCKHelperV2: contracts.PCKHelperV2};
   // Publish only the evaluation inventory actually configured on the isolated Router.
   for (const key of Object.keys(pccs)) {
@@ -136,8 +160,10 @@ export async function readLegacy(p, rpc) {
       ids: await call(p.legacyFee, 'programIdentifiers(uint8)', 'bytes32[]', backend)};
   }
   for (const program of p.programs) {
-    ensure(same(program.verifier, backends[program.backend].verifier)
-      && backends[program.backend].code !== '0x', 'Backend expansion is not allowed');
+    ensure(backends[program.backend].code !== '0x', 'Backend expansion is not allowed');
+    if (program.verifier !== pendingSp1Verifier) ensure(await code(program.verifier) !== '0x', 'Selected backend verifier has no code');
+    // SP1 v6 may require a different reviewed verifier from the legacy v5 route.
+    ensure(!backends[program.backend].ids.some(id => same(id, program.id)), 'Legacy ID cannot be registered as compact V2');
   }
   return {router, evaluations, backends, verifiers,
     feeOwner: await call(p.legacyFee, 'owner()', 'address'),
@@ -148,16 +174,26 @@ export async function readLegacy(p, rpc) {
 
 export async function verifyNew(p, legacy, documents, rpc) {
   const {call, code, storage} = rpc;
-  const c = p.contracts, router = c.PCCSRouterV2, fee = c.AutomataDcapAttestationFeeV2;
+  const c = p.contracts, router = c.PCCSRouterV2, attestation = c.AutomataDcapAttestationV2;
   const codeHashes = {}, resolvers = new Set();
+  if (p.deploySp1Groth16V6) {
+    addr(p.sp1Groth16Verifier);
+    ensure(await code(p.sp1Groth16Verifier) !== '0x', 'SP1 v6 verifier has no code');
+    ensure(await call(p.sp1Groth16Verifier, 'VERSION()', 'string') === 'v6.1.0', 'Wrong SP1 circuit');
+    ensure(same(await call(p.sp1Groth16Verifier, 'VERIFIER_HASH()', 'bytes32'), sp1VerifierHash), 'Wrong SP1 verifier hash');
+    ensure(p.programs.filter(p => p.backend === 2).every(x => same(x.verifier, p.sp1Groth16Verifier)), 'SP1 program/verifier mismatch');
+    const runtime = await code(p.sp1Groth16Verifier);
+    await rpc.verifyArtifact('SP1Groth16VerifierV6', runtime);
+    codeHashes.SP1Groth16VerifierV6 = sha(Buffer.from(runtime.slice(2), 'hex'));
+  }
   for (const key of contractKeys) {
     const runtime = await code(c[key]); ensure(runtime !== '0x', `${key} has no code`);
     await rpc.verifyArtifact(key, runtime);
     codeHashes[key] = sha(Buffer.from(runtime.slice(2), 'hex'));
   }
-  for (const target of [router, fee]) ensure(same(await call(target, 'owner()', 'address'), p.owner), 'New owner mismatch');
-  ensure(String(await call(fee, 'getBp()', 'uint16')) === legacy.feeBp, 'Fee basis points mismatch');
-  ensure(await call(fee, 'zkV2Paused()', 'bool') === (p.programs.length === 0), 'Unexpected ZK pause state');
+  for (const target of [router, attestation]) ensure(same(await call(target, 'owner()', 'address'), p.owner), 'New owner mismatch');
+  ensure(String(await call(attestation, 'getBp()', 'uint16')) === legacy.feeBp, 'Fee basis points mismatch');
+  ensure(await call(attestation, 'zkV2Paused()', 'bool') === (p.programs.length === 0), 'Unexpected ZK pause state');
   for (const name of componentNames) {
     ensure(same(await call(router, `${name}()`, 'address'),
       name === 'pckHelperAddr' ? c.PCKHelperV2 : legacy.router[name]), 'Router dependency mismatch');
@@ -167,12 +203,12 @@ export async function verifyNew(p, legacy, documents, rpc) {
   const packed = BigInt(await storage(router, '0x1'));
   ensure((packed & 255n) === 1n && ((packed >> 8n) & ((1n << 160n) - 1n))
     === BigInt(legacy.router.tcbEvalDaoAddr), 'Router restriction/layout mismatch');
-  for (const target of [fee, c.V3QuoteVerifierV2, c.V4QuoteVerifierV2, c.V5QuoteVerifierV2]) {
+  for (const target of [attestation, c.V3QuoteVerifierV2, c.V4QuoteVerifierV2, c.V5QuoteVerifierV2]) {
     ensure(await rpc.authorized(router, target), 'Missing Router reader authorization');
   }
   for (const version of [3, 4, 5]) {
     const verifier = c[`V${version}QuoteVerifierV2`];
-    ensure(same(await call(fee, 'quoteVerifiers(uint16)', 'address', version), verifier), 'Fee verifier mismatch');
+    ensure(same(await call(attestation, 'quoteVerifiers(uint16)', 'address', version), verifier), 'Fee verifier mismatch');
     ensure(Number(await call(verifier, 'quoteVersion()', 'uint16')) === version, 'Quote version mismatch');
     ensure(same(await call(verifier, 'pccsRouter()', 'address'), router), 'Verifier uses wrong Router');
     ensure(same(await call(verifier, 'P256_VERIFIER()', 'address'), p.p256), 'P256 mismatch');
@@ -202,14 +238,19 @@ export async function verifyNew(p, legacy, documents, rpc) {
     }
   }
   for (const backend of [1, 2, 3]) {
-    const program = p.programs.find(item => item.backend === backend);
-    const ids = await call(fee, 'programIdentifiersV2(uint8)', 'bytes32[]', backend);
-    ensure(ids.length === (program ? 1 : 0), 'Unexpected V2 ID inventory');
-    ensure(same(await call(fee, 'programIdentifierV2(uint8)', 'bytes32', backend), program?.id ?? zeroId), 'V2 default ID mismatch');
+    const programs = p.programs.filter(item => item.backend === backend);
+    const program = programs.find(item => !item.minCheck);
+    const ids = await call(attestation, 'programIdentifiersV2(uint8)', 'bytes32[]', backend);
+    ensure(ids.length === programs.length, 'Unexpected V2 ID inventory');
+    ensure(same(await call(attestation, 'programIdentifierV2(uint8)', 'bytes32', backend), program?.id ?? zeroId), 'V2 default ID mismatch');
     if (program) {
-      ensure(same(ids[0], program.id), 'V2 ID mismatch');
-      for (const selector of ['0x00000000', program.proofSelector]) {
-        ensure(same(await call(fee, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), program.verifier), 'V2 proof route mismatch');
+      for (const entry of programs) {
+        ensure(ids.some(id => same(id, entry.id)), 'V2 ID mismatch');
+        const [registered, minCheck] = await call(attestation, 'programModeV2(uint8,bytes32)', 'bool,bool', backend, entry.id);
+        ensure(registered && minCheck === entry.minCheck, 'V2 program mode mismatch');
+        for (const selector of ['0x00000000', entry.proofSelector]) {
+          ensure(same(await call(attestation, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), entry.verifier), 'V2 proof route mismatch');
+        }
       }
     }
   }
@@ -220,7 +261,7 @@ async function main() {
   const [mode, planFile, snapshotFile, reportFile] = process.argv.slice(2);
   ensure(['snapshot', 'publish'].includes(mode) && planFile && snapshotFile
     && (mode === 'snapshot' || reportFile), 'Usage: publish-v2.mjs snapshot PLAN SNAPSHOT | publish PLAN SNAPSHOT NEW_REPORT');
-  const p = json(planFile); validatePlan(p);
+  const p = json(planFile); validatePlan(p, {allowPendingVerifier: mode === 'snapshot'});
   const url = process.env.DCAP_RPC_URL; ensure(url, 'DCAP_RPC_URL required');
   const request = createRpcRequest(url);
   ensure(Number(BigInt(await request('eth_chainId'))) === p.chainId, 'Wrong RPC chain');
@@ -229,13 +270,13 @@ async function main() {
   ensure(block?.hash && block?.number, 'RPC must provide finalized block');
   const cast = (...args) => execFileSync('cast', args, {encoding: 'utf8', maxBuffer: 8 * 1024 * 1024}).trim();
   const rpc = {
-    call: async (to, sig, returns, ...args) => JSON.parse(cast('abi-decode', '--json', `f()(${returns})`,
+    call: async (to, sig, returns, ...args) => { const decoded = JSON.parse(cast('abi-decode', '--json', `f()(${returns})`,
       await request('eth_call', [{to, data: cast('calldata', sig, ...args.map(String))}, block.number],
-        `function=${sig} args=${JSON.stringify(args)}`)))[0],
+        `function=${sig} args=${JSON.stringify(args)}`))); return returns.includes(',') ? decoded : decoded[0]; },
     code: to => request('eth_getCode', [to, block.number]),
     storage: (to, slot) => request('eth_getStorageAt', [to, slot, block.number]),
     verifyArtifact: async (key, runtime) => {
-      const name = key === 'AutomataDcapAttestationFeeV2' ? key : key.replace(/V2$/, '');
+      const name = key === 'AutomataDcapAttestationV2' ? key : key.replace(/V2$/, '');
       const artifact = json(path.join(root, `evm/out/${name}.sol/${name}.json`));
       const actual = Buffer.from(runtime.slice(2), 'hex');
       const expected = Buffer.from(artifact.deployedBytecode.object.replace(/^0x/, ''), 'hex');
@@ -266,7 +307,7 @@ async function main() {
   ensure(BigInt(before.block.number) <= BigInt(block.number), 'Snapshot is newer than finalized readback');
   ensure((await request('eth_getBlockByNumber', [before.block.number, false]))?.hash === before.block.hash, 'Snapshot block changed');
   ensure(JSON.stringify(legacy) === JSON.stringify(before.legacy), 'Legacy configuration changed since snapshot');
-  ensure(Array.isArray(p.transactions) && p.transactions.length >= 6, 'Deployment transaction inventory required');
+  ensure(Array.isArray(p.transactions) && p.transactions.length >= (p.deploySp1Groth16V6 ? 7 : 6), 'Deployment transaction inventory required');
   const receipts = [];
   for (const hash of p.transactions) {
     ensure(/^0x[0-9a-f]{64}$/i.test(hash), 'Invalid transaction hash');
@@ -280,6 +321,7 @@ async function main() {
   const source = path.join(registry, 'current', String(p.chainId));
   const documents = makeDocuments(p, json(path.join(source, 'dcap.json')), json(path.join(source, 'onchain_pccs.json')));
   for (const key of contractKeys) ensure(receipts.some(r => same(r.contractAddress, p.contracts[key])), 'Missing direct deployment receipt for ' + key);
+  if (p.deploySp1Groth16V6) ensure(receipts.some(r => same(r.contractAddress, p.sp1Groth16Verifier)), 'Missing SP1 v6 deployment receipt');
   const verified = await verifyNew(p, legacy, documents, rpc);
   const pccsPath = path.join(root, 'evm/lib/automata-on-chain-pccs/deployment', `${p.chainId}.json`);
   const originalPccs = fs.readFileSync(pccsPath, 'utf8');

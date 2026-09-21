@@ -22,7 +22,7 @@ contract OutputV2Test is Test {
         out.formatMinorVersion = 1;
         out.quoteVersion = 3;
         out.quoteBodyType = 1;
-        out.quoteBody = new bytes(384);
+        out.quoteBodyHash = keccak256(new bytes(384));
         out.advisoryIDs = new string[](0);
     }
 
@@ -32,9 +32,9 @@ contract OutputV2Test is Test {
                 OutputV2 memory out = example();
                 out.quoteVersion = version;
                 out.quoteBodyType = body;
-                out.quoteBody = new bytes(body == 1 ? 384 : body == 2 ? 584 : 648);
+                out.quoteBodyHash = keccak256(new bytes(body == 1 ? 384 : body == 2 ? 584 : 648));
                 bytes memory encoded = codec.encode(out);
-                assertEq(encoded.length, 289 + out.quoteBody.length);
+                assertEq(encoded.length, 317);
                 assertEq(uint8(encoded[4]), 6);
                 assertEq(uint8(encoded[9]), 0);
                 assertEq(codec.encode(codec.decode(encoded)), encoded);
@@ -54,8 +54,8 @@ contract OutputV2Test is Test {
     }
 
     function testRejectsMutations() public {
-        uint256[10] memory offsets = [uint256(0), 3, 4, 9, 48, 32, 49, 51, 53, 56];
-        uint8[10] memory values = [uint8(1), 2, 0, 10, 2, 1, 0, 0, 1, 1];
+        uint256[8] memory offsets = [uint256(0), 3, 4, 9, 48, 32, 49, 51];
+        uint8[8] memory values = [uint8(1), 2, 0, 10, 2, 1, 1, 1];
         for (uint256 i; i < offsets.length; ++i) {
             bytes memory encoded = codec.encode(example());
             encoded[offsets[i]] = bytes1(values[i]);

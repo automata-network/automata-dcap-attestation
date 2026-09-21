@@ -1,4 +1,4 @@
-package feev2
+package attestationv2
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"os"
 	"strings"
@@ -81,6 +82,9 @@ func TestRawV2ModeAndDefaultSelectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	body := make([]byte, 384)
+	journal := wire(t)
+	copy(journal[285:317], crypto.Keccak256(body))
 	for _, minCheck := range []bool{false, true} {
 		backend.call = func(msg ethereum.CallMsg) ([]byte, error) {
 			method, err := client.abi.MethodById(msg.Data[:4])
@@ -97,7 +101,7 @@ func TestRawV2ModeAndDefaultSelectors(t *testing.T) {
 			if args[1].(uint32) != 17 || args[2].(bool) != minCheck {
 				t.Fatal("mode/evaluation discarded")
 			}
-			return method.Outputs.Pack(true, wire(t))
+			return method.Outputs.Pack(true, journal, body)
 		}
 		if _, err := client.VerifyAndAttestOnChainV2(nil, []byte{1}, 17, minCheck); err != nil {
 			t.Fatal(err)
@@ -110,6 +114,9 @@ func TestRawV2ModeAndDefaultSelectors(t *testing.T) {
 		}
 		if method.Sig != "verifyAndAttestOnChainV2(bytes)" && method.Sig != "verifyAndAttestWithZKProofV2(bytes,uint8,bytes)" {
 			t.Fatal(method.Sig)
+		}
+		if method.Sig == "verifyAndAttestOnChainV2(bytes)" {
+			return method.Outputs.Pack(true, journal, body)
 		}
 		return method.Outputs.Pack(true, wire(t))
 	}
@@ -151,7 +158,7 @@ func TestDefaultUsesV2ProgramID(t *testing.T) {
 func TestV2EventVersions(t *testing.T) {
 	client, _ := New(common.HexToAddress("0x1234"), new(callerMock))
 	event := client.abi.Events["AttestationSubmittedV2"]
-	data, err := event.Inputs.NonIndexed().Pack(true, uint8(1), wire(t))
+	data, err := event.Inputs.NonIndexed().Pack(true, uint8(1), [32]byte{9}, false, wire(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,5 +170,32 @@ func TestV2EventVersions(t *testing.T) {
 	log.Topics[2] = common.BigToHash(big.NewInt(2))
 	if _, err := client.ParseAttestationSubmittedV2(log); err == nil {
 		t.Fatal("accepted unknown minor version")
+	}
+}
+
+func TestRawBodyBindingAndFailure(t *testing.T) {
+	body := make([]byte, 384)
+	journal := wire(t)
+	copy(journal[285:317], crypto.Keccak256(body))
+	result, err := rawVerificationOutput([]interface{}{true, journal, body}, nil)
+	if err != nil || !bytes.Equal(result.QuoteBody, body) {
+		t.Fatal(err)
+	}
+	body[0] ^= 1
+	if _, err := rawVerificationOutput([]interface{}{true, journal, body}, nil); err == nil {
+		t.Fatal("accepted mutated body")
+	}
+	if _, err := rawVerificationOutput([]interface{}{true, journal, body[:383]}, nil); err == nil {
+		t.Fatal("accepted truncated body")
+	}
+	if _, err := rawVerificationOutput([]interface{}{false, []byte("rejected"), body}, nil); err == nil {
+		t.Fatal("returned unauthenticated body on failure")
+	}
+}
+
+func TestMinimalNeedsExplicitId(t *testing.T) {
+	client, _ := New(common.HexToAddress("0x1234"), new(callerMock))
+	if _, err := client.VerifyAndAttestWithZKProofV2(nil, wire(t), 1, make([]byte, 4), nil, 0, true); err == nil {
+		t.Fatal("minimal request silently selected strict default")
 	}
 }

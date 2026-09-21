@@ -1,4 +1,13 @@
-# Isolated V2 testnet deployment
+# Compact V2 deployment
+
+Use the current one-command [coordinator](COORDINATOR.md). It supports the
+renamed entrypoint, mode-specific program registry and an optional independent
+SP1 v6 Groth16 verifier. Fresh Docker/proof acceptance is still pending.
+
+The manual inline-body FeeV2 runbook below is retained as historical context.
+Do not execute its old selectors or register its old IDs for compact V2.
+
+## Historical isolated V2 testnet deployment
 
 This is a separate deployment, not a shared-Router upgrade. It creates six
 contracts: FeeV2, three quote verifiers, PCKHelperV2 and PCCSRouterV2. Existing

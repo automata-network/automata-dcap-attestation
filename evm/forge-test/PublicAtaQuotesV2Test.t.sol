@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "./utils/PCCSSetupBase.sol";
 import {V3QuoteVerifier} from "../contracts/verifiers/V3QuoteVerifier.sol";
 import {V4QuoteVerifier} from "../contracts/verifiers/V4QuoteVerifier.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {OutputV2Codec} from "../contracts/utils/OutputV2Codec.sol";
 import {OutputV2} from "../contracts/types/OutputV2.sol";
 
@@ -14,7 +14,7 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
     using LibString for string;
 
     string internal fixture;
-    AutomataDcapAttestationFeeV2 internal fee;
+    AutomataDcapAttestationV2 internal fee;
     uint32 internal evaluationNumber;
     uint16 internal version;
 
@@ -66,7 +66,7 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
         address verifier = version == 3
             ? address(new V3QuoteVerifier(P256_VERIFIER, address(router)))
             : address(new V4QuoteVerifier(P256_VERIFIER, address(router)));
-        fee = new AutomataDcapAttestationFeeV2(admin);
+        fee = new AutomataDcapAttestationV2(admin);
         fee.setQuoteVerifier(verifier);
         router.setAuthorized(verifier, true);
         router.setAuthorized(address(fee), true);
@@ -91,7 +91,7 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
 
     function testAuthenticQuoteMatchesFrozenJournalAndEvent() public {
         vm.recordLogs();
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(_quote(), evaluationNumber, false);
+        (bool success, bytes memory journal, bytes memory body) = fee.verifyAndAttestOnChainV2(_quote(), evaluationNumber, false);
         assertTrue(success, string(journal));
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
         OutputV2 memory output = this.decode(journal);
@@ -99,14 +99,17 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
         assertEq(output.quoteBodyType, version == 3 ? 1 : 2);
         assertEq(output.timestamp, vm.parseJsonUint(fixture, ".verificationTimestamp"));
         assertEq(output.fullQuoteHash, keccak256(_quote()));
+        assertEq(output.quoteBodyHash, keccak256(body));
         assertTrue(output.piidPresent);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 1);
         assertEq(logs[0].emitter, address(fee));
-        assertEq(logs[0].topics[0], keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes)"));
+        assertEq(logs[0].topics[0], keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes32,bool,bytes)"));
         assertEq(logs[0].topics[1], bytes32(uint256(2)));
         assertEq(logs[0].topics[2], bytes32(uint256(1)));
-        (bool eventSuccess, uint8 backend, bytes memory eventOutput) = abi.decode(logs[0].data, (bool, uint8, bytes));
+        (bool eventSuccess, uint8 backend, bytes32 id, bool minimal, bytes memory eventOutput) = abi.decode(logs[0].data, (bool, uint8, bytes32, bool, bytes));
+        assertEq(id, bytes32(0));
+        assertFalse(minimal);
         assertTrue(eventSuccess);
         assertEq(backend, 0);
         assertEq(eventOutput, journal);
@@ -122,7 +125,7 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
         (bool ok, bytes memory result) = address(fee)
             .call(abi.encodeWithSignature("verifyAndAttestOnChainV2(bytes,uint32,bool)", quote, evaluationNumber, minCheck));
         if (ok) {
-            (bool success,) = abi.decode(result, (bool, bytes));
+            (bool success,,) = abi.decode(result, (bool, bytes, bytes));
             assertFalse(success, "invalid quote accepted");
         } else {
             // Do not count an empty/OOG revert or a Solidity panic as policy rejection.
@@ -133,9 +136,9 @@ abstract contract PublicAtaQuoteV2Base is PCCSSetupBase {
         for (uint256 i; i < logs.length; ++i) {
             if (
                 logs[i].emitter == address(fee)
-                    && logs[i].topics[0] == keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes)")
+                    && logs[i].topics[0] == keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes32,bool,bytes)")
             ) {
-                (bool success,,) = abi.decode(logs[i].data, (bool, uint8, bytes));
+                (bool success,,,,) = abi.decode(logs[i].data, (bool, uint8, bytes32, bool, bytes));
                 assertFalse(success, "successful attestation event for invalid quote");
             }
         }
@@ -209,7 +212,7 @@ contract PublicAtaTdxV4Test is PublicAtaQuoteV2Base {
         assertEq(extracted.length, 4935);
         assertEq(original, bytes.concat(extracted, new bytes(3065)));
         _assertRejected(original);
-        (bool success, bytes memory journal) = fee.verifyAndAttestOnChainV2(extracted, evaluationNumber, false);
+        (bool success, bytes memory journal,) = fee.verifyAndAttestOnChainV2(extracted, evaluationNumber, false);
         assertTrue(success, string(journal));
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
     }

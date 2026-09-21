@@ -12,11 +12,11 @@ func TestV2RequiresSeparateFeeKey(t *testing.T) {
 	if _, err := parseNetwork("test", meta, []byte(`{}`), legacy, VersionV2_0); err == nil {
 		t.Fatal("V2 silently selected a legacy Fee address")
 	}
-	missingRouter := []byte(`{"AutomataDcapAttestationFeeV2":"0x2222222222222222222222222222222222222222","PCCSRouter":"0x3333333333333333333333333333333333333333"}`)
+	missingRouter := []byte(`{"AutomataDcapAttestationV2":"0x2222222222222222222222222222222222222222","PCCSRouter":"0x3333333333333333333333333333333333333333"}`)
 	if _, err := parseNetwork("test", meta, []byte(`{}`), missingRouter, VersionV2_0); err == nil {
 		t.Fatal("V2 silently selected a legacy Router")
 	}
-	both := []byte(`{"AutomataDcapAttestationFee":"0x1111111111111111111111111111111111111111","AutomataDcapAttestationFeeV2":"0x2222222222222222222222222222222222222222","PCCSRouter":"0x3333333333333333333333333333333333333333","PCCSRouterV2":"0x4444444444444444444444444444444444444444"}`)
+	both := []byte(`{"AutomataDcapAttestationFee":"0x1111111111111111111111111111111111111111","AutomataDcapAttestationV2":"0x2222222222222222222222222222222222222222","PCCSRouter":"0x3333333333333333333333333333333333333333","PCCSRouterV2":"0x4444444444444444444444444444444444444444"}`)
 	network, err := parseNetwork("test", meta, []byte(`{}`), both, VersionV2_0)
 	if err != nil {
 		t.Fatal(err)

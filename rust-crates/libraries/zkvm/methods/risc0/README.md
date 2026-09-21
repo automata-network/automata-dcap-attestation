@@ -50,10 +50,10 @@ From the repository root:
 CARGO_BUILD_JOBS=2 cargo build --release --locked \
   --manifest-path rust-crates/libraries/zkvm/methods/risc0/Cargo.toml \
   --target-dir rust-crates/target
-r0vm --elf rust-crates/libraries/zkvm/artifacts/v2.0/risc0.elf --id
+r0vm --elf rust-crates/libraries/zkvm/artifacts/v2.0/risc0-strict.elf --id
 ```
 
-The outputs are `zkvm/artifacts/v2.0/risc0.elf` and `risc0.image-id`. Despite its
+The outputs are `zkvm/artifacts/v2.0/risc0-strict.elf` and `risc0.image-id`. Despite its
 historical `.elf` suffix, the former is the RISC Zero 3.x **combined user/kernel
 program binary** produced by `embed_methods`, not a raw ELF. `file` reporting
 `data` is expected. Compute its native ID using `r0vm --id` or
@@ -77,7 +77,7 @@ CARGO_BUILD_JOBS=2 cargo run --locked \
   --manifest-path rust-crates/Cargo.toml \
   -p automata-dcap-zkvm --features risc0 --example risc0_v2_execute \
   --target-dir rust-crates/target -- \
-  rust-crates/libraries/zkvm/artifacts/v2.0/risc0.elf /path/to/v2-input.bin --negative
+  rust-crates/libraries/zkvm/artifacts/v2.0/risc0-strict.elf /path/to/v2-input.bin --negative
 ```
 
 The example requires local `r0vm` 3.0.3, rejects enabled `RISC0_DEV_MODE`, and
@@ -111,7 +111,7 @@ Use the canonical Docker program, not an unrelated locally rebuilt artifact:
 CARGO_BUILD_JOBS=2 cargo run --release --locked \
   --manifest-path rust-crates/Cargo.toml -p automata-dcap-zkvm \
   --features risc0 --example risc0_v2_prove_local --target-dir rust-crates/target -- \
-  /path/to/canonical/risc0.elf /path/to/v2-input.bin /path/to/new.receipt
+  /path/to/canonical/risc0-strict.elf /path/to/v2-input.bin /path/to/new.receipt
 ```
 
 `--release` optimizes the host-side receipt checks, not the supplied canonical

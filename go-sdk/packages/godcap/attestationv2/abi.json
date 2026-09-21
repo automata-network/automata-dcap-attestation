@@ -67,6 +67,11 @@
         "name": "",
         "type": "bytes",
         "internalType": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "quoteBody",
+        "type": "bytes"
       }
     ],
     "stateMutability": "payable"
@@ -91,6 +96,11 @@
         "name": "",
         "type": "bytes",
         "internalType": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "quoteBody",
+        "type": "bytes"
       }
     ],
     "stateMutability": "payable"
@@ -205,6 +215,18 @@
         "type": "uint16",
         "indexed": true,
         "internalType": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "programIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "minCheck",
+        "type": "bool"
       },
       {
         "name": "output",

@@ -17,5 +17,7 @@ CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=/work/build/pico/target 
   --manifest-path rust-crates/libraries/zkvm/methods/pico/Cargo.toml \
   --target-dir /work/build/pico/target
 sha256sum --check /work/results/locks-before.sha256
-cp rust-crates/libraries/zkvm/artifacts/v2.0/pico.elf /work/results/pico.elf
-sha256sum /work/results/pico.elf > /work/results/pico.sha256
+for mode in strict minimal; do
+  cp "rust-crates/libraries/zkvm/artifacts/v2.0/pico-$mode.elf" "/work/results/pico-$mode.elf"
+  sha256sum "/work/results/pico-$mode.elf" > "/work/results/pico-$mode.sha256"
+done

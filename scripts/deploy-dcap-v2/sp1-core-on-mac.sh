@@ -2,6 +2,9 @@
 # Run the exact returned SP1 guest using a packaged ARM64 Linux host helper.
 # No guest build, network prover, circuit changes or on-chain transactions.
 set -euo pipefail
+echo 'Historical SP1 v5 handoff disabled for compact V2. Use the SP1 6.8.0 sp1_v2_prove_local runner documented in rust-crates/libraries/zkvm/methods/sp1/README.md; do not reuse old helpers, checkpoints or IDs.' >&2
+exit 2
+# Retained below solely as a historical resource-budget reference, not executable.
 [[ $# -eq 2 ]] || { echo 'Usage: sp1-core-on-mac.sh HANDOFF NEW_RESULT_DIRECTORY' >&2; exit 2; }
 dcap_handoff=$(cd "$1" && pwd -P)
 [[ ! -e "$2" ]] || { echo 'Result directory already exists' >&2; exit 2; }

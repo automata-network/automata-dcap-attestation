@@ -25,13 +25,22 @@ fn main() {
     env::set_var("RISC0_BUILD_LOCKED", "1");
 
     let entries = risc0_build::embed_methods();
-    let guest = entries.first().expect("missing V2 guest build");
-    assert!(!guest.elf.is_empty(), "empty V2 guest ELF");
     let output =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../artifacts/v2.0");
     fs::create_dir_all(&output).unwrap();
-    fs::write(output.join("risc0.elf"), &guest.elf).unwrap();
-    fs::write(output.join("risc0.image-id"), guest.image_id.to_string()).unwrap();
+    for (name, mode) in [("guest", "strict"), ("guest-minimal", "minimal")] {
+        let guest = entries
+            .iter()
+            .find(|entry| entry.name == name)
+            .expect("missing V2 guest mode");
+        assert!(!guest.elf.is_empty(), "empty V2 guest ELF");
+        fs::write(output.join(format!("risc0-{mode}.elf")), &guest.elf).unwrap();
+        fs::write(
+            output.join(format!("risc0-{mode}.image-id")),
+            guest.image_id.to_string(),
+        )
+        .unwrap();
+    }
     println!("cargo:rerun-if-changed=guest");
     println!("cargo:rerun-if-changed=../../../dcap-rs");
 }

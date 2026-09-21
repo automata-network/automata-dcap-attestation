@@ -34,8 +34,10 @@ for repro_run in a b; do
     2>&1 | tee "$repro_work/$repro_run.log"
   docker cp "$repro_container:/work/results" "$repro_work/$repro_run"
 done
-cmp "$repro_work/a/pico.elf" "$repro_work/b/pico.elf"
+for repro_mode in strict minimal; do
+  cmp "$repro_work/a/pico-$repro_mode.elf" "$repro_work/b/pico-$repro_mode.elf"
+  sha256sum "$repro_work/a/pico-$repro_mode.elf" "$repro_work/b/pico-$repro_mode.elf"
+done
 cmp "$repro_work/a/guest-rustc.txt" "$repro_work/b/guest-rustc.txt"
 cmp "$repro_work/a/locks-before.sha256" "$repro_work/b/locks-before.sha256"
-sha256sum "$repro_work/a/pico.elf" "$repro_work/b/pico.elf"
 echo 'Container-to-container bytes match. Compute native IDs and run guest/proof checks before release.'

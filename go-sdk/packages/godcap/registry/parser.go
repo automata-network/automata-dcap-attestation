@@ -175,7 +175,7 @@ func parseDcapDeployment(data []byte) (*DcapContracts, error) {
 		switch key {
 		case "AutomataDcapAttestationFee":
 			contracts.DcapAttestationFee = addr
-		case "AutomataDcapAttestationFeeV2":
+		case "AutomataDcapAttestationV2":
 			contracts.DcapAttestationFeeV2 = addr
 		case "V3QuoteVerifierV2":
 			contracts.V3QuoteVerifierV2 = addr
@@ -222,7 +222,7 @@ func parseNetwork(
 
 	// Add DcapPortal from metadata if present
 	if version == VersionV2_0 && dcap.DcapAttestationFeeV2 == (common.Address{}) {
-		return nil, fmt.Errorf("missing AutomataDcapAttestationFeeV2 for %s", key)
+		return nil, fmt.Errorf("missing AutomataDcapAttestationV2 for %s", key)
 	}
 	if version == VersionV2_0 {
 		if dcap.PccsRouterV2 == (common.Address{}) {

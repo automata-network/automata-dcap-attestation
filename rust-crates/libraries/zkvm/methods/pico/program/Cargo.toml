@@ -7,6 +7,14 @@ edition = "2021"
 # Required for zkVM compilation with specific patches
 [workspace]
 
+[[bin]]
+name = "dcap-pico-guest-v2-minimal"
+path = "src/minimal.rs"
+
+[[bin]]
+name = "dcap-pico-guest-v2"
+path = "src/main.rs"
+
 [dependencies]
 pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.6" }
 dcap-rs = { path = "../../../../dcap-rs" }

@@ -3,7 +3,7 @@ use alloy_sol_types::SolValue;
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
 
-pub const OUTPUT_V2_HEADER_LENGTH: usize = 289;
+pub const OUTPUT_V2_HEADER_LENGTH: usize = 317;
 pub const OUTPUT_V2_MAX_LENGTH: usize = u16::MAX as usize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,11 +22,25 @@ pub struct VerifiedOutputV2 {
     pub collateral_hashes: [[u8; 32]; 6],
     /// Keccak-256 of the exact raw quote bytes; unrelated to backend journal digests.
     pub full_quote_hash: [u8; 32],
-    pub quote_body: Vec<u8>,
+    pub quote_body_hash: [u8; 32],
     pub advisory_ids: Vec<String>,
 }
 
 impl VerifiedOutputV2 {
+    /// Call only on output obtained from successful trusted verification. This
+    /// binds a separately supplied body; it does not authenticate an output itself.
+    pub fn validate_quote_body(&self, body: &[u8]) -> Result<()> {
+        ensure!(
+            body.len() == Self::body_length(self.quote_version, self.quote_body_type)?,
+            "quote body length mismatch"
+        );
+        ensure!(
+            crate::utils::keccak::hash(body) == self.quote_body_hash,
+            "quote body hash mismatch"
+        );
+        Ok(())
+    }
+
     fn body_length(quote_version: u16, body_type: u16) -> Result<usize> {
         ensure!(
             (3..=5).contains(&quote_version),
@@ -55,14 +69,13 @@ impl VerifiedOutputV2 {
             self.piid_present || self.piid == [0; 16],
             "absent PIID must be zero"
         );
-        let body_len = Self::body_length(self.quote_version, self.quote_body_type)?;
-        ensure!(self.quote_body.len() == body_len, "invalid body length");
+        Self::body_length(self.quote_version, self.quote_body_type)?;
         let advisory = if self.advisory_ids.is_empty() {
             Vec::new()
         } else {
             self.advisory_ids.abi_encode()
         };
-        let total = OUTPUT_V2_HEADER_LENGTH + body_len + advisory.len();
+        let total = OUTPUT_V2_HEADER_LENGTH + advisory.len();
         ensure!(
             total <= OUTPUT_V2_MAX_LENGTH,
             "output exceeds uint16 length"
@@ -78,12 +91,10 @@ impl VerifiedOutputV2 {
         out.extend_from_slice(&self.ppid);
         out.extend_from_slice(&self.piid);
         out.push(u8::from(self.piid_present));
-        out.extend_from_slice(&(OUTPUT_V2_HEADER_LENGTH as u16).to_be_bytes());
-        out.extend_from_slice(&(body_len as u16).to_be_bytes());
         let advisory_offset = if advisory.is_empty() {
             0
         } else {
-            OUTPUT_V2_HEADER_LENGTH + body_len
+            OUTPUT_V2_HEADER_LENGTH
         };
         out.extend_from_slice(&(advisory_offset as u16).to_be_bytes());
         out.extend_from_slice(&(advisory.len() as u16).to_be_bytes());
@@ -92,7 +103,7 @@ impl VerifiedOutputV2 {
             out.extend_from_slice(hash);
         }
         out.extend_from_slice(&self.full_quote_hash);
-        out.extend_from_slice(&self.quote_body);
+        out.extend_from_slice(&self.quote_body_hash);
         out.extend_from_slice(&advisory);
         Ok(out)
     }
@@ -113,15 +124,10 @@ impl VerifiedOutputV2 {
         );
         let quote_version = u16_at(5);
         let quote_body_type = u16_at(7);
-        let body_len = Self::body_length(quote_version, quote_body_type)?;
-        let body_end = OUTPUT_V2_HEADER_LENGTH + body_len;
-        ensure!(
-            u16_at(49) as usize == OUTPUT_V2_HEADER_LENGTH && u16_at(51) as usize == body_len,
-            "invalid body offsets"
-        );
-        ensure!(body_end <= data.len(), "truncated body");
-        let advisory_offset = u16_at(53) as usize;
-        let advisory_len = u16_at(55) as usize;
+        Self::body_length(quote_version, quote_body_type)?;
+        let body_end = OUTPUT_V2_HEADER_LENGTH;
+        let advisory_offset = u16_at(49) as usize;
+        let advisory_len = u16_at(51) as usize;
         let advisory_ids = if advisory_len == 0 {
             ensure!(
                 advisory_offset == 0 && data.len() == body_end,
@@ -142,7 +148,7 @@ impl VerifiedOutputV2 {
         };
         let mut collateral_hashes = [[0; 32]; 6];
         for (i, hash) in collateral_hashes.iter_mut().enumerate() {
-            hash.copy_from_slice(&data[65 + 32 * i..97 + 32 * i]);
+            hash.copy_from_slice(&data[61 + 32 * i..93 + 32 * i]);
         }
         let result = Self {
             format_major_version: 2,
@@ -154,10 +160,10 @@ impl VerifiedOutputV2 {
             ppid: data[16..32].try_into()?,
             piid: data[32..48].try_into()?,
             piid_present: data[48] == 1,
-            timestamp: u64::from_be_bytes(data[57..65].try_into()?),
+            timestamp: u64::from_be_bytes(data[53..61].try_into()?),
             collateral_hashes,
-            full_quote_hash: data[257..289].try_into()?,
-            quote_body: data[289..body_end].to_vec(),
+            full_quote_hash: data[253..285].try_into()?,
+            quote_body_hash: data[285..317].try_into()?,
             advisory_ids,
         };
         ensure!(
@@ -185,7 +191,7 @@ mod tests {
             timestamp: 0x0102030405060708,
             collateral_hashes: [[0x22; 32]; 6],
             full_quote_hash: [0x33; 32],
-            quote_body: vec![0x44; 384],
+            quote_body_hash: crate::utils::keccak::hash(&[0x44; 384]),
             advisory_ids: vec![],
         }
     }
@@ -210,11 +216,19 @@ mod tests {
                 let mut out = example();
                 out.quote_version = version;
                 out.quote_body_type = body;
-                out.quote_body = vec![0x44; len];
+                out.quote_body_hash = crate::utils::keccak::hash(&vec![0x44; len]);
                 out.advisory_ids = ids;
                 let data = out.to_vec().unwrap();
                 assert_eq!(&data[..5], &[0, 2, 0, 1, 6]);
-                assert_eq!(&data[49..51], &289u16.to_be_bytes());
+                assert_eq!(
+                    &data[49..51],
+                    &(if out.advisory_ids.is_empty() {
+                        0u16
+                    } else {
+                        317u16
+                    })
+                    .to_be_bytes()
+                );
                 assert_eq!(VerifiedOutputV2::from_bytes(&data).unwrap(), out);
             }
         }
@@ -232,10 +246,8 @@ mod tests {
             (9, 10),
             (48, 2),
             (32, 1),
-            (49, 0),
-            (51, 0),
-            (53, 1),
-            (56, 1),
+            (49, 1),
+            (51, 1),
         ] {
             let mut bad = data.clone();
             bad[offset] = value;

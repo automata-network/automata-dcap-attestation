@@ -18,7 +18,21 @@ remappings = [
     "openzeppelin/=lib/risc0-ethereum/lib/openzeppelin-contracts/",
     "@sp1-contracts/=lib/sp1-contracts/contracts/src/"
 ]
-solc = "0.8.27"
+# SP1's generated v6 verifier pins 0.8.20. Keep every DCAP unit pinned to
+# 0.8.27, and compile the isolated wrapper with the unmodified upstream compiler.
+auto_detect_solc = true
+compilation_restrictions = [
+    { paths = "contracts/{Automata*,Attestation*,PCCSRouter}.sol", version = "=0.8.27" },
+    { paths = "contracts/zk/**", version = "=0.8.27" },
+    { paths = "contracts/bases/**", version = "=0.8.27" },
+    { paths = "contracts/types/**", version = "=0.8.27" },
+    { paths = "contracts/utils/**", version = "=0.8.27" },
+    { paths = "contracts/interfaces/**", version = "=0.8.27" },
+    { paths = "contracts/verifiers/V*.sol", version = "=0.8.27" },
+    { paths = "contracts/verifiers/SP1Groth16VerifierV6.sol", version = "=0.8.20" },
+    { paths = "forge-script/**", version = "=0.8.27" },
+    { paths = "forge-test/**", version = "=0.8.27" }
+]
 optimizer = true
 optimizer_runs = 200
 
@@ -35,7 +49,19 @@ evm_version = "osaka"
 out = "out_fork_osaka"
 cache_path = "cache_fork_osaka"
 additional_compiler_profiles = [{ name = "release_paris", evm_version = "paris" }]
-compilation_restrictions = [{ paths = "**", evm_version = "paris" }]
+compilation_restrictions = [
+    { paths = "**", evm_version = "paris" },
+    { paths = "contracts/{Automata*,Attestation*,PCCSRouter}.sol", version = "=0.8.27" },
+    { paths = "contracts/zk/**", version = "=0.8.27" },
+    { paths = "contracts/bases/**", version = "=0.8.27" },
+    { paths = "contracts/types/**", version = "=0.8.27" },
+    { paths = "contracts/utils/**", version = "=0.8.27" },
+    { paths = "contracts/interfaces/**", version = "=0.8.27" },
+    { paths = "contracts/verifiers/V*.sol", version = "=0.8.27" },
+    { paths = "contracts/verifiers/SP1Groth16VerifierV6.sol", version = "=0.8.20" },
+    { paths = "forge-script/**", version = "=0.8.27" },
+    { paths = "forge-test/**", version = "=0.8.27" }
+]
 
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}" }

@@ -18,9 +18,13 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args: Vec<_> = std::env::args().skip(1).collect();
+    let mut args: Vec<_> = std::env::args().skip(1).collect();
+    let minimal = args.last().is_some_and(|a| a == "--minimal");
+    if minimal {
+        args.pop();
+    }
     ensure!(args.len() == 5 || args.len() == 6,
-        "usage: risc0_v2_groth16_handoff prepare|import PROGRAM INPUT SUCCINCT_RECEIPT NEW_DIR [PROOF_JSON]");
+        "usage: risc0_v2_groth16_handoff prepare|import PROGRAM INPUT SUCCINCT_RECEIPT NEW_DIR [PROOF_JSON] [--minimal]");
     ensure!(
         (args[0] == "prepare" && args.len() == 5) || (args[0] == "import" && args.len() == 6),
         "invalid mode/arguments"
@@ -38,7 +42,11 @@ fn main() -> Result<()> {
         "SDK image ID mismatch"
     );
     let input = std::fs::read(&args[2])?;
-    let expected = dcap_rs::v2::verify_guest_input_v2(&input)?;
+    let expected = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal(&input)
+    } else {
+        dcap_rs::v2::verify_guest_input_v2(&input)
+    }?;
     let source_bytes = std::fs::read(&args[3])?;
     let source: Receipt = bincode::deserialize(&source_bytes)?;
     source
@@ -97,7 +105,7 @@ fn main() -> Result<()> {
         let manifest = serde_json::json!({
             "schema": 1, "status": "WITNESS_PREPARED_NOT_PROVEN", "backend": "risc0",
             "r0vmVersion": "3.0.3", "groth16ImageTag": "risczero/risc0-groth16-prover:v2025-04-03.1",
-            "programId": format!("0x{id}"), "verifierParameters": parameters.to_string(),
+            "programId": format!("0x{id}"), "minCheck": minimal, "verifierParameters": parameters.to_string(),
             "journal": format!("0x{}", hex::encode(&expected)),
             "expectedDockerFailure": format!("{error:#}")
         });
@@ -138,7 +146,7 @@ fn main() -> Result<()> {
     std::fs::create_dir(output)?;
     write_new(&output.join("receipt.bin"), &bincode::serialize(&receipt)?)?;
     let payload = serde_json::json!({
-        "backend": 1, "proofSystem": "groth16", "programId": format!("0x{id}"),
+        "backend": 1, "proofSystem": "groth16", "programId": format!("0x{id}"), "minCheck": minimal,
         "journal": format!("0x{}", hex::encode(&expected)), "proof": format!("0x{}", hex::encode(&evm_seal)),
         "proofSelector": format!("0x{}", hex::encode(&evm_seal[..4])),
         "localVerification": "PASS", "forkVerification": "NOT_RUN"

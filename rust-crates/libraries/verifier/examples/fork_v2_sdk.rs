@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
             .await?;
     }
     let mut rows = Vec::new();
-    let address: Address = report["contracts"]["AutomataDcapAttestationFeeV2"]["address"]
+    let address: Address = report["contracts"]["AutomataDcapAttestationV2"]["address"]
         .as_str()
         .context("FeeV2 address missing")?
         .parse()?;
@@ -81,11 +81,14 @@ async fn main() -> Result<()> {
             dcap_rs::v2::verify_guest_input_v2(&input).context("native full DCAP verification")?;
         let output = verify_and_attest_on_chain_v2(&provider, address, &quote, eval, false).await?;
         ensure!(
-            output.as_ref() == native,
+            output.output.as_ref() == native,
             "{name}: native vs explicit SDK output mismatch"
         );
         let minimal = verify_and_attest_on_chain_v2(&provider, address, &quote, eval, true).await?;
-        ensure!(minimal == output, "{name}: minimal SDK output mismatch");
+        ensure!(
+            minimal.output == output.output && minimal.quote_body == output.quote_body,
+            "{name}: minimal SDK output mismatch"
+        );
         let result = IAutomataDcapAttestationV2Default::new(address, &provider)
             .verifyAndAttestOnChainV2(Bytes::copy_from_slice(&quote))
             .call()

@@ -32,7 +32,7 @@ test_case() {
   local test_log="$test_work/$test_backend-$test_mode.log" test_results
   PATH="$test_work/bin:$PATH" TMPDIR="$test_work/linked-tmp" \
     REPRO_SOURCE_ARCHIVE="$test_work/source.tar" SP1_CARGO_PROVE="$test_work/bin/cargo-prove" \
-    MOCK_MODE="$test_mode" bash "$test_scripts/reproduce-official.sh" "$test_backend" "$test_commit" \
+    MOCK_MODE="$test_mode" bash "$test_scripts/reproduce-official.sh" "$test_backend" "$test_commit" "${4:-strict}" \
     > "$test_log" 2>&1 || test_status=$?
   if test "$test_status" -ne "$test_expected"; then
     sed -n '1,160p' "$test_log"
@@ -59,10 +59,11 @@ test_case() {
   fi
 }
 test_case risc0 pass 0
+test_case risc0 pass 0 minimal
 test_case sp1 pass 0
 test_case sp1 mismatch 1
 test_case sp1 fail 42
 test_case sp1 bad_id 1
 test_case sp1 lock_change 1
-echo '7 orchestration/portability cases passed using FAKE tools. No Docker builds or proofs verified.'
+echo '8 orchestration/portability cases passed using FAKE tools. No Docker builds or proofs verified.'
 echo "Retained test evidence: $test_work"

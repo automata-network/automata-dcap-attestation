@@ -1,18 +1,25 @@
 //! Execute an explicit Pico V2 ELF and compare its journal to native verification.
 //! This is an execution check, NOT a proof or universal-verifier compatibility test.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use p3_field::PrimeField;
-use pico_sdk::{client::KoalaBearProverClient, HashableKey};
+use pico_sdk::{HashableKey, client::KoalaBearProverClient};
 
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     ensure!(
-        args.len() == 2,
-        "usage: pico_v2_execute <ELF> <V2 ABI input>"
+        args.len() == 2 || (args.len() == 3 && args[2] == "--minimal"),
+        "usage: pico_v2_execute <ELF> <V2 ABI input> [--minimal]"
     );
     let elf = std::fs::read(&args[0]).context("read ELF")?;
     let input = std::fs::read(&args[1]).context("read V2 ABI input")?;
-    let expected = dcap_rs::v2::verify_guest_input_v2(&input).context("native V2 verification")?;
+    let minimal = args.len() == 3;
+    let expected = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal(&input)
+    } else {
+        dcap_rs::v2::verify_guest_input_v2(&input)
+    }
+    .context("native V2 verification")?;
+    println!("mode={}", if minimal { "minimal" } else { "strict" });
 
     let client = KoalaBearProverClient::new(&elf);
     let id = client

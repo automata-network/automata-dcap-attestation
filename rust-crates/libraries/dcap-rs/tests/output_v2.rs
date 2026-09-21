@@ -56,12 +56,24 @@ fn real_tdx15_v2_output() {
         output.full_quote_hash,
         alloy::primitives::keccak256(quote).0
     );
-    assert_ne!(&output.quote_body[600..648], &[0u8; 48]);
+    let parsed = dcap_rs::types::quote::Quote::read(&mut quote.as_slice()).unwrap();
+    assert_ne!(&parsed.body.as_bytes()[600..648], &[0u8; 48]);
+    assert_eq!(
+        output.quote_body_hash,
+        alloy::primitives::keccak256(parsed.body.as_bytes()).0
+    );
+    let body = parsed.body.as_bytes();
+    output.validate_quote_body(body).unwrap();
+    let mut changed = body.to_vec();
+    changed[0] ^= 1;
+    assert!(output.validate_quote_body(&changed).is_err());
+    assert!(output.validate_quote_body(&body[..body.len() - 1]).is_err());
     let input = dcap_rs::v2::encode_guest_input_v2(&collateral, quote, 1749945600).unwrap();
     assert_eq!(
-        dcap_rs::v2::verify_guest_input_v2(&input).unwrap(),
+        dcap_rs::v2::verify_guest_input_v2_minimal(&input).unwrap(),
         output.to_vec().unwrap()
     );
+    assert!(dcap_rs::v2::verify_guest_input_v2(&input).is_err());
 }
 
 #[test]

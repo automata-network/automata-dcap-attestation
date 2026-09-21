@@ -1,5 +1,12 @@
 # Sepolia V2 acceptance — 2026-09-14
 
+> Historical inline-body V2 checkpoint/runbook. The compact revision changes the
+> entrypoint, journal, event, mode-specific IDs and SP1 target version. These old
+> build/proof/deployment results do not establish acceptance of the new revision.
+> See [current revision status](dcap-v2-revision-progress.md),
+> [design](dcap-v2-design.md), and the
+> [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md).
+
 > Superseded checkpoint: the minCheck/Keccak revision changes guest semantics,
 > fullQuoteHash and the long V2 selectors. Build IDs, proofs, fork acceptance
 > and gas results below are historical, not acceptance for the current source.

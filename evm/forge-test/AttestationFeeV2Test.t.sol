@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 import "forge-std/Test.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {ZkCoProcessorType, ZkCoProcessorConfig} from "../contracts/AttestationEntrypointBase.sol";
 import {IQuoteVerifierV2, IQuoteVerifier, Header} from "../contracts/interfaces/IQuoteVerifierV2.sol";
 import {IPCCSRouter} from "../contracts/interfaces/IPCCSRouter.sol";
 import {OutputV2} from "../contracts/types/OutputV2.sol";
 import {OutputV2Codec} from "../contracts/utils/OutputV2Codec.sol";
 import {CA} from "@automata-network/on-chain-pccs/Common.sol";
+import {AutomataDcapAttestationFee} from "../contracts/AutomataDcapAttestationFee.sol";
 
 contract FeeV2QuoteMock is IQuoteVerifierV2 {
     IPCCSRouter public immutable pccsRouter;
@@ -67,15 +68,16 @@ contract FeeV2UniversalMock {
 }
 
 contract AttestationFeeV2Test is Test {
-    AutomataDcapAttestationFeeV2 fee;
+    AutomataDcapAttestationV2 fee;
     FeeV2QuoteMock quote;
     FeeV2UniversalMock universal;
     address constant ROUTER = address(0x1234);
     bytes32 constant LEGACY_ID = bytes32(uint256(1));
     bytes32 constant V2_ID = bytes32(uint256(2));
+    bytes32 constant MINIMAL_ID = bytes32(uint256(3));
 
     function setUp() public {
-        fee = new AutomataDcapAttestationFeeV2(address(this));
+        fee = new AutomataDcapAttestationV2(address(this));
         quote = new FeeV2QuoteMock(ROUTER);
         universal = new FeeV2UniversalMock();
         fee.setQuoteVerifier(address(quote));
@@ -105,8 +107,10 @@ contract AttestationFeeV2Test is Test {
             abi.encode(bytes32(uint256(4)))
         );
         for (uint8 backend = 1; backend <= 3; ++backend) {
-            fee.setZkConfiguration(ZkCoProcessorType(backend), ZkCoProcessorConfig(LEGACY_ID, address(universal)));
-            fee.setZkConfigurationV2(ZkCoProcessorType(backend), ZkCoProcessorConfig(V2_ID, address(universal)));
+            fee.setZkVerifierV2(ZkCoProcessorType(backend), address(universal));
+            fee.addProgramIdentifierV2(ZkCoProcessorType(backend), V2_ID, false);
+            fee.addProgramIdentifierV2(ZkCoProcessorType(backend), MINIMAL_ID, true);
+            fee.setDefaultProgramIdentifierV2(ZkCoProcessorType(backend), V2_ID);
         }
     }
 
@@ -115,8 +119,10 @@ contract AttestationFeeV2Test is Test {
     }
 
     function journal() internal returns (bytes memory) {
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(quoteBytes());
+        (bool success, bytes memory output, bytes memory body) = fee.verifyAndAttestOnChainV2(quoteBytes());
         assertTrue(success);
+        assertEq(body.length, 384);
+        assertEq(this.decode(output).quoteBodyHash, keccak256(body));
         return output;
     }
 
@@ -125,7 +131,9 @@ contract AttestationFeeV2Test is Test {
     }
 
     function testOnChainLegacyUnchangedAndNewEventOnly() public {
-        (bool success, bytes memory old) = fee.verifyAndAttestOnChain(quoteBytes());
+        AutomataDcapAttestationFee legacy = new AutomataDcapAttestationFee(address(this));
+        legacy.setQuoteVerifier(address(quote));
+        (bool success, bytes memory old) = legacy.verifyAndAttestOnChain(quoteBytes());
         assertTrue(success);
         assertEq(old, quote.legacy());
         vm.recordLogs();
@@ -133,7 +141,7 @@ contract AttestationFeeV2Test is Test {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 1);
         assertEq(logs[0].topics.length, 3);
-        assertEq(logs[0].topics[0], keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes)"));
+        assertEq(logs[0].topics[0], keccak256("AttestationSubmittedV2(bool,uint8,uint16,uint16,bytes32,bool,bytes)"));
         assertEq(logs[0].topics[1], bytes32(uint256(2)));
         assertEq(logs[0].topics[2], bytes32(uint256(1)));
         OutputV2 memory decoded = this.decode(output);
@@ -154,24 +162,57 @@ contract AttestationFeeV2Test is Test {
         }
     }
 
-    function testProgramFamiliesDoNotCrossAndRollbackPreservesLegacy() public {
+    function testProgramFamiliesDoNotCrossAndPauseRejectsV2() public {
         bytes memory output = journal();
         (bool success,) =
             fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 0, false);
         assertFalse(success);
-        (success,) = fee.verifyAndAttestWithZKProof(output, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 0);
-        assertFalse(success);
         fee.setZkV2Paused(true);
         (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4));
         assertFalse(success);
-        bytes memory old = quote.legacy();
-        bytes memory legacyJournal = abi.encodePacked(uint16(old.length), old, new bytes(200));
-        universal.expectProof(LEGACY_ID, legacyJournal);
-        bytes memory verified;
-        (success, verified) = fee.verifyAndAttestWithZKProof(legacyJournal, ZkCoProcessorType.RiscZero, new bytes(4));
-        assertTrue(success);
-        assertEq(verified, old);
-        assertEq(fee.programIdentifier(ZkCoProcessorType.RiscZero), LEGACY_ID);
+    }
+
+    function testLegacySelectorsAreUnavailableEvenToOwner() public {
+        bytes[] memory calls = new bytes[](13);
+        calls[0] = abi.encodeWithSignature("setZkConfiguration(uint8,(bytes32,address))", uint8(1), ZkCoProcessorConfig(LEGACY_ID, address(universal)));
+        calls[1] = abi.encodeWithSignature("updateProgramIdentifier(uint8,bytes32)", uint8(1), LEGACY_ID);
+        calls[2] = abi.encodeWithSignature("programIdentifier(uint8)", uint8(1));
+        calls[3] = abi.encodeWithSignature("programIdentifiers(uint8)", uint8(1));
+        calls[4] = abi.encodeWithSignature("verifyAndAttestOnChain(bytes)", quoteBytes());
+        calls[5] = abi.encodeWithSignature("verifyAndAttestOnChain(bytes,uint32)", quoteBytes(), uint32(17));
+        calls[6] = abi.encodeWithSignature("verifyAndAttestWithZKProof(bytes,uint8,bytes)", bytes(""), uint8(1), new bytes(4));
+        calls[7] = abi.encodeWithSignature("removeProgramIdentifier(uint8,bytes32)", uint8(1), V2_ID);
+        calls[8] = abi.encodeWithSignature("verifyAndAttestWithZKProof(bytes,uint8,bytes,bytes32,uint32)", bytes(""), uint8(1), new bytes(4), LEGACY_ID, uint32(17));
+        calls[9] = abi.encodeWithSignature("zkVerifier(uint8)", uint8(1));
+        calls[10] = abi.encodeWithSignature("zkVerifier(uint8,bytes4)", uint8(1), bytes4(0));
+        calls[11] = abi.encodeWithSignature("setZkConfigurationV2(uint8,(bytes32,address))", uint8(1), ZkCoProcessorConfig(V2_ID, address(universal)));
+        calls[12] = abi.encodeWithSignature("updateProgramIdentifierV2(uint8,bytes32)", uint8(1), V2_ID);
+        for (uint256 i; i < calls.length; ++i) {
+            (bool ok,) = address(fee).call(calls[i]);
+            assertFalse(ok);
+        }
+        assertEq(fee.programIdentifierV2(ZkCoProcessorType.RiscZero), V2_ID);
+    }
+
+    function testRegistrationDefaultAndImmutableModeAreIndependent() public {
+        ZkCoProcessorType backend = ZkCoProcessorType.RiscZero;
+        bytes32 next = bytes32(uint256(99));
+        fee.addProgramIdentifierV2(backend, next, false);
+        assertEq(fee.programIdentifierV2(backend), V2_ID);
+        fee.setDefaultProgramIdentifierV2(backend, next);
+        assertEq(fee.programIdentifierV2(backend), next);
+        vm.expectRevert(bytes("Default program must be strict"));
+        fee.setDefaultProgramIdentifierV2(backend, MINIMAL_ID);
+        vm.expectRevert(bytes("Program identifier does not exist"));
+        fee.setDefaultProgramIdentifierV2(backend, bytes32(uint256(100)));
+        fee.removeProgramIdentifierV2(backend, MINIMAL_ID);
+        vm.expectRevert(bytes("Program mode is immutable"));
+        fee.addProgramIdentifierV2(backend, MINIMAL_ID, false);
+        fee.addProgramIdentifierV2(backend, MINIMAL_ID, true);
+        (bool registered, bool minCheck) = fee.programModeV2(backend, MINIMAL_ID);
+        assertTrue(registered && minCheck);
+        vm.expectRevert();
+        fee.removeProgramIdentifierV2(backend, next);
     }
 
     function testInvalidProofAndCollateralRejected() public {
@@ -190,7 +231,7 @@ contract AttestationFeeV2Test is Test {
         fee.setZkV2Paused(true);
         vm.prank(address(42));
         vm.expectRevert();
-        fee.updateProgramIdentifierV2(ZkCoProcessorType.RiscZero, bytes32(uint256(99)));
+        fee.addProgramIdentifierV2(ZkCoProcessorType.RiscZero, bytes32(uint256(99)), false);
     }
 
     function testV2ProofFramingFailuresAndStrictJournalReverts() public {

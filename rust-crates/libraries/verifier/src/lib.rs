@@ -6,7 +6,9 @@
 
 pub mod utils;
 pub mod v2;
-pub use v2::{verify_and_attest_on_chain_v2, verify_and_attest_with_zk_proof_v2};
+pub use v2::{
+    RawVerificationV2, verify_and_attest_on_chain_v2, verify_and_attest_with_zk_proof_v2,
+};
 
 use alloy::primitives::Bytes;
 use alloy::providers::Provider;
@@ -114,7 +116,8 @@ pub async fn verify_and_attest_on_chain<P: Provider>(
             tcb_eval_data_num.unwrap_or(0),
             false,
         )
-        .await;
+        .await
+        .map(|result| result.output);
     }
 
     // Step 3: Create contract instance

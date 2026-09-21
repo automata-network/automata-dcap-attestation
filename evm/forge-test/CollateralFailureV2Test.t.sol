@@ -5,9 +5,15 @@ import "./QuoteV3V4V2Test.t.sol";
 import "../contracts/verifiers/V5QuoteVerifier.sol";
 
 contract CollateralFailureV2Test is QuoteV3V4V2Test {
-    function feeFor(IQuoteVerifier verifier) internal returns (AutomataDcapAttestationFeeV2 fee) {
+    function legacyFor(IQuoteVerifier verifier) internal returns (AutomataDcapAttestationFee legacy) {
         vm.startPrank(admin);
-        fee = new AutomataDcapAttestationFeeV2(admin);
+        legacy = new AutomataDcapAttestationFee(admin);
+        legacy.setQuoteVerifier(address(verifier));
+        vm.stopPrank();
+    }
+    function feeFor(IQuoteVerifier verifier) internal returns (AutomataDcapAttestationV2 fee) {
+        vm.startPrank(admin);
+        fee = new AutomataDcapAttestationV2(admin);
         fee.setQuoteVerifier(address(verifier));
         pccsRouter.setAuthorized(address(fee), true);
         pccsRouter.setAuthorized(address(verifier), true);
@@ -16,24 +22,24 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
 
     function testV2RejectsAbsentIdentityThroughStrictRouterGetter() public {
         testQuoteV3OnChainAttestation();
-        AutomataDcapAttestationFeeV2 fee = feeFor(attestation.quoteVerifiers(3));
+        AutomataDcapAttestationV2 fee = feeFor(attestation.quoteVerifiers(3));
         // Also defend against routers returning a zero hash instead of reverting.
         vm.mockCall(
             address(pccsRouter),
             abi.encodeWithSelector(IPCCSRouter.getQeIdentityContentHash.selector, EnclaveId.QE, uint256(4), uint32(17)),
             abi.encode(bytes32(0))
         );
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(readHex("quote-v3"), 17, false);
+        (bool success, bytes memory output,) = fee.verifyAndAttestOnChainV2(readHex("quote-v3"), 17, false);
         assertFalse(success);
         assertEq(string(output), QEIDCH);
         // The legacy verifier does not acquire this new strict hash dependency.
-        (success,) = fee.verifyAndAttestOnChain(readHex("quote-v3"), 17);
+        (success,) = legacyFor(attestation.quoteVerifiers(3)).verifyAndAttestOnChain(readHex("quote-v3"), 17);
         assertTrue(success);
     }
 
     function testV2ExpiredIdentityHasExplicitRouterFailure() public {
         testQuoteV3OnChainAttestation();
-        AutomataDcapAttestationFeeV2 fee = feeFor(attestation.quoteVerifiers(3));
+        AutomataDcapAttestationV2 fee = feeFor(attestation.quoteVerifiers(3));
         vm.startPrank(admin);
         pccsRouter.setAuthorized(address(this), true);
         vm.stopPrank();
@@ -48,14 +54,14 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
 
     function testV2MissingIdentityHasExplicitRouterFailure() public {
         testQuoteV3OnChainAttestation();
-        AutomataDcapAttestationFeeV2 fee = feeFor(attestation.quoteVerifiers(3));
+        AutomataDcapAttestationV2 fee = feeFor(attestation.quoteVerifiers(3));
         // Missing DAO data is represented by zero validity timestamps.
         vm.mockCall(address(enclaveIdDao), abi.encodeWithSelector(bytes4(0x3e960426)),
             abi.encode(uint64(0), uint64(0)));
         bytes memory raw = readHex("quote-v3");
         vm.expectRevert(abi.encodeWithSelector(PCCSRouter.QEIdentityExpiredOrNotFound.selector, EnclaveId.QE, 4));
         fee.verifyAndAttestOnChainV2(raw, 17, false);
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChain(raw, 17);
+        (bool success, bytes memory output) = legacyFor(attestation.quoteVerifiers(3)).verifyAndAttestOnChain(raw, 17);
         assertFalse(success);
         assertEq(string(output), QEIDVE);
     }
@@ -76,32 +82,33 @@ contract CollateralFailureV2Test is QuoteV3V4V2Test {
         bytes memory raw = abi.encodePacked(header, hex"010080010000", BytesUtils.substring(v3, 48, 384),
             le32(uint32(nested.length)), nested);
         V5QuoteVerifier verifier = new V5QuoteVerifier(P256_VERIFIER, address(pccsRouter));
-        AutomataDcapAttestationFeeV2 fee = feeFor(verifier);
+        AutomataDcapAttestationV2 fee = feeFor(verifier);
         vm.mockCall(P256_VERIFIER, bytes(""), abi.encode(uint256(1)));
         TCBLevelsObj[] memory levels = new TCBLevelsObj[](0);
         TDXModule memory module;
         TDXModuleIdentity[] memory identities = new TDXModuleIdentity[](0);
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
+        (bool success, bytes memory output,) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertFalse(success);
         assertEq(string(output), TCBR);
+        AutomataDcapAttestationFee legacy = legacyFor(verifier);
         vm.expectRevert(stdError.indexOOBError);
-        fee.verifyAndAttestOnChain(raw, 17);
+        legacy.verifyAndAttestOnChain(raw, 17);
         // A nonempty list with no matching SVN must take the same failure branch.
         levels = new TCBLevelsObj[](1);
         levels[0].sgxComponentCpuSvns = new uint8[](16);
         levels[0].sgxComponentCpuSvns[0] = 255;
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
+        (success, output,) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertFalse(success);
         assertEq(string(output), TCBR);
         levels[0].sgxComponentCpuSvns[0] = 0;
         levels[0].status = TCBStatus.OK;
         vm.mockCall(address(pccsRouter), abi.encodeWithSelector(IPCCSRouter.getFmspcTcbV3.selector),
             abi.encode(levels, module, identities));
-        (success, output) = fee.verifyAndAttestOnChainV2(raw, 17, false);
+        (success, output,) = fee.verifyAndAttestOnChainV2(raw, 17, false);
         assertTrue(success, string(output));
     }
 

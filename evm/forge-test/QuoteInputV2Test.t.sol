@@ -2,17 +2,18 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationFee} from "../contracts/AutomataDcapAttestationFee.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import "../contracts/verifiers/V3QuoteVerifier.sol";
 import "../contracts/verifiers/V4QuoteVerifier.sol";
 import "../contracts/verifiers/V5QuoteVerifier.sol";
 
 /// Framing-only tests: deliberately malformed quotes must fail before PCCS/crypto calls.
 contract QuoteInputV2Test is Test {
-    AutomataDcapAttestationFeeV2 fee;
+    AutomataDcapAttestationV2 fee;
 
     function setUp() public {
-        fee = new AutomataDcapAttestationFeeV2(address(this));
+        fee = new AutomataDcapAttestationV2(address(this));
         fee.setQuoteVerifier(address(new V3QuoteVerifier(address(0), address(0))));
         fee.setQuoteVerifier(address(new V4QuoteVerifier(address(0), address(0))));
         fee.setQuoteVerifier(address(new V5QuoteVerifier(address(0), address(0))));
@@ -47,7 +48,7 @@ contract QuoteInputV2Test is Test {
     }
 
     function assertFailure(bytes memory raw, string memory reason) internal {
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(raw);
+        (bool success, bytes memory output,) = fee.verifyAndAttestOnChainV2(raw);
         assertFalse(success);
         assertEq(string(output), reason);
     }
@@ -81,8 +82,10 @@ contract QuoteInputV2Test is Test {
                 assembly ("memory-safe") { mstore(raw, 1020) }
                 putLE(raw, start - 4, 1020 - start, 4);
                 assertFailure(raw, ADF);
+                AutomataDcapAttestationFee legacy = new AutomataDcapAttestationFee(address(this));
+                legacy.setQuoteVerifier(address(fee.quoteVerifiers(version)));
                 vm.expectRevert();
-                fee.verifyAndAttestOnChain(raw);
+                legacy.verifyAndAttestOnChain(raw);
             }
         }
     }
@@ -93,7 +96,7 @@ contract QuoteInputV2Test is Test {
         (bytes memory raw,) = sample(version, body);
         uint256 size = bound(length, 0, raw.length - 1);
         assembly ("memory-safe") { mstore(raw, size) }
-        (bool success,) = fee.verifyAndAttestOnChainV2(raw);
+        (bool success,,) = fee.verifyAndAttestOnChainV2(raw);
         assertFalse(success);
     }
 }

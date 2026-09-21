@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 import "forge-std/Script.sol";
 import {PCKHelper} from "@automata-network/on-chain-pccs/helpers/PCKHelper.sol";
 import {AutomataDcapAttestationFee} from "../contracts/AutomataDcapAttestationFee.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {
     AttestationEntrypointBase,
     ZkCoProcessorConfig,
@@ -24,12 +24,28 @@ interface IDaoResolverV2 {
     function resolver() external view returns (address);
 }
 
-/// @notice Explicit, single-chain stages. Never rewrites current registry keys or deploys universal verifiers.
+/// @notice Explicit, isolated stages. Never rewrites shared routes or current registry keys.
 /// @dev Run simulations first. --broadcast and the owner's signer are separate operator actions.
 contract DeployDcapV2 is Script {
+    /// @notice Optional independent SP1 v6 verifier; never upgrades a shared gateway.
+    function deploySp1Groth16V6(uint256 expectedChainId, address owner) external returns (address verifier) {
+        require(block.chainid == expectedChainId, "Wrong chain");
+        require(owner != address(0), "Invalid owner");
+        // The unmodified upstream verifier is compiled with solc 0.8.20.
+        // Loading its artifact avoids importing it into this 0.8.27 unit.
+        bytes memory creationCode = vm.getCode("SP1Groth16VerifierV6.sol:SP1Groth16VerifierV6");
+        vm.startBroadcast(owner);
+        assembly ("memory-safe") {
+            verifier := create(0, add(creationCode, 32), mload(creationCode))
+        }
+        require(verifier != address(0), "SP1 deployment failed");
+        vm.stopBroadcast();
+        console.log("SP1Groth16VerifierV6", verifier);
+    }
+
     struct Deployment {
         address helper;
-        address fee;
+        address attestation;
         address v3;
         address v4;
         address v5;
@@ -73,19 +89,19 @@ contract DeployDcapV2 is Script {
         vm.startBroadcast(owner);
         d.helper = address(new PCKHelper());
         router = new PCCSRouter(owner, shared[0], shared[1], shared[2], d.helper, shared[3], shared[4]);
-        d.fee = address(new AutomataDcapAttestationFeeV2(owner));
+        d.attestation = address(new AutomataDcapAttestationV2(owner));
         d.v3 = address(new V3QuoteVerifier(p256, address(router)));
         d.v4 = address(new V4QuoteVerifier(p256, address(router)));
         d.v5 = address(new V5QuoteVerifier(p256, address(router)));
-        AutomataDcapAttestationFeeV2 fee = AutomataDcapAttestationFeeV2(d.fee);
-        fee.setBp(legacyFee.getBp());
-        fee.setZkV2Paused(true);
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        attestation.setBp(legacyFee.getBp());
+        attestation.setZkV2Paused(true);
         address[3] memory verifiers = [d.v3, d.v4, d.v5];
         for (uint256 i; i < verifiers.length; ++i) {
-            fee.setQuoteVerifier(verifiers[i]);
+            attestation.setQuoteVerifier(verifiers[i]);
             router.setAuthorized(verifiers[i], true);
         }
-        router.setAuthorized(d.fee, true);
+        router.setAuthorized(d.attestation, true);
         router.enableCallerRestriction();
         for (uint256 i; i < evaluations.length; ++i) {
             router.setQeIdDaoVersionedAddr(evaluations[i], legacyRouter.qeIdDaoVersionedAddr(evaluations[i]));
@@ -94,7 +110,7 @@ contract DeployDcapV2 is Script {
         vm.stopBroadcast();
         console.log("PCCSRouterV2", address(router));
         console.log("PCKHelperV2", d.helper);
-        console.log("AutomataDcapAttestationFeeV2", d.fee);
+        console.log("AutomataDcapAttestationV2", d.attestation);
         console.log("V3QuoteVerifierV2", d.v3);
         console.log("V4QuoteVerifierV2", d.v4);
         console.log("V5QuoteVerifierV2", d.v5);
@@ -129,13 +145,13 @@ contract DeployDcapV2 is Script {
         address owner,
         AutomataDcapAttestationFee legacyFee,
         PCCSRouter legacyRouter,
-        AutomataDcapAttestationFeeV2 fee,
+        AutomataDcapAttestationV2 attestation,
         ZkCoProcessorType[] calldata backends
     ) external {
         require(block.chainid == expectedChainId, "Wrong chain");
-        require(address(fee) != address(legacyFee) && fee.owner() == owner, "Invalid target");
+        require(address(attestation) != address(legacyFee) && attestation.owner() == owner, "Invalid target");
         require(backends.length > 0, "Missing backend inventory");
-        PCCSRouter router = PCCSRouter(address(V3QuoteVerifier(address(fee.quoteVerifiers(3))).pccsRouter()));
+        PCCSRouter router = PCCSRouter(address(V3QuoteVerifier(address(attestation.quoteVerifiers(3))).pccsRouter()));
         require(
             address(router) != address(legacyRouter) && router.owner() == owner
                 && router.pckHelperAddr() != legacyRouter.pckHelperAddr(),
@@ -143,7 +159,7 @@ contract DeployDcapV2 is Script {
         );
         for (uint16 version = 3; version <= 5; ++version) {
             require(
-                address(V3QuoteVerifier(address(fee.quoteVerifiers(version))).pccsRouter()) == address(router),
+                address(V3QuoteVerifier(address(attestation.quoteVerifiers(version))).pccsRouter()) == address(router),
                 "Inconsistent Router"
             );
         }
@@ -152,15 +168,15 @@ contract DeployDcapV2 is Script {
             require(
                 backend == ZkCoProcessorType.RiscZero || backend == ZkCoProcessorType.Succinct, "Unsupported backend"
             );
-            require(fee.programIdentifierV2(backend) != bytes32(0), "Missing V2 program");
-            require(
-                fee.zkVerifierV2(backend, bytes4(0)).code.length > 0
-                    && fee.zkVerifierV2(backend, bytes4(0)) == legacyFee.zkVerifier(backend),
-                "Reuse existing backend only"
-            );
+            require(attestation.programIdentifierV2(backend) != bytes32(0), "Missing V2 program");
+            require(legacyFee.zkVerifier(backend).code.length > 0, "No existing backend support");
+            require(attestation.zkVerifierV2(backend, bytes4(0)).code.length > 0, "Missing backend verifier");
+            (bool registered, bool minCheck) =
+                attestation.programModeV2(backend, attestation.programIdentifierV2(backend));
+            require(registered && !minCheck, "Strict default required");
         }
         vm.startBroadcast(owner);
-        fee.setZkV2Paused(false);
+        attestation.setZkV2Paused(false);
         vm.stopBroadcast();
     }
 
@@ -169,13 +185,13 @@ contract DeployDcapV2 is Script {
         require(p256 == address(0x100) || p256.code.length > 0, "Invalid P256 verifier");
         vm.startBroadcast(owner);
         d.helper = address(new PCKHelper());
-        d.fee = address(new AutomataDcapAttestationFeeV2(owner));
+        d.attestation = address(new AutomataDcapAttestationV2(owner));
         d.v3 = address(new V3QuoteVerifier(p256, router));
         d.v4 = address(new V4QuoteVerifier(p256, router));
         d.v5 = address(new V5QuoteVerifier(p256, router));
         vm.stopBroadcast();
         console.log("PCKHelperV2", d.helper);
-        console.log("AutomataDcapAttestationFeeV2", d.fee);
+        console.log("AutomataDcapAttestationV2", d.attestation);
         console.log("V3QuoteVerifierV2", d.v3);
         console.log("V4QuoteVerifierV2", d.v4);
         console.log("V5QuoteVerifierV2", d.v5);
@@ -185,70 +201,57 @@ contract DeployDcapV2 is Script {
     function configure(address owner, PCCSRouter router, AutomataDcapAttestationFee legacy, Deployment calldata d)
         external
     {
-        AutomataDcapAttestationFeeV2 fee = AutomataDcapAttestationFeeV2(d.fee);
-        require(fee.owner() == owner && router.owner() == owner, "Owner mismatch");
-        require(d.fee != address(legacy), "New Fee deployment required");
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        require(attestation.owner() == owner && router.owner() == owner, "Owner mismatch");
+        require(d.attestation != address(legacy), "New Fee deployment required");
         address[3] memory verifiers = [d.v3, d.v4, d.v5];
         vm.startBroadcast(owner);
-        fee.setBp(legacy.getBp());
-        fee.setZkV2Paused(true); // Unpause only after all real-proof/reproducibility gates pass.
+        attestation.setBp(legacy.getBp());
+        attestation.setZkV2Paused(true); // Unpause only after all real-proof/reproducibility gates pass.
         for (uint256 i; i < 3; ++i) {
             require(V3QuoteVerifier(verifiers[i]).quoteVersion() == i + 3, "Quote version mismatch");
             require(address(V3QuoteVerifier(verifiers[i]).pccsRouter()) == address(router), "Router mismatch");
-            fee.setQuoteVerifier(verifiers[i]);
+            attestation.setQuoteVerifier(verifiers[i]);
             router.setAuthorized(verifiers[i], true);
         }
         // FeeV2 performs output/journal collateral-hash checks, so it also needs Router access.
-        router.setAuthorized(d.fee, true);
-        vm.stopBroadcast();
-    }
-
-    /// @notice Preserves all registered legacy IDs (including compact ATKJ programs) and its default.
-    /// @param proofSelectors Complete legacy route-selector inventory reconstructed from configuration/events.
-    function migrateLegacyBackend(
-        address owner,
-        AutomataDcapAttestationFee legacy,
-        AutomataDcapAttestationFeeV2 fee,
-        ZkCoProcessorType backend,
-        bytes4[] calldata proofSelectors
-    ) external {
-        require(fee.owner() == owner && address(fee) != address(legacy), "Invalid target");
-        bytes32 latest = legacy.programIdentifier(backend);
-        bytes32[] memory ids = legacy.programIdentifiers(backend);
-        address universal = legacy.zkVerifier(backend);
-        require(latest != bytes32(0) && universal.code.length > 0, "Legacy backend not configured");
-        vm.startBroadcast(owner);
-        fee.setZkConfiguration(backend, ZkCoProcessorConfig(latest, universal));
-        for (uint256 i; i < ids.length; ++i) {
-            if (fee.programIdentifier(backend) != ids[i]) fee.updateProgramIdentifier(backend, ids[i]);
-        }
-        if (fee.programIdentifier(backend) != latest) fee.updateProgramIdentifier(backend, latest);
-        for (uint256 i; i < proofSelectors.length; ++i) {
-            try legacy.zkVerifier(backend, proofSelectors[i]) returns (address verifier) {
-                fee.addVerifyRoute(backend, proofSelectors[i], verifier);
-            } catch (bytes memory reason) {
-                require(
-                    reason.length >= 4 && bytes4(reason) == AttestationEntrypointBase.ZK_Route_Frozen.selector,
-                    "Cannot read legacy proof route"
-                );
-                fee.freezeVerifyRoute(backend, proofSelectors[i]);
-            }
-        }
+        router.setAuthorized(d.attestation, true);
         vm.stopBroadcast();
     }
 
     /// @notice Registers an audited native program ID with an EXISTING universal verifier.
     function configureV2Backend(
         address owner,
-        AutomataDcapAttestationFeeV2 fee,
+        AutomataDcapAttestationV2 attestation,
         ZkCoProcessorType backend,
         bytes32 id,
         address universal
     ) external {
-        require(fee.owner() == owner && fee.zkV2Paused(), "Configure V2 while paused");
+        require(attestation.owner() == owner && attestation.zkV2Paused(), "Configure V2 while paused");
         vm.startBroadcast(owner);
-        fee.setZkConfigurationV2(backend, ZkCoProcessorConfig(id, universal));
+        attestation.setZkVerifierV2(backend, universal);
+        (bool registered, bool minCheck) = attestation.programModeV2(backend, id);
+        require(!minCheck, "Strict default required");
+        if (!registered) attestation.addProgramIdentifierV2(backend, id, false);
+        attestation.setDefaultProgramIdentifierV2(backend, id);
         vm.stopBroadcast();
+    }
+
+    /// @notice Add an explicitly reviewed minimal ID without changing the strict default.
+    function configureMinimalProgram(
+        address owner,
+        AutomataDcapAttestationV2 attestation,
+        ZkCoProcessorType backend,
+        bytes32 id
+    ) external {
+        require(attestation.owner() == owner && attestation.zkV2Paused(), "Configure V2 while paused");
+        (bool registered, bool minCheck) = attestation.programModeV2(backend, id);
+        require(!registered || minCheck, "Program mode mismatch");
+        if (!registered) {
+            vm.startBroadcast(owner);
+            attestation.addProgramIdentifierV2(backend, id, true);
+            vm.stopBroadcast();
+        }
     }
 
     /// @notice Switch or rollback only pckHelper, reading the other five components from the live Router.

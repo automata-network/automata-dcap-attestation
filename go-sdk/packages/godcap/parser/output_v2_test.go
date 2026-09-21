@@ -101,7 +101,7 @@ func TestOutputV2SharedVectors(t *testing.T) {
 		if out.Timestamp != 0x0102030405060708 || out.PPID != [16]byte{} {
 			t.Fatal("incorrect header offsets")
 		}
-		for size := 0; size < 289+len(out.QuoteBody); size++ {
+		for size := 0; size < OutputV2HeaderLength; size++ {
 			if _, err := ParseOutputV2(data[:size]); err == nil {
 				t.Fatalf("accepted truncation %d", size)
 			}
@@ -110,7 +110,7 @@ func TestOutputV2SharedVectors(t *testing.T) {
 }
 func TestOutputV2RejectsMutations(t *testing.T) {
 	data := vectorV2(t, "sgx-empty")
-	for offset, value := range map[int]byte{0: 1, 3: 2, 4: 0, 9: 10, 48: 2, 32: 1, 49: 0, 51: 0, 53: 1, 56: 1} {
+	for offset, value := range map[int]byte{0: 1, 3: 2, 4: 0, 9: 10, 48: 2, 32: 1, 49: 1, 51: 1} {
 		bad := append([]byte(nil), data...)
 		bad[offset] = value
 		if _, err := ParseOutputV2(bad); err == nil {

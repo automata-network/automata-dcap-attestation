@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest} from './publish-v2.mjs';
+import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier} from './publish-v2.mjs';
 
 const a = n => '0x' + n.toString(16).padStart(40, '0');
 const id = n => '0x' + n.toString(16).padStart(64, '0');
 function fixture() {
   const p = {chainId: 560048, status: 'TEST_ONLY', sourceCommit: 'a'.repeat(40),
     owner: a(1), legacyFee: a(2), legacyRouter: a(3), p256: a(256), evaluations: [21], programs: [],
-    contracts: {AutomataDcapAttestationFeeV2: a(10), PCCSRouterV2: a(11), PCKHelperV2: a(12),
+    contracts: {AutomataDcapAttestationV2: a(10), PCCSRouterV2: a(11), PCKHelperV2: a(12),
       V3QuoteVerifierV2: a(13), V4QuoteVerifierV2: a(14), V5QuoteVerifierV2: a(15)}};
   const dcap = {AutomataDcapAttestationFee: a(2), PCCSRouter: a(3), V3QuoteVerifier: a(4)};
   const pccs = {AutomataTcbEvalDao: a(21), AutomataPcsDao: a(22), AutomataPckDao: a(23), PCKHelper: a(24),
@@ -20,21 +20,21 @@ function fixture() {
   const key = (to, sig, args) => [to, sig, ...args].join('|');
   const set = (to, sig, value, ...args) => values.set(key(to, sig, args), value);
   const c = p.contracts;
-  for (const to of [c.AutomataDcapAttestationFeeV2, c.PCCSRouterV2]) set(to, 'owner()', p.owner);
-  set(c.AutomataDcapAttestationFeeV2, 'getBp()', '123');
-  set(c.AutomataDcapAttestationFeeV2, 'zkV2Paused()', true);
+  for (const to of [c.AutomataDcapAttestationV2, c.PCCSRouterV2]) set(to, 'owner()', p.owner);
+  set(c.AutomataDcapAttestationV2, 'getBp()', '123');
+  set(c.AutomataDcapAttestationV2, 'zkV2Paused()', true);
   for (const [name, value] of Object.entries(legacy.router)) set(c.PCCSRouterV2, name + '()', name === 'pckHelperAddr' ? c.PCKHelperV2 : value);
   for (const version of [3, 4, 5]) {
     const v = c[`V${version}QuoteVerifierV2`];
-    set(c.AutomataDcapAttestationFeeV2, 'quoteVerifiers(uint16)', v, version);
+    set(c.AutomataDcapAttestationV2, 'quoteVerifiers(uint16)', v, version);
     set(v, 'quoteVersion()', String(version)); set(v, 'pccsRouter()', c.PCCSRouterV2); set(v, 'P256_VERIFIER()', p.p256);
   }
   for (const [name, value] of Object.entries(legacy.evaluations[21])) set(c.PCCSRouterV2, `${name}(uint32)`, value, 21);
   for (const dao of [a(21), a(22), a(23), a(30), a(31)]) set(dao, 'resolver()', a(40));
   set(a(40), 'isAuthorizedCaller(address)', true, c.PCCSRouterV2);
   for (const backend of [1, 2, 3]) {
-    set(c.AutomataDcapAttestationFeeV2, 'programIdentifiersV2(uint8)', [], backend);
-    set(c.AutomataDcapAttestationFeeV2, 'programIdentifierV2(uint8)', id(0), backend);
+    set(c.AutomataDcapAttestationV2, 'programIdentifiersV2(uint8)', [], backend);
+    set(c.AutomataDcapAttestationV2, 'programIdentifierV2(uint8)', id(0), backend);
   }
   const rpc = {call: async (to, sig, ret, ...args) => {
     assert.ok(values.has(key(to, sig, args)), `Unexpected call ${key(to, sig, args)}`);
@@ -100,12 +100,13 @@ test('readback fails on wrong Router, missing Storage permission, stale DAO or u
 });
 test('configured ZK requires enabled state, exact program ID and matching proof route', async () => {
   const f = fixture();
-  f.p.programs = [{backend: 2, id: id(99), proofSelector: '0x12345678', verifier: a(99),
+  f.p.programs = [{backend: 2, buildSdkVersion: '6.8.0', minCheck: false, id: id(99), proofSelector: '0x12345678', verifier: a(99),
     buildSourceCommit: f.p.sourceCommit, evidenceSha256: 'a'.repeat(64), artifactSha256: 'b'.repeat(64)}];
   validatePlan(f.p);
   f.set(a(10), 'zkV2Paused()', false);
   f.set(a(10), 'programIdentifiersV2(uint8)', [id(99)], 2);
   f.set(a(10), 'programIdentifierV2(uint8)', id(99), 2);
+  f.set(a(10), 'programModeV2(uint8,bytes32)', [true, false], 2, id(99));
   f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 2, '0x00000000');
   f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 2, '0x12345678');
   const docs = makeDocuments(f.p, f.dcap, f.pccs);
@@ -142,18 +143,86 @@ test('legacy snapshot reads only; a missing legacy backend fails scope check', a
   await assert.rejects(readLegacy(f.p, fake), /expansion/);
 });
 
+test('strict and minimal IDs have exact modes and only strict can be the default', async () => {
+  const f = fixture();
+  const strict = {backend: 2, buildSdkVersion: '6.8.0', minCheck: false, id: id(99), proofSelector: '0x12345678', verifier: a(99),
+    buildSourceCommit: f.p.sourceCommit, evidenceSha256: 'a'.repeat(64), artifactSha256: 'b'.repeat(64)};
+  const minimal = {...strict, minCheck: true, id: id(100)};
+  f.p.programs = [minimal, strict];
+  validatePlan(f.p);
+  f.set(a(10), 'zkV2Paused()', false);
+  f.set(a(10), 'programIdentifiersV2(uint8)', [id(100), id(99)], 2);
+  f.set(a(10), 'programIdentifierV2(uint8)', id(99), 2);
+  f.set(a(10), 'programModeV2(uint8,bytes32)', [true, false], 2, id(99));
+  f.set(a(10), 'programModeV2(uint8,bytes32)', [true, true], 2, id(100));
+  for (const selector of ['0x00000000', '0x12345678']) f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 2, selector);
+  const docs = makeDocuments(f.p, f.dcap, f.pccs);
+  await verifyNew(f.p, f.legacy, docs, f.rpc);
+  f.set(a(10), 'programModeV2(uint8,bytes32)', [true, false], 2, id(100));
+  await assert.rejects(verifyNew(f.p, f.legacy, docs, f.rpc), /mode mismatch/);
+  for (const programs of [[minimal], [strict, {...minimal, id: strict.id}], [strict, {...strict}], [{...strict, minCheck: undefined}], [{...strict, buildSdkVersion: '5.2.2'}]]) {
+    assert.throws(() => validatePlan({...f.p, programs}));
+  }
+});
+
 test('new Fee readback still queries Pico and rejects a Pico default ID', async () => {
   const f = fixture();
   const reads = [];
   const rpc = {...f.rpc, call: async (...args) => {
-    if (args[0] === f.p.contracts.AutomataDcapAttestationFeeV2 && args[3] === 3
+    if (args[0] === f.p.contracts.AutomataDcapAttestationV2 && args[3] === 3
       && args[1].startsWith('programIdentifier')) reads.push(args[1]);
     return f.rpc.call(...args);
   }};
   await verifyNew(f.p, f.legacy, makeDocuments(f.p, f.dcap, f.pccs), rpc);
   assert.deepEqual(reads, ['programIdentifiersV2(uint8)', 'programIdentifierV2(uint8)']);
-  f.set(f.p.contracts.AutomataDcapAttestationFeeV2, 'programIdentifierV2(uint8)', id(99), 3);
+  f.set(f.p.contracts.AutomataDcapAttestationV2, 'programIdentifierV2(uint8)', id(99), 3);
   await assert.rejects(verifyNew(f.p, f.legacy, makeDocuments(f.p, f.dcap, f.pccs), rpc), /default ID mismatch/);
+});
+
+test('new SP1 placeholder is snapshot-only and requires the v6.1 Groth16 selector', () => {
+  const {p} = fixture();
+  p.deploySp1Groth16V6 = true;
+  p.programs = [{backend: 2, buildSdkVersion: '6.8.0', minCheck: false, id: id(99),
+    verifier: pendingSp1Verifier, proofSelector: '0x4388a21c', buildSourceCommit: p.sourceCommit,
+    artifactSha256: 'a'.repeat(64), evidenceSha256: 'b'.repeat(64)}];
+  validatePlan(p, {allowPendingVerifier: true});
+  assert.throws(() => validatePlan(p), /Unresolved/);
+  p.programs[0].proofSelector = '0x12345678';
+  assert.throws(() => validatePlan(p, {allowPendingVerifier: true}), /Groth16 only/);
+  p.programs = [];
+  assert.throws(() => validatePlan(p), /requires SP1 programs/);
+});
+
+test('independent SP1 verifier is recorded and checked against version, hash, runtime and program route', async () => {
+  const f = fixture();
+  f.p.deploySp1Groth16V6 = true;
+  f.p.sp1Groth16Verifier = a(99);
+  f.p.programs = [{backend: 2, buildSdkVersion: '6.8.0', minCheck: false, id: id(99),
+    verifier: a(99), proofSelector: '0x4388a21c', buildSourceCommit: f.p.sourceCommit,
+    artifactSha256: 'a'.repeat(64), evidenceSha256: 'b'.repeat(64)}];
+  validatePlan(f.p);
+  f.set(a(99), 'VERSION()', 'v6.1.0');
+  f.set(a(99), 'VERIFIER_HASH()', '0x4388a21c687fdd5f218d7e3d13190cac4c5355818d3605fd5fb811df468ee696');
+  f.set(a(10), 'zkV2Paused()', false);
+  f.set(a(10), 'programIdentifiersV2(uint8)', [id(99)], 2);
+  f.set(a(10), 'programIdentifierV2(uint8)', id(99), 2);
+  f.set(a(10), 'programModeV2(uint8,bytes32)', [true, false], 2, id(99));
+  for (const selector of ['0x00000000', '0x4388a21c']) f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 2, selector);
+  const docs = makeDocuments(f.p, f.dcap, f.pccs);
+  assert.equal(docs.dcap.SP1Groth16VerifierV6, a(99));
+  assert.equal(f.dcap.SP1Groth16VerifierV6, undefined);
+  const checked = [];
+  const rpc = {...f.rpc, verifyArtifact: async key => { checked.push(key); }};
+  const result = await verifyNew(f.p, f.legacy, docs, rpc);
+  assert.equal(Object.keys(result.runtimeSha256).length, 7);
+  assert.ok(checked.includes('SP1Groth16VerifierV6'));
+  f.set(a(99), 'VERSION()', 'v5.0.0');
+  await assert.rejects(verifyNew(f.p, f.legacy, docs, rpc), /Wrong SP1 circuit/);
+  f.set(a(99), 'VERSION()', 'v6.1.0');
+  f.set(a(99), 'VERIFIER_HASH()', id(0));
+  await assert.rejects(verifyNew(f.p, f.legacy, docs, rpc), /Wrong SP1 verifier hash/);
+  f.p.sp1Groth16Verifier = f.p.legacyFee;
+  assert.throws(() => makeDocuments(f.p, f.dcap, f.pccs), /aliases legacy/);
 });
 
 test('RPC preserves pinned request and falsy result; blocks writes before fetch', async () => {

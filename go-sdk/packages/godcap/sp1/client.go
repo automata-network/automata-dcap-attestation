@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/automata-network/automata-dcap-attestation/go-sdk/packages/godcap/sp1/sp1_proto"
 	"github.com/chzyer/logex"
@@ -65,6 +66,9 @@ func (c *Config) Init() error {
 	if c.Version == "" {
 		c.Version = "v5.2.1"
 	}
+	if strings.HasPrefix(c.Version, "v6") && c.Version != V6CircuitVersion {
+		return fmt.Errorf("SP1 SDK 6.8.0 requires circuit %s, not SDK version %s", V6CircuitVersion, c.Version)
+	}
 	if c.CycleLimit == 0 {
 		c.CycleLimit = 1_000_000_000_000
 	}
@@ -110,6 +114,20 @@ func NewClient(cfg *Config) (*Client, error) {
 		auth:     NewEIP712Auth(key),
 	}
 	return client, nil
+}
+
+// NewV6Client explicitly selects the SDK 6.8.0 auction-network protocol.
+// Legacy NewClient defaults remain unchanged. Creating a proof may incur costs.
+func NewV6Client(cfg *Config) (*Client, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("SP1 config is required")
+	}
+	copy := *cfg
+	if copy.Version != "" && copy.Version != V6CircuitVersion {
+		return nil, fmt.Errorf("SP1 v6 requires circuit %s", V6CircuitVersion)
+	}
+	copy.Version = V6CircuitVersion
+	return NewClient(&copy)
 }
 
 func dialGrpcConn(rpcEndpoint string) (*grpc.ClientConn, error) {

@@ -9,8 +9,11 @@ use std::io::Write;
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     ensure!(
-        args.len() == 3 || (args.len() == 4 && args[3] == "--verify"),
-        "usage: risc0_v2_prove_local PROGRAM INPUT RECEIPT [--verify]"
+        (3..=5).contains(&args.len())
+            && args[3..]
+                .iter()
+                .all(|a| a == "--verify" || a == "--minimal"),
+        "usage: risc0_v2_prove_local PROGRAM INPUT RECEIPT [--verify] [--minimal]"
     );
     ensure!(
         !ProverOpts::default().dev_mode(),
@@ -18,10 +21,17 @@ fn main() -> Result<()> {
     );
     let elf = std::fs::read(&args[0])?;
     let input = std::fs::read(&args[1])?;
-    let expected = dcap_rs::v2::verify_guest_input_v2(&input)?;
+    let minimal = args.iter().any(|a| a == "--minimal");
+    let verify_only = args.iter().any(|a| a == "--verify");
+    let expected = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal(&input)
+    } else {
+        dcap_rs::v2::verify_guest_input_v2(&input)
+    }?;
     let id = compute_image_id(&elf)?;
     println!("native_program_id=0x{id}");
-    let receipt: Receipt = if args.len() == 4 {
+    println!("min_check={minimal}");
+    let receipt: Receipt = if verify_only {
         bincode::deserialize(&std::fs::read(&args[2])?)?
     } else {
         ensure!(!std::path::Path::new(&args[2]).exists(), "output exists");
@@ -69,13 +79,13 @@ fn main() -> Result<()> {
     }
     ensure!(tampered.verify(id).is_err(), "modified seal accepted");
     println!("rejection=modified-journal,wrong-image-id,modified-seal PASS");
-    if args.len() == 3 {
+    if !verify_only {
         std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&args[2])?
             .write_all(&bincode::serialize(&receipt)?)?;
     }
-    println!("EVM Groth16 compression/universal verifier/FeeV2 remain untested.");
+    println!("EVM Groth16 compression/universal verifier/AttestationV2 remain untested.");
     Ok(())
 }

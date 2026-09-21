@@ -1,5 +1,12 @@
 # Current guest build handoff — 2026-09-17
 
+> Historical inline-body V2 checkpoint/runbook. The compact revision changes the
+> entrypoint, journal, event, mode-specific IDs and SP1 target version. These old
+> build/proof/deployment results do not establish acceptance of the new revision.
+> See [current revision status](dcap-v2-revision-progress.md),
+> [design](dcap-v2-design.md), and the
+> [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md).
+
 Status: **RETURNED DOCKER A/B BUILDS AND GUEST REGRESSION PASS; RISC ZERO COMPOSITE PASS; SP1 CORE BLOCKED BY HOST MEMORY**.
 
 ## Verified return (2026-09-17)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 import "./QuoteV5Test.s.sol";
-import {AutomataDcapAttestationFeeV2} from "../contracts/AutomataDcapAttestationFeeV2.sol";
+import {AutomataDcapAttestationV2} from "../contracts/AutomataDcapAttestationV2.sol";
 import {OutputV2Codec} from "../contracts/utils/OutputV2Codec.sol";
 import {OutputV2} from "../contracts/types/OutputV2.sol";
 
@@ -13,7 +13,7 @@ contract QuoteV5V2Test is QuoteV5Test {
     function testRealQuoteV5V2() public {
         testQuoteV5TD15(); // Set up signed collateral and verify the same quote through the legacy selector.
         vm.startPrank(admin);
-        AutomataDcapAttestationFeeV2 fee = new AutomataDcapAttestationFeeV2(admin);
+        AutomataDcapAttestationV2 fee = new AutomataDcapAttestationV2(admin);
         fee.setQuoteVerifier(address(attestation.quoteVerifiers(5)));
         pccsRouter.setAuthorized(address(fee), true);
         vm.stopPrank();
@@ -23,13 +23,14 @@ contract QuoteV5V2Test is QuoteV5Test {
         fee.verifyAndAttestOnChainV2(quote);
         vm.expectRevert(bytes("TDX migration service TD measurement is not zero"));
         fee.verifyAndAttestOnChainV2(quote, 0, false);
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(quote, 0, true);
+        (bool success, bytes memory output, bytes memory body) = fee.verifyAndAttestOnChainV2(quote, 0, true);
         assertTrue(success);
         OutputV2 memory decoded = this.decodeV2(output);
         assertEq(decoded.fullQuoteHash, keccak256(quote));
         assertEq(decoded.quoteBodyType, 3);
-        assertEq(decoded.quoteBody.length, 648);
-        assertNotEq(keccak256(_serviceTd(decoded.quoteBody)), keccak256(new bytes(48)));
+        assertEq(body.length, 648);
+        assertEq(decoded.quoteBodyHash, keccak256(body));
+        assertNotEq(keccak256(_serviceTd(body)), keccak256(new bytes(48)));
     }
 
     function _serviceTd(bytes memory body) internal pure returns (bytes memory measurement) {

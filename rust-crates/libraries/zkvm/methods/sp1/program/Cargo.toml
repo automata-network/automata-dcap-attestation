@@ -8,18 +8,26 @@ rust-version = "1.88"
 # Required for zkVM compilation with specific patches
 [workspace]
 
+[[bin]]
+name = "dcap-sp1-guest-v2-minimal"
+path = "src/minimal.rs"
+
+[[bin]]
+name = "dcap-sp1-guest-v2"
+path = "src/main.rs"
+
 [dependencies]
-sp1-zkvm = { version = "=5.2.1" }
+sp1-zkvm = { version = "=6.8.0" }
 dcap-rs = { path = "../../../../dcap-rs" }
 
 # Cargo.lock pins the transitive ruint dependency to 1.17.0 (also used by the
-# host workspace). ruint 1.20.0 requires Rust 1.90, beyond succinct-1.88.0.
+# host workspace). Keep unrelated DCAP dependencies stable during the v6 migration.
 
 # SP1-specific crypto patches
 [patch.crates-io]
-sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.8-sp1-4.0.0" }
-crypto-bigint = { git = "https://github.com/sp1-patches/RustCrypto-bigint", tag = "patch-0.5.5-sp1-4.0.0" }
-k256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-k256-13.4-sp1-5.0.0" }
-p256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-p256-13.2-sp1-5.0.0" }
-ecdsa = { git = "https://github.com/sp1-patches/signatures", tag = "patch-16.9-sp1-4.1.0" }
-tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", tag = "patch-2.0.2-sp1-4.0.0" }
+sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.8-sp1-6.2.0" }
+crypto-bigint = { git = "https://github.com/sp1-patches/RustCrypto-bigint", tag = "patch-0.5.5-sp1-6.2.0" }
+k256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-k256-13.4-sp1-6.2.0" }
+p256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-p256-13.2-sp1-6.2.0" }
+# Use upstream ecdsa with the v6 curve patches; do not retain the v4 syscall patch.
+tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", tag = "patch-2.0.2-sp1-6.2.0" }

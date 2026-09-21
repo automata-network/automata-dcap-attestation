@@ -13,20 +13,21 @@ contract MinCheckV2Test is AttestationFeeV2Test {
         fee.verifyAndAttestOnChainV2(raw);
         vm.expectRevert(bytes(reason));
         fee.verifyAndAttestOnChainV2(raw, 17, false);
-        (bool success, bytes memory output) = fee.verifyAndAttestOnChainV2(raw, 17, true);
+        (bool success, bytes memory output, bytes memory returnedBody) = fee.verifyAndAttestOnChainV2(raw, 17, true);
         assertTrue(success);
-        assertEq(this.decode(output).quoteBody, body);
+        assertEq(returnedBody, body);
+        assertEq(this.decode(output).quoteBodyHash, keccak256(body));
         assertEq(this.decode(output).fullQuoteHash, keccak256(raw));
-        universal.expectProof(V2_ID, output);
+        universal.expectProof(MINIMAL_ID, output);
         for (uint8 i = 1; i <= 3; ++i) {
             ZkCoProcessorType backend = ZkCoProcessorType(i);
             bytes memory proof = i == 3 ? new bytes(260) : new bytes(4);
-            vm.expectRevert(bytes(reason));
+            vm.expectRevert(bytes("bad proof"));
             fee.verifyAndAttestWithZKProofV2(output, backend, proof);
-            vm.expectRevert(bytes(reason));
-            fee.verifyAndAttestWithZKProofV2(output, backend, proof, V2_ID, 17, false);
+            (bool accepted,) = fee.verifyAndAttestWithZKProofV2(output, backend, proof, MINIMAL_ID, 17, false);
+            assertFalse(accepted);
             bytes memory verified;
-            (success, verified) = fee.verifyAndAttestWithZKProofV2(output, backend, proof, V2_ID, 17, true);
+            (success, verified) = fee.verifyAndAttestWithZKProofV2(output, backend, proof, MINIMAL_ID, 17, true);
             assertTrue(success);
             assertEq(verified, output);
         }
@@ -63,26 +64,26 @@ contract MinCheckV2Test is AttestationFeeV2Test {
             fee.verifyAndAttestOnChainV2(quoteBytes(), 17, true);
             bytes memory bad = bytes.concat(output);
             bad[9] = bytes1(status);
-            universal.expectProof(V2_ID, bad);
-            (bool accepted,) = fee.verifyAndAttestWithZKProofV2(bad, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 17, true);
+            universal.expectProof(MINIMAL_ID, bad);
+            (bool accepted,) = fee.verifyAndAttestWithZKProofV2(bad, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
             assertFalse(accepted);
         }
-        universal.expectProof(V2_ID, output);
+        universal.expectProof(MINIMAL_ID, output);
         (bool success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 17, true);
         assertFalse(success);
         bytes memory changed = bytes.concat(output);
         changed[25] ^= 0x01;
         vm.expectRevert(bytes("bad proof"));
-        fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 17, true);
+        fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
         changed = bytes.concat(output);
         changed[65] ^= 0x01;
-        universal.expectProof(V2_ID, changed);
-        (success,) = fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 17, true);
+        universal.expectProof(MINIMAL_ID, changed);
+        (success,) = fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
         assertFalse(success);
         vm.expectRevert();
-        fee.verifyAndAttestWithZKProofV2(bytes.concat(output, hex"00"), ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 17, true);
+        fee.verifyAndAttestWithZKProofV2(bytes.concat(output, hex"00"), ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
         fee.setZkV2Paused(true);
-        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), V2_ID, 17, true);
+        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
         assertFalse(success);
     }
 }

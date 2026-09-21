@@ -99,7 +99,7 @@ pub fn verify_dcap_quote_v2_with_min_check(
             Collateral::get_crl_hash(&collateral.pck_crl)?,
         ],
         full_quote_hash: keccak::hash(raw_quote),
-        quote_body: verified.quote_body.as_bytes().to_vec(),
+        quote_body_hash: keccak::hash(verified.quote_body.as_bytes()),
         advisory_ids: verified.advisory_ids.unwrap_or_default(),
     })
 }
@@ -138,16 +138,23 @@ pub fn encode_guest_input_v2(
     )))
 }
 
-/// Guest entry points prove the common minimal baseline and commit exact OutputV2
-/// bytes. FeeV2 enforces workload attributes for strict calls from the proven body.
-/// No uncommitted mode input is needed: all mode-dependent facts are in the journal.
+/// Strict guest entrypoint. Mode is selected by the program, never an input flag.
 pub fn verify_guest_input_v2(input: &[u8]) -> Result<Vec<u8>> {
+    verify_guest_input_v2_mode(input, false)
+}
+
+/// Minimal guest entrypoint, assigned a different native program ID.
+pub fn verify_guest_input_v2_minimal(input: &[u8]) -> Result<Vec<u8>> {
+    verify_guest_input_v2_mode(input, true)
+}
+
+fn verify_guest_input_v2_mode(input: &[u8], min_check: bool) -> Result<Vec<u8>> {
     let (collateral, quote, timestamp) = GuestInputV2::abi_decode_params(input)?;
     let collateral = Collateral::sol_abi_decode(&collateral)?;
     let time = UNIX_EPOCH
         .checked_add(Duration::from_secs(timestamp))
         .context("verification timestamp overflow")?;
-    verify_dcap_quote_v2_with_min_check(time, &collateral, &quote, true)?.to_vec()
+    verify_dcap_quote_v2_with_min_check(time, &collateral, &quote, min_check)?.to_vec()
 }
 
 #[cfg(test)]

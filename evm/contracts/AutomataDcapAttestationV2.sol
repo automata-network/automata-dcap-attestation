@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {AutomataDcapAttestationFee} from "./AutomataDcapAttestationFee.sol";
+import {AttestationAdminV2} from "./bases/AttestationAdminV2.sol";
 import "./AttestationEntrypointBase.sol";
 import {IQuoteVerifierV2} from "./interfaces/IQuoteVerifierV2.sol";
 import {OutputV2Codec} from "./utils/OutputV2Codec.sol";
@@ -13,12 +13,23 @@ import {CA} from "@automata-network/on-chain-pccs/bases/PcsDao.sol";
 import {BytesUtils} from "./utils/BytesUtils.sol";
 import {QuotePolicyV2} from "./utils/QuotePolicyV2.sol";
 
-/// @notice New deployment retaining every legacy selector and its original validation/output semantics.
-contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
+/// @notice V2-only entrypoint. Legacy registry and verification selectors are deliberately absent.
+contract AutomataDcapAttestationV2 is AttestationAdminV2 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using BytesUtils for bytes;
 
-    mapping(ZkCoProcessorType => ZkCoProcessorConfig) internal _zkConfigV2;
+    struct BackendConfig {
+        bytes32 defaultProgramIdentifier;
+        address defaultZkVerifier;
+    }
+
+    struct ProgramMode {
+        bool registered;
+        bool minCheck;
+    }
+    mapping(ZkCoProcessorType => BackendConfig) internal _zkConfigV2;
+    // Retained on removal: the mode for a given ID can never be reinterpreted.
+    mapping(ZkCoProcessorType => mapping(bytes32 => ProgramMode)) private _programModes;
     mapping(ZkCoProcessorType => EnumerableSet.Bytes32Set) internal _programIdConfigV2;
     bool public zkV2Paused;
 
@@ -27,6 +38,8 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         ZkCoProcessorType verifierType,
         uint16 indexed formatMajorVersion,
         uint16 indexed formatMinorVersion,
+        bytes32 programIdentifier,
+        bool minCheck,
         bytes output
     );
     event ZkCoProcessorUpdatedV2(
@@ -34,32 +47,42 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
     );
     event ZkProgramIdentifierRemovedV2(ZkCoProcessorType indexed zkCoProcessor, bytes32 programIdentifier);
     event ZkV2PauseUpdated(bool paused);
+    event ZkProgramIdentifierAddedV2(ZkCoProcessorType indexed backend, bytes32 identifier, bool minCheck);
 
-    constructor(address owner) AutomataDcapAttestationFee(owner) {}
+    constructor(address owner) AttestationAdminV2(owner) {}
 
-    function setZkConfigurationV2(ZkCoProcessorType backend, ZkCoProcessorConfig calldata config)
+    function setZkVerifierV2(ZkCoProcessorType backend, address verifier)
         external
         onlyOwner
         noneZkConfigCheck(backend)
     {
-        require(config.latestDcapProgramIdentifier != bytes32(0), "Program identifier cannot be zero");
-        require(config.defaultZkVerifier.code.length != 0, "ZK Verifier has no code");
-        _zkConfigV2[backend] = config;
-        _programIdConfigV2[backend].add(config.latestDcapProgramIdentifier);
-        emit ZkCoProcessorUpdatedV2(backend, config.latestDcapProgramIdentifier, config.defaultZkVerifier);
+        require(verifier.code.length != 0 && verifier != FROZEN, "ZK Verifier has no code");
+        _zkConfigV2[backend].defaultZkVerifier = verifier;
+        emit ZkCoProcessorUpdatedV2(backend, programIdentifierV2(backend), verifier);
     }
 
-    function updateProgramIdentifierV2(ZkCoProcessorType backend, bytes32 identifier)
+    function addProgramIdentifierV2(ZkCoProcessorType backend, bytes32 identifier, bool minCheck)
         external
         onlyOwner
         noneZkConfigCheck(backend)
     {
         require(identifier != bytes32(0), "Program identifier cannot be zero");
-        require(
-            _zkConfigV2[backend].latestDcapProgramIdentifier != identifier, "Program identifier is already the latest"
-        );
-        _zkConfigV2[backend].latestDcapProgramIdentifier = identifier;
-        _programIdConfigV2[backend].add(identifier);
+        ProgramMode storage mode = _programModes[backend][identifier];
+        require(!mode.registered || mode.minCheck == minCheck, "Program mode is immutable");
+        require(_programIdConfigV2[backend].add(identifier), "Program already registered");
+        mode.registered = true;
+        mode.minCheck = minCheck;
+        emit ZkProgramIdentifierAddedV2(backend, identifier, minCheck);
+    }
+
+    function setDefaultProgramIdentifierV2(ZkCoProcessorType backend, bytes32 identifier)
+        external
+        onlyOwner
+        noneZkConfigCheck(backend)
+    {
+        require(_programIdConfigV2[backend].contains(identifier), "Program identifier does not exist");
+        require(!_programModes[backend][identifier].minCheck, "Default program must be strict");
+        _zkConfigV2[backend].defaultProgramIdentifier = identifier;
         emit ZkCoProcessorUpdatedV2(backend, identifier, _zkConfigV2[backend].defaultZkVerifier);
     }
 
@@ -69,30 +92,42 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         noneZkConfigCheck(backend)
     {
         require(_programIdConfigV2[backend].contains(identifier), "Program identifier does not exist");
-        if (_zkConfigV2[backend].latestDcapProgramIdentifier == identifier) {
+        if (_zkConfigV2[backend].defaultProgramIdentifier == identifier) {
             revert Cannot_Remove_ProgramIdentifier(backend, identifier);
         }
         _programIdConfigV2[backend].remove(identifier);
         emit ZkProgramIdentifierRemovedV2(backend, identifier);
     }
 
-    /// @notice Allows rollback of all V2 proofs without freezing legacy proof routes or removing legacy IDs.
+    /// @notice Pause all ZK verification without removing IDs or permanently freezing routes.
     function setZkV2Paused(bool paused) external onlyOwner {
         zkV2Paused = paused;
         emit ZkV2PauseUpdated(paused);
     }
 
     function programIdentifierV2(ZkCoProcessorType backend) public view returns (bytes32) {
-        return _zkConfigV2[backend].latestDcapProgramIdentifier;
+        return _zkConfigV2[backend].defaultProgramIdentifier;
     }
 
     function programIdentifiersV2(ZkCoProcessorType backend) external view returns (bytes32[] memory) {
         return _programIdConfigV2[backend].values();
     }
 
-    /// @dev Universal proof-selector routes (including security freezes) are shared with legacy verification.
+    function programModeV2(ZkCoProcessorType backend, bytes32 identifier)
+        external
+        view
+        returns (bool registered, bool minCheck)
+    {
+        return (_programIdConfigV2[backend].contains(identifier), _programModes[backend][identifier].minCheck);
+    }
+
+    function zkVerifierV2(ZkCoProcessorType backend) public view returns (address) {
+        return _zkConfigV2[backend].defaultZkVerifier;
+    }
+
+    /// @dev Routes and permanent freezes belong only to this V2 deployment.
     function zkVerifierV2(ZkCoProcessorType backend, bytes4 selector) public view returns (address) {
-        address verifier = _zkVerifierConfig[backend][selector];
+        address verifier = _proofRoutes[backend][selector];
         if (verifier == FROZEN) revert ZK_Route_Frozen(backend, selector);
         return verifier == address(0) ? _zkConfigV2[backend].defaultZkVerifier : verifier;
     }
@@ -101,7 +136,7 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         external
         payable
         collectFee
-        returns (bool, bytes memory)
+        returns (bool, bytes memory, bytes memory)
     {
         return _onChainV2(rawQuote, 0, false);
     }
@@ -111,7 +146,7 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         external
         payable
         collectFee
-        returns (bool, bytes memory)
+        returns (bool, bytes memory, bytes memory)
     {
         return _onChainV2(rawQuote, tcbEvaluationDataNumber, minCheck);
     }
@@ -139,16 +174,16 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
 
     function _onChainV2(bytes calldata rawQuote, uint32 tcbEval, bool minCheck)
         private
-        returns (bool success, bytes memory output)
+        returns (bool success, bytes memory output, bytes memory quoteBody)
     {
         Header memory header;
         (success, header) = _parseQuoteHeader(rawQuote);
-        if (!success) return (false, bytes("Quote length is less than Header length"));
+        if (!success) return (false, bytes("Quote length is less than Header length"), bytes(""));
         IQuoteVerifierV2 verifier = IQuoteVerifierV2(address(quoteVerifiers[header.version]));
-        if (address(verifier) == address(0)) return (false, bytes("Unsupported quote version"));
+        if (address(verifier) == address(0)) return (false, bytes("Unsupported quote version"), bytes(""));
         (success, output) = verifier.verifyQuoteV2(header, rawQuote, tcbEval);
-        if (success) output = _formatOutputV2(output, rawQuote, verifier.pccsRouter(), tcbEval, minCheck);
-        emit AttestationSubmittedV2(success, ZkCoProcessorType.None, 2, 1, output);
+        if (success) (output, quoteBody) = _formatOutputV2(output, rawQuote, verifier.pccsRouter(), tcbEval, minCheck);
+        emit AttestationSubmittedV2(success, ZkCoProcessorType.None, 2, 1, bytes32(0), minCheck, output);
     }
 
     function _withProofV2(
@@ -163,11 +198,13 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         if (backend == ZkCoProcessorType.None || !_programIdConfigV2[backend].contains(identifier)) {
             return (false, bytes("Invalid V2 ZK Program Identifier"));
         }
+        if (_programModes[backend][identifier].minCheck != minCheck) {
+            return (false, bytes("V2 program mode mismatch"));
+        }
         if (proof.length < 4) return (false, bytes("Invalid ZK proof length"));
         address verifier = zkVerifierV2(backend, bytes4(proof[:4]));
         if (verifier.code.length == 0) return (false, bytes("ZK Verifier is not configured"));
         OutputV2 memory decoded = OutputV2Codec.decode(journal);
-        if (!minCheck) QuotePolicyV2.validate(decoded.quoteBodyType, decoded.quoteBody);
         if (backend == ZkCoProcessorType.RiscZero) {
             IRiscZeroVerifier(verifier).verify(proof, identifier, sha256(journal));
         } else if (backend == ZkCoProcessorType.Succinct) {
@@ -185,7 +222,7 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         }
         success = true;
         output = journal;
-        emit AttestationSubmittedV2(success, backend, 2, 1, output);
+        emit AttestationSubmittedV2(success, backend, 2, 1, identifier, minCheck, output);
     }
 
     function _formatOutputV2(
@@ -194,7 +231,7 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         IPCCSRouter router,
         uint32 tcbEval,
         bool minCheck
-    ) private view returns (bytes memory) {
+    ) private view returns (bytes memory output, bytes memory quoteBody) {
         OutputV2 memory out;
         bytes memory legacy;
         (out.ppid, out.piid, out.piidPresent, legacy) = abi.decode(envelope, (bytes16, bytes16, bool, bytes));
@@ -208,13 +245,14 @@ contract AutomataDcapAttestationFeeV2 is AutomataDcapAttestationFee {
         out.timestamp = uint64(block.timestamp);
         out.fullQuoteHash = keccak256(rawQuote);
         uint256 length = OutputV2Codec.bodyLength(out.quoteVersion, out.quoteBodyType);
-        out.quoteBody = legacy.substring(11, length);
-        if (!minCheck) QuotePolicyV2.validate(out.quoteBodyType, out.quoteBody);
+        quoteBody = legacy.substring(11, length);
+        if (!minCheck) QuotePolicyV2.validate(out.quoteBodyType, quoteBody);
+        out.quoteBodyHash = keccak256(quoteBody);
         out.advisoryIDs = legacy.length == 11 + length
             ? new string[](0)
             : abi.decode(legacy.substring(11 + length, legacy.length - 11 - length), (string[]));
         out.collateralHashes = _collateralHashesV2(router, out, tcbEval);
-        return OutputV2Codec.encode(out);
+        output = OutputV2Codec.encode(out);
     }
 
     function _collateralHashesV2(IPCCSRouter router, OutputV2 memory out, uint32 tcbEval)

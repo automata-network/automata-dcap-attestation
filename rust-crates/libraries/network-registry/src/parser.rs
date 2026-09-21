@@ -1,6 +1,6 @@
 use crate::network::*;
 use alloy::primitives::Address;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use automata_dcap_utils::Version;
 use include_dir::Dir;
 use serde::Deserialize;
@@ -315,7 +315,7 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
 fn parse_dcap_contracts(json: &serde_json::Value, version: &str) -> Result<DcapContracts> {
     let v2 = Version::from_str(version)? == Version::V2_0;
     let key = if v2 {
-        "AutomataDcapAttestationFeeV2"
+        "AutomataDcapAttestationV2"
     } else {
         "AutomataDcapAttestationFee"
     };
@@ -351,8 +351,7 @@ mod tests {
         let legacy = parse_dcap_contracts(&config, "v1.1")
             .unwrap()
             .dcap_attestation;
-        config["AutomataDcapAttestationFeeV2"] =
-            json!("0x3333333333333333333333333333333333333333");
+        config["AutomataDcapAttestationV2"] = json!("0x3333333333333333333333333333333333333333");
         assert!(parse_dcap_contracts(&config, "v2.0").is_err());
         config["PCCSRouterV2"] = json!("0x0000000000000000000000000000000000000000");
         assert!(parse_dcap_contracts(&config, "v2.0").is_err());

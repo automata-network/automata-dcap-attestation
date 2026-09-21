@@ -145,8 +145,14 @@ fn frozen_inputs_rebuild_without_network_and_match_journals() {
         assert!(output.piid_present);
         if fixture.quote_version == 5 {
             assert_eq!(output.quote_body_type, 3);
-            assert_eq!(output.quote_body.len(), 648);
-            assert_eq!(&output.quote_body[600..648], &[0; 48]);
+            let raw = fixture::unhex(&fixture.quote).unwrap();
+            let parsed = dcap_rs::types::quote::Quote::read(&mut raw.as_slice()).unwrap();
+            assert_eq!(parsed.body.as_bytes().len(), 648);
+            assert_eq!(&parsed.body.as_bytes()[600..648], &[0; 48]);
+            assert_eq!(
+                output.quote_body_hash,
+                alloy::primitives::keccak256(parsed.body.as_bytes()).0
+            );
         } else {
             let reference = if fixture.quote_version == 3 {
                 include_str!("../../../../evm/forge-test/assets/v2/verified-v3.hex")

@@ -2,8 +2,8 @@
 //! This does not generate receipts, contact Bonsai or register a program.
 #[path = "../../dcap-rs/tests/support/v2_negative_cases.rs"]
 mod negative_cases;
-use anyhow::{ensure, Context, Result};
-use risc0_zkvm::{compute_image_id, Executor, ExecutorEnv, ExitCode, ExternalProver};
+use anyhow::{Context, Result, ensure};
+use risc0_zkvm::{Executor, ExecutorEnv, ExitCode, ExternalProver, compute_image_id};
 
 const EXECUTION_CYCLE_LIMIT: u64 = 500_000_000;
 
@@ -17,8 +17,12 @@ fn execution_env(input: &[u8]) -> Result<ExecutorEnv<'_>> {
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     ensure!(
-        args.len() == 2 || (args.len() == 3 && args[2] == "--negative"),
-        "usage: risc0_v2_execute <V2 program binary> <V2 ABI input> [--negative]"
+        args.len() >= 2
+            && args.len() <= 4
+            && args[2..]
+                .iter()
+                .all(|a| a == "--negative" || a == "--minimal"),
+        "usage: risc0_v2_execute <V2 program binary> <V2 ABI input> [--negative] [--minimal]"
     );
     ensure!(
         !risc0_zkvm::ProverOpts::default().dev_mode(),
@@ -35,7 +39,14 @@ fn main() -> Result<()> {
     );
     let elf = std::fs::read(&args[0]).context("read V2 program binary")?;
     let input = std::fs::read(&args[1]).context("read V2 ABI input")?;
-    let expected = dcap_rs::v2::verify_guest_input_v2(&input).context("native V2 verification")?;
+    let minimal = args.iter().any(|a| a == "--minimal");
+    let verify = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal
+    } else {
+        dcap_rs::v2::verify_guest_input_v2
+    };
+    let expected = verify(&input).context("native V2 verification")?;
+    println!("mode={}", if minimal { "minimal" } else { "strict" });
 
     // Explicit local subprocess: never select Bonsai or a prover from environment.
     // Only Executor::execute is called, not Prover::prove or a DEV_MODE receipt.
@@ -68,10 +79,10 @@ fn main() -> Result<()> {
         parsed.piid_present
     );
 
-    if args.len() == 3 {
+    if args.iter().any(|a| a == "--negative") {
         for (name, invalid) in negative_cases::negative_inputs(&input)? {
             ensure!(
-                dcap_rs::v2::verify_guest_input_v2(&invalid).is_err(),
+                verify(&invalid).is_err(),
                 "native V2 unexpectedly accepted {name}"
             );
             let result = executor.execute(execution_env(&invalid)?, &elf);
@@ -80,7 +91,12 @@ fn main() -> Result<()> {
             // Do not count cycle limits, transport errors or arbitrary faults as rejection.
             let cause = error.root_cause().to_string();
             ensure!(
-                cause.starts_with("Guest panicked:") && cause.contains("DCAP V2 verification:"),
+                cause.starts_with("Guest panicked:")
+                    && cause.contains(if minimal {
+                        "DCAP V2 minimal verification:"
+                    } else {
+                        "DCAP V2 verification:"
+                    }),
                 "unexpected RISC Zero failure for {name}: {error:#}"
             );
             println!("rejection={name} native_and_guest=PASS");

@@ -19,7 +19,7 @@ These versions must not be conflated.
 
 The existing `AutomataDcapAttestationFee`, its public selectors, serialized output, events, verifier addresses, and ZK program identifiers will remain available.
 
-A new `AutomataDcapAttestationFeeV2` deployment will add:
+A new `AutomataDcapAttestationV2` deployment will add:
 
 ```solidity
 verifyAndAttestOnChainV2(bytes rawQuote)
@@ -35,7 +35,7 @@ verifyAndAttestWithZKProofV2(
 )
 ```
 
-All new verification methods return `(bool success, bytes output)`.
+Raw V2 methods return `(bool success, bytes output, bytes quoteBody)`; ZK V2 methods return `(bool success, bytes output)`. On raw failure no authenticated body is returned.
 
 The short overloads always use strict verification. The long overloads replace
 the previous draft signatures and append `minCheck`: `false` retains strict
@@ -44,9 +44,9 @@ SEPT_VE_DISABLE, and MR_SERVICE_TD policy. It does not restore V1 parser,
 collateral, identity or TCB-status behavior. Authentication and all other V2
 checks remain mandatory. See [mode semantics and regression](dcap-v2-min-check.md).
 
-The V2 contract retains the legacy selectors, parser, acceptance rules, serializers, events, and journal validation behavior for full drop-in compatibility. The new strict identity requirements apply only to V2 selectors.
+The new V2 contract exposes no legacy verification or program-registry selectors. Existing deployed legacy contracts remain unchanged at their own addresses; V2 is not a drop-in replacement for those addresses.
 
-V1 and V2 ZK selectors maintain separate default program identifiers for each backend while reusing the universal verifier contracts. Required legacy identifiers, including registered ATKJ programs, remain supported and are recorded in the deployment manifest.
+Each backend registers two separate native IDs with immutable modes: strict and minimal. `addProgramIdentifierV2(backend,id,minCheck)` does not change the default. `setDefaultProgramIdentifierV2(backend,id)` accepts registered strict IDs only. `setZkVerifierV2` configures the verifier independently. Calls enforce exact ID/mode matching. Legacy/ATKJ IDs remain only on legacy contracts, never migrated into this registry.
 
 V2 calls should emit a separate versioned event, such as:
 
@@ -56,6 +56,8 @@ event AttestationSubmittedV2(
     ZkCoProcessorType verifierType,
     uint16 indexed formatMajorVersion,
     uint16 indexed formatMinorVersion,
+    bytes32 programIdentifier,
+    bool minCheck,
     bytes output
 );
 ```
@@ -118,29 +120,32 @@ Final layout for `formatMajorVersion = 2, formatMinorVersion = 1` (integers big-
 | 16 | 16 | `ppid` | inline | result |
 | 32 | 16 | `piid` (zero when absent) | inline | result |
 | 48 | 1 | `piidPresent` (`0x00` / `0x01`) | inline | result |
-| 49 | 4 | `quoteBody` pointer (uint16 offset, uint16 length) | tail pointer | result |
-| 53 | 4 | `advisoryIDs` pointer (zeroed when empty) | tail pointer | result |
-| 57 | 8 | `timestamp` (BE Unix seconds) | inline | verification-only |
-| 65 | 32 | TCB Info content hash | inline | verification-only |
-| 97 | 32 | QE Identity content hash | inline | verification-only |
-| 129 | 32 | Root CA certificate hash | inline | verification-only |
-| 161 | 32 | TCB Signing certificate hash | inline | verification-only |
-| 193 | 32 | Root CA CRL hash | inline | verification-only |
-| 225 | 32 | Platform/Processor PCK CRL hash | inline | verification-only |
-| 257 | 32 | `fullQuoteHash` (Keccak-256 of the exact raw quote) | inline | result |
-| 289 | 384/584/648 | `quoteBody` payload | tail | result |
-| 289 + body | variable | `advisoryIDs` payload (absent when empty) | tail | result |
+| 49 | 4 | `advisoryIDs` pointer (uint16 offset, uint16 length; zero when empty) | tail pointer | result |
+| 53 | 8 | `timestamp` (BE Unix seconds) | inline | verification-only |
+| 61 | 32 | TCB Info content hash | inline | verification-only |
+| 93 | 32 | QE Identity content hash | inline | verification-only |
+| 125 | 32 | Root CA certificate hash | inline | verification-only |
+| 157 | 32 | TCB Signing certificate hash | inline | verification-only |
+| 189 | 32 | Root CA CRL hash | inline | verification-only |
+| 221 | 32 | Platform/Processor PCK CRL hash | inline | verification-only |
+| 253 | 32 | `fullQuoteHash` (Keccak-256 of exact raw quote) | inline | result |
+| 285 | 32 | `quoteBodyHash` (Keccak-256 of exact report body) | inline | result |
+| 317 | variable | `advisoryIDs` payload (absent when empty) | tail | result |
 
-`quoteBodyHash` and `advisoryIdsHash` are not included in format `2.1`: the complete payloads are already committed by the journal. The encoding supports existing TCB statuses 8 and 9; an encodable status is not necessarily an accepted verification result.
+The full body is absent from output/journal/event. For raw calls it is a separate
+return value; for ZK consumers the application receives it separately and must
+compare Keccak-256 with `quoteBodyHash` before custom checks. No advisory hash is
+added: full advisories remain committed. This revises **unreleased** format 2.1;
+old test-only 2.1 decoders, proofs and deployments are not compatible.
 
 Rules:
 
-- Non-header slots are numbered from 1 (`quoteVersion`) through 17 (`fullQuoteHash`). Future fields are appended as slots 18, 19, … before the tail, each addition bumping `formatMinorVersion`; existing slots are never inserted or reordered.
+- The table is authoritative for this unreleased revision. After release, layout changes require explicit format versioning.
 - Slot kind (inline vs tail pointer) is defined statically by the registry. A tail-pointer slot stores absolute `offset` + `length` (uint16 BE each) at the start of the slot. The `offset` refers to the position of the field —— counting from the beginning (index 0) —— within the entire output.
 - Each `formatMinorVersion` pins one slot layout, so the tail start is implied by the version. Validate presence, structure, and permitted values per field; do not reject zero values universally. For example, `tcbStatus = 0` is valid, and PPID/PIID need not be non-zero.
 - Compatibility: any registry change bumps `formatMinorVersion`. Strict parsers reject unknown versions; lenient parsers may read known slots and ignore the rest. A new structural paradigm = new `formatMajorVersion`.
 - Canonicalization is strict: contiguous, non-overlapping, in-bounds tail payloads; reserved/unassigned bytes zero; no gaps or trailing garbage.
-- In format `2.1`, `quoteBody` starts at offset 289. A non-empty `advisoryIDs` payload immediately follows the body. Empty advisories use pointer `(0, 0)` and append no payload.
+- A non-empty `advisoryIDs` payload starts at offset 317. Empty advisories use pointer `(0, 0)` and append no payload.
 - The total encoded output length must not exceed 65,535 bytes. Reject overflow or oversized encodings rather than truncating offsets or lengths.
 - Verification-only slots are filled by both paths; consumers may ignore them.
 - `piid` all-zero when `piidPresent == 0`; `piidPresent` ∈ {`0x00`, `0x01`}.
@@ -166,7 +171,7 @@ In V2, **the journal is the output**: the guest commits an `OutputV2` structure 
 - No new maximum-proof-age or challenge-binding policy is introduced. Collateral validity checks are not a complete freshness guarantee.
 - All V2 quote versions, including Quote V3, use PCS API v4 / TCB Info v3 on both paths.
 - V2 returns the actual advisory IDs from the matched TCB level, preserving their order without sorting or deduplication. Legacy paths retain their existing behavior.
-- Strict V2 calls reject SGX/TDX debug mode, reserved TDX attribute bits, missing SEPT_VE_DISABLE, and non-zero MR_SERVICE_TD. Only these workload restrictions are skipped with `minCheck=true`. All backends prove the common minimal baseline and authenticate the full report body; FeeV2 enforces strict workload policy on the committed body for short calls and `minCheck=false`. Legacy selectors retain their existing acceptance policy.
+- Strict V2 calls reject SGX/TDX debug mode, reserved TDX attribute bits, missing SEPT_VE_DISABLE, and non-zero MR_SERVICE_TD. Only these workload restrictions are skipped with `minCheck=true`. Every backend has distinct compile-time strict/minimal programs. The contract checks mode against the registered ID before proof verification. Raw strict workload checks remain on chain; ZK strict workload checks execute inside the strict guest. Legacy contracts retain their existing acceptance policy.
 - V2 TDX status calculation retains the first SGX/PCE partial-match status, enforces revocation on the complete TDX match, evaluates the matching module identity including TDX_00, and performs the relaunch check using the pre-convergence platform status. Relaunch results 8/9 must not be overwritten by legacy status serialization.
 - V2 requires exact raw-quote and authentication-data framing; trailing bytes are rejected rather than silently removed before calculating fullQuoteHash.
 
@@ -177,7 +182,7 @@ Validation must reject:
 - Invalid `piidPresent` bytes other than `0` or `1`
 - Non-zero PIID when `piidPresent == false`
 - Non-canonical slots: non-contiguous or overlapping tail pointers, out-of-bounds pointers, non-zero reserved/unassigned bytes
-- Quote-body length that does not match `quoteBodyType`
+- Invalid quote/body version combinations; raw/guest parsing enforces exact body length before hashing
 - Malformed advisory ABI data
 - Unexpected trailing bytes or total encoded length above 65,535 bytes
 - Collateral hash mismatches or a committed timestamp outside the applicable collateral validity intervals
@@ -186,26 +191,25 @@ Validation must reject:
 
 ### New deployments per chain
 
-Five new contract instances are required:
+Six new contract instances are required for isolated deployment:
 
 1. Identity-aware `PCKHelper`
-2. `V3QuoteVerifier` implementation supporting legacy and strict V2 verification paths
-3. `V4QuoteVerifier` implementation supporting legacy and strict V2 verification paths
-4. `V5QuoteVerifier` implementation supporting legacy and strict V2 verification paths
-5. `AutomataDcapAttestationFeeV2`
+2. `V3QuoteVerifier`
+3. `V4QuoteVerifier`
+4. `V5QuoteVerifier`
+5. `AutomataDcapAttestationV2`
+6. An independent `PCCSRouter` pointing to the existing DAOs and new helper
 
-All V3/V4/V5 verifiers should be upgraded together because they share PCK parsing and certificate-chain verification.
+All quote verifiers are deployed together. Compact serialization and journal/
+collateral checks reside in AttestationV2. Internal quote-verifier envelopes
+remain `(ppid, piid, piidPresent, legacyFields)`; applications do not decode them.
 
-Implementation detail: to remain within EIP-170, canonical OutputV2 serialization and journal/collateral checks reside in FeeV2. The quote verifiers' V2 methods return an internal ABI envelope `(ppid, piid, piidPresent, legacyFields)` to FeeV2; this envelope is not a public application output or a journal. Applications must use the FeeV2 selectors specified in Section 1.
+### Existing contracts
 
-### Existing contract changed on-chain
-
-One existing contract is reconfigured:
-
-- `PCCSRouter.pckHelperAddr` is updated to the new backward-compatible helper.
-- When caller restrictions are enabled, authorize all three new quote verifiers and FeeV2 itself: four new Router readers. FeeV2 reads collateral hashes when constructing or validating OutputV2.
-
-The current router should not be redeployed. The update script must read the other five router addresses directly from the live contract and change only the PCK helper argument when calling `setConfig`. It must not reconstruct all six arguments from potentially stale JSON files.
+Never switch the shared Router/helper during isolated rollout. Authorize the
+new entrypoint and three quote verifiers on the independent Router. Deduplicate
+the shared DAOs' resolvers and add only new Router reader permission, using each
+resolver's actual owner. No writer permission or collateral updates are needed.
 
 ### Contracts not requiring replacement
 
@@ -216,14 +220,14 @@ The following should remain unchanged:
 - CRL helpers
 - FMSPC/TCB helpers
 - P-256 verifier
-- RISC Zero/SP1 universal verifier contracts on their existing supported networks
+- RISC Zero universal verifier contracts where compatible; SP1 v6 needs an explicitly reviewed compatible route/verifier (do not assume v5 compatibility)
 - Pico verifier source/local test support (no network deployment in scope)
 
 Reuse the applicable existing RISC Zero/SP1 universal verifiers and register
-their new audited guest/program identifiers only on supported networks. Pico's
+their new audited strict/minimal guest IDs only on supported networks. SP1 guest/build/host SDK targets exact 6.8.0 and requires a 64-bit toolchain, matching patches and v6 proof verifier. Pico's
 new guest/native ID is for local validation, not a network registration.
 
-If `DcapPortal` must directly expose the V2 methods, its implementation, ABI and proxy deployment form a separate downstream upgrade. Direct calls to `AutomataDcapAttestationFeeV2` do not require this.
+If `DcapPortal` must directly expose the V2 methods, its implementation, ABI and proxy deployment form a separate downstream upgrade. Direct calls to `AutomataDcapAttestationV2` do not require this.
 
 ## 6. Repository impact
 
@@ -239,7 +243,7 @@ Re-estimate the previous 35–50-file production scope after accounting for gues
 
 The missing main-branch guest projects have been located in staging at [`rust-crates/libraries/zkvm/methods`](https://github.com/automata-network/automata-dcap-attestation/tree/942d42c8a8543a28ed737db515fb8e8c246aca61/rust-crates/libraries/zkvm/methods). Selectively port these projects and their required shared input types, feature separation, and workspace configuration; do not merge unrelated staging changes or SDK upgrades.
 
-The staging guests originally emitted a legacy-style journal with an appended Keccak-256 quote hash. V2 guests use the agreed OutputV2 format with Keccak-256 fullQuoteHash. Their build scripts target the new release directory without overwriting or silently reusing legacy ELF files. Source availability does not establish reproducibility; reproducible builds remain a release gate. Earlier draft V2 guests committed SHA-256 and enforced strict workload policy inside the guest; their IDs/proofs must not be registered for this revision. Rebuild and re-prove before release. RISC Zero's `sha256(journal)` remains unchanged.
+The staging guests originally emitted a legacy-style journal with an appended Keccak-256 quote hash. V2 guests use the agreed OutputV2 format with Keccak-256 fullQuoteHash. Their build scripts target the new release directory without overwriting or silently reusing legacy ELF files. Source availability does not establish reproducibility; reproducible builds remain a release gate. Earlier SHA-256 and inline-body guests/IDs/proofs must not be registered for this compact revision. Rebuild and re-prove before release. RISC Zero's `sha256(journal)` remains unchanged.
 
 ## 7. Deployment configuration impact
 
@@ -256,7 +260,8 @@ PCKHelperV2
 `dcap.json`:
 
 ```
-AutomataDcapAttestationFeeV2
+AutomataDcapAttestationV2
+PCCSRouterV2
 V3QuoteVerifierV2
 V4QuoteVerifierV2
 V5QuoteVerifierV2
@@ -269,22 +274,23 @@ This means:
 - 56 active deployment files in total.
 - Another 56 files should be added as a frozen `v1.1` snapshot before `current` is promoted to the new release.
 - Rust and Go network/version registries must gain the new release and V2 address fields.
-- Record all three guest binary hashes/native IDs, source commits and build toolchains in build evidence, marking Pico local-only. The per-chain release manifest records V1/V2 defaults and required legacy IDs (including ATKJ) for supported production backends; do not populate new Pico defaults, routes or registrations.
+- Record all three guest binary hashes/native IDs, source commits and build toolchains in build evidence, marking Pico local-only. The manifest records untouched legacy state and new strict/minimal IDs with the strict default; it does not migrate legacy/ATKJ IDs. Do not populate Pico defaults, routes or registrations.
 
 Old address keys must not be replaced during the compatibility period.
 
 ## 8. Estimated on-chain operations
 
-With the current unbatched deployment tooling, each chain requires:
+The coordinator in `scripts/deploy-dcap-v2/deploy.mjs` performs preflight,
+simulation, isolated deployment/configuration, additive reader grants, finalized
+readback, explorer source verification and versioned publication. Source/config
+and successful stages are checkpointed; interrupted sends require reviewed resume.
 
-- 5 contract deployments
-- 1 router helper update
-- 3 router authorization calls for the new quote verifiers
-- 3 `setQuoteVerifier` calls on the new entrypoint
-- 0–1 fee configuration call
-- ZK configuration calls for separate V1/V2 defaults on already-supported RISC Zero/SP1 backends, plus required legacy program identifiers; no new Pico configuration
-
-Registering only V2 identifiers is not a full-compatibility deployment option. Recalculate the previous 15–19 transactions per chain / 420–532 network-wide estimate from the final scripts and supported-backend/program inventory; default-configuration calls alone may not cover all historical and ATKJ identifiers. Multisend or a purpose-built deployment coordinator could reduce the administrative transaction count.
+Operations include six deployments, new Router authorization/evaluation mappings,
+quote-verifier and fee setup, one grant per distinct unauthorized resolver, and
+separate verifier/strict/minimal/default registration operations. Count and gas
+depend on the evaluation/backend inventory; do not reuse old transaction totals.
+Only `v2.0` and additive PCCS `PCKHelperV2` metadata are written; `current` is
+not promoted. No live deployment is authorized by implementation work.
 
 ## 9. Testing gates
 
@@ -303,8 +309,8 @@ Registering only V2 identifiers is not a full-compatibility deployment option. R
 - V3 SGX, V4 SGX/TDX, V5 SGX/TD10/TD15
 - Both Platform CA and Processor CA leaves
 - On-chain V1 versus V2 output golden vectors
-- Legacy selectors on FeeV2 retain legacy parser and acceptance behavior
-- Independent V1/V2 default program identifiers; required legacy and ATKJ journals remain supported
+- Every old verification/program-registry selector is unavailable on AttestationV2, including owner calls
+- Registration does not change the default; only strict IDs can be defaults; ID/mode mismatches reject; removed IDs cannot change mode when re-registered
 - Identical `OutputV2` from on-chain and ZK paths for the same quote, collaterals, and verification timestamp
 - V3 non-empty advisory IDs and preservation of advisory order
 - Output/journal tests for the fixed `0x06`, statuses 8/9, permitted zero values, contiguous tails, canonical ABI encoding, and the 65,535-byte limit
@@ -318,7 +324,7 @@ Registering only V2 identifiers is not a full-compatibility deployment option. R
 - Journal round trips for all quote-body types
 - RISC Zero/SP1 real proof generation for production-enabled backends; separate local-only Pico proof testing is not a production release gate
 - Verification using the production program identifiers and reused supported-network universal verifiers; Pico local proofs use a matching local verifier
-- Fresh, reproducible builds of all three guests; fail the gate if an existing ELF was merely reused
+- Fresh paired Docker builds for both modes on all three backends; fail if existing ELFs were reused
 - Existing V1 ELF artifacts and program identifiers remain unchanged
 - Rejection of a V1 journal through the V2 selector and vice versa
 - Continued support for existing V1.0/V1.1 output parsing
@@ -333,7 +339,7 @@ Registering only V2 identifiers is not a full-compatibility deployment option. R
 6. Build all three new ZK guests into isolated v2.0 artifact directories and record their hashes, program identifiers, source commits, and toolchain versions.
 7. Update Rust/Go bindings, parsers and network registries.
 8. Deploy to one canary testnet.
-9. Switch that router to the new PCK helper and run both legacy and V2 smoke tests.
+9. Read back the isolated Router/new helper configuration and run both legacy and V2 smoke tests without modifying shared configuration.
 10. Roll out to the remaining testnets and allow a soak period.
 11. Deploy mainnets in batches, verifying both paths after each batch.
 12. Publish the V2 SDK/config release only after the corresponding chain deployment passes its smoke tests.
@@ -345,7 +351,7 @@ Development does not authorize live deployments, router updates, or SDK publicat
 
 The legacy entrypoint and quote-verifier mappings are never modified, so the primary rollback is:
 
-1. Restore the previous `pckHelperAddr` through `PCCSRouter.setConfig`, reading the other five live values from the router.
+1. Pause/stop advertising the isolated V2 instance; shared legacy Router/helper state needs no rollback.
 2. Stop advertising the V2 entrypoint in the registry.
 3. Freeze or remove only the affected V2 ZK route/program identifier if the issue is ZK-specific. Do not disable a shared universal verifier or remove V1 identifiers as part of a V2 rollback.
 

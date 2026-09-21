@@ -46,8 +46,8 @@ fn verify(receipt: &Receipt, id: Digest, expected: &[u8]) -> Result<()> {
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     ensure!(
-        args.len() == 5,
-        "usage: risc0_v2_compress_local PROGRAM INPUT RECEIPT NEW_DIR succinct|groth16|export"
+        args.len() == 5 || (args.len() == 6 && args[5] == "--minimal"),
+        "usage: risc0_v2_compress_local PROGRAM INPUT RECEIPT NEW_DIR succinct|groth16|export [--minimal]"
     );
     ensure!(
         !ProverOpts::default().dev_mode(),
@@ -72,7 +72,12 @@ fn main() -> Result<()> {
     );
     println!("SDK canonical-program loading=PASS native_program_id=0x{id}");
     let input = std::fs::read(&args[1])?;
-    let expected = dcap_rs::v2::verify_guest_input_v2(&input)?;
+    let minimal = args.len() == 6;
+    let expected = if minimal {
+        dcap_rs::v2::verify_guest_input_v2_minimal(&input)
+    } else {
+        dcap_rs::v2::verify_guest_input_v2(&input)
+    }?;
     let source: Receipt = bincode::deserialize(&std::fs::read(&args[2])?)?;
     verify(&source, id, &expected)?;
     let receipt = if args[4] == "export" {
@@ -105,7 +110,7 @@ fn main() -> Result<()> {
         let seal = risc0_ethereum_contracts::encode_seal(&receipt)?;
         ensure!(seal.len() == 260, "unexpected Groth16 EVM seal length");
         let payload = serde_json::json!({
-            "backend": 1, "proofSystem": "groth16", "programId": format!("0x{id}"),
+            "backend": 1, "proofSystem": "groth16", "programId": format!("0x{id}"), "minCheck": minimal,
             "journal": format!("0x{}", hex::encode(expected)), "proof": format!("0x{}", hex::encode(&seal)),
             "proofSelector": format!("0x{}", hex::encode(&seal[..4])),
             "localVerification": "PASS", "forkVerification": "NOT_RUN"

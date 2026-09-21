@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/crypto"
 	"unicode/utf8"
 )
 
-const OutputV2HeaderLength = 289
+const OutputV2HeaderLength = 317
 
 // OutputV2 is wire schema 2.1, not Intel quote version 2.1.
 // Journal bytes are identical to the FeeV2 return value; no legacy prefix/trailer is used.
@@ -25,8 +26,24 @@ type OutputV2 struct {
 	Timestamp          uint64
 	CollateralHashes   [6][32]byte
 	FullQuoteHash      [32]byte // Keccak-256 of the exact complete input quote.
-	QuoteBody          []byte
+	QuoteBodyHash      [32]byte // Keccak-256 of the exact report body supplied by the application.
 	AdvisoryIDs        []string
+}
+
+// ValidateQuoteBody binds a supplied body to an already authenticated output.
+// Decoding an untrusted output followed by this check is not verification.
+func (o *OutputV2) ValidateQuoteBody(body []byte) error {
+	if o == nil {
+		return fmt.Errorf("nil OutputV2")
+	}
+	length, err := v2BodyLength(o.QuoteVersion, o.QuoteBodyType)
+	if err != nil {
+		return err
+	}
+	if len(body) != length || !bytes.Equal(crypto.Keccak256(body), o.QuoteBodyHash[:]) {
+		return fmt.Errorf("quote body does not match authenticated length/hash")
+	}
+	return nil
 }
 
 func v2BodyLength(version, body uint16) (int, error) {
@@ -46,11 +63,11 @@ func (o *OutputV2) MarshalBinary() ([]byte, error) {
 	if o == nil {
 		return nil, fmt.Errorf("nil OutputV2")
 	}
-	length, err := v2BodyLength(o.QuoteVersion, o.QuoteBodyType)
+	_, err := v2BodyLength(o.QuoteVersion, o.QuoteBodyType)
 	if err != nil {
 		return nil, err
 	}
-	if o.FormatMajorVersion != 2 || o.FormatMinorVersion != 1 || o.TCBStatus > 9 || !o.PIIDPresent && o.PIID != [16]byte{} || len(o.QuoteBody) != length {
+	if o.FormatMajorVersion != 2 || o.FormatMinorVersion != 1 || o.TCBStatus > 9 || !o.PIIDPresent && o.PIID != [16]byte{} {
 		return nil, fmt.Errorf("invalid OutputV2 fields")
 	}
 	var advisory []byte
@@ -69,10 +86,10 @@ func (o *OutputV2) MarshalBinary() ([]byte, error) {
 			return nil, err
 		}
 	}
-	if OutputV2HeaderLength+length+len(advisory) > 65535 {
+	if OutputV2HeaderLength+len(advisory) > 65535 {
 		return nil, fmt.Errorf("OutputV2 exceeds uint16 length")
 	}
-	data := make([]byte, OutputV2HeaderLength+length+len(advisory))
+	data := make([]byte, OutputV2HeaderLength+len(advisory))
 	binary.BigEndian.PutUint16(data[0:2], 2)
 	binary.BigEndian.PutUint16(data[2:4], 1)
 	data[4] = 6
@@ -85,19 +102,17 @@ func (o *OutputV2) MarshalBinary() ([]byte, error) {
 	if o.PIIDPresent {
 		data[48] = 1
 	}
-	binary.BigEndian.PutUint16(data[49:51], OutputV2HeaderLength)
-	binary.BigEndian.PutUint16(data[51:53], uint16(length))
 	if len(advisory) > 0 {
-		binary.BigEndian.PutUint16(data[53:55], uint16(OutputV2HeaderLength+length))
-		binary.BigEndian.PutUint16(data[55:57], uint16(len(advisory)))
+		binary.BigEndian.PutUint16(data[49:51], uint16(OutputV2HeaderLength))
+		binary.BigEndian.PutUint16(data[51:53], uint16(len(advisory)))
 	}
-	binary.BigEndian.PutUint64(data[57:65], o.Timestamp)
+	binary.BigEndian.PutUint64(data[53:61], o.Timestamp)
 	for i := range o.CollateralHashes {
-		copy(data[65+i*32:97+i*32], o.CollateralHashes[i][:])
+		copy(data[61+i*32:93+i*32], o.CollateralHashes[i][:])
 	}
-	copy(data[257:289], o.FullQuoteHash[:])
-	copy(data[289:], o.QuoteBody)
-	copy(data[289+length:], advisory)
+	copy(data[253:285], o.FullQuoteHash[:])
+	copy(data[285:317], o.QuoteBodyHash[:])
+	copy(data[317:], advisory)
 	return data, nil
 }
 
@@ -110,24 +125,21 @@ func ParseOutputV2(data []byte) (*OutputV2, error) {
 	if u16(0) != 2 || u16(2) != 1 || data[4] != 6 || data[9] > 9 || data[48] > 1 {
 		return nil, fmt.Errorf("invalid OutputV2 header")
 	}
-	length, err := v2BodyLength(u16(5), u16(7))
+	_, err := v2BodyLength(u16(5), u16(7))
 	if err != nil {
 		return nil, err
 	}
-	bodyEnd := OutputV2HeaderLength + length
-	if u16(49) != OutputV2HeaderLength || int(u16(51)) != length || bodyEnd > len(data) {
-		return nil, fmt.Errorf("invalid body offsets")
-	}
-	o := &OutputV2{FormatMajorVersion: 2, FormatMinorVersion: 1, QuoteVersion: u16(5), QuoteBodyType: u16(7), TCBStatus: data[9], PIIDPresent: data[48] == 1, Timestamp: binary.BigEndian.Uint64(data[57:65])}
+	bodyEnd := OutputV2HeaderLength
+	o := &OutputV2{FormatMajorVersion: 2, FormatMinorVersion: 1, QuoteVersion: u16(5), QuoteBodyType: u16(7), TCBStatus: data[9], PIIDPresent: data[48] == 1, Timestamp: binary.BigEndian.Uint64(data[53:61])}
 	copy(o.FMSPC[:], data[10:16])
 	copy(o.PPID[:], data[16:32])
 	copy(o.PIID[:], data[32:48])
-	copy(o.FullQuoteHash[:], data[257:289])
+	copy(o.FullQuoteHash[:], data[253:285])
+	copy(o.QuoteBodyHash[:], data[285:317])
 	for i := range o.CollateralHashes {
-		copy(o.CollateralHashes[i][:], data[65+i*32:97+i*32])
+		copy(o.CollateralHashes[i][:], data[61+i*32:93+i*32])
 	}
-	o.QuoteBody = append([]byte(nil), data[289:bodyEnd]...)
-	offset, advisoryLength := int(u16(53)), int(u16(55))
+	offset, advisoryLength := int(u16(49)), int(u16(51))
 	if advisoryLength == 0 {
 		if offset != 0 || len(data) != bodyEnd {
 			return nil, fmt.Errorf("noncanonical empty advisory payload")
