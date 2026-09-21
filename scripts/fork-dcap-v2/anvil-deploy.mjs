@@ -9,10 +9,20 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const [endpoint, output, profile='sepolia-osaka'] = process.argv.slice(2);
-if (!output || fs.existsSync(output)) throw new Error('Usage: anvil-deploy.mjs http://127.0.0.1:PORT NEW_REPORT.json [sepolia-osaka|op-sepolia-karst]');
+if (!output || fs.existsSync(output)) throw new Error('Usage: anvil-deploy.mjs http://127.0.0.1:PORT NEW_REPORT.json [sepolia-osaka|op-sepolia-karst|hoodi-osaka]');
 const pins={
   'sepolia-osaka':{chainId:11155111,block:11689923,hash:'0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096',hardfork:'Osaka'},
   'op-sepolia-karst':{chainId:11155420,block:48718178,hash:'0x95b1d91f43a9f6209524114ef04d8d49ba47a82743460bce939fa10a97bbac8c',hardfork:'Karst',network:'optimism'},
+  // Hoodi public RPC review (2026-09-21, chainlist -> rpc.hoodi.ethpandaops.io).
+  // Anvil 1.5.1 reports Prague for chain 560048 but does not execute the
+  // P-256 precompile (0x100) under Prague; Hoodi's live state (successful
+  // P-256 collateral upserts, production quote verifiers) requires it, so the
+  // reviewed local runtime selects Osaka explicitly, exactly like the
+  // sepolia-osaka profile. Confirm Hoodi's actual execution rules before any
+  // non-local claim.
+  // legacy deployment at registry current/560048 has SP1 v5 verifier
+  // 0x7DA83eC4af493081500Ecd36d1a72c23F8fc2abd and no RISC Zero route.
+  'hoodi-osaka':{chainId:560048,block:3666000,hash:'0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f',hardfork:'Osaka'},
 };
 const pin=pins[profile];if(!pin)throw new Error('Unreviewed fork profile');
 const url = new URL(endpoint);
@@ -96,7 +106,18 @@ try {
   for(const key of keys) original.push((await call(legacyRouter,`${key}()`,'address'))[0]);
   report.originalRouter=Object.fromEntries(keys.map((k,i)=>[k,original[i]])); report.owner=owner; save();
   const p256=(await call(original[1],'P256_VERIFIER()','address'))[0];
-  const evaluations=[17,18,19,20,21];
+  // Versioned DAOs differ by chain (Sepolia 17-21, Hoodi 18-21): discover the
+  // evaluations present on the reviewed legacy Router instead of hardcoding.
+  const evaluations=[];
+  for(let evaluation=15;evaluation<=23;evaluation++) {
+    const qe=(await call(legacyRouter,'qeIdDaoVersionedAddr(uint32)','address',evaluation))[0];
+    const fmspc=(await call(legacyRouter,'fmspcTcbDaoVersionedAddr(uint32)','address',evaluation))[0];
+    if(BigInt(qe)!==0n||BigInt(fmspc)!==0n) {
+      if(BigInt(qe)===0n||BigInt(fmspc)===0n) throw new Error(`Partial versioned DAO for evaluation ${evaluation}`);
+      evaluations.push(evaluation);
+    }
+  }
+  if(!evaluations.length) throw new Error('No versioned DAOs on the legacy Router');
   const versioned={};
   for(const evaluation of evaluations) {
     versioned[evaluation]={
@@ -151,9 +172,25 @@ try {
   // Compact strict/minimal program IDs must be supplied explicitly; historical
   // inline-body IDs are never silently registered as compact programs.
   const envOr=(name,fallback)=>process.env[name]??fallback;
+  report.legacyZkVerifiers={
+    risc0:(await call(legacy,'zkVerifier(uint8)','address',1))[0],
+    sp1:(await call(legacy,'zkVerifier(uint8)','address',2))[0],
+  }; save();
+  // Optional independent SP1 v6 verifier: DCAP_SP1_V2_VERIFIER=deploy deploys the
+  // pinned official v6.1.0 artifact from its isolated 0.8.20 compilation unit
+  // (evm/out), never the shared legacy gateway and never a mutable tag.
+  let deployedSp1V6Verifier=null;
+  if((process.env.DCAP_SP1_V2_VERIFIER||'').toLowerCase()==='deploy') {
+    const artifact=JSON.parse(fs.readFileSync(path.join(root,'evm/out/SP1Groth16VerifierV6.sol/SP1Groth16VerifierV6.json')));
+    if(!artifact.metadata.compiler.version.startsWith('0.8.20')) throw new Error('SP1 v6 verifier must come from the isolated 0.8.20 unit');
+    if(artifact.metadata.settings.evmVersion!=='paris') throw new Error('SP1 v6 verifier must target Paris');
+    const receipt=await tx('deploy.SP1Groth16VerifierV6',null,artifact.bytecode.object);
+    deployedSp1V6Verifier=receipt.contractAddress;
+    report.contracts.SP1Groth16VerifierV6={address:deployedSp1V6Verifier,deployedFrom:'evm/out isolated 0.8.20 unit (official v6.1.0 source)'};save();
+  }
   for(const [kind,name] of [[1,'risc0'],[2,'sp1']]) {
     const legacyUniversal=(await call(legacy,'zkVerifier(uint8)','address',kind))[0];
-    const universal=envOr(name==='risc0'?'DCAP_RISC0_V2_VERIFIER':'DCAP_SP1_V2_VERIFIER',legacyUniversal);
+    const universal=name==='sp1'&&deployedSp1V6Verifier?deployedSp1V6Verifier:envOr(name==='risc0'?'DCAP_RISC0_V2_VERIFIER':'DCAP_SP1_V2_VERIFIER',legacyUniversal);
     const strictId=envOr(name==='risc0'?'DCAP_RISC0_STRICT_ID':'DCAP_SP1_STRICT_ID','');
     const minimalId=envOr(name==='risc0'?'DCAP_RISC0_MINIMAL_ID':'DCAP_SP1_MINIMAL_ID','');
     for(const id of [strictId,minimalId]) if(id && !/^0x[0-9a-fA-F]{64}$/.test(id)) throw new Error(`Invalid ${name} program ID`);
@@ -173,7 +210,7 @@ try {
     }
     report.programs[name]=row;
   }
-  report.zkConfigurationScope=profile==='sepolia-osaka'
+  report.zkConfigurationScope=['sepolia-osaka','hoodi-osaka'].includes(profile)
     ?'explicit-env-or-legacy-verifier-address-only; compact program IDs never derived from historical inline-body defaults'
     :'raw-only; full-history-open';
   save();
@@ -182,6 +219,9 @@ try {
   // no-override migration to other chains without their route inventory.
   // OP has no registered backend/ID; full historical route inventory remains
   // separate from this raw-only local rehearsal and is not claimed complete.
+  // Hoodi (560048) pinned state: legacy SP1 v5 verifier present, no RISC Zero
+  // route (zero address); see report.legacyZkVerifiers. Do not claim a Hoodi
+  // RISC Zero route exists without an explicit reviewed verifier deployment.
   for(const fixtureName of ['ata-sgx-v3','ata-tdx-v4','v5']) {
     const fixture=JSON.parse(fs.readFileSync(path.join(root,`evm/forge-test/assets/v2/fixtures/${fixtureName}.json`)));
     const pcs=original[1];
@@ -197,6 +237,7 @@ try {
       }
     }
     const expected=fixture.expectedJournal.slice(2);
+    if(!evaluations.includes(Number(fixture.tcbEvaluationDataNumber))) throw new Error(`Fixture ${fixtureName} needs versioned DAO evaluation ${fixture.tcbEvaluationDataNumber}, absent on this chain`);
     const fmspc='0x'+expected.slice(...FMSPC_HEX), tcbType=fixtureName==='ata-sgx-v3'?0:1;
     const dao=(await call(legacyRouter,'fmspcTcbDaoVersionedAddr(uint32)','address',fixture.tcbEvaluationDataNumber))[0];
     const key=(await call(dao,'FMSPC_TCB_KEY(uint8,bytes6,uint32)','bytes32',tcbType,fmspc,3))[0];

@@ -24,14 +24,19 @@ async function rpc(method,params=[]) {
   const x=await r.json();if(x.error)throw new Error(JSON.stringify(x.error));return x.result;
 }
 const info=await rpc('anvil_nodeInfo'),origin=deployment.origin;
-if(info.environment?.chainId!==11155111 || info.forkConfig?.forkBlockNumber!==11689923 || info.hardFork!=='Osaka' ||
-   (info.network && info.network!=='ethereum') || origin.currentBlockHash!=='0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096')throw new Error('Wrong reviewed fork/runtime');
+const pins={
+  11155111:{block:11689923,hash:'0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096',hardfork:'Osaka'},
+  560048:{block:3666000,hash:'0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f',hardfork:'Osaka'},
+};
+const pin=pins[origin?.environment?.chainId];if(!pin)throw new Error('Unreviewed fork chain');
+if(info.environment?.chainId!==origin.environment.chainId || info.forkConfig?.forkBlockNumber!==pin.block || info.hardFork!==pin.hardfork ||
+   (info.network && info.network!=='ethereum') || origin.currentBlockHash!==pin.hash)throw new Error('Wrong reviewed fork/runtime');
 const fee=deployment.contracts.AutomataDcapAttestationV2.address,legacy=deployment.legacy.AutomataDcapAttestationFee;
 const router=deployment.contracts.PCCSRouter.address,legacyRouter=deployment.legacy.PCCSRouter,owner=deployment.owner,actor='0x'+crypto.randomBytes(20).toString('hex');
 const call=async(to,sig,returns,...args)=>decode(returns,await rpc('eth_call',[{from:actor,to,data:encode(sig,...args)},'latest']));
 const keys=['tcbEvalDaoAddr','pcsDaoAddr','pckDaoAddr','pckHelperAddr','crlHelperAddr','fmspcTcbHelperAddr'];
 const before=await rpc('eth_getBlockByNumber',['latest',false]),snapshot=await rpc('evm_snapshot');
-const report={schema:1,status:'IN_PROGRESS',scope:'Same-Sepolia local transactions: legacy/V2 raw comparison, actual cold/warm calls and read-only isolation verification; test snapshot restored. Not production transactions or pure function-gas estimates. Legacy and compact V2 outputs intentionally differ in format and are not byte-compared.',origin:info,results:[],comparisons:[]};
+const report={schema:1,status:'IN_PROGRESS',scope:`Same-chain (${origin.environment.chainId}) local transactions: legacy/V2 raw comparison, actual cold/warm calls and read-only isolation verification; test snapshot restored. Not production transactions or pure function-gas estimates. Legacy and compact V2 outputs intentionally differ in format and are not byte-compared.`,origin:info,results:[],comparisons:[]};
 const save=()=>fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');save();
 const sampleTopic=cast('keccak','Sample(uint256,uint256,bytes32)');
 async function tx(label,to,input,{from=actor,admin=false,probe=false,creation=false}={}) {

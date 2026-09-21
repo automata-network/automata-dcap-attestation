@@ -20,6 +20,26 @@ tools, not production deployment scripts. No operator key, broadcast to public
 RPC, remote proving service or new trusted setup is used. The scoped six-cell V2
 Sepolia run is [complete](../../docs/dcap-v2-sepolia-acceptance.md); broader release
 gates remain explicit in the [checklist](../../docs/dcap-v2-fork-validation.md).
+
+**September 21 Hoodi scope:** the isolated compact V2 stack was deployed and
+accepted on a pinned Hoodi fork (chain 560048, block 3666000, public RPC from
+chainlist: `rpc.hoodi.ethpandaops.io`, profile `hoodi-osaka`). Anvil 1.5.1
+reports Prague for Hoodi but does not execute the P-256 precompile (0x100)
+under Prague; Hoodi's live state requires it, so the reviewed local runtime
+selects `--hardfork osaka` explicitly, exactly like the Sepolia profile.
+Confirm Hoodi's actual execution rules before any non-local claim. Hoodi
+differences handled by the scripts: versioned DAO evaluations are discovered
+on-chain (18-21; no eval 17), the legacy Router is an older deployment
+revision (readback records instead of failing), the legacy deployment has no
+RISC Zero route (left unset, zero address recorded), and
+`DCAP_SP1_V2_VERIFIER=deploy` deploys the independent official v6.1.0
+`SP1Groth16VerifierV6` from its isolated 0.8.20 unit instead of reusing the
+legacy SP1 v5 gateway. Only one shared-state write was needed (frozen fixture
+PCK CRL upsert). Known Hoodi input quirk: the shared resolver serves a newer
+TCB generation than the eval-20 DAO hashes for the fixture FMSPC keys, so the
+cross-SDK acquisition runner stops at native verification on frozen fixture
+timestamps; acquisition with a current timestamp native-verifies and executes
+in guests (verified 2026-09-21).
 Record fresh output paths; do not overwrite previous evidence. Large proofs,
 circuits and logs belong in ignored local directories or external storage.
 

@@ -22,6 +22,7 @@ const chainId=deployment.origin?.environment?.chainId;
 const profiles={
   11155111:{block:11689923,hash:'0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096',hardfork:'Osaka'},
   11155420:{block:48718178,hash:'0x95b1d91f43a9f6209524114ef04d8d49ba47a82743460bce939fa10a97bbac8c',hardfork:'Karst',network:'optimism'},
+  560048:{block:3666000,hash:'0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f',hardfork:'Osaka'},
 };
 const profile=profiles[chainId];
 if(!profile || node.environment?.chainId!==chainId || node.forkConfig?.forkBlockNumber!==profile.block ||

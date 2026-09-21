@@ -23,21 +23,32 @@ async function rpc(method,params=[]) {
   }
 }
 const info=await rpc('anvil_nodeInfo'),block=await rpc('eth_getBlockByNumber',['latest',false]);
-if(info.environment?.chainId!==11155111 || info.forkConfig?.forkBlockNumber!==11689923 || info.hardFork!=='Osaka' || (info.network && info.network!=='ethereum') || d.origin.currentBlockHash!=='0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096')throw new Error('Wrong fork/runtime');
+const pins={
+  'sepolia-osaka':{chainId:11155111,block:11689923,hash:'0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096',hardfork:'Osaka'},
+  'hoodi-osaka':{chainId:560048,block:3666000,hash:'0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f',hardfork:'Osaka'},
+};
+const pin=pins[d.profile];if(!pin)throw new Error('Unreviewed deployment profile');
+if(info.environment?.chainId!==pin.chainId || info.forkConfig?.forkBlockNumber!==pin.block || info.hardFork!==pin.hardfork ||
+   (info.network && info.network!=='ethereum') || d.origin.currentBlockHash!==pin.hash)throw new Error('Wrong fork/runtime');
 const at=block.number;
-const call=async(to,sig,returns,...args)=>JSON.parse(cast('abi-decode','--json',`f()(${returns})`,await rpc('eth_call',[{to,data:cast('calldata',sig,...args.map(String))},at])))[0];
+const callRaw=async(to,sig,returns,...args)=>JSON.parse(cast('abi-decode','--json',`f()(${returns})`,await rpc('eth_call',[{to,data:cast('calldata',sig,...args.map(String))},at])));
+const call=async(to,sig,returns,...args)=>(await callRaw(to,sig,returns,...args))[0];
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
 const word=x=>BigInt(x).toString(16).padStart(64,'0');
 const v2=d.contracts.AutomataDcapAttestationV2.address,router=d.contracts.PCCSRouter.address,helper=d.contracts.PCKHelper.address;
 const legacyRouter=d.legacy.PCCSRouter,legacy=d.legacy.AutomataDcapAttestationFee;
 const p256=await call(d.originalRouter.pcsDaoAddr,'P256_VERIFIER()','address');
-const manifest={schema:1,status:'IN_PROGRESS',scope:'Sepolia local fork readback of the isolated V2 stack only; no release approval or current registry promotion',origin:d.origin,readbackBlock:{number:at,hash:block.hash},
+  const manifest={schema:1,status:'IN_PROGRESS',scope:`${d.profile} local fork readback of the isolated V2 stack only; no release approval or current registry promotion`,origin:d.origin,readbackBlock:{number:at,hash:block.hash},
   source:{dcapHead:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),pccsHead:execFileSync('git',['-C','evm/lib/automata-on-chain-pccs','rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),
     finalReleaseCommitFrozen:false,hostLockSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'rust-crates/Cargo.lock'))).digest('hex')},contracts:{},router:{address:router},legacyRouter:{address:legacyRouter},backends:{},errors:[]};
 const save=()=>fs.writeFileSync(output,JSON.stringify(manifest,null,2)+'\n');save();
 try {
   for(const [name,c] of Object.entries(d.contracts)) {
-    const a=JSON.parse(fs.readFileSync(path.join(root,`evm/out_fork_osaka/${name}.sol/${name}.json`)));
+    // The SP1 v6 verifier comes from the isolated 0.8.20 compilation unit.
+    const artifactPath=name==='SP1Groth16VerifierV6'
+      ?path.join(root,`evm/out/${name}.sol/${name}.json`)
+      :path.join(root,`evm/out_fork_osaka/${name}.sol/${name}.json`);
+    const a=JSON.parse(fs.readFileSync(artifactPath));
     if(a.metadata.settings.evmVersion!=='paris')throw new Error('Non-release bytecode target');
     const code=await rpc('eth_getCode',[c.address,at]);
     const actual=Buffer.from(code.slice(2),'hex'),expected=Buffer.from(a.deployedBytecode.object.replace(/^0x/,''),'hex');
@@ -59,11 +70,18 @@ try {
     } else if(observed.length)throw new Error('Unexpected immutables');
     manifest.contracts[name]=row;
   }
-  // The isolated Router is the same PCCSRouter artifact as the shared one; its
-  // live runtime hash must match the untouched legacy Router runtime.
+  // Sepolia: the shared Router was deployed from the same source revision, so
+  // its live runtime must equal the isolated one. Hoodi's shared Router is an
+  // older deployment revision; there the isolated Router must match the current
+  // reviewed artifact (artifactMatch PASS above) and the difference is recorded
+  // instead of failing.
   const routerCode=await rpc('eth_getCode',[router,at]),legacyRouterCode=await rpc('eth_getCode',[legacyRouter,at]);
   manifest.router.codeHash=cast('keccak',routerCode);
-  if(manifest.router.codeHash!==cast('keccak',legacyRouterCode))throw new Error('Isolated Router runtime differs from the shared Router artifact');
+  manifest.legacyRouter.codeHash=cast('keccak',legacyRouterCode);
+  if(manifest.router.codeHash!==manifest.legacyRouter.codeHash) {
+    if(d.profile!=='hoodi-osaka')throw new Error('Isolated Router runtime differs from the shared Router artifact');
+    manifest.legacyRouter.runtimeNote='Legacy Hoodi Router is an older deployment revision; the isolated Router is the current reviewed artifact.';
+  }
   // Router packs caller restriction in slot 1 byte 0, followed by tcbEvalDao.
   // Validate both before decoding its authorization mapping in slot 0.
   const packed=BigInt(await rpc('eth_getStorageAt',[router,'0x1',at]));
@@ -90,18 +108,24 @@ try {
     manifest.legacyRouter[key]=legacyValue;
   }
   manifest.router.authorizedNewReaders={};
-  for(const [name,c] of Object.entries(d.contracts).filter(([name])=>name!=='PCKHelper')) {
+  // The independent SP1 v6 verifier never reads PCCS state; the Router is the
+  // caller gatekeeper, not a reader of itself. Only AttestationV2 and the
+  // quote verifiers must hold Router reader authorization.
+  for(const [name,c] of Object.entries(d.contracts).filter(([name])=>!['PCKHelper','PCCSRouter','SP1Groth16VerifierV6'].includes(name))) {
     const slot=cast('keccak',cast('abi-encode','f(address,uint256)',c.address,'0'));
     const enabled=BigInt(await rpc('eth_getStorageAt',[router,slot,at]))===1n;
     if(!enabled)throw new Error('New reader unauthorized');manifest.router.authorizedNewReaders[name]={address:c.address,enabled};
   }
   manifest.router.versionedDAOs={};
   manifest.legacyRouter.versionedDAOs={};
-  for(const evaluation of [17,18,19,20,21]) {
+  // Versioned DAO sets differ by chain (Sepolia 17-21, Hoodi 18-21): scan the
+  // same reviewed window on both routers; every configured evaluation must
+  // match, and unconfigured evaluations must be zero on both.
+  for(let evaluation=15;evaluation<=23;evaluation++) {
     const row={};for(const name of ['qeIdDaoVersionedAddr','fmspcTcbDaoVersionedAddr'])row[name]=await call(router,name+'(uint32)','address',evaluation);
     const legacyRow={};for(const name of ['qeIdDaoVersionedAddr','fmspcTcbDaoVersionedAddr'])legacyRow[name]=await call(legacyRouter,name+'(uint32)','address',evaluation);
     if(JSON.stringify(row)!==JSON.stringify(legacyRow))throw new Error('Versioned DAO clone mismatch');
-    manifest.router.versionedDAOs[evaluation]=row;
+    if(BigInt(row.qeIdDaoVersionedAddr)!==0n)manifest.router.versionedDAOs[evaluation]=row;
   }
   manifest.readers={};
   for(const [index,r] of (d.readers??[]).entries()) {
@@ -120,20 +144,22 @@ try {
       if(!same(universal,configured.verifier))throw new Error('V2 verifier mismatch');
       if(configured.strictId) {
         if(!same(strictId,configured.strictId))throw new Error('Strict default mismatch');
-        const [registered,minCheck]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.strictId);
+        const [registered,minCheck]=await callRaw(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.strictId);
         if(!registered||minCheck)throw new Error('Strict program mode mismatch');
       } else if(BigInt(strictId)!==0n)throw new Error('Unexpected strict default');
       if(configured.minimalId) {
-        const [registered,minCheck]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.minimalId);
+        const [registered,minCheck]=await callRaw(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.minimalId);
         if(!registered||!minCheck)throw new Error('Minimal program mode mismatch');
       }
       if(ids.length!==Number(Boolean(configured.strictId))+Number(Boolean(configured.minimalId)))throw new Error('Unreviewed V2 program IDs');
     } else {
-      if(ids.length!==0 || BigInt(strictId)!==0n || BigInt(universal)===0n)throw new Error('Unexpected V2 ZK configuration');
+      // Unconfigured backend (e.g. no RISC Zero route on Hoodi): the V2 entry
+      // must remain entirely unset, including the verifier address.
+      if(ids.length!==0 || BigInt(strictId)!==0n || BigInt(universal)!==0n)throw new Error('Unexpected V2 ZK configuration');
     }
     // Historical inline-body IDs must never be migrated into the compact V2 registry.
     for(const id of oldIds) {
-      const [registered]=await call(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,id);
+      const [registered]=await callRaw(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,id);
       if(registered)throw new Error('Historical program migrated into compact V2');
     }
   }

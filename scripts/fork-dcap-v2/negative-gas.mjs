@@ -21,10 +21,12 @@ async function rpc(method,params=[]) {
   const body=await res.json();if(body.error)throw new Error(JSON.stringify(body.error));return body.result;
 }
 const info=await rpc('anvil_nodeInfo');
-if(info.environment?.chainId!==11155111 || info.forkConfig?.forkBlockNumber!==11689923)throw new Error('Wrong fork origin');
+const forkPins={11155111:11689923,560048:3666000};
+const chainId=deployment.origin?.environment?.chainId;
+if(!forkPins[chainId] || info.environment?.chainId!==chainId || info.forkConfig?.forkBlockNumber!==forkPins[chainId])throw new Error('Wrong fork origin');
 const before=await rpc('eth_getBlockByNumber',['latest',false]);
 const snapshot=await rpc('evm_snapshot');
-const report={schema:1,status:'IN_PROGRESS',chainId:11155111,forkBlock:11689923,beforeBlock:before.hash,backend:payload.backend,
+const report={schema:1,status:'IN_PROGRESS',chainId,forkBlock:forkPins[chainId],beforeBlock:before.hash,backend:payload.backend,
   proofIdentity:{programId:payload.programId,proofSelector:payload.proof.slice(0,10),proofSha256:crypto.createHash('sha256').update(Buffer.from(payload.proof.slice(2),'hex')).digest('hex'),quoteVersion:Buffer.from(payload.journal.slice(2),'hex').readUInt16BE(5),quoteBodyType:Buffer.from(payload.journal.slice(2),'hex').readUInt16BE(7),journalSha256:crypto.createHash('sha256').update(Buffer.from(payload.journal.slice(2),'hex')).digest('hex')},
   scope:'Locally impersonated test transactions; original node snapshot is restored after recording receipts/traces. Reverts and returned false are distinguished. These are not SDK-signed or public transactions.',
   limitations:'Negative gas depends on the explicit gas cap, especially invalid curve points/precompile failures. Call tracing does not separate refund/floor accounting. No L2 data fees.',results:[]};
