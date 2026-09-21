@@ -146,7 +146,15 @@ async function main() {
       if (flags.includes('--resume') && fs.existsSync(path.join(out, `${name}.started`))) broadcastArgs.push('--resume');
       fs.writeFileSync(path.join(out, `${name}.started`), 'Inspect Foundry broadcast before resuming.\n');
       run('forge', broadcastArgs, evm);
-      const broadcast = read(path.join(evm, 'broadcast/DeployDcapV2.s.sol', String(plan.chainId), 'run-latest.json'));
+      // Foundry 1.5.1 names the broadcast artifact after the --sig function
+      // (`<name>-latest.json`), not `run-latest.json`; older Foundry versions
+      // wrote `run-latest.json` for every stage. Prefer the sig-named artifact
+      // produced by the broadcast that just succeeded.
+      const broadcastDir = path.join(evm, 'broadcast/DeployDcapV2.s.sol', String(plan.chainId));
+      const sigName = `${sig.split('(')[0]}-latest.json`;
+      const broadcast = read(fs.existsSync(path.join(broadcastDir, sigName))
+        ? path.join(broadcastDir, sigName)
+        : path.join(broadcastDir, 'run-latest.json'));
       save(path.join(out, `${name}.broadcast.json`), broadcast);
       state.transactions = [...new Set([...state.transactions, ...broadcast.transactions.map(t => t.hash).filter(Boolean)])];
       state.stages[name] = true; delete state.running; checkpoint();
@@ -198,7 +206,13 @@ async function main() {
       if (state.stages[key]) continue;
       const artifact = capture('forge', ['inspect', tx.contractName, 'abi', '--json'], evm);
       const ctor = JSON.parse(artifact).find(x => x.type === 'constructor');
-      const verifyArgs = ['verify-contract', tx.contractAddress, tx.contractName, '--chain', String(plan.chainId), '--watch'];
+      // Etherscan verification needs an explicit compiler version; pinned
+      // profiles leave it unset, so take it from the exact release artifact.
+      const artifactFile = tx.contractName === 'SP1Groth16VerifierV6'
+        ? path.join(evm, `out/${tx.contractName}.sol/${tx.contractName}.json`)
+        : path.join(evm, `out_fork_osaka/${tx.contractName}.sol/${tx.contractName}.json`);
+      const compiler = JSON.parse(fs.readFileSync(artifactFile)).metadata.compiler.version;
+      const verifyArgs = ['verify-contract', tx.contractAddress, tx.contractName, '--chain', String(plan.chainId), '--watch', '--compiler-version', `v${compiler}`];
       if (ctor?.inputs.length) {
         const sig = `f(${ctor.inputs.map(x => x.type).join(',')})`;
         verifyArgs.push('--constructor-args', capture('cast', ['abi-encode', sig, ...tx.arguments]));
