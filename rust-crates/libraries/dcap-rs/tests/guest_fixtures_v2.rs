@@ -8,6 +8,7 @@ use dcap_rs::types::VerifiedOutputV2;
 use dcap_rs::types::collateral::Collateral;
 use dcap_rs::v2::verify_dcap_quote_v2_with_min_check;
 use dcap_rs::v2::verify_guest_input_v2;
+use dcap_rs::v2::verify_guest_input_v2_minimal;
 use fixture::{GuestInput, V2Fixture, hex_bytes};
 use std::time::{Duration, UNIX_EPOCH};
 
@@ -63,6 +64,58 @@ const ATA_FIXTURES: [&str; 2] = [
     include_str!("../../../../evm/forge-test/assets/v2/fixtures/ata-sgx-v3.json"),
     include_str!("../../../../evm/forge-test/assets/v2/fixtures/ata-tdx-v4.json"),
 ];
+
+/// Signed Alibaba V5 quote with a non-zero MR_SERVICE_TD: the production-policy
+/// cell where strict must reject and minimal must accept the same input.
+const POLICY_FIXTURE: &str =
+    include_str!("../../../../evm/forge-test/assets/v2/fixtures/alibaba-v5.json");
+
+#[test]
+fn alibaba_v5_strict_rejects_minimal_accepts_with_frozen_journal() {
+    let fixture: V2Fixture = serde_json::from_str(POLICY_FIXTURE).unwrap();
+    let input = fixture.rebuild_input().unwrap();
+    let (collateral, quote, timestamp) = GuestInput::abi_decode_params(&input).unwrap();
+    let collateral = Collateral::sol_abi_decode(&collateral).unwrap();
+    let strict = verify_dcap_quote_v2_with_min_check(
+        UNIX_EPOCH + Duration::from_secs(timestamp),
+        &collateral,
+        &quote,
+        false,
+    )
+    .unwrap_err();
+    assert!(
+        strict.to_string().contains("migration service TD"),
+        "unexpected strict rejection: {strict}"
+    );
+    let minimal = verify_dcap_quote_v2_with_min_check(
+        UNIX_EPOCH + Duration::from_secs(timestamp),
+        &collateral,
+        &quote,
+        true,
+    )
+    .unwrap();
+    assert_eq!(minimal.to_vec().unwrap(), verify_guest_input_v2_minimal(&input).unwrap());
+    assert_eq!(hex_bytes(&minimal.to_vec().unwrap()), fixture.expected_journal);
+    // The same input stays frozen: the strict guest path keeps rejecting it and
+    // every collateral/signature mutation stays rejected in both modes.
+    assert!(verify_guest_input_v2(&input).is_err());
+    for (name, mutation) in negative_cases::negative_inputs(&input).unwrap() {
+        let (collateral, quote, timestamp) = GuestInput::abi_decode_params(&mutation).unwrap();
+        let collateral = Collateral::sol_abi_decode(&collateral).unwrap();
+        for min_check in [false, true] {
+            assert!(
+                verify_dcap_quote_v2_with_min_check(
+                    UNIX_EPOCH + Duration::from_secs(timestamp),
+                    &collateral,
+                    &quote,
+                    min_check
+                )
+                .is_err(),
+                "mode {min_check}: accepted {name}"
+            );
+        }
+    }
+}
 
 #[test]
 fn public_ata_quotes_match_frozen_journals_and_reject_eight_mutations_each() {

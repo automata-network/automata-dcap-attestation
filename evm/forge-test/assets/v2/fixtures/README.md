@@ -22,6 +22,31 @@ are preserved as strings: do not sort or reserialize their object members.
 | V5 | 1789052566 | `99c9630ffd878ab2800b5d72ca90d07b077ef360eec83efa116815e2200419a9` | 937 |
 | ATA SGX V3 | 1789139978 | `d0ba508f6946915279d1662516b0324a1e899c073ca94e0e13b69407287aec94` | 833 |
 | ATA TDX V4 (extracted prefix) | 1789139978 | `567c4e1f7ec0b70cc52e55ad3c06c0ed205b28c4f32bebe3d16efcc37e4e78ce` | 873 |
+| Alibaba V5 (policy) | 1789052566 | `1477d7dab42ac0c40b375250950d5c594e9909ae99960fcceb44ac345d5b4236` | 1245 |
+
+The Alibaba V5 row is the production-policy fixture: the signed historical
+Alibaba Cloud TDX 1.5 quote has a non-zero `MR_SERVICE_TD` (migration service
+TD), so **strict mode rejects it** with `TDX migration service TD measurement
+is not zero` while **minimal mode accepts** the identical input and produces
+the frozen 1,245-byte journal. Its CA-level collateral (CRLs, issuer chain,
+TCB Info, QE identity) and verification timestamp are donated unchanged by the
+`v5.json` snapshot (same FMSPC `90c06f000000`); the quote bytes and its PCK
+chain are unmodified. It was generated with:
+
+```sh
+cargo run --locked --manifest-path rust-crates/Cargo.toml -p dcap-rs \
+  --example v2_alibaba_fixture --target-dir rust-crates/target -- \
+  evm/forge-test/assets/v2/fixtures/v5.json \
+  evm/forge-test/assets/quotes/alibaba_quote_5.hex \
+  evm/forge-test/assets/v2/fixtures/alibaba-v5.json
+```
+
+(`alibaba_quote_5.hex` needs a `0x` prefix; print one with
+`printf '0x%s' "$(cat ...)"` into a temporary file first. The generator fails
+closed unless strict rejects and minimal accepts.) Native coverage lives in
+`guest_fixtures_v2::alibaba_v5_strict_rejects_minimal_accepts_with_frozen_journal`
+and Solidity coverage in `AlibabaV5PolicyV2Test`. Do not add it to the
+both-modes-pass fixture lists; it is deliberately mode-divergent.
 
 The additional ATA quote originals and explicit TDX padding extraction are
 documented in [quote provenance](../quotes/README.md). The original 8,000-byte
@@ -97,6 +122,12 @@ for sample in ata-sgx-v3 ata-tdx-v4; do
     export "evm/forge-test/assets/v2/fixtures/${sample}.json" \
     "$fixture_output_dir/${sample}-input.bin"
 done
+# Mode-divergent policy fixture: strict rejects it by design, so export the
+# frozen journal through the minimal native path.
+cargo run --locked --offline --manifest-path rust-crates/Cargo.toml \
+  -p dcap-rs --example v2_fixture --target-dir rust-crates/target -- \
+  export "evm/forge-test/assets/v2/fixtures/alibaba-v5.json" \
+  "$fixture_output_dir/alibaba-v5-input.bin" --minimal
 ```
 
 Pass an exported file to the execution-only runners documented under

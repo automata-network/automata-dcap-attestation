@@ -89,17 +89,30 @@ fn main() -> Result<()> {
             );
         },
         "export" => {
-            ensure!(args.len() == 3, "export takes a fixture and destination");
+            // Optional --minimal exports a mode-divergent policy fixture (e.g.
+            // the Alibaba migration-service quote): strict rejects it by design,
+            // so the frozen journal is checked against minimal native output.
+            let minimal = args.len() == 4 && args[3] == "--minimal";
+            ensure!(
+                args.len() == 3 || minimal,
+                "export takes a fixture and destination [ --minimal ]"
+            );
             let fixture: V2Fixture = serde_json::from_slice(&std::fs::read(&args[1])?)?;
             let input = fixture.rebuild_input()?;
+            let journal = if minimal {
+                dcap_rs::v2::verify_guest_input_v2_minimal(&input)
+            } else {
+                verify_guest_input_v2(&input)
+            }?;
             ensure!(
-                verify_guest_input_v2(&input)? == unhex(&fixture.expected_journal)?,
+                journal == unhex(&fixture.expected_journal)?,
                 "native journal mismatch"
             );
             write_new(&args[2], &input)?;
             println!(
-                "exported V{}; input_sha256={}",
+                "exported V{} mode={}; input_sha256={}",
                 fixture.quote_version,
+                if minimal { "minimal" } else { "strict" },
                 sha256(&input)
             );
         },
