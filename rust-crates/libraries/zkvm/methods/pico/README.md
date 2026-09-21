@@ -86,6 +86,13 @@ Pico v1.1.6/KoalaBear, comparing the complete journal to native V2 verification
 at the same input timestamp. It does not use `DEV_MODE`, an old ELF or a cached
 `proof.data`, and does not generate a proof or register a program ID.
 
+`--expect-reject` covers the mode-divergent Alibaba V5 policy fixture
+(non-zero `MR_SERVICE_TD`): native verification in the selected mode must
+reject the input, and the emulator's non-zero guest halt (surfaced by the SDK
+as a host panic) counts as the guest rejection. Faults, cycle limits and
+transport errors are not validation rejections. The strict program must reject
+while the minimal program accepts the same exported input with journal parity.
+
 Build-driver tests can run without compiling the guest:
 
 ```sh

@@ -84,13 +84,22 @@ The example requires local `r0vm` 3.0.3, rejects enabled `RISC0_DEV_MODE`, and
 explicitly executes in a local subprocess. It never selects Bonsai or submits
 a proving request. The subprocess needs local IPC/loopback access.
 
-Successful execution must halt with status zero, match the native journal
+ Successful execution must halt with status zero, match the native journal
 byte-for-byte and pass the SDK's OutputV2 decoder. `--negative` checks eight
 cases: changed signed body/signature, trailing zeros, truncation, unsupported
 quote version, oversized signature length, and pre-/post-validity timestamps. Only a
 DCAP verification panic counts as rejection, not transport errors, arbitrary
 faults or the 500-million-cycle session limit. Reported cycles are user cycles,
 excluding continuation overhead and proof padding.
+
+`--expect-reject` is for mode-divergent policy fixtures such as the signed
+Alibaba V5 quote with a non-zero `MR_SERVICE_TD`
+(`evm/forge-test/assets/v2/fixtures/alibaba-v5.json`, exported with
+`v2_fixture export ... --minimal`): native verification in the selected mode
+must reject the input and the guest must panic with the same DCAP validation
+marker. Export the fixture input once and run the strict program with
+`--expect-reject` plus the minimal program with `--minimal`; the two modes
+deliberately disagree on this quote.
 
 On memory-constrained Linux machines, the host example can be linked with
 Rust's bundled LLD, as in the [SP1 instructions](../sp1/README.md#low-memory-host-linking),

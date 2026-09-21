@@ -19,10 +19,15 @@ for dcap_backend in risc0 sp1; do
   (cd "$(dirname "$dcap_program")" && sha256sum -c artifact.sha256)
   dcap_runner="$dcap_repo/rust-crates/target/release/examples/${dcap_backend}_v2_execute"
   sha256sum "$dcap_runner" > "$dcap_results/$dcap_backend-$dcap_mode-runner.sha256"
-  for dcap_sample in v3 v4 v5 ata-sgx-v3 ata-tdx-v4; do
+  for dcap_sample in v3 v4 v5 ata-sgx-v3 ata-tdx-v4 alibaba-v5; do
     dcap_args=()
     if [[ "$dcap_mode" == minimal ]]; then dcap_args+=(--minimal); fi
     if [[ "$dcap_sample" == ata-sgx-v3 ]]; then dcap_args+=(--negative); fi
+    # The Alibaba V5 migration-service quote is mode-divergent by design:
+    # the strict guest must reject it and the minimal guest must accept it.
+    if [[ "$dcap_sample" == alibaba-v5 && "$dcap_mode" == strict ]]; then
+      dcap_args+=(--expect-reject)
+    fi
     dcap_log="$dcap_results/$dcap_backend-$dcap_mode-$dcap_sample.log"
     "$dcap_runner" "$dcap_program" "$dcap_evidence/inputs/$dcap_sample.bin" "${dcap_args[@]}" > "$dcap_log" 2>&1
     grep -F "native_program_id=$(< "$dcap_return/a/results/native-id.txt")" "$dcap_log"
@@ -30,5 +35,5 @@ for dcap_backend in risc0 sp1; do
   done
   done
 done
-printf '%s\n' '20 positive executions and 32 guest rejection cases passed across strict/minimal; NOT proof or on-chain acceptance.' > "$dcap_results/PASS.txt"
+printf '%s\n' '22 positive executions and 34 guest rejection cases passed across strict/minimal, including the Alibaba V5 mode-divergent policy cell; NOT proof or on-chain acceptance.' > "$dcap_results/PASS.txt"
 cat "$dcap_results/PASS.txt"

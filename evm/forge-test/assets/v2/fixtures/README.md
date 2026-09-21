@@ -137,8 +137,11 @@ Pass an exported file to the execution-only runners documented under
 The SP1/RISC Zero runners support `--negative`: signed-body/signature changes,
 trailing zeros, truncation, unsupported quote version, oversized signature
 length, and pre-/post-validity timestamps (eight cases). Pico's current runner compares
-successful execution only. Guest ELF/native ID approval and real proof checks
-are separate gates.
+successful execution only. For the mode-divergent `alibaba-v5` input, all three
+runners support `--expect-reject`: run the strict program with `--expect-reject`
+(native and guest must both reject) and the minimal program with `--minimal`
+(journal parity with the frozen 1,245-byte journal). Guest ELF/native ID approval
+and real proof checks are separate gates.
 
 ## Deliberate fixture maintenance
 

@@ -14,8 +14,13 @@ async fn main() -> Result<()> {
         (2..=4).contains(&args.len())
             && args[2..]
                 .iter()
-                .all(|a| a == "--negative" || a == "--minimal"),
-        "usage: sp1_v2_execute <ELF> <V2 ABI input> [--negative] [--minimal]"
+                .all(|a| a == "--negative" || a == "--minimal" || a == "--expect-reject"),
+        "usage: sp1_v2_execute <ELF> <V2 ABI input> [--negative] [--minimal] [--expect-reject]"
+    );
+    let expect_reject = args.iter().any(|a| a == "--expect-reject");
+    ensure!(
+        !(expect_reject && args.iter().any(|a| a == "--negative")),
+        "--expect-reject checks the primary input itself and cannot combine with --negative"
     );
     let elf = std::fs::read(&args[0]).context("read ELF")?;
     let input = std::fs::read(&args[1]).context("read V2 ABI input")?;
@@ -27,6 +32,49 @@ async fn main() -> Result<()> {
     } else {
         dcap_rs::v2::verify_guest_input_v2
     };
+    let minimal_label = if minimal {
+        "DCAP V2 minimal verification:"
+    } else {
+        "DCAP V2 verification:"
+    };
+    // Mode-divergent policy fixtures (e.g. the Alibaba migration-service quote)
+    // must be rejected natively in this mode and rejected by the guest as well.
+    if expect_reject {
+        let rejection = verify(&input).expect_err("native V2 unexpectedly accepted policy input");
+        println!("mode={}", if minimal { "minimal" } else { "strict" });
+        println!("native_rejection={rejection}");
+        std::env::set_var("SP1_DISABLE_PROGRAM_CACHE", "true");
+        for name in ["VERIFY_VK", "FIX_CORE_SHAPES", "FIX_RECURSION_SHAPES"] {
+            ensure!(
+                std::env::var(name).map_or(true, |value| value.eq_ignore_ascii_case("true")),
+                "execution checks require the default {name}=true setting"
+            );
+        }
+        let client = LightProver::new().await;
+        let pk = client.setup(elf.clone()).await?;
+        let vk = pk.verifying_key();
+        println!("circuit_version={}", SP1_CIRCUIT_VERSION.trim());
+        println!("native_program_id={}", vk.bytes32());
+        let mut stdin = SP1Stdin::new();
+        stdin.write_slice(&input);
+        let (stderr_tx, stderr_rx) = tokio::sync::watch::channel(String::new());
+        let (_, report) = client
+            .execute(elf.clone(), stdin)
+            .cycle_limit(EXECUTION_CYCLE_LIMIT)
+            .stderr(stderr_tx)
+            .await
+            .context("policy guest execution transport")?;
+        let stderr = stderr_rx.borrow();
+        ensure!(
+            report.exit_code == 1 && stderr.contains(minimal_label),
+            "unexpected SP1 policy rejection: exit={} stderr={}",
+            report.exit_code,
+            stderr.as_str()
+        );
+        println!("policy_rejection=native_and_guest=PASS");
+        println!("Execution only: no proof generated or universal verifier checked.");
+        return Ok(());
+    }
     let expected = verify(&input).context("native V2 verification")?;
     println!("mode={}", if minimal { "minimal" } else { "strict" });
 
@@ -91,12 +139,7 @@ async fn main() -> Result<()> {
             // both the intended validation panic and exit status; faults are not passes.
             let stderr = stderr_rx.borrow();
             ensure!(
-                report.exit_code == 1
-                    && stderr.contains(if minimal {
-                        "DCAP V2 minimal verification:"
-                    } else {
-                        "DCAP V2 verification:"
-                    }),
+                report.exit_code == 1 && stderr.contains(minimal_label),
                 "unexpected SP1 rejection for {name}: exit={} stderr={}",
                 report.exit_code, stderr.as_str()
             );

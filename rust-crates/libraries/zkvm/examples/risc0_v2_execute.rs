@@ -21,8 +21,13 @@ fn main() -> Result<()> {
             && args.len() <= 4
             && args[2..]
                 .iter()
-                .all(|a| a == "--negative" || a == "--minimal"),
-        "usage: risc0_v2_execute <V2 program binary> <V2 ABI input> [--negative] [--minimal]"
+                .all(|a| a == "--negative" || a == "--minimal" || a == "--expect-reject"),
+        "usage: risc0_v2_execute <V2 program binary> <V2 ABI input> [--negative] [--minimal] [--expect-reject]"
+    );
+    let expect_reject = args.iter().any(|a| a == "--expect-reject");
+    ensure!(
+        !(expect_reject && args.iter().any(|a| a == "--negative")),
+        "--expect-reject checks the primary input itself and cannot combine with --negative"
     );
     ensure!(
         !risc0_zkvm::ProverOpts::default().dev_mode(),
@@ -45,6 +50,32 @@ fn main() -> Result<()> {
     } else {
         dcap_rs::v2::verify_guest_input_v2
     };
+    let minimal_label = if minimal {
+        "DCAP V2 minimal verification:"
+    } else {
+        "DCAP V2 verification:"
+    };
+    // Mode-divergent policy fixtures (e.g. the Alibaba migration-service quote)
+    // must be rejected natively in this mode and rejected by the guest as well.
+    if expect_reject {
+        let rejection = verify(&input).expect_err("native V2 unexpectedly accepted policy input");
+        println!("mode={}", if minimal { "minimal" } else { "strict" });
+        println!("native_rejection={rejection}");
+        let executor = ExternalProver::new("local-execution", "r0vm");
+        println!("r0vm_version=3.0.3");
+        println!("native_program_id=0x{}", compute_image_id(&elf)?);
+        let error = executor
+            .execute(execution_env(&input)?, &elf)
+            .expect_err("RISC Zero V2 unexpectedly accepted policy input");
+        let cause = error.root_cause().to_string();
+        ensure!(
+            cause.starts_with("Guest panicked:") && cause.contains(minimal_label),
+            "unexpected RISC Zero policy rejection: {error:#}"
+        );
+        println!("policy_rejection=native_and_guest=PASS");
+        println!("Execution only: no proof generated or universal verifier checked.");
+        return Ok(());
+    }
     let expected = verify(&input).context("native V2 verification")?;
     println!("mode={}", if minimal { "minimal" } else { "strict" });
 
@@ -91,12 +122,7 @@ fn main() -> Result<()> {
             // Do not count cycle limits, transport errors or arbitrary faults as rejection.
             let cause = error.root_cause().to_string();
             ensure!(
-                cause.starts_with("Guest panicked:")
-                    && cause.contains(if minimal {
-                        "DCAP V2 minimal verification:"
-                    } else {
-                        "DCAP V2 verification:"
-                    }),
+                cause.starts_with("Guest panicked:") && cause.contains(minimal_label),
                 "unexpected RISC Zero failure for {name}: {error:#}"
             );
             println!("rejection={name} native_and_guest=PASS");

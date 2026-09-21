@@ -63,6 +63,13 @@ it neither creates mock proofs nor sends network requests. For negative cases,
 require guest exit status 1 and the expected DCAP validation panic; a host fault
 or transport error is not a successful rejection.
 
+`--expect-reject` covers the mode-divergent Alibaba V5 policy fixture
+(non-zero `MR_SERVICE_TD`, exported with `v2_fixture export ... --minimal`):
+native verification in the selected mode must reject the input, and the guest
+must exit 1 with the same DCAP validation marker. Run the strict program with
+`--expect-reject` and the minimal program with `--minimal`; the two modes
+deliberately disagree on this quote.
+
 ## Generate or verify local proofs
 
 ```sh
