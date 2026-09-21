@@ -39,6 +39,8 @@ func isReviewedFork(origin, actual forkNodeInfo) bool {
 	switch origin.Environment.ChainID {
 	case 11155111:
 		valid = origin.ForkConfig.Block == 11689923 && origin.HardFork == "Osaka" && origin.CurrentBlockHash == "0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096" && (origin.Network == "" || origin.Network == "ethereum") && (actual.Network == "" || actual.Network == "ethereum")
+	case 560048:
+		valid = origin.ForkConfig.Block == 3666000 && origin.HardFork == "Osaka" && origin.CurrentBlockHash == "0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f" && (origin.Network == "" || origin.Network == "ethereum") && (actual.Network == "" || actual.Network == "ethereum")
 	case 11155420:
 		valid = origin.ForkConfig.Block == 48718178 && origin.HardFork == "Karst" && origin.Network == "optimism" && actual.Network == "optimism" && origin.CurrentBlockHash == "0x95b1d91f43a9f6209524114ef04d8d49ba47a82743460bce939fa10a97bbac8c"
 	}
@@ -52,8 +54,16 @@ func TestReviewedForkOrigins(t *testing.T) {
 	op := eth
 	op.Environment.ChainID, op.ForkConfig.Block, op.HardFork, op.Network = 11155420, 48718178, "Karst", "optimism"
 	op.CurrentBlockHash = "0x95b1d91f43a9f6209524114ef04d8d49ba47a82743460bce939fa10a97bbac8c"
-	if !isReviewedFork(eth, eth) || !isReviewedFork(op, op) {
+	hoodi := eth
+	hoodi.Environment.ChainID, hoodi.ForkConfig.Block, hoodi.HardFork = 560048, 3666000, "Osaka"
+	hoodi.CurrentBlockHash = "0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f"
+	if !isReviewedFork(eth, eth) || !isReviewedFork(op, op) || !isReviewedFork(hoodi, hoodi) {
 		t.Fatal("valid origin rejected")
+	}
+	wrongHoodi := hoodi
+	wrongHoodi.HardFork = "Prague"
+	if isReviewedFork(hoodi, wrongHoodi) {
+		t.Fatal("Prague hardfork accepted for the reviewed Hoodi Osaka runtime")
 	}
 	wrong := op
 	wrong.Network = "ethereum"

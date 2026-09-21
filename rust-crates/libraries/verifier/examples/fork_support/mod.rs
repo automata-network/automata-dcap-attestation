@@ -17,6 +17,19 @@ pub fn validate_origin(report: &serde_json::Value, actual: &serde_json::Value) -
                 "Osaka",
             )
         }
+        Some(560048) => {
+            ensure!(
+                (origin["network"].is_null() || origin["network"] == "ethereum")
+                    && (actual["network"].is_null() || actual["network"] == "ethereum"),
+                "Ethereum runtime required"
+            );
+            (
+                560048,
+                3666000,
+                "0x507bec8bb301dc25d57e09fee024cf8a099db7e8ee318c483591fed3b738a57f",
+                "Osaka",
+            )
+        }
         Some(11155420) => {
             ensure!(
                 origin["network"] == "optimism" && actual["network"] == "optimism",
