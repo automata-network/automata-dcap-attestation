@@ -62,7 +62,7 @@ const PCE_ID_OID: ObjectIdentifier = oid!(1, 2, 840, 113741, 1, 13, 1, 3);
 const FMSPC_OID: ObjectIdentifier = oid!(1, 2, 840, 113741, 1, 13, 1, 4);
 
 /// SGX Type OID
-/// Indicates whether platform is standard or scalable
+/// Indicates standard, scalable, or scalable-with-integrity platforms
 const SGX_TYPE_OID: ObjectIdentifier = oid!(1, 2, 840, 113741, 1, 13, 1, 5);
 
 /// Platform Instance ID OID
@@ -395,6 +395,8 @@ fn parse_extensions<'a>(
 pub(crate) enum SgxType {
     Standard,
     Scalable,
+    // Intel PCK Certificate and CRL Profile Specification 1.5, SGX Type (OID .1.5).
+    ScalableWithIntegrity,
 }
 
 impl<'a> TryFrom<ExtensionValue<'a>> for SgxType {
@@ -414,6 +416,7 @@ impl TryFrom<asn1::Enumerated> for SgxType {
         match value.value() {
             0 => Ok(SgxType::Standard),
             1 => Ok(SgxType::Scalable),
+            2 => Ok(SgxType::ScalableWithIntegrity),
             _ => Err(anyhow!("unknown SGX type in PCK certificate")),
         }
     }
@@ -485,3 +488,78 @@ impl<'a> TryFrom<SequenceOf<'a, SgxExtension<'a>>> for Configuration {
 //         assert_eq!(ext.tcb.compsvn[0], 4);
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::quote::Quote;
+
+    fn fixture_extension() -> Vec<u8> {
+        let bytes = hex::decode(include_str!("../../../../samples/quotev4.hex").trim()).unwrap();
+        let quote = Quote::read(&mut bytes.as_slice()).unwrap();
+        let chain = quote.signature.get_pck_cert_chain().unwrap();
+        chain.pck_cert_chain[0]
+            .tbs_certificate
+            .extensions
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|extension| extension.extn_id.to_string() == SGX_EXTENSIONS_OID)
+            .unwrap()
+            .extn_value
+            .as_bytes()
+            .to_vec()
+    }
+
+    fn sgx_type_value_offset(der: &[u8]) -> usize {
+        // SGX Type OID followed by ASN.1 ENUMERATED and its one-byte length.
+        let prefix = hex::decode("060a2a864886f84d010d01050a01").unwrap();
+        let offsets: Vec<_> = der
+            .windows(prefix.len())
+            .enumerate()
+            .filter_map(|(i, value)| (value == prefix).then_some(i + prefix.len()))
+            .collect();
+        assert_eq!(offsets.len(), 1);
+        offsets[0]
+    }
+
+    #[test]
+    fn pck_extension_accepts_scalable_with_integrity_without_changing_tcb() {
+        let mut der = fixture_extension();
+        let original = SgxPckExtension::from_der(&der).unwrap();
+        let offset = sgx_type_value_offset(&der);
+        der[offset] = 2;
+        let parsed = SgxPckExtension::from_der(&der).unwrap();
+        assert!(matches!(parsed._sgx_type, SgxType::ScalableWithIntegrity));
+        assert_eq!(parsed.tcb.compsvn, original.tcb.compsvn);
+        assert_eq!(parsed.tcb.pcesvn, original.tcb.pcesvn);
+        assert_eq!(parsed.tcb.cpusvn, original.tcb.cpusvn);
+        assert_eq!(parsed.fmspc, original.fmspc);
+        assert_eq!(parsed.pceid, original.pceid);
+        assert_eq!(
+            parsed.platform_instance_id(),
+            original.platform_instance_id()
+        );
+        // Only extension parsing is tested here. Modifying a signed certificate
+        // does not make its signature valid.
+    }
+
+    #[test]
+    fn pck_extension_rejects_unknown_sgx_type() {
+        let mut der = fixture_extension();
+        let offset = sgx_type_value_offset(&der);
+        der[offset] = 3;
+        let error = SgxPckExtension::from_der(&der).unwrap_err();
+        assert!(format!("{error:#}").contains("unknown SGX type"));
+    }
+
+    #[test]
+    fn pck_extension_requires_enumerated_sgx_type() {
+        let mut der = fixture_extension();
+        let offset = sgx_type_value_offset(&der);
+        der[offset - 2] = 0x02; // INTEGER is not ENUMERATED, even for value 2.
+        der[offset] = 2;
+        let error = SgxPckExtension::from_der(&der).unwrap_err();
+        assert!(format!("{error:#}").contains("malformed extension value"));
+    }
+}
