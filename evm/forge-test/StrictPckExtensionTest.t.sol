@@ -51,6 +51,14 @@ contract StrictPckExtensionTest is Test {
         return tlv(0xa3, tlv(0x30, extension(inner)));
     }
 
+    function configuration() internal pure returns (bytes memory) {
+        bytes memory flags;
+        for (uint8 i = 1; i <= 3; ++i) {
+            flags = bytes.concat(flags, field(bytes.concat(PREFIX, hex"07"), i, hex"010100"));
+        }
+        return field(PREFIX, 7, tlv(0x30, flags));
+    }
+
     function testRequiredPpidMayBeZero() public view {
         StrictPckExtension.Identity memory identity = parser.parse(wrap(fields()));
         assertEq(identity.ppid, bytes16(0));
@@ -60,7 +68,7 @@ contract StrictPckExtensionTest is Test {
 
     function testPresentPiidMayBeZero() public view {
         StrictPckExtension.Identity memory identity =
-            parser.parse(wrap(bytes.concat(fields(), field(PREFIX, 6, tlv(0x04, new bytes(16))))));
+            parser.parse(wrap(bytes.concat(fields(), field(PREFIX, 6, tlv(0x04, new bytes(16))), configuration())));
         assertTrue(identity.piidPresent);
         assertEq(identity.piid, bytes16(0));
     }
@@ -150,9 +158,15 @@ contract StrictPckExtensionTest is Test {
             field(bytes.concat(PREFIX, hex"07"), 2, hex"010100"),
             field(bytes.concat(PREFIX, hex"07"), 3, hex"0101ff")
         );
-        parser.parse(wrap(bytes.concat(fields(), field(PREFIX, 7, tlv(0x30, nested)))));
+        parser.parse(
+            wrap(
+                bytes.concat(fields(), field(PREFIX, 6, tlv(0x04, new bytes(16))), field(PREFIX, 7, tlv(0x30, nested)))
+            )
+        );
         bytes memory invalid = bytes.concat(nested, field(bytes.concat(PREFIX, hex"07"), 3, hex"010100"));
-        bytes memory der = wrap(bytes.concat(fields(), field(PREFIX, 7, tlv(0x30, invalid))));
+        bytes memory der = wrap(
+            bytes.concat(fields(), field(PREFIX, 6, tlv(0x04, new bytes(16))), field(PREFIX, 7, tlv(0x30, invalid)))
+        );
         vm.expectRevert();
         parser.parse(der);
     }

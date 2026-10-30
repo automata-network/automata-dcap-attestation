@@ -73,7 +73,11 @@ pub fn verify_dcap_quote_v2_with_min_check(
     ensure!(names.len() == 1, "ambiguous PCK issuer common name");
     let issuer = std::str::from_utf8(names[0].value.value())?;
     let piid = chain.pck_extension.platform_instance_id();
-    validate_piid_ca(issuer, piid.is_some())?;
+    validate_pck_profile_ca(
+        issuer,
+        piid.is_some(),
+        chain.pck_extension.configuration_present(),
+    )?;
     let signing_chain = &collateral.tcb_info_and_qe_identity_issuer_chain;
     ensure!(
         signing_chain.len() == 2,
@@ -114,10 +118,20 @@ fn verification_policy(min_check: bool) -> DcapVerificationPolicy {
     }
 }
 
-fn validate_piid_ca(issuer: &str, present: bool) -> Result<()> {
+fn validate_pck_profile_ca(
+    issuer: &str,
+    piid_present: bool,
+    configuration_present: bool,
+) -> Result<()> {
     match issuer {
-        "Intel SGX PCK Platform CA" => ensure!(present, "Platform CA requires PIID"),
-        "Intel SGX PCK Processor CA" => ensure!(!present, "Processor CA forbids PIID"),
+        "Intel SGX PCK Platform CA" => {
+            ensure!(piid_present, "Platform CA requires PIID");
+            ensure!(configuration_present, "Platform CA requires Configuration");
+        },
+        "Intel SGX PCK Processor CA" => {
+            ensure!(!piid_present, "Processor CA forbids PIID");
+            ensure!(!configuration_present, "Processor CA forbids Configuration");
+        },
         _ => anyhow::bail!("unsupported PCK issuer"),
     }
     Ok(())
@@ -202,10 +216,26 @@ mod tests {
     }
     #[test]
     fn ca_presence_matrix() {
-        assert!(validate_piid_ca("Intel SGX PCK Platform CA", true).is_ok());
-        assert!(validate_piid_ca("Intel SGX PCK Platform CA", false).is_err());
-        assert!(validate_piid_ca("Intel SGX PCK Processor CA", false).is_ok());
-        assert!(validate_piid_ca("Intel SGX PCK Processor CA", true).is_err());
-        assert!(validate_piid_ca("untrusted", true).is_err());
+        for issuer in [
+            "Intel SGX PCK Platform CA",
+            "Intel SGX PCK Processor CA",
+            "untrusted",
+        ] {
+            for piid_present in [false, true] {
+                for configuration_present in [false, true] {
+                    let expected = match issuer {
+                        "Intel SGX PCK Platform CA" => piid_present && configuration_present,
+                        "Intel SGX PCK Processor CA" => !piid_present && !configuration_present,
+                        _ => false,
+                    };
+                    assert_eq!(
+                        validate_pck_profile_ca(issuer, piid_present, configuration_present)
+                            .is_ok(),
+                        expected,
+                        "issuer={issuer}, piid={piid_present}, configuration={configuration_present}"
+                    );
+                }
+            }
+        }
     }
 }
