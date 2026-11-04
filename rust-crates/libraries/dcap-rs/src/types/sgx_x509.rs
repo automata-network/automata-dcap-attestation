@@ -112,6 +112,11 @@ impl SgxPckExtension {
         self._platform_instance_id
     }
 
+    /// Presence, independent of the three configuration flag values.
+    pub(crate) fn configuration_present(&self) -> bool {
+        self._configuration.is_some()
+    }
+
     pub fn is_pck_ext(oid: String) -> bool {
         oid == SGX_EXTENSIONS_OID
     }
@@ -380,9 +385,8 @@ fn parse_extensions<'a>(
     }
 
     for (oid, attr) in attributes {
-        // It seems that the platform instance id and configuration are optional in the
-        // PCK certificate. TODO(udit): Confirm this. For time, being this is hardcoded,
-        // to avoid panics, we ignore these two extensions.
+        // Intel PCK Certificate Profile 1.5 makes these fields issuer-dependent.
+        // V2 checks their presence after authenticating the certificate chain.
         if attr.is_none() && oid != PLATFORM_INSTANCE_OID && oid != CONFIGURATION_OID {
             return Err(anyhow!("missing extension in PCK certificate: {:?}", oid));
         }
@@ -542,6 +546,125 @@ mod tests {
         );
         // Only extension parsing is tested here. Modifying a signed certificate
         // does not make its signature valid.
+    }
+
+    fn tlv(tag: u8, value: &[u8]) -> Vec<u8> {
+        let mut encoded = vec![tag];
+        if value.len() < 128 {
+            encoded.push(value.len() as u8);
+        } else if value.len() < 256 {
+            encoded.extend([0x81, value.len() as u8]);
+        } else {
+            encoded.push(0x82);
+            encoded.extend(u16::try_from(value.len()).unwrap().to_be_bytes());
+        }
+        encoded.extend(value);
+        encoded
+    }
+
+    fn field(prefix: &[u8], id: u8, value: &[u8]) -> Vec<u8> {
+        let mut oid = prefix.to_vec();
+        oid.push(id);
+        tlv(0x30, &[tlv(0x06, &oid), value.to_vec()].concat())
+    }
+
+    fn with_profile(sgx_type: u8, piid: bool, configuration: Option<&[u8]>) -> Vec<u8> {
+        let der = fixture_extension();
+        let mut fields = Vec::new();
+        for raw in asn1::parse_single::<SequenceOf<asn1::Tlv<'_>>>(&der).unwrap() {
+            let ext = asn1::parse_single::<SgxExtension<'_>>(raw.full_data()).unwrap();
+            if ext.sgx_extension_id != PLATFORM_INSTANCE_OID
+                && ext.sgx_extension_id != CONFIGURATION_OID
+            {
+                fields.extend(raw.full_data());
+            }
+        }
+        let prefix = hex::decode("2a864886f84d010d01").unwrap();
+        if piid {
+            fields.extend(field(&prefix, 6, &tlv(0x04, &[0; 16])));
+        }
+        if let Some(config) = configuration {
+            fields.extend(field(&prefix, 7, config));
+        }
+        let mut result = tlv(0x30, &fields);
+        let offset = sgx_type_value_offset(&result);
+        result[offset] = sgx_type;
+        result
+    }
+
+    fn configuration_fields() -> [Vec<u8>; 3] {
+        let prefix = hex::decode("2a864886f84d010d0107").unwrap();
+        [1, 2, 3].map(|id| field(&prefix, id, &[0x01, 0x01, 0x00]))
+    }
+
+    #[test]
+    fn configuration_presence_is_independent_of_flag_values() {
+        let config = tlv(0x30, &configuration_fields().concat());
+        for sgx_type in 0..=2 {
+            for piid in [false, true] {
+                for present in [false, true] {
+                    let der = with_profile(sgx_type, piid, present.then_some(config.as_slice()));
+                    let parsed = SgxPckExtension::from_der(&der).unwrap();
+                    assert_eq!(parsed.platform_instance_id().is_some(), piid);
+                    assert_eq!(parsed.configuration_present(), present);
+                    if let Some(flags) = parsed._configuration {
+                        assert!(
+                            !flags._dynamic_platform && !flags._cached_keys && !flags._smt_enabled
+                        );
+                    }
+                    // Issuer-dependent validation follows authentication in v2, not raw parsing.
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_configuration_with_piid_present() {
+        let [first, second, third] = configuration_fields();
+        let prefix = hex::decode("2a864886f84d010d0107").unwrap();
+        let invalid = [
+            tlv(0x30, &[]),
+            tlv(0x30, &[first.clone(), second.clone()].concat()),
+            tlv(
+                0x30,
+                &[first.clone(), second.clone(), third.clone(), third.clone()].concat(),
+            ),
+            tlv(
+                0x30,
+                &[
+                    first.clone(),
+                    second.clone(),
+                    field(&prefix, 3, &[0x02, 0x01, 0]),
+                ]
+                .concat(),
+            ),
+            tlv(
+                0x30,
+                &[
+                    first.clone(),
+                    second.clone(),
+                    field(&prefix, 3, &[0x01, 0x01, 1]),
+                ]
+                .concat(),
+            ),
+            tlv(
+                0x30,
+                &[
+                    first.clone(),
+                    second.clone(),
+                    third.clone(),
+                    field(&prefix, 4, &[0x01, 0x01, 0]),
+                ]
+                .concat(),
+            ),
+            tlv(0x31, &[first, second, third].concat()),
+        ];
+        for (i, config) in invalid.iter().enumerate() {
+            assert!(
+                SgxPckExtension::from_der(&with_profile(2, true, Some(config))).is_err(),
+                "case {i}"
+            );
+        }
     }
 
     #[test]
