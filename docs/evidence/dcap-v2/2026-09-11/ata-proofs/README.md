@@ -43,16 +43,17 @@ The saved proof SHA-256 is
 The raw proof is 115,484,043 bytes; its archive is 94,689,156 bytes. These are
 core-proof sizes, not EVM calldata sizes or estimates of on-chain gas.
 
-`host-runs-and-readback.tar.gz` contains:
+`host-runs-and-readback.tar.gz` contains (directory names below are placeholders
+for the original per-run archive paths):
 
-- `dcap-proof-hourly.LOwQLe/`: deliberately interrupted one-hour wrapper.
-- Selected `dcap-proof-serial.vQ3WrM/` files: serial run controls/resource log,
+- `<proof-retry-dir>/`: deliberately interrupted one-hour wrapper.
+- Selected `<serial-proof-dir>/` files: serial run controls/resource log,
   interrupted SP1 dev-host attempt, and initial release-build HTTP 400 log.
-- `dcap-sp1-release-proof.fJRbnY/`: successful host build/guard checks and the
+- `<sp1-release-proof-dir>/`: successful host build/guard checks and the
   release proof attempt that failed allocation under a 10 GiB virtual limit.
   Its authoritative wrapper exit code is 134; GNU time's signal-termination
   output includes an `Exit status: 0` line that is **not** a successful run.
-- `dcap-proof-readback.5MyhZn/`: scripts and logs for fresh processes loading
+- `<proof-readback-dir>/`: scripts and logs for fresh processes loading
   receipts/proofs extracted from the two archives. Both passed cryptographic
   verification, full journal equality and all three rejection checks again:
   RISC Zero 1:05.80, SP1 0:13.85, both exit 0. These are read-back verification

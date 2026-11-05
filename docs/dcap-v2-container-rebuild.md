@@ -198,7 +198,7 @@ criterion, and cycles from different VMs are not directly comparable.
 Local logs and the exact exported ABI inputs are archived unchanged in
 [guest-validation.tar.gz](evidence/dcap-v2/2026-09-11/guest-validation.tar.gz),
 with [provenance and checksum instructions](evidence/dcap-v2/2026-09-11/README.md).
-The original `/tmp/dcap-mac-evidence.zVIc3F/guest-validation.tar.gz` is no longer
+The original `<mac-evidence-dir>/guest-validation.tar.gz` is no longer
 the only retained copy. Keep the separately supplied Mac build archives and
 session logs alongside this execution evidence for a complete release record:
 
@@ -236,7 +236,7 @@ and compiler/lock evidence. Compute native IDs with the pinned Pico SDK and
 verify guest journals before treating the result as a release candidate.
 
 Paired build result: **PASS (byte-for-byte)**. Both fresh containers completed
-and matched compiler/lock evidence at `/tmp/dcap-pico-docker-pair.CXtc9e`.
+and matched compiler/lock evidence at `<pico-build-dir>`.
 Docker client/server were both 29.4.0. Builds took 8m04s and 5m32s; download and
 compile time differences are not output differences. Both containers are stopped
 and retained for inspection; neither shared guest targets nor mounted host tools.
@@ -294,8 +294,8 @@ candidate. It was not the official-image, container-to-container procedure above
 ### Repeat the historical diagnostic only
 
 Use a **new container name and empty container filesystem** for every independent
-run. The following paths identify the tested ARM64 compiler installations; on a
-different machine supply the matching compiler distributions and rzup settings.
+run. Replace the path placeholders below with the matching ARM64 compiler
+distributions and rzup settings on your machine.
 Do not point mounts at a whole home directory or reuse host build caches.
 
 From the repository root:
@@ -303,12 +303,15 @@ From the repository root:
 ```sh
 repro_repo="$(pwd)"
 repro_name="dcap-v2-repro-$(date -u +%Y%m%dT%H%M%SZ)"
+RISC0_TOOLCHAIN_DIR='/absolute/path/to/risc0-toolchain'
+RISC0_SETTINGS_FILE='/absolute/path/to/risc0-settings.toml'
+SP1_TOOLCHAIN_DIR='/absolute/path/to/succinct-toolchain'
 docker run --name "$repro_name" --cpus=4 --memory=8g --pids-limit=512 \
   --cap-drop=ALL --security-opt=no-new-privileges \
   --mount "type=bind,source=$repro_repo,target=/source,readonly" \
-  --mount type=bind,source=/home/rustdev/.risc0/toolchains/v1.88.0+de85b1d3d7f-rust-aarch64-unknown-linux-gnu,target=/root/.risc0/toolchains/v1.88.0+de85b1d3d7f-rust-aarch64-unknown-linux-gnu,readonly \
-  --mount type=bind,source=/home/rustdev/.risc0/settings.toml,target=/root/.risc0/settings.toml,readonly \
-  --mount type=bind,source=/home/rustdev/.sp1/toolchains/taK2iAMH7W,target=/opt/succinct,readonly \
+  --mount "type=bind,source=$RISC0_TOOLCHAIN_DIR,target=/root/.risc0/toolchains/v1.88.0+de85b1d3d7f-rust-aarch64-unknown-linux-gnu,readonly" \
+  --mount "type=bind,source=$RISC0_SETTINGS_FILE,target=/root/.risc0/settings.toml,readonly" \
+  --mount "type=bind,source=$SP1_TOOLCHAIN_DIR,target=/opt/succinct,readonly" \
   rust@sha256:b1b3c9c0d921d7fa0a6d1f9ec7e4eab87f8c8ec97644c3d791450f131dec813f \
   bash /source/rust-crates/libraries/zkvm/methods/container-rebuild.sh \
   81646e5754a8124d4a70a483882f11b515c98c7b
@@ -335,7 +338,7 @@ All three builds completed, and their guest lockfile hashes match the baseline.
 **All three artifact hashes and native IDs differ from the host baseline.**
 RISC Zero contains Cargo registry paths under
 `/root/.cargo/`; Pico contains `/usr/local/cargo/` paths versus the host's
-`/home/rustdev/.cargo/`. These are not merely external build-log paths; they
+`<user-home>/.cargo/`. These are not merely external build-log paths; they
 appear in program data. SP1 already uses upstream `-Ztrim-paths`; its mismatch
 requires further investigation and is not attributed solely to those same
 visible absolute paths.
@@ -366,7 +369,7 @@ real proof. Cycle counts across different VMs are not directly comparable.
 
 The completed container `dcap-v2-repro-81646e5` is stopped, with logs and artifacts
 retained. Results were copied to
-`/tmp/dcap-v2-frozen-inputs.qphl5P/container-results` for inspection. The original
+`<frozen-inputs-dir>/container-results` for inspection. The original
 host candidate files and native IDs were not replaced or registered.
 
 This is evidence of a non-hermetic build input, not evidence that the DCAP

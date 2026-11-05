@@ -143,7 +143,7 @@ The user first requested one hour per backend, then explicitly allowed longer
 waiting while computation continued normally. The two-thread, one-hour wrapper
 was stopped deliberately before its deadline and before SP1 started, so that
 its fixed timer could not discard a nearly completed proof. Its logs remain
-under `/tmp/dcap-proof-hourly.LOwQLe`; this was a control change, not a proof
+under `<proof-retry-dir>`; this was a control change, not a proof
 verification failure. No completed receipt was deleted.
 
 The replacement runs **RISC Zero then SP1, never concurrently**, without a
