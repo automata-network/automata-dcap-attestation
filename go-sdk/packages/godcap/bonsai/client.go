@@ -121,10 +121,14 @@ func (c *Client) s3(method string, url string, body io.Reader) ([]byte, error) {
 }
 
 func (c *Client) api(method string, path string, body io.Reader, response interface{}) (int, error) {
+	return c.apiContext(context.Background(), method, path, body, response)
+}
+
+func (c *Client) apiContext(ctx context.Context, method string, path string, body io.Reader, response interface{}) (int, error) {
 	// defaults to BAD_REQUEST error if failed before http call
 	statusCode := http.StatusBadRequest
 
-	req, err := http.NewRequest(method, fmt.Sprintf("%v/%v", c.cfg.Url, path), body)
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%v/%v", c.cfg.Url, path), body)
 	if err != nil {
 		return statusCode, logex.Trace(err)
 	}
@@ -216,7 +220,7 @@ type SnarkSession struct {
 
 func (s *SnarkSession) Status(ctx context.Context) (*SnarkStatusRes, error) {
 	var res SnarkStatusRes
-	if _, err := s.client.api(http.MethodGet, fmt.Sprintf("snark/status/%v", s.uuid), nil, &res); err != nil {
+	if _, err := s.client.apiContext(ctx, http.MethodGet, fmt.Sprintf("snark/status/%v", s.uuid), nil, &res); err != nil {
 		return nil, logex.Trace(err, "SessionStatus")
 	}
 	return &res, nil
@@ -331,7 +335,7 @@ type SessionStats struct {
 
 func (s *Session) Status(ctx context.Context) (*SessionStatusRes, error) {
 	var res SessionStatusRes
-	if _, err := s.client.api(http.MethodGet, fmt.Sprintf("sessions/status/%v", s.uuid), nil, &res); err != nil {
+	if _, err := s.client.apiContext(ctx, http.MethodGet, fmt.Sprintf("sessions/status/%v", s.uuid), nil, &res); err != nil {
 		return nil, logex.Trace(err, "SessionStatus")
 	}
 	return &res, nil
@@ -361,7 +365,7 @@ type SnarkStatusRes struct {
 func (s *Session) CreateSnark(ctx context.Context) (*SnarkSession, error) {
 	data, _ := json.Marshal(&SnarkReq{SessionID: s.uuid})
 	var response CreateSessRes
-	if _, err := s.client.api(http.MethodPost, "snark/create", bytes.NewReader(data), &response); err != nil {
+	if _, err := s.client.apiContext(ctx, http.MethodPost, "snark/create", bytes.NewReader(data), &response); err != nil {
 		return nil, logex.Trace(err)
 	}
 	return &SnarkSession{uuid: response.Uuid, client: s.client}, nil
