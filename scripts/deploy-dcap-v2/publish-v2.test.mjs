@@ -1,6 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier} from './publish-v2.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact} from './publish-v2.mjs';
+
+const evm = fileURLToPath(new URL('../../evm/', import.meta.url));
+for (const [profile, out] of [['default', 'out'], ['fork_osaka', 'out_fork_osaka'],
+  ['absolute output override', path.resolve(evm, 'custom artifacts')]]) {
+  test(`source verification and readback use only the active artifact directory: ${profile}`, t => {
+    const artifacts = new Map();
+    t.mock.method(fs, 'readFileSync', file => {
+      assert.ok(artifacts.has(file), `Artifact must come from the active build: ${file}`);
+      return JSON.stringify(artifacts.get(file));
+    });
+    const execute = (command, args, options) => {
+      assert.equal(command, 'forge');
+      assert.deepEqual(args, ['config', '--json']);
+      assert.equal(path.resolve(options.cwd), path.resolve(evm));
+      assert.equal(options.env, undefined); // Inherit the same profile/output overrides as forge build.
+      return JSON.stringify({out});
+    };
+    for (const name of ['AutomataDcapAttestationV2', 'PCCSRouter', 'PCKHelper',
+      'V3QuoteVerifier', 'V4QuoteVerifier', 'V5QuoteVerifier', 'SP1Groth16VerifierV6']) {
+      const artifact = {abi: [{type: 'constructor', inputs: []}],
+        metadata: {compiler: {version: name === 'SP1Groth16VerifierV6' ? '0.8.20' : '0.8.27'}},
+        deployedBytecode: {object: '0x6000', immutableReferences: {}}};
+      artifacts.set(path.resolve(evm, out, `${name}.sol`, `${name}.json`), artifact);
+      assert.deepEqual(readBuildArtifact(name, execute), artifact);
+    }
+    assert.throws(() => readBuildArtifact('MissingContract', execute), /active build/);
+    assert.throws(() => readBuildArtifact('PCCSRouter', () => '{}'), /Missing Foundry artifact directory/);
+  });
+}
 
 const a = n => '0x' + n.toString(16).padStart(40, '0');
 const id = n => '0x' + n.toString(16).padStart(64, '0');

@@ -45,6 +45,10 @@ or universal verifier submodule deployment files. A pre-existing v2.0 directory
 must be explicitly reviewed/archived by the operator, never silently overwritten.
 Source verification/readback success is **not** real-proof or release acceptance.
 
+Source verification and runtime readback use the active `forge config --json`
+artifact directory, including `FOUNDRY_PROFILE` / `FOUNDRY_OUT` overrides. Keep
+the same Foundry settings when resuming a deployment.
+
 Program entries follow `publish-v2.mjs`: `backend` (1 RISC Zero, 2 SP1),
 `minCheck`, native `id`, `verifier`, `proofSelector`, `buildSourceCommit`,
 `artifactSha256`, `evidenceSha256`. Each enabled backend needs exactly one strict

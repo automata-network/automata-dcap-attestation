@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createRpcRequest, validatePlan, pendingSp1Verifier} from './publish-v2.mjs';
+import {createRpcRequest, validatePlan, pendingSp1Verifier, readBuildArtifact} from './publish-v2.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const evm = path.join(root, 'evm');
@@ -204,14 +204,10 @@ async function main() {
     for (const tx of [...deployed.transactions, ...(sp1Deployment?.transactions ?? [])].filter(t => t.transactionType === 'CREATE')) {
       const key = `verified-${tx.contractAddress}`;
       if (state.stages[key]) continue;
-      const artifact = capture('forge', ['inspect', tx.contractName, 'abi', '--json'], evm);
-      const ctor = JSON.parse(artifact).find(x => x.type === 'constructor');
-      // Etherscan verification needs an explicit compiler version; pinned
-      // profiles leave it unset, so take it from the exact release artifact.
-      const artifactFile = tx.contractName === 'SP1Groth16VerifierV6'
-        ? path.join(evm, `out/${tx.contractName}.sol/${tx.contractName}.json`)
-        : path.join(evm, `out_fork_osaka/${tx.contractName}.sol/${tx.contractName}.json`);
-      const compiler = JSON.parse(fs.readFileSync(artifactFile)).metadata.compiler.version;
+      const artifact = readBuildArtifact(tx.contractName);
+      const ctor = artifact.abi.find(x => x.type === 'constructor');
+      // Use each contract's compiler from the active build, including SP1's separate version.
+      const compiler = artifact.metadata.compiler.version;
       const verifyArgs = ['verify-contract', tx.contractAddress, tx.contractName, '--chain', String(plan.chainId), '--watch', '--compiler-version', `v${compiler}`];
       if (ctor?.inputs.length) {
         const sig = `f(${ctor.inputs.map(x => x.type).join(',')})`;

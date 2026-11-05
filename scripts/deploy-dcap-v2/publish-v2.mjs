@@ -21,6 +21,13 @@ const contractKeys = ['AutomataDcapAttestationV2', 'PCCSRouterV2', 'PCKHelperV2'
 export const pendingSp1Verifier = 'DEPLOY_SP1_GROTH16_V6_1';
 const sp1VerifierHash = '0x4388a21c687fdd5f218d7e3d13190cac4c5355818d3605fd5fb811df468ee696';
 
+export function readBuildArtifact(name, execute = execFileSync) {
+  const cwd = path.join(root, 'evm');
+  const {out} = JSON.parse(execute('forge', ['config', '--json'], {cwd, encoding: 'utf8'}));
+  ensure(typeof out === 'string' && out.length > 0, 'Missing Foundry artifact directory');
+  return json(path.resolve(cwd, out, `${name}.sol`, `${name}.json`));
+}
+
 // Keep provider diagnostics without logging the endpoint or its credentials.
 export function createRpcRequest(url, fetchImpl = fetch) {
   let endpoint;
@@ -277,7 +284,7 @@ async function main() {
     storage: (to, slot) => request('eth_getStorageAt', [to, slot, block.number]),
     verifyArtifact: async (key, runtime) => {
       const name = key === 'AutomataDcapAttestationV2' ? key : key.replace(/V2$/, '');
-      const artifact = json(path.join(root, `evm/out/${name}.sol/${name}.json`));
+      const artifact = readBuildArtifact(name);
       const actual = Buffer.from(runtime.slice(2), 'hex');
       const expected = Buffer.from(artifact.deployedBytecode.object.replace(/^0x/, ''), 'hex');
       ensure(actual.length > 0 && actual.length <= 24576 && actual.length === expected.length, 'Invalid deployed runtime size');
@@ -288,7 +295,7 @@ async function main() {
       ensure(actual.equals(expected), `${key} runtime differs from local artifact`);
     },
     verifyRouterLayout: async to => {
-      const artifact = json(path.join(root, 'evm/out/PCCSRouter.sol/PCCSRouter.json'));
+      const artifact = readBuildArtifact('PCCSRouter');
       const expected = artifact.deployedBytecode.object;
       ensure(same(await rpc.code(to), expected.startsWith('0x') ? expected : '0x' + expected), 'Router runtime differs from local reviewed artifact');
     },
