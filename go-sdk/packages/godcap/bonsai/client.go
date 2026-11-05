@@ -137,7 +137,6 @@ func (c *Client) api(method string, path string, body io.Reader, response interf
 	req.Header.Set("x-api-key", c.cfg.ApiKey)
 	req.Header.Set("x-risc0-version", c.cfg.Version)
 	httpResponse, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		return statusCode, logex.Trace(err)
 	}
