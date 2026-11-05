@@ -24,7 +24,7 @@ pub fn generate_input(
 ) -> Result<Vec<u8>> {
     match version {
         Version::V1_0 => generate_input_v1_0(quote, collaterals, timestamp),
-        Version::V1_1 => generate_input_v1_1(quote, collaterals, timestamp),
+        Version::V1_1 | Version::V2_0 => generate_input_v1_1(quote, collaterals, timestamp),
     }
 }
 

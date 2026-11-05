@@ -10,31 +10,34 @@ pub enum Version {
     V1_0,
     #[serde(rename = "v1.1")]
     V1_1,
+    #[serde(rename = "v2.0")]
+    V2_0,
 }
 impl Version {
     #[doc = r" Get all supported versions"]
     pub fn all() -> Vec<Version> {
-        vec![Version::V1_0, Version::V1_1]
+        vec![Version::V1_0, Version::V1_1, Version::V2_0]
     }
     #[doc = r#" Get the version string (e.g., "v1.0")"#]
     pub fn as_str(&self) -> &'static str {
         match self {
             Version::V1_0 => "v1.0",
             Version::V1_1 => "v1.1",
+            Version::V2_0 => "v2.0",
         }
     }
     #[doc = r" Check if this version supports TcbEvalDao"]
     pub fn supports_tcb_eval_dao(&self) -> bool {
         match self {
             Version::V1_0 => false,
-            Version::V1_1 => true,
+            Version::V1_1 | Version::V2_0 => true,
         }
     }
     #[doc = r" Check if this version uses versioned DAOs"]
     pub fn uses_versioned_daos(&self) -> bool {
         match self {
             Version::V1_0 => false,
-            Version::V1_1 => true,
+            Version::V1_1 | Version::V2_0 => true,
         }
     }
 }
@@ -49,6 +52,7 @@ impl FromStr for Version {
         match s {
             "v1.0" | "v1_0" | "1.0" => Ok(Version::V1_0),
             "v1.1" | "v1_1" | "1.1" => Ok(Version::V1_1),
+            "v2.0" | "v2_0" | "2.0" => Ok(Version::V2_0),
             "current" => Ok(Version::V1_1),
             _ => Err(anyhow::anyhow!("Unsupported version: {}", s)),
         }

@@ -35,6 +35,14 @@ abstract contract X509ChainBase is P256Verifier {
         pure
         returns (bool success, PCKCollateral memory pck)
     {
+        return getPckCollateral(pckHelperAddr, certType, rawCertData, false);
+    }
+
+    function getPckCollateral(address pckHelperAddr, uint16 certType, bytes memory rawCertData, bool withIdentity)
+        internal
+        pure
+        returns (bool success, PCKCollateral memory pck)
+    {
         pck.pckChain = new X509CertObj[](3);
 
         if (certType == 5) {
@@ -43,7 +51,22 @@ abstract contract X509ChainBase is P256Verifier {
             if (!success) {
                 return (false, pck);
             }
-            (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, certArray[0]);
+            if (withIdentity) {
+                PCKHelper helper = PCKHelper(pckHelperAddr);
+                pck.pckChain[0] = helper.parseX509DER(certArray[0]);
+                (
+                    pck.pckExtension.pcesvn,
+                    pck.pckExtension.cpusvns,
+                    pck.pckExtension.fmspcBytes,
+                    pck.pckExtension.pceidBytes,
+                    pck.ppid,
+                    pck.piid,
+                    pck.piidPresent
+                ) = helper.parsePckExtensionWithIdentity(certArray[0], pck.pckChain[0].extensionPtr);
+                pck.identityParsed = true;
+            } else {
+                (pck.pckChain[0], pck.pckExtension) = _parsePck(pckHelperAddr, certArray[0]);
+            }
 
             bytes[] memory issuerChain = new bytes[](certArray.length - 1);
             for (uint256 a = 0; a < issuerChain.length; a++) {

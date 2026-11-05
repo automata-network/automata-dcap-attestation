@@ -1,6 +1,6 @@
 use crate::network::*;
 use alloy::primitives::Address;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use automata_dcap_utils::Version;
 use include_dir::Dir;
 use serde::Deserialize;
@@ -154,7 +154,7 @@ fn parse_deployment_for_chain(
     let pccs = parse_pccs_contracts(&pccs_json, version)?;
 
     // Parse DCAP contracts
-    let dcap = parse_dcap_contracts(&dcap_json)?;
+    let dcap = parse_dcap_contracts(&dcap_json, version)?;
 
     Ok(Contracts { pccs, dcap })
 }
@@ -312,16 +312,27 @@ fn parse_pccs_contracts(json: &serde_json::Value, version: &str) -> Result<PccsC
 }
 
 /// Parse DCAP contracts from JSON
-fn parse_dcap_contracts(json: &serde_json::Value) -> Result<DcapContracts> {
+fn parse_dcap_contracts(json: &serde_json::Value, version: &str) -> Result<DcapContracts> {
+    let v2 = Version::from_str(version)? == Version::V2_0;
+    let key = if v2 {
+        "AutomataDcapAttestationV2"
+    } else {
+        "AutomataDcapAttestationFee"
+    };
+    let router_key = if v2 { "PCCSRouterV2" } else { "PCCSRouter" };
+    let router: Address = json[router_key]
+        .as_str()
+        .ok_or_else(|| anyhow!("Missing {router_key}"))?
+        .parse()?;
+    if v2 && router.is_zero() {
+        return Err(anyhow!("PCCSRouterV2 must not be zero"));
+    }
     Ok(DcapContracts {
-        dcap_attestation: json["AutomataDcapAttestationFee"]
+        dcap_attestation: json[key]
             .as_str()
-            .ok_or_else(|| anyhow!("Missing AutomataDcapAttestationFee"))?
+            .ok_or_else(|| anyhow!("Missing {key}"))?
             .parse()?,
-        pccs_router: json["PCCSRouter"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing PCCSRouter"))?
-            .parse()?,
+        pccs_router: router,
     })
 }
 
@@ -329,6 +340,49 @@ fn parse_dcap_contracts(json: &serde_json::Value) -> Result<DcapContracts> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn v2_requires_its_own_fee_key_and_preserves_legacy_selection() {
+        let mut config = json!({
+            "AutomataDcapAttestationFee": "0x1111111111111111111111111111111111111111",
+            "PCCSRouter": "0x2222222222222222222222222222222222222222"
+        });
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        let legacy = parse_dcap_contracts(&config, "v1.1")
+            .unwrap()
+            .dcap_attestation;
+        config["AutomataDcapAttestationV2"] = json!("0x3333333333333333333333333333333333333333");
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        config["PCCSRouterV2"] = json!("0x0000000000000000000000000000000000000000");
+        assert!(parse_dcap_contracts(&config, "v2.0").is_err());
+        config["PCCSRouterV2"] = json!("0x4444444444444444444444444444444444444444");
+        assert_eq!(
+            parse_dcap_contracts(&config, "v2.0").unwrap().pccs_router,
+            "0x4444444444444444444444444444444444444444"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            parse_dcap_contracts(&config, "v1.1").unwrap().pccs_router,
+            "0x2222222222222222222222222222222222222222"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            parse_dcap_contracts(&config, "v1.1")
+                .unwrap()
+                .dcap_attestation,
+            legacy
+        );
+        assert_eq!(
+            parse_dcap_contracts(&config, "v2.0")
+                .unwrap()
+                .dcap_attestation,
+            "0x3333333333333333333333333333333333333333"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
 
     #[test]
     fn parse_pccs_contracts_prefers_fmspc_tcb_dao_versioned_v2() {

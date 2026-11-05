@@ -308,7 +308,10 @@ func (p *DcapPortal) GenerateZkProof(ctx context.Context, ty zkdcap.ZkType, quot
 	if p.zkProof == nil {
 		return nil, logex.NewErrorf("DcapPortal should call EnableZkProof() frist")
 	}
-	parser := parser.NewQuoteParser(quote)
+	parser, err := parser.NewQuoteParserSafe(quote)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
 	collateral, err := zkdcap.NewCollateralFromQuoteParser(ctx, parser, p.pccs)
 	if err != nil {
 		return nil, logex.Trace(err)

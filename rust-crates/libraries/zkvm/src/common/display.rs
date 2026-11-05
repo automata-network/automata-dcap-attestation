@@ -3,6 +3,17 @@ use automata_dcap_utils::Version;
 
 use super::outputs::{parse_output, ParsedOutput};
 
+pub fn display_proof_result_v2(journal: &[u8], proof: &[u8], label: &str) -> Result<()> {
+    let output = crate::parse_output_v2(journal)?;
+    println!(
+        "Output schema 2.1: {}",
+        serde_json::to_string_pretty(&output)?
+    );
+    println!("Journal: {}", hex::encode(journal));
+    println!("{}: {}", label, hex::encode(proof));
+    Ok(())
+}
+
 /// Display the proof result including verified output and proof components.
 ///
 /// This function parses and displays the journal/public values and seal/proof bytes

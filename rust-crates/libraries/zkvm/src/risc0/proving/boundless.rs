@@ -17,7 +17,7 @@ use super::super::config::BoundlessConfig;
 
 /// Prove using Boundless network
 pub async fn prove_with_boundless(
-    elf: &'static [u8],
+    elf: &[u8],
     input_bytes: &[u8],
     config: &BoundlessConfig,
 ) -> Result<Vec<u8>> {

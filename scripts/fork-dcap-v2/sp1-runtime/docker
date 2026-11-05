@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Task-scoped adapter for the SDK's Docker calls. Never put this on a global PATH.
+# Only prove/verify with an already-loaded, immutable image ID; no new setup.
+set -euo pipefail
+dcap_docker=${DCAP_REAL_DOCKER:-/usr/bin/docker}
+if [[ ${1:-} == info && $# == 1 ]]; then exec "$dcap_docker" info; fi
+if [[ ${1:-} != run ]]; then echo 'Only SDK info/run is allowed' >&2; exit 2; fi
+shift
+dcap_args=()
+dcap_witness=''
+dcap_output=''
+dcap_handoff=''
+dcap_image=${SP1_GNARK_IMAGE:?Set a verified immutable local image ID}
+if [[ ! "$dcap_image" =~ ^sha256:[0-9a-f]{64}$ ]]; then echo 'Immutable local image ID required' >&2; exit 2; fi
+while [[ $# -gt 0 && "$1" != "$dcap_image" ]]; do
+  case "$1" in
+    --rm) shift ;;
+    -v)
+      [[ $# -ge 2 ]] || exit 2
+      dcap_mount=$2
+      if [[ "$dcap_mount" == /*:/witness ]]; then dcap_witness=${dcap_mount%:/witness}; fi
+      if [[ "$dcap_mount" == /*:/output ]]; then dcap_output=${dcap_mount%:/output}; fi
+      case "$dcap_mount" in
+        /*:/circuit|/*:/witness|/*:/proof) dcap_args+=(-v "$dcap_mount:ro") ;;
+        /*:/output) dcap_args+=(-v "$dcap_mount") ;;
+        *) echo 'Unexpected SDK bind mount' >&2; exit 2 ;;
+      esac
+      shift 2 ;;
+    *) echo 'Unexpected SDK Docker option' >&2; exit 2 ;;
+  esac
+done
+[[ $# -ge 2 && "$1" == "$dcap_image" ]] || exit 2
+shift
+case "$1" in prove|verify) ;; *) echo 'No setup/build/test substitute is allowed' >&2; exit 2 ;; esac
+if [[ "$1" == prove && -n "$dcap_witness" ]]; then
+  # Retain the small witness if the final container stage fails. No setup keys
+  # or unrelated temp files are copied. This directory is local-only evidence.
+  dcap_handoff=$(mktemp -d /tmp/dcap-sp1-gnark-witness.XXXXXX)
+  cp "$dcap_witness" "$dcap_handoff/witness.json"
+  printf '%s\n' "$dcap_image" > "$dcap_handoff/image-id.txt"
+  (cd "$dcap_handoff" && sha256sum witness.json image-id.txt > SHA256SUMS)
+  echo "Retained final-stage witness: $dcap_handoff" >&2
+fi
+dcap_name="dcap-sp1-gnark-$PPID-$$"
+dcap_stats_pid=''
+dcap_cleanup() {
+  if [[ -n "$dcap_stats_pid" ]]; then
+    kill "$dcap_stats_pid" 2>/dev/null || true
+    wait "$dcap_stats_pid" 2>/dev/null || true
+    dcap_stats_pid=''
+  fi
+  "$dcap_docker" stop -t 2 "$dcap_name" >/dev/null 2>&1 || true
+}
+trap 'dcap_cleanup; exit 143' TERM
+trap 'dcap_cleanup; exit 130' INT
+trap dcap_cleanup EXIT
+"$dcap_docker" run --rm --name "$dcap_name" --pull never --network none \
+  --user "$(id -u):$(id -g)" \
+  --cap-drop=ALL --security-opt=no-new-privileges --pids-limit 256 \
+  --cpus "${DCAP_GNARK_CPUS:-2}" --memory "${DCAP_GNARK_MEMORY:-9g}" \
+  -e GOMAXPROCS="${DCAP_GNARK_CPUS:-2}" \
+  "${dcap_args[@]}" "$dcap_image" "$@" &
+dcap_child=$!
+if [[ -n "${dcap_handoff:-}" ]]; then
+  date -u +%FT%TZ > "$dcap_handoff/started.txt"
+  (
+    while kill -0 "$dcap_child" 2>/dev/null; do
+      date -u +%FT%TZ
+      "$dcap_docker" stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemUsage}}' "$dcap_name" 2>/dev/null || true
+      sleep 5
+    done
+  ) > "$dcap_handoff/docker-resources.log" &
+  dcap_stats_pid=$!
+fi
+set +e
+wait "$dcap_child"
+dcap_exit=$?
+set -e
+if [[ -n "${dcap_handoff:-}" ]]; then
+  date -u +%FT%TZ > "$dcap_handoff/finished.txt"
+  printf '%s\n' "$dcap_exit" > "$dcap_handoff/exit.txt"
+  if [[ "$dcap_exit" == 0 && -n "$dcap_output" ]]; then
+    # Preserve the actual container transport before the SDK removes its temp
+    # file, so the separate native importer can independently reverify it.
+    test -s "$dcap_output"
+    cp "$dcap_output" "$dcap_handoff/gnark-proof.bin"
+    (cd "$dcap_handoff" && sha256sum gnark-proof.bin > OUTPUT_SHA256SUMS)
+  fi
+fi
+exit "$dcap_exit"

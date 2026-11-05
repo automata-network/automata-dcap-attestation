@@ -49,12 +49,11 @@ pub const DEFAULT_NETWORK_KEY: &str = "eth_hoodi";
 // Network Registry - Static Storage
 // ============================================================================
 
-/// Current/latest version networks (v1.1)
-/// When a new version is released, this points to the newest version
+/// Frozen v1.1 networks; never silently follow a future promotion of current.
 static NETWORKS_V1_1: LazyLock<Vec<Network>> = LazyLock::new(|| {
-    // Current version (v1.1) deployments are checked in under deployment/current/.
-    if DEPLOYMENT_DIR.get_dir("current").is_some() {
-        parser::parse_networks_from_version_dir(METADATA_TOML, &DEPLOYMENT_DIR, "current").ok()
+    // Explicit legacy selection must survive promotion of deployment/current/.
+    if DEPLOYMENT_DIR.get_dir("v1.1").is_some() {
+        parser::parse_networks_from_version_dir(METADATA_TOML, &DEPLOYMENT_DIR, "v1.1").ok()
     } else {
         None
     }
@@ -77,6 +76,11 @@ static NETWORKS_V1_0: LazyLock<Vec<Network>> = LazyLock::new(|| {
 // Network Registry - Public API
 // ============================================================================
 
+static NETWORKS_V2_0: LazyLock<Vec<Network>> = LazyLock::new(|| {
+    parser::parse_networks_from_version_dir(METADATA_TOML, &DEPLOYMENT_DIR, "v2.0")
+        .unwrap_or_default()
+});
+
 impl Network {
     /// Returns all registered networks
     ///
@@ -86,6 +90,7 @@ impl Network {
         match version.unwrap_or(Version::V1_1) {
             Version::V1_0 => &NETWORKS_V1_0,
             Version::V1_1 => &NETWORKS_V1_1,
+            Version::V2_0 => &NETWORKS_V2_0,
         }
     }
 
@@ -98,6 +103,7 @@ impl Network {
         let networks = match version.unwrap_or(Version::V1_1) {
             Version::V1_0 => &NETWORKS_V1_0,
             Version::V1_1 => &NETWORKS_V1_1,
+            Version::V2_0 => &NETWORKS_V2_0,
         };
 
         networks.iter().find(|n| n.key == key)
@@ -112,6 +118,7 @@ impl Network {
         let networks = match version.unwrap_or(Version::V1_1) {
             Version::V1_0 => &NETWORKS_V1_0,
             Version::V1_1 => &NETWORKS_V1_1,
+            Version::V2_0 => &NETWORKS_V2_0,
         };
 
         networks.iter().find(|n| n.chain_id == chain_id)

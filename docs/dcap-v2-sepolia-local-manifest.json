@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "status": "FORK_CONFIG_AND_RUNTIME_READBACK_PASS_NOT_RELEASE_APPROVAL",
+  "scope": "Sepolia local fork readback only; no release approval or current registry promotion",
+  "origin": {
+    "currentBlockNumber": "0xb25fc3",
+    "currentBlockTimestamp": 1789228656,
+    "currentBlockHash": "0x4ee0fcdc5b220406b457d0242cc280f0313ff1cc72bd5d9fdf041808881c8096",
+    "hardFork": "Osaka",
+    "transactionOrder": "fees",
+    "environment": {
+      "baseFee": "0x3b597100",
+      "chainId": 11155111,
+      "gasLimit": "0x39386c7",
+      "gasPrice": "0x76f43b00"
+    },
+    "forkConfig": {
+      "forkUrl": "https://rpc.sepolia.ethpandaops.io",
+      "forkBlockNumber": 11689923,
+      "forkRetryBackoff": 1000
+    }
+  },
+  "readbackBlock": {
+    "number": "0xb2601a",
+    "hash": "0x17f322aecffc087ad13c5c848883174799f9cb0b86d247c47b16f90e7d185d30"
+  },
+  "source": {
+    "dcapHead": "31676153915c2ae00dbc7de376f1e36b463280b2",
+    "pccsHead": "f1406ef479560ad888960899b95383f026c76526",
+    "finalReleaseCommitFrozen": false,
+    "hostLockSha256": "63885acad270d1325c74ba0f534091f27a0c435f7f7ac6c5821cca792dd406b1",
+    "guestSourceBaseline": "81646e5754a8124d4a70a483882f11b515c98c7b"
+  },
+  "contracts": {
+    "PCKHelper": {
+      "address": "0xf90ece144360334bab8fda00e35dbd46e333dd09",
+      "codeBytes": 13898,
+      "codeHash": "0x8a3b272d8b30483b0d670f86339eb380fb6d0c36a0a7e0baf4e969f6de718d74",
+      "artifactMatch": "PASS",
+      "compiler": "0.8.27+commit.40a35a09",
+      "evmTarget": "paris"
+    },
+    "AutomataDcapAttestationFeeV2": {
+      "address": "0xde2b9eccc5b41e93e48a59c628a890bf2abb221e",
+      "codeBytes": 22306,
+      "codeHash": "0x9e96fe6bd9afdbb996018a0b15aadcfab461a4bc459c3fdd76672730bc6bdbb0",
+      "artifactMatch": "PASS",
+      "compiler": "0.8.27+commit.40a35a09",
+      "evmTarget": "paris"
+    },
+    "V3QuoteVerifier": {
+      "address": "0x25c4ce3418bae17d9de1ffb9a1d10717a92f0b35",
+      "codeBytes": 19764,
+      "codeHash": "0xfb93c38e8b2667ea28474812521e404388d482196957b54d02261bc99068af4f",
+      "artifactMatch": "PASS",
+      "compiler": "0.8.27+commit.40a35a09",
+      "evmTarget": "paris",
+      "router": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+      "quoteVersion": 3,
+      "p256": "0x0000000000000000000000000000000000000100"
+    },
+    "V4QuoteVerifier": {
+      "address": "0x3e249478ea3d4f304dea9509bd3a247234697fd6",
+      "codeBytes": 23129,
+      "codeHash": "0x215b1384a7fe6749a586a0cdd48920d98cc3b2653b451e2520fb9d40117b5402",
+      "artifactMatch": "PASS",
+      "compiler": "0.8.27+commit.40a35a09",
+      "evmTarget": "paris",
+      "router": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+      "quoteVersion": 4,
+      "p256": "0x0000000000000000000000000000000000000100"
+    },
+    "V5QuoteVerifier": {
+      "address": "0x0ca1893e2915e63c019128140ad1c0cb2d9419f4",
+      "codeBytes": 23972,
+      "codeHash": "0x3de676e60e1a3bd208a8d5d8db45342e3b9d6950a3c3496bd222c8033b2c7819",
+      "artifactMatch": "PASS",
+      "compiler": "0.8.27+commit.40a35a09",
+      "evmTarget": "paris",
+      "router": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+      "quoteVersion": 5,
+      "p256": "0x0000000000000000000000000000000000000100"
+    }
+  },
+  "router": {
+    "address": "0x8e480c9879F1Db31dC209e5f4d239d5126e6e07B",
+    "owner": "0xDf841B239bE7a6b37366005107069b7410da4Ff9",
+    "tcbEvalDaoAddr": "0x96200760070c5d7fDFAE4B4AAC265579C9E87ECc",
+    "pcsDaoAddr": "0x8a0586a101b1fB2589202732842dE41dF099f5b6",
+    "pckDaoAddr": "0xFAe02a4e8CF53Cd7980783eDDC1a032e4cacD56a",
+    "pckHelperAddr": "0xf90EcE144360334Bab8fDa00E35dbD46E333dD09",
+    "crlHelperAddr": "0x6Eccb2274bB2C2ebd9EC04f0AA56d1577c73afA0",
+    "fmspcTcbHelperAddr": "0x181dc716922c84554aeA8bafa07c906F4e4C15B2",
+    "callerRestriction": false,
+    "authorizedNewReaders": {
+      "AutomataDcapAttestationFeeV2": {
+        "address": "0xde2b9eccc5b41e93e48a59c628a890bf2abb221e",
+        "enabled": true
+      },
+      "V3QuoteVerifier": {
+        "address": "0x25c4ce3418bae17d9de1ffb9a1d10717a92f0b35",
+        "enabled": true
+      },
+      "V4QuoteVerifier": {
+        "address": "0x3e249478ea3d4f304dea9509bd3a247234697fd6",
+        "enabled": true
+      },
+      "V5QuoteVerifier": {
+        "address": "0x0ca1893e2915e63c019128140ad1c0cb2d9419f4",
+        "enabled": true
+      }
+    },
+    "versionedDAOs": {
+      "17": {
+        "qeIdDaoVersionedAddr": "0xE6fE85B78cb82e3b9C8AE57d754C86fe6774aF64",
+        "fmspcTcbDaoVersionedAddr": "0x3A1fDF33420026d145C59bC6b3129bA81E9bF68e"
+      },
+      "18": {
+        "qeIdDaoVersionedAddr": "0x07ea7bD47684A331e012CFb9a797dF48C8Cb7DA7",
+        "fmspcTcbDaoVersionedAddr": "0xc6f31a3c102d7c2C43a9972BA8B1409278D41fF5"
+      },
+      "19": {
+        "qeIdDaoVersionedAddr": "0x299c1ae8101aF3d3483793dAfFe8ea9E098D7E17",
+        "fmspcTcbDaoVersionedAddr": "0x74A0b849030BC8afaAfFf8F46126E3c13E365C7b"
+      },
+      "20": {
+        "qeIdDaoVersionedAddr": "0xB5Ae38Ab21B70A672F83203E7E936767DE885adc",
+        "fmspcTcbDaoVersionedAddr": "0xe49D3c73852aDe8Ad37E7A1072b6bb68D913FDc1"
+      },
+      "21": {
+        "qeIdDaoVersionedAddr": "0xF0dcaD1a716C8BaEB623bA32A4718fF22E1BbCc5",
+        "fmspcTcbDaoVersionedAddr": "0x0dEa24Cc559A785e109c2e31B854700bBeFA1397"
+      }
+    }
+  },
+  "backends": {
+    "risc0": {
+      "universalVerifier": "0x925d8331ddc0a1F0d96E68CF073DFE1d92b69187",
+      "legacyProgramIds": [
+        "0x9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07"
+      ],
+      "legacyDefaultProgramId": "0x9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07",
+      "v2ProgramIds": [
+        "0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b"
+      ],
+      "v2DefaultProgramId": "0x9d4a47be495ab06a6a84b24d856a13a68312d8fdea487bcb8aa6931a322f9b9b",
+      "testedProofSelector": "0x73c457ba",
+      "universalCodeHash": "0x063e95c836fe8ba9cf81b200e67b069864dc85d0dfc694179cf148ecb7b742d6",
+      "universalReusedUnchanged": true
+    },
+    "sp1": {
+      "universalVerifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B",
+      "legacyProgramIds": [
+        "0x008228a87e56a065fb3ad27026aef08acc97d72d289439e8dab0d53baaea9f26"
+      ],
+      "legacyDefaultProgramId": "0x008228a87e56a065fb3ad27026aef08acc97d72d289439e8dab0d53baaea9f26",
+      "v2ProgramIds": [
+        "0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170"
+      ],
+      "v2DefaultProgramId": "0x000544ec0a86e3860bac6c329267c270beed1f7be600519128022a02f4b9f170",
+      "testedProofSelector": "0xa4594c59",
+      "universalCodeHash": "0x11612dc6695484a4dfcac5ae1a7bcb093f891eb93d8aa9ddeca7f24a1f3b7d57",
+      "universalReusedUnchanged": true
+    },
+    "pico": {
+      "status": "N/A_LOCAL_ONLY",
+      "v2ProgramIds": [],
+      "v2DefaultProgramId": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "errors": [],
+  "owner": "0xDf841B239bE7a6b37366005107069b7410da4Ff9",
+  "feeBasisPoints": 0,
+  "zkV2Paused": true,
+  "proofMatrix": {
+    "risc0": {
+      "sgxV3": "PASS",
+      "tdxV4": "PASS",
+      "googleV5": "PASS"
+    },
+    "sp1": {
+      "sgxV3": "PASS",
+      "tdxV4": "PASS",
+      "googleV5": "PASS"
+    }
+  },
+  "acceptanceSummary": {
+    "contractSuite": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sdkCollateral": {
+      "goAcquisitions": 6,
+      "rustAcquisitions": 12,
+      "goInputsNativeVerified": 6
+    },
+    "offlineV2SolidityTestsPassed": 64,
+    "offlineNativeRustTestsPassed": 35,
+    "localGoSdkPackagesPassed": 7,
+    "selectedDeploymentAndSdkTransactions": 63,
+    "comparisonTransactionsWithSnapshotRestoration": 29,
+    "negativeRunsWithSnapshotRestoration": 6,
+    "productionDeploymentAuthorized": false,
+    "realProofSdkCellsPassed": 6,
+    "realProofSdkTransactions": 24,
+    "rejectedTestTransactions": 66,
+    "proofMatrixSha256": "15282c386cb683abf45283b36f2cba35a0fd017aa5a38584e9a29a9a2f57bd6e"
+  }
+}

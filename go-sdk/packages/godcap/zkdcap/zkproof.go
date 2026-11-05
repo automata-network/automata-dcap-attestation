@@ -87,31 +87,32 @@ func (c *ZkProofClient) ProveQuote(ctx context.Context, ty ZkType, quote []byte,
 		if c.Bonsai == nil {
 			return nil, logex.NewError("BONSAI_API_KEY is required")
 		}
-		// Upload image to Bonsai if not already uploaded
-		err := c.Bonsai.UploadImage(BONSAI_IMAGE_ID, BONSAI_DCAP_GUEST_ELF)
+		input, err := BonsaiGenerateInput(quote, collateral)
 		if err != nil {
 			return nil, logex.Trace(err)
 		}
-		// Generate input for Bonsai proof
-		input := BonsaiGenerateInput(quote, collateral)
+		// Upload only after input validation/encoding has succeeded.
+		err = c.Bonsai.UploadImage(BONSAI_IMAGE_ID, BONSAI_DCAP_GUEST_ELF)
+		if err != nil {
+			return nil, logex.Trace(err)
+		}
 		// Generate Bonsai proof
 		proveInfo, err := c.Bonsai.Prove(ctx, BONSAI_IMAGE_ID, input, bonsai.ReceiptGroth16)
 		if err != nil {
 			return nil, logex.Trace(err)
 		}
-		// Set proof output and proof data
-		proof.Output = []byte(proveInfo.Receipt.Journal.Bytes)
-		groth16 := proveInfo.Receipt.Inner.Groth16
-		var selector [4]byte
-		binary.LittleEndian.PutUint32(selector[:], groth16.VerifierParameters[0])
-		proof.Proof = bonsai.Groth16Encode(selector, []byte(groth16.Seal))
+		return encodeBonsaiProof(proveInfo)
 	case ZkTypeSuccinct:
 		if c.Sp1 == nil {
 			return nil, logex.NewError("NETWORK_PRIVATE_KEY is required")
 		}
 
 		// Generate input for SP1 proof
-		stdin := sp1.NewSP1StdinFromInput(Sp1GenerateInput(quote, collateral))
+		input, err := Sp1GenerateInput(quote, collateral)
+		if err != nil {
+			return nil, logex.Trace(err)
+		}
+		stdin := sp1.NewSP1StdinFromInput(input)
 		// Generate SP1 proof
 		res, err := c.Sp1.Prove(ctx, SP1_PROGRAM_VKHASH, stdin)
 		if err != nil {
@@ -126,4 +127,15 @@ func (c *ZkProofClient) ProveQuote(ctx context.Context, ty ZkType, quote []byte,
 		proof.Proof = proofBytes
 	}
 	return proof, nil
+}
+
+func encodeBonsaiProof(info *bonsai.ProveInfo) (*ZkProof, error) {
+	if info == nil || info.Receipt == nil || info.Receipt.Inner.Type != 2 || info.Receipt.Inner.Groth16 == nil {
+		return nil, logex.NewError("expected a Bonsai Groth16 receipt")
+	}
+	groth16 := info.Receipt.Inner.Groth16
+	var selector [4]byte
+	binary.LittleEndian.PutUint32(selector[:], groth16.VerifierParameters[0])
+	return &ZkProof{Type: ZkTypeRiscZero, Output: []byte(info.Receipt.Journal.Bytes),
+		Proof: bonsai.Groth16Encode(selector, []byte(groth16.Seal))}, nil
 }

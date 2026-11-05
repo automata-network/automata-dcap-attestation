@@ -1,0 +1,7 @@
+871a5aa2889b60798aac2a50be651e41b20ef9082a64bf85ba3355e361d92b55  rust-crates/libraries/zkvm/examples/risc0_v2_prove_local.rs
+bb47b50e4191e8d0c1bef429cee87c66fe67b04cc3b8d93b50c4df57e061b64f  rust-crates/libraries/zkvm/examples/sp1_v2_prove_local.rs
+63319b8d745a0954d0302724733f20c593d0edecf306a6159aafe7f09414face  rust-crates/Cargo.lock
+dfd0b330f64fea800859d3f2e43caf07f77a59ce4cb2b0f843a85816c6ce8698  rust-crates/libraries/zkvm/Cargo.toml
+dc8b2da5fdaf39a4ab1ddaa45df2a1b7e05195f7b4e61b437629c8a6879f81a8  evm/forge-test/assets/v2/fixtures/ata-sgx-v3.json
+b1effad0065ea61600220be04a4610f260b8089aeec996bc3a8ffa5a0e80f190  rust-crates/libraries/zkvm/methods/risc0/guest/Cargo.lock
+d7aadb020fc6f848e600eb423274c3701a9aa0fd24865aa087e5944258f7e20f  rust-crates/libraries/zkvm/methods/sp1/program/Cargo.lock

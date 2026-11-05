@@ -111,7 +111,7 @@ pub async fn run<P: Provider>(
         Risc0Command::Prove(args) => {
             let quote_bytes = quote_bytes.context("Quote bytes must be provided for proving")?;
             prove(args, quote_bytes, provider, version, tcb_eval_num).await?
-        },
+        }
         Risc0Command::ImageId => print_image_id(version)?,
     }
 
@@ -128,7 +128,8 @@ async fn prove<P: Provider>(
     tcb_eval_num: Option<u32>,
 ) -> Result<()> {
     // Step 1: Prepare version-aware guest input (DCAP workflow)
-    let input_bytes = prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
+    let input_bytes =
+        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
 
     // Step 2: Create version-aware prover
     let prover = Risc0Prover::new(version)?;
@@ -172,12 +173,17 @@ async fn prove<P: Provider>(
     };
 
     // Step 4: Generate proof using RISC0 prover
-    let (journal, seal) = prover.prove(&config, &input_bytes)
+    let (journal, seal) = prover
+        .prove(&config, &input_bytes)
         .await
         .context("RISC0 proving failed")?;
 
     // Step 5: Display proof result
-    display_proof_result(&journal, &seal, "Seal", version)?;
+    if version == automata_dcap_utils::Version::V2_0 {
+        crate::common::display::display_proof_result_v2(&journal, &seal, "Seal")?;
+    } else {
+        display_proof_result(&journal, &seal, "Seal", version)?;
+    }
 
     // Step 6: Write proof artifact if output path is provided
     if let Some(output_path) = output_path {

@@ -31,7 +31,15 @@ pub fn parse_output(output_bytes: &[u8], version: Version) -> Result<VerifiedOut
     match version {
         Version::V1_0 => parse_legacy_output(output_bytes),
         Version::V1_1 => Ok(VerifiedOutput::from_bytes(output_bytes)?),
+        Version::V2_0 => {
+            anyhow::bail!("use parse_output_v2 to retain identity and commitment fields")
+        }
     }
+}
+
+/// Parse canonical schema 2.1 without discarding identity or proof commitments.
+pub fn parse_output_v2(output_bytes: &[u8]) -> Result<dcap_rs::types::VerifiedOutputV2> {
+    dcap_rs::types::VerifiedOutputV2::from_bytes(output_bytes)
 }
 
 fn parse_legacy_output(output_bytes: &[u8]) -> Result<VerifiedOutput> {

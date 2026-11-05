@@ -129,11 +129,19 @@ func (c *Client) Prove(ctx context.Context, programVkHash common.Hash, stdin *SP
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
+	if c.cfg.Version == V6CircuitVersion {
+		if err := proof.ValidateV6PublicInputs(programVkHash); err != nil {
+			return nil, err
+		}
+	}
 	return proof, nil
 }
 
 // CreateProof creates a proof and uploads the necessary files.
 func (c *Client) CreateProof(ctx context.Context, programVkHash common.Hash, stdin *SP1Stdin, mode sp1_proto.ProofMode) ([]byte, error) {
+	if c.cfg.Version == V6CircuitVersion && (mode != sp1_proto.ProofMode_Groth16 || stdin == nil || len(stdin.Proofs) != 0) {
+		return nil, fmt.Errorf("SP1 v6 Go transport supports Groth16 and proof-free stdin only")
+	}
 	nonce, err := c.RpcGetNonce(ctx)
 	if err != nil {
 		return nil, logex.Trace(err)
@@ -215,6 +223,9 @@ type SP1ProofWithPublicValues struct {
 
 // Bytes serializes the proof with public values into bytes.
 func (p *SP1ProofWithPublicValues) Bytes() ([]byte, error) {
+	if string(p.Sp1Version) == V6CircuitVersion {
+		return p.v6Bytes()
+	}
 	switch p.Proof.Type.Raw() {
 	case 3: // Groth16
 		proof := p.Proof.Groth16
@@ -301,10 +312,13 @@ func (p *SP1Proof) FromBin(data []byte) ([]byte, error) {
 
 // Groth16Bn254Proof represents a Groth16 proof with specific data.
 type Groth16Bn254Proof struct {
-	PublicInputs    [2]bincode.String
-	EncodedProof    bincode.String
-	RawProof        bincode.String
-	Groth16VkeyHash bincode.Bytes32
+	PublicInputs [2]bincode.String
+	// SP1 v6 adds guest exit code, recursion VK root and nonce after the
+	// original program/public-values commitments. Legacy decoding ignores these.
+	AdditionalPublicInputs [3]bincode.String
+	EncodedProof           bincode.String
+	RawProof               bincode.String
+	Groth16VkeyHash        bincode.Bytes32
 }
 
 // New creates a new instance of Groth16Bn254Proof.
@@ -386,7 +400,7 @@ func (c *Client) PollProof(ctx context.Context, requestId []byte, interval time.
 				if err != nil {
 					return nil, logex.Trace(err)
 				}
-				res, err := bincode.Unmarshal[*SP1ProofWithPublicValues](proofBytes)
+				res, err := decodeNetworkProof(proofBytes, c.cfg.Version)
 				if err != nil {
 					return nil, logex.Trace(err)
 				}

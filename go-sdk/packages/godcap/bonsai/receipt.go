@@ -3,6 +3,7 @@ package bonsai
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/automata-network/automata-dcap-attestation/go-sdk/packages/godcap/bincode"
 
@@ -59,7 +60,10 @@ func (r *InnerReceipt) String() string {
 
 func (r *InnerReceipt) FromBin(data []byte) ([]byte, error) {
 	var err error
-	r.Type, data = bincode.ReadEnum(data)
+	r.Type, data, err = bincode.ReadEnum(data)
+	if err != nil {
+		return nil, err
+	}
 	switch r.Type {
 	case 1:
 		var receipt SuccinctReceipt[*ReceiptClaim]
@@ -256,7 +260,7 @@ func (i *Input) New() bincode.FromBin {
 }
 
 func (i *Input) FromBin([]byte) ([]byte, error) {
-	panic("reachable")
+	return nil, logex.NewError("unpruned receipt input is not supported")
 }
 
 type Output struct {
@@ -329,8 +333,12 @@ func (s *SystemState) String() string {
 }
 
 func (s *SystemState) FromBin(data []byte) ([]byte, error) {
-	s.Pc, data = bincode.ReadUint32(data)
-	data, err := s.MerkleRoot.FromBin(data)
+	var err error
+	s.Pc, data, err = bincode.ReadUint32(data)
+	if err != nil {
+		return nil, err
+	}
+	data, err = s.MerkleRoot.FromBin(data)
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
@@ -365,7 +373,10 @@ func (m *MaybePruned[Claim]) String() string {
 
 func (m *MaybePruned[Claim]) FromBin(data []byte) ([]byte, error) {
 	var err error
-	m.Type, data = bincode.ReadEnum(data)
+	m.Type, data, err = bincode.ReadEnum(data)
+	if err != nil {
+		return nil, err
+	}
 	switch m.Type {
 	case 0:
 		var value Claim
@@ -429,6 +440,9 @@ func (d *Digest) String() string {
 }
 
 func (d *Digest) FromBin(data []byte) ([]byte, error) {
+	if len(data) < 32 {
+		return nil, io.ErrUnexpectedEOF
+	}
 	for i := 0; i < 8; i++ {
 		d[i] = led.Uint32(data[4*i : 4*(i+1)])
 	}
@@ -469,22 +483,32 @@ func (e *ExitCode) String() string {
 }
 
 func (e *ExitCode) FromBin(data []byte) ([]byte, error) {
-	e.Type, data = bincode.ReadEnum(data)
+	var err error
+	e.Type, data, err = bincode.ReadEnum(data)
+	if err != nil {
+		return nil, err
+	}
 	switch e.Type {
 	case 0:
 		var val uint32
-		val, data = bincode.ReadUint32(data)
+		val, data, err = bincode.ReadUint32(data)
+		if err != nil {
+			return nil, err
+		}
 		e.Halted = &val
 	case 1:
 		var val uint32
-		val, data = bincode.ReadUint32(data)
+		val, data, err = bincode.ReadUint32(data)
+		if err != nil {
+			return nil, err
+		}
 		e.Paused = &val
 	case 2:
 		e.SystemSplit = &struct{}{}
 	case 3:
 		e.SessionLimit = &struct{}{}
 	default:
-		panic("unreachable")
+		return nil, bincode.ErrUnexpectEnum.Format(e, e.Type)
 	}
 	return data, nil
 }

@@ -1,11 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TD10ReportParser, TD15ReportParser} from "../utils/TDReportParser.sol";
 import "../types/Errors.sol";
 import "../bases/TdxQuoteBase.sol";
 
 contract V5QuoteVerifier is TdxQuoteBase {
+    struct TdxTcbData {
+        TCBLevelsObj[] levels;
+        TDXModule module;
+        TDXModuleIdentity[] identities;
+    }
     uint8 constant TCB_TD_RELAUNCH_ADVISED = 8;
     uint8 constant TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED = 9;
 
@@ -15,6 +19,22 @@ contract V5QuoteVerifier is TdxQuoteBase {
         external
         view
         override
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, false);
+    }
+
+    function verifyQuoteV2(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber)
+        external
+        view
+        returns (bool, bytes memory)
+    {
+        return _verifyQuote(header, rawQuote, tcbEvalNumber, true);
+    }
+
+    function _verifyQuote(Header calldata header, bytes calldata rawQuote, uint32 tcbEvalNumber, bool withIdentity)
+        private
+        view
         returns (bool success, bytes memory serializedOutput)
     {
         string memory reason;
@@ -22,7 +42,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         uint32 quoteBodySize;
         AuthData memory authData;
 
-        (success, reason, quoteBodyType, quoteBodySize, authData) = _parseV5Quote(header, rawQuote);
+        (success, reason, quoteBodyType, quoteBodySize, authData) = _parseV5Quote(header, rawQuote, withIdentity);
         if (!success) {
             return (false, bytes(reason));
         }
@@ -37,8 +57,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
         }
 
         PCKCertTCB memory pckTcb = authData.certification.pckExtension;
-        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) =
-        pccsRouter.getFmspcTcbV3(
+        (TCBLevelsObj[] memory tcbLevels, TDXModule memory tdxModule, TDXModuleIdentity[] memory tdxModuleIdentities) = pccsRouter.getFmspcTcbV3(
             header.teeType == SGX_TEE ? TcbId.SGX : TcbId.TDX, bytes6(pckTcb.fmspcBytes), result.tcbEvalNumber
         );
 
@@ -56,62 +75,20 @@ contract V5QuoteVerifier is TdxQuoteBase {
                     break;
                 }
             }
-            if (sgxStatus == TCBStatus.TCB_REVOKED) {
+            if ((withIdentity && !statusFound) || sgxStatus == TCBStatus.TCB_REVOKED) {
                 return (false, bytes(TCBR));
             }
             sgxStatus = convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, sgxStatus);
             tcbStatus = uint8(sgxStatus);
         } else {
-            bytes16 teeTcbSvn;
-            bytes memory mrSignerSeam;
-            bytes8 seamAttributes;
-            bytes16 teeTcbSvn2;
-
-            (success, reason, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2) =
-                _parseTdReport(rawQuote[bodyOffset:bodyOffset + quoteBodySize]);
-            if (!success) {
-                return (false, bytes(reason));
-            }
-
-            TCBStatus sgxStatus = TCBStatus.TCB_UNRECOGNIZED;
-            TCBStatus tdxStatus = TCBStatus.TCB_UNRECOGNIZED;
-            (success, sgxStatus, tdxStatus, tcbLevelSelected) = getTDXTcbStatus(tcbLevels, pckTcb, teeTcbSvn);
-            if (!success || tdxStatus == TCBStatus.TCB_REVOKED) {
-                return (false, bytes(TCBR));
-            }
-
-            TCBStatus tdxModuleStatus;
-            bytes memory expectedMrSignerSeam;
-            bytes8 expectedSeamAttributes;
-            (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
-                checkTdxModuleTcbStatus(teeTcbSvn, tdxModule, tdxModuleIdentities);
-            if (!success || tdxModuleStatus == TCBStatus.TCB_REVOKED) {
-                return (false, bytes(TCBR));
-            }
-
-            success = checkTdxModule(mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes);
-            if (!success) {
-                return (false, bytes(TDMF));
-            }
-
-            tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
-
-            if (quoteBodySize == TD_REPORT15_LENGTH) {
-                // Relaunch check (TD 1.5 only)
-                bool relaunchAdvised;
-                bool configurationNeeded;
-                (success, reason, relaunchAdvised, configurationNeeded) =
-                    _checkForRelaunch(teeTcbSvn2, result.qeTcbStatus, sgxStatus, tdxStatus, tdxModuleStatus, tcbLevels, tdxModuleIdentities);
-                if (!success) {
-                    return (false, bytes(reason));
-                }
-                if (relaunchAdvised) {
-                    tcbStatus =
-                        configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
-                }
-            }
-
-            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(result.qeTcbStatus, tdxStatus));
+            (success, reason, tcbStatus, tcbLevelSelected) = _verifyTdxBody(
+                rawQuote[bodyOffset:bodyOffset + quoteBodySize],
+                pckTcb,
+                result.qeTcbStatus,
+                TdxTcbData(tcbLevels, tdxModule, tdxModuleIdentities),
+                withIdentity
+            );
+            if (!success) return (false, bytes(reason));
         }
 
         Output memory output = Output({
@@ -124,10 +101,87 @@ contract V5QuoteVerifier is TdxQuoteBase {
         });
 
         serializedOutput = serializeOutput(output);
+        if (withIdentity) serializedOutput = identityEnvelope(serializedOutput, authData.certification);
         success = true;
     }
 
-    function _parseV5Quote(Header calldata header, bytes calldata quote)
+    function _verifyTdxBody(
+        bytes calldata body,
+        PCKCertTCB memory pckTcb,
+        EnclaveIdTcbStatus qeTcbStatus,
+        TdxTcbData memory tcb,
+        bool withIdentity
+    ) internal pure returns (bool success, string memory reason, uint8 tcbStatus, uint256 tcbLevelSelected) {
+        bytes16 teeTcbSvn;
+        bytes memory mrSignerSeam;
+        bytes8 seamAttributes;
+        bytes16 teeTcbSvn2;
+
+        (success, reason, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2) = _parseTdReport(body);
+        if (!success) {
+            return (false, reason, 0, 0);
+        }
+
+        TCBStatus sgxStatus = TCBStatus.TCB_UNRECOGNIZED;
+        TCBStatus tdxStatus = TCBStatus.TCB_UNRECOGNIZED;
+        (success, sgxStatus, tdxStatus, tcbLevelSelected) = getTDXTcbStatus(tcb.levels, pckTcb, teeTcbSvn, withIdentity);
+        if (!success || tdxStatus == TCBStatus.TCB_REVOKED || (withIdentity && tdxStatus == TCBStatus.TCB_UNRECOGNIZED))
+        {
+            return (false, TCBR, 0, 0);
+        }
+
+        TCBStatus tdxModuleStatus;
+        bytes memory expectedMrSignerSeam;
+        bytes8 expectedSeamAttributes;
+        (success, tdxModuleStatus, expectedMrSignerSeam, expectedSeamAttributes) =
+            checkTdxModuleTcbStatus(teeTcbSvn, tcb.module, tcb.identities, withIdentity);
+        if (
+            !success || tdxModuleStatus == TCBStatus.TCB_REVOKED
+                || (withIdentity && tdxModuleStatus == TCBStatus.TCB_UNRECOGNIZED)
+        ) {
+            return (false, TCBR, 0, 0);
+        }
+
+        success = checkTdxModule(mrSignerSeam, expectedMrSignerSeam, seamAttributes, expectedSeamAttributes);
+        if (!success) {
+            return (false, TDMF, 0, 0);
+        }
+
+        TCBStatus platformStatus = tdxStatus;
+        tdxStatus = convergeTcbStatusWithTdxModuleStatus(tdxStatus, tdxModuleStatus);
+
+        if (
+            body.length == TD_REPORT15_LENGTH
+                && (!withIdentity || uint8(sgxStatus) <= uint8(TCBStatus.TCB_CONFIGURATION_NEEDED))
+        ) {
+            // Relaunch check (TD 1.5 only)
+            bool relaunchAdvised;
+            bool configurationNeeded;
+            (success, reason, relaunchAdvised, configurationNeeded) = _checkForRelaunch(
+                teeTcbSvn2,
+                qeTcbStatus,
+                sgxStatus,
+                withIdentity ? platformStatus : tdxStatus,
+                tdxModuleStatus,
+                tcb.levels,
+                tcb.identities,
+                withIdentity
+            );
+            if (!success) {
+                return (false, reason, 0, 0);
+            }
+            if (relaunchAdvised) {
+                tcbStatus = configurationNeeded ? TCB_TD_RELAUNCH_ADVISED_CONFIGURATION_NEEDED : TCB_TD_RELAUNCH_ADVISED;
+            }
+        }
+
+        if (!withIdentity || (tcbStatus != 8 && tcbStatus != 9)) {
+            tcbStatus = uint8(convergeTcbStatusWithQeTcbStatus(qeTcbStatus, tdxStatus));
+        }
+        success = true;
+    }
+
+    function _parseV5Quote(Header calldata header, bytes calldata quote, bool withIdentity)
         private
         view
         returns (
@@ -173,21 +227,23 @@ contract V5QuoteVerifier is TdxQuoteBase {
 
         uint256 localAuthDataSize = BELE.leBytesToBeUint(quote[offset:offset + 4]);
         offset += 4;
-        if (quote.length - offset < localAuthDataSize) {
+        if (quote.length - offset < localAuthDataSize || (withIdentity && quote.length - offset != localAuthDataSize)) {
             return (false, ADS, 0, 0, authData);
         }
 
-        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize]);
+        (success, authData) = _parseAuthData(quote[offset:offset + localAuthDataSize], withIdentity);
         if (!success) {
             return (false, ADF, 0, 0, authData);
         }
     }
 
-    function _parseAuthData(bytes calldata rawAuthData)
+    function _parseAuthData(bytes calldata rawAuthData, bool withIdentity)
         private
         view
         returns (bool success, AuthData memory authData)
     {
+        // V2 bounds every nested length before slicing; legacy acceptance remains unchanged.
+        if (withIdentity && rawAuthData.length < 590) return (false, authData);
         authData.ecdsa256BitSignature = rawAuthData[0:64];
         authData.ecdsaAttestationKey = rawAuthData[64:128];
 
@@ -200,6 +256,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
 
         uint16 qeAuthDataSize = uint16(BELE.leBytesToBeUint(rawAuthData[582:584]));
         uint256 offset = 584;
+        if (withIdentity && qeAuthDataSize > rawAuthData.length - offset - 6) return (false, authData);
         authData.qeAuthData = rawAuthData[offset:offset + qeAuthDataSize];
         offset += qeAuthDataSize;
 
@@ -211,17 +268,18 @@ contract V5QuoteVerifier is TdxQuoteBase {
         offset += 2;
         uint32 certDataSize = uint32(BELE.leBytesToBeUint(rawAuthData[offset:offset + 4]));
         offset += 4;
+        if (withIdentity && certDataSize != rawAuthData.length - offset) return (false, authData);
         bytes memory rawCertData = rawAuthData[offset:offset + certDataSize];
         offset += certDataSize;
 
-        if (offset - 134 != qeReportCertSize) {
+        if (offset - 134 != qeReportCertSize || (withIdentity && offset != rawAuthData.length)) {
             return (false, authData);
         }
 
         authData.qeReport = rawAuthData[134:518];
 
         (success, authData.certification) =
-            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData);
+            getPckCollateral(pccsRouter.pckHelperAddr(), certType, rawCertData, withIdentity);
         if (!success) {
             return (false, authData);
         }
@@ -239,26 +297,16 @@ contract V5QuoteVerifier is TdxQuoteBase {
             bytes16 teeTcbSvn2
         )
     {
-        if (rawTdReport.length == TD_REPORT10_LENGTH) {
-            TD10ReportBody memory td10ReportBody;
-            (success, td10ReportBody) = TD10ReportParser.parse(rawTdReport);
-            if (!success) {
-                return (false, TD10F, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
-            }
-            teeTcbSvn = td10ReportBody.teeTcbSvn;
-            mrSignerSeam = td10ReportBody.mrsignerSeam;
-            seamAttributes = td10ReportBody.seamAttributes;
-        } else {
-            TD15ReportBody memory td15ReportBody;
-            (success, td15ReportBody) = TD15ReportParser.parse(rawTdReport);
-            if (!success) {
-                return (false, TD15F, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
-            }
-            teeTcbSvn = td15ReportBody.teeTcbSvn;
-            teeTcbSvn2 = td15ReportBody.teeTcbSvn2;
-            mrSignerSeam = td15ReportBody.mrsignerSeam;
-            seamAttributes = td15ReportBody.seamAttributes;
+        if (rawTdReport.length != TD_REPORT10_LENGTH && rawTdReport.length != TD_REPORT15_LENGTH) {
+            return (false, TD15F, teeTcbSvn, mrSignerSeam, seamAttributes, teeTcbSvn2);
         }
+        // Read only fields consumed by TCB/module checks; return the original complete body in the output.
+        // The previous full report parsers perform the same length check and no additional validation.
+        teeTcbSvn = bytes16(rawTdReport[0:16]);
+        mrSignerSeam = rawTdReport[64:112];
+        seamAttributes = bytes8(rawTdReport[112:120]);
+        if (rawTdReport.length == TD_REPORT15_LENGTH) teeTcbSvn2 = bytes16(rawTdReport[584:600]);
+        success = true;
     }
 
     /// https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/stable/Src/AttestationLibrary/src/Verifiers/Checks/TDRelaunchCheck.cpp
@@ -269,18 +317,23 @@ contract V5QuoteVerifier is TdxQuoteBase {
         TCBStatus tdxStatus,
         TCBStatus tdxModuleStatus,
         TCBLevelsObj[] memory tcbLevels,
-        TDXModuleIdentity[] memory tdxModuleIdentities
+        TDXModuleIdentity[] memory tdxModuleIdentities,
+        bool withIdentity
     ) private pure returns (bool success, string memory reason, bool relaunchAdvised, bool configurationNeeded) {
         success = true;
-        
+
         if (qeTcbStatus != EnclaveIdTcbStatus.SGX_ENCLAVE_REPORT_ISVSVN_OUT_OF_DATE) {
             if (sgxStatus != TCBStatus.TCB_OUT_OF_DATE && sgxStatus != TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED) {
                 if (
                     tdxStatus == TCBStatus.TCB_OUT_OF_DATE
                         || tdxStatus == TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED
                 ) {
-                    if (tdxModuleStatus == TCBStatus.TCB_OUT_OF_DATE) {
-                        configurationNeeded = _tcbConfigurationNeeded(sgxStatus) || _tcbConfigurationNeeded(tdxStatus);
+                    if (
+                        tdxModuleStatus == TCBStatus.TCB_OUT_OF_DATE
+                            || (withIdentity && tdxModuleStatus == TCBStatus.TCB_OUT_OF_DATE_CONFIGURATION_NEEDED)
+                    ) {
+                        configurationNeeded =
+                            _tcbConfigurationNeeded(sgxStatus) || _tcbConfigurationNeeded(tdxStatus);
                         TCBLevelsObj memory latestTcbLevel = tcbLevels[0];
 
                         if (teeTcbSvn2[1] == 0) {
@@ -295,8 +348,7 @@ contract V5QuoteVerifier is TdxQuoteBase {
                             (success, matchingModuleIdentity) =
                                 findTdxModuleIdentity(tdxModuleIdentities, uint8(teeTcbSvn2[1]));
                             if (!success) {
-                                return
-                                    (false, TDRF, false, false);
+                                return (false, TDRF, false, false);
                             }
 
                             TDXModuleTCBLevelsObj memory latestTdxModuleTcbLevel = matchingModuleIdentity.tcbLevels[0];

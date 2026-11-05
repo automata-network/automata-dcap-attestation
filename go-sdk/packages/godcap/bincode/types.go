@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/chzyer/logex"
 	"github.com/ethereum/go-ethereum/common"
@@ -65,56 +66,90 @@ func (c *Collection[T]) String() string {
 }
 
 func (c *Collection[T]) FromBin(data []byte) ([]byte, error) {
-	var err error
-	length, data := ReadUint64(data)
-	*c = make([]T, int(length))
-	for i := 0; i < int(length); i++ {
-		val := (*c)[i].New().(T)
+	length, data, err := ReadUint64(data)
+	if err != nil {
+		return nil, err
+	}
+	// Supported receipt elements all consume at least one byte. Never allocate
+	// an attacker-declared count before checking the available encoded input.
+	if length > uint64(len(data)) {
+		return nil, io.ErrUnexpectedEOF
+	}
+	values := make(Collection[T], 0, min(int(length), 1024))
+	for i := uint64(0); i < length; i++ {
+		var val T
+		val = val.New().(T)
+		remaining := len(data)
 		data, err = val.FromBin(data)
 		if err != nil {
 			return nil, logex.Trace(err)
 		}
-		(*c)[i] = val
+		if len(data) >= remaining {
+			return nil, logex.NewError("collection element must consume input")
+		}
+		values = append(values, val)
 	}
+	*c = values
 	return data, nil
 }
 
-func ReadUint32(data []byte) (uint32, []byte) {
+func ReadUint32(data []byte) (uint32, []byte, error) {
 	return ReadEnum(data)
 }
 
-func ReadEnum(data []byte) (uint32, []byte) {
+func ReadEnum(data []byte) (uint32, []byte, error) {
+	if len(data) < 4 {
+		return 0, nil, io.ErrUnexpectedEOF
+	}
 	ty := led.Uint32(data[:4])
-	return ty, data[4:]
+	return ty, data[4:], nil
 }
 
-func ReadUint64(data []byte) (uint64, []byte) {
+func ReadUint64(data []byte) (uint64, []byte, error) {
+	if len(data) < 8 {
+		return 0, nil, io.ErrUnexpectedEOF
+	}
 	ty := led.Uint64(data[:8])
-	return ty, data[8:]
+	return ty, data[8:], nil
 }
 
 type VarInt int
 
 func (i *VarInt) FromBin(data []byte) ([]byte, error) {
-	off := 0
+	if len(data) == 0 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	off := 1
+	var value uint64
 	switch data[0] {
 	case 255:
 		return nil, logex.NewError("unexpected 255")
 	case 254:
-		panic("unsupported u128")
+		return nil, logex.NewError("unsupported u128")
 	case 253:
-		*i = VarInt(led.Uint64(data[1:9]))
-		off += 9
+		off = 9
 	case 252:
-		*i = VarInt(led.Uint32(data[1:5]))
-		off += 5
+		off = 5
 	case 251:
-		*i = VarInt(led.Uint16(data[1:3]))
-		off += 3
-	default:
-		off += 1
-		*i = VarInt(data[0])
+		off = 3
 	}
+	if len(data) < off {
+		return nil, io.ErrUnexpectedEOF
+	}
+	switch off {
+	case 9:
+		value = led.Uint64(data[1:9])
+	case 5:
+		value = uint64(led.Uint32(data[1:5]))
+	case 3:
+		value = uint64(led.Uint16(data[1:3]))
+	default:
+		value = uint64(data[0])
+	}
+	if value > uint64(^uint(0)>>1) {
+		return nil, logex.NewError("varint overflows int")
+	}
+	*i = VarInt(value)
 	return data[off:], nil
 }
 
@@ -139,7 +174,14 @@ func (s *Option[T]) New() FromBin {
 }
 
 func (o *Option[T]) FromBin(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	if data[0] > 1 {
+		return nil, ErrUnexpectEnum.Format(o, data[0])
+	}
 	o.Type = data[0]
+	o.Val = nil
 	data = data[1:]
 	if o.Type == 1 {
 		var val T
@@ -165,6 +207,9 @@ func (d Bytes32) String() string {
 }
 
 func (d *Bytes32) FromBin(data []byte) ([]byte, error) {
+	if len(data) < 32 {
+		return nil, io.ErrUnexpectedEOF
+	}
 	copy((*d)[:], data[:32])
 	return data[32:], nil
 }
@@ -187,7 +232,13 @@ func (b Bytes) Bincode() []byte {
 }
 
 func (b *Bytes) FromBin(data []byte) ([]byte, error) {
-	length, data := ReadUint64(data)
+	length, data, err := ReadUint64(data)
+	if err != nil {
+		return nil, err
+	}
+	if length > uint64(len(data)) {
+		return nil, io.ErrUnexpectedEOF
+	}
 	*b = make([]byte, int(length))
 	copy(*b, data[:len(*b)])
 	return data[len(*b):], nil
@@ -232,7 +283,10 @@ func (b *U32) Raw() uint32 {
 }
 
 func (b *U32) FromBin(data []byte) ([]byte, error) {
-	val, data := ReadUint32(data)
+	val, data, err := ReadUint32(data)
+	if err != nil {
+		return nil, err
+	}
 	*b = U32(val)
 	return data, nil
 }
@@ -248,7 +302,10 @@ func (b *U64) String() string {
 }
 
 func (b *U64) FromBin(data []byte) ([]byte, error) {
-	val, data := ReadUint64(data)
+	val, data, err := ReadUint64(data)
+	if err != nil {
+		return nil, err
+	}
 	*b = U64(val)
 	return data, nil
 }

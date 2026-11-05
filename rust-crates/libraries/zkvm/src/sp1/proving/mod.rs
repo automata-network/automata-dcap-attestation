@@ -1,5 +1,8 @@
 use anyhow::{Context, Result};
-use sp1_sdk::{network::FulfillmentStrategy, NetworkProver, SP1ProvingKey, SP1Stdin};
+use sp1_sdk::{
+    network::FulfillmentStrategy, NetworkProver, ProveRequest, Prover, ProvingKey, SP1ProvingKey,
+    SP1Stdin,
+};
 
 use super::config::{NetworkProverMode, ProofSystem};
 
@@ -23,24 +26,23 @@ pub async fn prove(
 
     // Generate the proof using builder pattern
     let proof = match proof_system {
-        ProofSystem::Groth16 => {
-            client
-                .prove(pk, stdin)
-                .groth16()
-                .strategy(strategy)
-                .await
-                .context("SP1 Groth16 proving failed")?
-        }
-        ProofSystem::Plonk => {
-            client
-                .prove(pk, stdin)
-                .plonk()
-                .strategy(strategy)
-                .await
-                .context("SP1 Plonk proving failed")?
-        }
+        ProofSystem::Groth16 => client
+            .prove(pk, stdin.clone())
+            .groth16()
+            .strategy(strategy)
+            .await
+            .context("SP1 Groth16 proving failed")?,
+        ProofSystem::Plonk => client
+            .prove(pk, stdin.clone())
+            .plonk()
+            .strategy(strategy)
+            .await
+            .context("SP1 Plonk proving failed")?,
     };
 
+    client
+        .verify(&proof, pk.verifying_key(), None)
+        .context("SP1 returned proof verification")?;
     let journal = proof.public_values.to_vec();
     let proof_bytes = proof.bytes();
 

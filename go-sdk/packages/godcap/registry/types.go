@@ -16,6 +16,7 @@ type Version string
 const (
 	VersionV1_0 Version = "v1.0"
 	VersionV1_1 Version = "v1.1" // Current version with versioned DAOs
+	VersionV2_0 Version = "v2.0" // Identity-bearing FeeV2; schema 2.1
 )
 
 // VersionedDao maps TCB evaluation numbers to contract addresses
@@ -65,12 +66,17 @@ type PccsContracts struct {
 
 // DcapContracts holds all DCAP attestation contract addresses
 type DcapContracts struct {
-	DcapAttestationFee common.Address // AutomataDcapAttestationFee - base attestation with fee
-	DcapPortal         common.Address // Optional
-	PccsRouter         common.Address
-	V3QuoteVerifier    common.Address
-	V4QuoteVerifier    common.Address
-	V5QuoteVerifier    common.Address
+	DcapAttestationFeeV2 common.Address
+	V3QuoteVerifierV2    common.Address
+	V4QuoteVerifierV2    common.Address
+	V5QuoteVerifierV2    common.Address
+	DcapAttestationFee   common.Address // AutomataDcapAttestationFee - base attestation with fee
+	DcapPortal           common.Address // Optional
+	PccsRouter           common.Address
+	PccsRouterV2         common.Address
+	V3QuoteVerifier      common.Address
+	V4QuoteVerifier      common.Address
+	V5QuoteVerifier      common.Address
 }
 
 // Contracts holds all contract addresses for a network

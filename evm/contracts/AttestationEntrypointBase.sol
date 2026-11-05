@@ -288,11 +288,7 @@ abstract contract AttestationEntrypointBase is Ownable {
         } else if (zkCoprocessor == ZkCoProcessorType.Succinct) {
             ISP1Verifier(verifier).verifyProof(identifier, output, proofBytes);
         } else if (zkCoprocessor == ZkCoProcessorType.Pico) {
-            IPicoVerifier(verifier).verifyPicoProof(
-                identifier,
-                output,
-                abi.decode(proofBytes[4:], (uint256[8]))
-            );
+            IPicoVerifier(verifier).verifyPicoProof(identifier, output, abi.decode(proofBytes[4:], (uint256[8])));
         } else {
             return (false, bytes("Unknown ZK Co-Processor"));
         }
@@ -311,7 +307,7 @@ abstract contract AttestationEntrypointBase is Ownable {
     /**
      * @notice Parses the header to get basic information about the quote, such as the version, TEE types etc.
      */
-    function _parseQuoteHeader(bytes calldata rawQuote) private pure returns (bool success, Header memory header) {
+    function _parseQuoteHeader(bytes calldata rawQuote) internal pure returns (bool success, Header memory header) {
         success = rawQuote.length >= HEADER_LENGTH;
         if (success) {
             uint16 version = uint16(BELE.leBytesToBeUint(rawQuote[0:2]));

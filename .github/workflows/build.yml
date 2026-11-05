@@ -40,8 +40,13 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
-          forge build --sizes
+          forge build
         id: build
+
+      - name: Check deployable contract sizes
+        # Compile tests above, but do not apply deployment limits to test harnesses.
+        # Keep EIP-170/EIP-3860 checks enabled for contracts and their dependencies.
+        run: forge build --sizes --skip test --skip script
 
       - name: Run Forge tests
         run: |

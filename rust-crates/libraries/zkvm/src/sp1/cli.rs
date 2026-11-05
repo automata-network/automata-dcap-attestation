@@ -100,12 +100,17 @@ async fn prove_cmd<P: Provider>(
     };
 
     // Step 4: Generate proof using SP1 prover
-    let (journal, proof_bytes) = prover.prove(&config, &input_bytes)
+    let (journal, proof_bytes) = prover
+        .prove(&config, &input_bytes)
         .await
         .context("SP1 proving failed")?;
 
     // Step 5: Display proof result
-    display_proof_result(&journal, &proof_bytes, "Proof", version)?;
+    if version == automata_dcap_utils::Version::V2_0 {
+        crate::common::display::display_proof_result_v2(&journal, &proof_bytes, "Proof")?;
+    } else {
+        display_proof_result(&journal, &proof_bytes, "Proof", version)?;
+    }
 
     // Step 6: Write proof artifact if output path is provided
     if let Some(output_path) = args.output_path {
