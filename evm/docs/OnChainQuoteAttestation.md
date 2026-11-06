@@ -1,6 +1,6 @@
 # `AutomataDcapAttestation` On Chain Verification Workflow
 
-This document provides a high-level overview of the full on-chain verification workflow, covering V3 SGX, V4 SGX and TDX quotes. 
+This document provides a high-level overview of the full on-chain verification workflow, covering V3 SGX, V4 SGX and TDX, and V5 SGX and TDX quotes. 
 
 We advise reading through the code and refer to [Intel's official documentation](https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/docs/) for a deep dive into the technical details about DCAP Quote Verification.
 
@@ -61,6 +61,7 @@ The on-chain workflow is designed to:
 - **Forwarding:** Based on the quote version, the contract routes the verification:
   - **V3 SGX Quotes:** Processed by `V3QuoteVerifier`.
   - **V4 SGX and TDX Quotes:** Processed by `V4QuoteVerifier`.
+  - **V5 SGX and TDX Quotes:** Processed by `V5QuoteVerifier`.
 
 ### 3.2. Verification Process
 
