@@ -91,6 +91,25 @@ whole local result directory: the archive omits large build trees, witnesses
 and intermediate receipts; these can be reused to resume a failed stage.
 Do not restart the entire run without inspecting the last failed stage.
 
+### Docker export path failure before proving
+
+`Duplicate platform result requested "linux/amd64"` followed by a
+`risc0/build/src/lib.rs` missing-file panic after a successful Docker build is
+caused by the wrapper adding a platform flag already supplied by the SDK.
+BuildKit exports the raw `guest` / `guest-minimal` files under
+`target/riscv32im-risc0-zkvm-elf/docker/linux_amd64/`, while the SDK expects them
+directly in `docker/`. The wrapper now preserves either SDK flag spelling
+(`--platform=linux/amd64` or `--platform linux/amd64`) without adding another.
+The AMD64 default remains for callers that do not specify a platform.
+
+For a run stopped at this first build, preserve the failed result directory,
+commit/sync the wrapper fix, and rerun with the new source commit and a fresh
+output directory. There are no proof checkpoints to resume at this stage.
+Do not move raw guest files into place or reuse the bundled V1 guest binaries:
+the successful SDK build must package the user/kernel binary and both clean
+builds must pass the byte/native-ID comparison. `FromAsCasing` warnings alone
+do not indicate this failure.
+
 These fixtures have historical authenticated timestamps. They are regression
 inputs, not a claim that collateral is current or that a live Hoodi transaction
 will accept them today. No timestamp/signature is rewritten. After return,
