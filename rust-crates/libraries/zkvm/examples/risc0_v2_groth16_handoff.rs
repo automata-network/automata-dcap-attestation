@@ -65,8 +65,8 @@ fn main() -> Result<()> {
             .output()?;
         ensure!(
             version.status.success()
-                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.0.3",
-            "requires r0vm 3.0.3"
+                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.1.0",
+            "requires r0vm 3.1.0"
         );
         std::fs::create_dir(output)?;
         let absolute = output.canonicalize()?;
@@ -104,7 +104,7 @@ fn main() -> Result<()> {
         serde_json::from_slice::<serde_json::Value>(&std::fs::read(absolute.join("input.json"))?)?;
         let manifest = serde_json::json!({
             "schema": 1, "status": "WITNESS_PREPARED_NOT_PROVEN", "backend": "risc0",
-            "r0vmVersion": "3.0.3", "groth16ImageTag": "risczero/risc0-groth16-prover:v2025-04-03.1",
+            "r0vmVersion": "3.1.0", "groth16ImageTag": "risczero/risc0-groth16-prover:v2026-10-20.1",
             "programId": format!("0x{id}"), "minCheck": minimal, "verifierParameters": parameters.to_string(),
             "journal": format!("0x{}", hex::encode(&expected)),
             "expectedDockerFailure": format!("{error:#}")
@@ -143,6 +143,7 @@ fn main() -> Result<()> {
     ensure!(changed.verify(id).is_err(), "modified seal accepted");
     let evm_seal = risc0_ethereum_contracts::encode_seal(&receipt)?;
     ensure!(evm_seal.len() == 260, "unexpected EVM seal length");
+    automata_dcap_zkvm::risc0::validate_v2_seal(&evm_seal)?;
     std::fs::create_dir(output)?;
     write_new(&output.join("receipt.bin"), &bincode::serialize(&receipt)?)?;
     let payload = serde_json::json!({

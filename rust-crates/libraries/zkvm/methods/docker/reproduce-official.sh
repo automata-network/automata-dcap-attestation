@@ -19,10 +19,10 @@ case "$repro_backend" in
   risc0)
     repro_image='risczero/risc0-guest-builder:r0.1.88.0@sha256:3e12f71bacd27527a61dea96fa0e53e468c99aa261d3a1019b593f6dbd943eb3'
     repro_manifest='rust-crates/libraries/zkvm/methods/risc0/guest/Cargo.toml'
-    test "$(cargo risczero --version)" = 'cargo-risczero 3.0.3'
-    test "$(r0vm --version)" = 'risc0-r0vm 3.0.3'
+    test "$(cargo risczero --version)" = 'cargo-risczero 3.1.0'
+    test "$(r0vm --version)" = 'risc0-r0vm 3.1.0'
     [[ "$(rustc +risc0 --version)" == 'rustc 1.88.0'* ]] || {
-      echo 'SDK 3.0.3 also queries the local rzup Rust version to choose codegen flags; select RISC Zero Rust 1.88.' >&2
+      echo 'SDK 3.1.0 also queries the local rzup Rust version to choose codegen flags; select RISC Zero Rust 1.88.' >&2
       exit 2
     }
     repro_cli="$(command -v cargo-risczero)"

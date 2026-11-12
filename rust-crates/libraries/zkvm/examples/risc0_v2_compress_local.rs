@@ -92,8 +92,8 @@ fn main() -> Result<()> {
             .output()?;
         ensure!(
             version.status.success()
-                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.0.3",
-            "requires r0vm 3.0.3"
+                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.1.0",
+            "requires r0vm 3.1.0"
         );
         let opts = if args[4] == "succinct" {
             ProverOpts::succinct()
@@ -109,6 +109,7 @@ fn main() -> Result<()> {
     if matches!(receipt.inner, InnerReceipt::Groth16(_)) {
         let seal = risc0_ethereum_contracts::encode_seal(&receipt)?;
         ensure!(seal.len() == 260, "unexpected Groth16 EVM seal length");
+        automata_dcap_zkvm::risc0::validate_v2_seal(&seal)?;
         let payload = serde_json::json!({
             "backend": 1, "proofSystem": "groth16", "programId": format!("0x{id}"), "minCheck": minimal,
             "journal": format!("0x{}", hex::encode(expected)), "proof": format!("0x{}", hex::encode(&seal)),

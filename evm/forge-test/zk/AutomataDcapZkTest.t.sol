@@ -59,7 +59,7 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         vm.stopPrank();
     }
 
-    function testRiscZeroGroth16Verification() public {
+    function testHistoricalRiscZeroReceiptRejectedByRepairedVerifier() public {
         vm.prank(admin);
         attestation.setZkConfiguration(
             ZkCoProcessorType.RiscZero,
@@ -71,10 +71,9 @@ contract AutomataDcapZkTest is PCCSSetupBase, RiscZeroSetup {
         bytes memory seal =
             hex"73c457ba0e7a435a2038da25ff2c09f6c614386a686b5b6a6c0d5c36e3485944ecd22cb3093d7887e17975b289fe028a5d649d426ad23bf0abfc579a6992d59b201a254b07dc283e22ac5a848a04b6d946bb1fe2c93b13f9bc55a1a0a2b6545ab43d811f2f4f152a63921657faf46b55f99d8f99ce803df40b46f65d1c2d9f930d9c5b0b194c76621e3982d6c6ae558d12a4555bc68754ce860a07a6cad586992770c87324558438091301fb159b7b62b259a8a35e5ba8569b05ca5960a4db5cbac39b1f27ab3fce3af7b1fe02ef3f1f6419320f8cd370fb8485125b7c63d6be624d734d263143749f07224212f1da19c00a0408bc5c6c714bd40d30cf60b3fe2f4316c2";
 
-        (bool success,) =
-            attestation.verifyAndAttestWithZKProof(journal, ZkCoProcessorType.RiscZero, seal);
-
-        assertTrue(success);
+        // The historical proof belongs to the retired circuit; never relabel it.
+        vm.expectRevert(abi.encodeWithSignature("SelectorMismatch(bytes4,bytes4)", bytes4(0x73c457ba), bytes4(0xe71e6620)));
+        attestation.verifyAndAttestWithZKProof(journal, ZkCoProcessorType.RiscZero, seal);
     }
 
     function testSP1Groth16Verification() public {

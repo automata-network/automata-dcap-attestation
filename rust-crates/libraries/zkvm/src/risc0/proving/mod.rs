@@ -3,8 +3,7 @@ mod boundless;
 pub use boundless::prove_with_boundless;
 
 use anyhow::{Context, Error, Result};
-use risc0_ethereum_contracts::groth16;
-use risc0_zkvm::{default_prover, ExecutorEnv, InnerReceipt, ProverOpts};
+use risc0_zkvm::{compute_image_id, default_prover, ExecutorEnv, InnerReceipt, ProverOpts};
 
 /// Prove using Bonsai remote prover
 pub async fn prove_with_bonsai(elf: &[u8], input_bytes: &[u8]) -> Result<Vec<u8>> {
@@ -35,14 +34,14 @@ pub async fn prove_with_bonsai(elf: &[u8], input_bytes: &[u8]) -> Result<Vec<u8>
             .context("Bonsai proving failed")?
             .receipt;
 
-        let seal = if let InnerReceipt::Groth16(ref groth16_receipt) = receipt.inner {
-            groth16::encode(groth16_receipt.seal.clone())
-                .context("Failed to encode Groth16 seal")?
-        } else {
-            vec![]
-        };
-
-        Ok(seal)
+        anyhow::ensure!(
+            matches!(receipt.inner, InnerReceipt::Groth16(_)),
+            "Expected a real Groth16 receipt"
+        );
+        receipt
+            .verify(compute_image_id(&elf)?)
+            .context("Bonsai receipt verification failed")?;
+        risc0_ethereum_contracts::encode_seal(&receipt).context("Failed to encode Groth16 seal")
     })
     .await
     .context("Bonsai proving task panicked")?

@@ -129,6 +129,8 @@ contract AutomataDcapAttestationV2 is AttestationAdminV2 {
     function zkVerifierV2(ZkCoProcessorType backend, bytes4 selector) public view returns (address) {
         address verifier = _proofRoutes[backend][selector];
         if (verifier == FROZEN) revert ZK_Route_Frozen(backend, selector);
+        // RISC Zero routers may retain unsafe historical circuits: require explicit approval.
+        if (backend == ZkCoProcessorType.RiscZero) return verifier;
         return verifier == address(0) ? _zkConfigV2[backend].defaultZkVerifier : verifier;
     }
 

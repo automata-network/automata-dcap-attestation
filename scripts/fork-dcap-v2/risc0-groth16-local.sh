@@ -11,11 +11,10 @@ test -s "$dcap_witness/input.json"
 test -s "$dcap_witness/seal.r0"
 test -s "$dcap_witness/manifest.json"
 if [[ -e "$2" ]]; then echo 'Result directory must not exist' >&2; exit 2; fi
-dcap_platform=${DCAP_R0_PLATFORM:-linux/arm64}
+dcap_platform=${DCAP_R0_PLATFORM:-linux/amd64}
 case "$dcap_platform" in
-  linux/arm64) dcap_digest=55236d558d1e16e27f86f73237215c49f686521cab7652931c61c96d62cabcfc ;;
-  linux/amd64) dcap_digest=7f173963196570b7a71816ed70565a4579264c5d2e3e0ecb028102538ad0e331 ;;
-  *) echo 'Only the two reviewed official platform manifests are allowed' >&2; exit 2 ;;
+  linux/amd64) dcap_digest=49093ed164b82aca9305dd80e4a6eb996bd443201ac7bd50b52909b2761ef583 ;;
+  *) echo 'The repaired v2026-10-20.1 image requires AMD64 Docker (Mac/Rosetta supported)' >&2; exit 2 ;;
 esac
 dcap_image="risczero/risc0-groth16-prover@sha256:$dcap_digest"
 mkdir "$2"

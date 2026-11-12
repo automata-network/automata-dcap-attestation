@@ -112,6 +112,7 @@ contract AttestationFeeV2Test is Test {
             fee.addProgramIdentifierV2(ZkCoProcessorType(backend), MINIMAL_ID, true);
             fee.setDefaultProgramIdentifierV2(ZkCoProcessorType(backend), V2_ID);
         }
+        fee.addVerifyRoute(ZkCoProcessorType.RiscZero, 0xe71e6620, address(universal));
     }
 
     function quoteBytes() internal pure returns (bytes memory) {
@@ -154,7 +155,7 @@ contract AttestationFeeV2Test is Test {
         bytes memory output = journal();
         universal.expectProof(V2_ID, output);
         for (uint8 backend = 1; backend <= 3; ++backend) {
-            bytes memory proof = backend == 3 ? new bytes(260) : new bytes(4);
+            bytes memory proof = backend == 3 ? new bytes(260) : bytes(hex"e71e6620");
             (bool success, bytes memory verified) =
                 fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType(backend), proof);
             assertTrue(success);
@@ -165,11 +166,95 @@ contract AttestationFeeV2Test is Test {
     function testProgramFamiliesDoNotCrossAndPauseRejectsV2() public {
         bytes memory output = journal();
         (bool success,) =
-            fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 0, false);
+            fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620", LEGACY_ID, 0, false);
         assertFalse(success);
         fee.setZkV2Paused(true);
-        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4));
+        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620");
         assertFalse(success);
+    }
+
+    function testRiscZeroRejectsUnregisteredSelectorsWithoutDefaultFallback() public {
+        bytes memory output = journal();
+        bytes4[6] memory selectors = [bytes4(0x73c457ba), bytes4(0xbb001d44), bytes4(0x242f9d5b),
+            bytes4(0x8b38038c), bytes4(0xffffffff), bytes4(0)];
+        for (uint256 i; i < selectors.length; ++i) {
+            assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, selectors[i]), address(0));
+            bytes memory proof = abi.encodePacked(selectors[i], new bytes(256));
+            universal.expectProof(V2_ID, output);
+            (bool ok, bytes memory reason) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, proof);
+            assertFalse(ok);
+            assertEq(string(reason), "ZK Verifier is not configured");
+            universal.expectProof(MINIMAL_ID, output);
+            (ok, reason) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, proof, MINIMAL_ID, 0, true);
+            assertFalse(ok);
+            assertEq(string(reason), "ZK Verifier is not configured");
+        }
+    }
+
+    function testRiscZeroOwnerCanApproveNewSelectorWithoutChangingDefault() public {
+        bytes memory output = journal();
+        bytes4 selector = 0x12345678;
+        FeeV2UniversalMock approved = new FeeV2UniversalMock();
+        fee.addVerifyRoute(ZkCoProcessorType.RiscZero, selector, address(approved));
+        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero), address(universal));
+        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, selector), address(approved));
+        approved.expectProof(V2_ID, output);
+        (bool success, bytes memory verified) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, abi.encodePacked(selector));
+        assertTrue(success);
+        assertEq(verified, output);
+        approved.expectProof(MINIMAL_ID, output);
+        (success, verified) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, abi.encodePacked(selector), MINIMAL_ID, 0, true);
+        assertTrue(success);
+        assertEq(verified, output);
+    }
+
+    function testRiscZeroRepairedSelectorRequiresExplicitRegistration() public {
+        AutomataDcapAttestationV2 empty = new AutomataDcapAttestationV2(address(this));
+        empty.setZkVerifierV2(ZkCoProcessorType.RiscZero, address(universal));
+        empty.addProgramIdentifierV2(ZkCoProcessorType.RiscZero, V2_ID, false);
+        empty.setDefaultProgramIdentifierV2(ZkCoProcessorType.RiscZero, V2_ID);
+        assertEq(empty.zkVerifierV2(ZkCoProcessorType.RiscZero, 0xe71e6620), address(0));
+        (bool ok, bytes memory reason) = empty.verifyAndAttestWithZKProofV2(hex"", ZkCoProcessorType.RiscZero, hex"e71e6620");
+        assertFalse(ok);
+        assertEq(string(reason), "ZK Verifier is not configured");
+    }
+
+    function testRiscZeroFreezeIsPermanentAndOwnerOnly() public {
+        bytes4 selector = 0x12345678;
+        vm.prank(address(0xbeef));
+        vm.expectRevert();
+        fee.addVerifyRoute(ZkCoProcessorType.RiscZero, selector, address(universal));
+        vm.prank(address(0xbeef));
+        vm.expectRevert();
+        fee.freezeVerifyRoute(ZkCoProcessorType.RiscZero, selector);
+        fee.freezeVerifyRoute(ZkCoProcessorType.RiscZero, selector);
+        fee.setZkVerifierV2(ZkCoProcessorType.RiscZero, address(new FeeV2UniversalMock()));
+        bytes memory frozen = abi.encodeWithSignature("ZK_Route_Frozen(uint8,bytes4)", uint8(1), selector);
+        vm.expectRevert(frozen);
+        fee.addVerifyRoute(ZkCoProcessorType.RiscZero, selector, address(universal));
+        vm.expectRevert(frozen);
+        fee.verifyAndAttestWithZKProofV2(hex"", ZkCoProcessorType.RiscZero, abi.encodePacked(selector));
+        vm.expectRevert(frozen);
+        fee.verifyAndAttestWithZKProofV2(hex"", ZkCoProcessorType.RiscZero, abi.encodePacked(selector), MINIMAL_ID, 0, true);
+    }
+
+    function testOtherBackendsRetainFallbackAndExplicitRoutes() public {
+        for (uint8 backend = 2; backend <= 3; ++backend) {
+            ZkCoProcessorType kind = ZkCoProcessorType(backend);
+            assertEq(fee.zkVerifierV2(kind, 0x12345678), address(universal));
+            FeeV2UniversalMock approved = new FeeV2UniversalMock();
+            fee.addVerifyRoute(kind, 0x12345678, address(approved));
+            assertEq(fee.zkVerifierV2(kind, 0x12345678), address(approved));
+            assertEq(fee.zkVerifierV2(kind, 0xffffffff), address(universal));
+        }
+    }
+
+    function testRiscZeroSupportedSelectorStillHonorsFreeze() public {
+        bytes memory output = journal();
+        universal.expectProof(V2_ID, output);
+        fee.freezeVerifyRoute(ZkCoProcessorType.RiscZero, 0xe71e6620);
+        vm.expectRevert(abi.encodeWithSignature("ZK_Route_Frozen(uint8,bytes4)", uint8(1), bytes4(0xe71e6620)));
+        fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620");
     }
 
     function testLegacySelectorsAreUnavailableEvenToOwner() public {
@@ -218,10 +303,10 @@ contract AttestationFeeV2Test is Test {
     function testInvalidProofAndCollateralRejected() public {
         bytes memory output = journal();
         vm.expectRevert(bytes("bad proof"));
-        fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4));
+        fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620");
         output[65] = 0xff;
         universal.expectProof(V2_ID, output);
-        (bool success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4));
+        (bool success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620");
         assertFalse(success);
     }
 
@@ -246,7 +331,7 @@ contract AttestationFeeV2Test is Test {
             }
             // Canonical wire decoding intentionally uses a typed revert, not a slicing panic.
             vm.expectRevert(OutputV2Codec.InvalidOutputV2.selector);
-            fee.verifyAndAttestWithZKProofV2(hex"0201", ZkCoProcessorType(backend), new bytes(4));
+            fee.verifyAndAttestWithZKProofV2(hex"0201", ZkCoProcessorType(backend), hex"e71e6620");
         }
         (bool ok, bytes memory error) = fee.verifyAndAttestWithZKProofV2(
             output, ZkCoProcessorType.Pico, new bytes(259)

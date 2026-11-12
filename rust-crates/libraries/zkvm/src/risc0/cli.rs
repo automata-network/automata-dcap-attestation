@@ -127,14 +127,7 @@ async fn prove<P: Provider>(
     version: automata_dcap_utils::Version,
     tcb_eval_num: Option<u32>,
 ) -> Result<()> {
-    // Step 1: Prepare version-aware guest input (DCAP workflow)
-    let input_bytes =
-        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
-
-    // Step 2: Create version-aware prover
-    let prover = Risc0Prover::new(version)?;
-
-    // Step 3: Build RISC0 configuration based on proving strategy and extract output_path
+    // Reject unsupported V2 proof formats before fetching collateral or submitting work.
     let (config, output_path) = match args.strategy {
         ProveStrategy::Bonsai(bonsai_args) => {
             let bonsai_config = super::config::BonsaiConfig {
@@ -172,7 +165,14 @@ async fn prove<P: Provider>(
         }
     };
 
-    // Step 4: Generate proof using RISC0 prover
+    if version == automata_dcap_utils::Version::V2_0 {
+        config.validate_v2()?;
+    }
+    let input_bytes =
+        prepare_guest_input(provider, Some(version), &quote_bytes, tcb_eval_num).await?;
+    let prover = Risc0Prover::new(version)?;
+
+    // Generate proof using RISC0 prover.
     let (journal, seal) = prover
         .prove(&config, &input_bytes)
         .await

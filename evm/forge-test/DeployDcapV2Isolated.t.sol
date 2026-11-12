@@ -28,6 +28,7 @@ contract DeployDcapV2IsolatedTest is Test {
     IsolatedDaoStub dao;
     address owner = address(0x1234);
     uint32[] evals;
+    bytes4[] selectors;
 
     function setUp() public {
         script = new DeployDcapV2();
@@ -43,6 +44,7 @@ contract DeployDcapV2IsolatedTest is Test {
         oldFee.setBp(123);
         oldFee.setZkConfiguration(ZkCoProcessorType.Succinct, ZkCoProcessorConfig(bytes32(uint256(99)), address(dao)));
         evals.push(21);
+        selectors.push(0x12345678);
     }
 
     function deploy() internal returns (DeployDcapV2.Deployment memory d, PCCSRouter router) {
@@ -89,10 +91,12 @@ contract DeployDcapV2IsolatedTest is Test {
     function testCanEnableConfiguredTestZkWithoutChangingLegacy() public {
         (DeployDcapV2.Deployment memory d, PCCSRouter router) = deploy();
         AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
-        script.configureV2Backend(owner, attestation, ZkCoProcessorType.Succinct, bytes32(uint256(101)), address(dao));
+        script.configureV2Backend(
+            owner, attestation, ZkCoProcessorType.Succinct, bytes32(uint256(101)), address(dao), selectors[0]
+        );
         ZkCoProcessorType[] memory backends = new ZkCoProcessorType[](1);
         backends[0] = ZkCoProcessorType.Succinct;
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
         assertFalse(attestation.zkV2Paused());
         assertEq(oldFee.programIdentifier(ZkCoProcessorType.Succinct), bytes32(uint256(99)));
         assertEq(oldRouter.pckHelperAddr(), address(dao));
@@ -107,22 +111,66 @@ contract DeployDcapV2IsolatedTest is Test {
         deploy();
     }
 
+    function testRiscZeroDeploymentRequiresExplicitUnfrozenRoute() public {
+        (DeployDcapV2.Deployment memory d,) = deploy();
+        AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
+        vm.startPrank(owner);
+        attestation.setZkVerifierV2(ZkCoProcessorType.RiscZero, address(dao));
+        attestation.addProgramIdentifierV2(ZkCoProcessorType.RiscZero, bytes32(uint256(101)), false);
+        attestation.setDefaultProgramIdentifierV2(ZkCoProcessorType.RiscZero, bytes32(uint256(101)));
+        vm.stopPrank();
+        ZkCoProcessorType[] memory backends = new ZkCoProcessorType[](1);
+        backends[0] = ZkCoProcessorType.RiscZero;
+        vm.expectRevert("Missing backend verifier");
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
+        script.configureV2Backend(
+            owner, attestation, ZkCoProcessorType.RiscZero, bytes32(uint256(101)), address(dao), selectors[0]
+        );
+        assertEq(attestation.zkVerifierV2(ZkCoProcessorType.RiscZero, selectors[0]), address(dao));
+        assertEq(attestation.zkVerifierV2(ZkCoProcessorType.RiscZero, bytes4(0)), address(0));
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
+        assertFalse(attestation.zkV2Paused());
+        assertEq(oldFee.zkVerifier(ZkCoProcessorType.RiscZero), address(0));
+        vm.startPrank(owner);
+        attestation.setZkV2Paused(true);
+        attestation.freezeVerifyRoute(ZkCoProcessorType.RiscZero, selectors[0]);
+        vm.stopPrank();
+        vm.expectRevert(abi.encodeWithSignature("ZK_Route_Frozen(uint8,bytes4)", uint8(1), selectors[0]));
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
+        assertTrue(attestation.zkV2Paused());
+    }
+
     function testRejectSharedRouterReaderAuthorization() public {
         vm.expectRevert("Isolated Router required");
         script.authorizeIsolatedReader(block.chainid, owner, oldRouter, oldRouter, address(dao));
     }
 
-    function testRejectBackendExpansionAndPico() public {
+    function testDisabledLegacyBackendStaysDisabledAndPicoIsRejected() public {
+        oldFee.setZkConfiguration(ZkCoProcessorType.RiscZero, ZkCoProcessorConfig(bytes32(uint256(98)), address(dao)));
+        oldFee.setZkConfiguration(ZkCoProcessorType.RiscZero, ZkCoProcessorConfig(bytes32(uint256(98)), address(0)));
         (DeployDcapV2.Deployment memory d,) = deploy();
         AutomataDcapAttestationV2 attestation = AutomataDcapAttestationV2(d.attestation);
-        script.configureV2Backend(owner, attestation, ZkCoProcessorType.RiscZero, bytes32(uint256(101)), address(dao));
+        script.configureV2Backend(
+            owner, attestation, ZkCoProcessorType.RiscZero, bytes32(uint256(101)), address(dao), selectors[0]
+        );
         ZkCoProcessorType[] memory backends = new ZkCoProcessorType[](1);
         backends[0] = ZkCoProcessorType.RiscZero;
-        vm.expectRevert("No existing backend support");
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
+        assertFalse(attestation.zkV2Paused());
+        assertEq(oldFee.zkVerifier(ZkCoProcessorType.RiscZero), address(0));
+        assertEq(oldFee.programIdentifier(ZkCoProcessorType.RiscZero), bytes32(uint256(98)));
+        vm.prank(owner);
+        attestation.setZkV2Paused(true);
+        vm.expectRevert("Unsupported backend");
+        script.configureV2Backend(
+            owner, attestation, ZkCoProcessorType.Pico, bytes32(uint256(102)), address(dao), selectors[0]
+        );
         backends[0] = ZkCoProcessorType.Pico;
         vm.expectRevert("Unsupported backend");
-        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends);
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
+        selectors.pop();
+        vm.expectRevert("Selector inventory mismatch");
+        script.enableIsolatedZk(block.chainid, owner, oldFee, oldRouter, attestation, backends, selectors);
     }
 
     function testDeployIndependentSp1V6PreservesLegacyVerifier() public {

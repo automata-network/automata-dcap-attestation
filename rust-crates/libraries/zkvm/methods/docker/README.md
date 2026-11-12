@@ -9,7 +9,7 @@ gates. No deployment, registration or paid proof request occurs here.
 
 | Backend | Official image (linux/amd64) | Host tools |
 |---|---|---|
-| RISC Zero | `risczero/risc0-guest-builder:r0.1.88.0@sha256:3e12f71bacd27527a61dea96fa0e53e468c99aa261d3a1019b593f6dbd943eb3` | Cargo 1.88.0, cargo-risczero/r0vm 3.0.3 |
+| RISC Zero | `risczero/risc0-guest-builder:r0.1.88.0@sha256:3e12f71bacd27527a61dea96fa0e53e468c99aa261d3a1019b593f6dbd943eb3` | Cargo 1.88.0, cargo-risczero/r0vm 3.1.0 |
 | SP1 | `ghcr.io/succinctlabs/sp1:v6.8.0@sha256:6df25c1a71451b51488534fb94a495ffe456c05921f79c4bcb8ccafe2810870c` | Cargo 1.96.0, cargo-prove 6.8.0 (58c4aea) |
 
 SP1 is pinned to its AMD64 **manifest**, not the multi-platform/index tag.
@@ -38,13 +38,13 @@ toolchains needed elsewhere:
 rustup toolchain install 1.88.0 --profile minimal --no-self-update
 rustup toolchain install 1.96.0 --profile minimal --no-self-update
 rzup install rust 1.88.0
-rzup install cargo-risczero 3.0.3
-rzup install r0vm 3.0.3
+rzup install cargo-risczero 3.1.0
+rzup install r0vm 3.1.0
 sp1up --version v6.8.0
 export SP1_CARGO_PROVE="$HOME/.sp1/bin/cargo-prove"
 ```
 
-RISC Zero 3.0.3 queries the installed rzup Rust version even when using Docker.
+RISC Zero 3.1.0 queries the installed rzup Rust version even when using Docker.
 The harness selects host Cargo only for metadata/orchestration; it does not
 replace the official images' compilers/Cargo. SP1 v6 uses the ELF64 target.
 A CLI version-query pass alone is not a successful guest build.

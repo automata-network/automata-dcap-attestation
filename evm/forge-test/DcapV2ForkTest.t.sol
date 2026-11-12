@@ -63,8 +63,10 @@ contract DcapV2ForkTest is Test {
 
     function setUp() public {
         string memory rpc = vm.envOr("DCAP_FORK_RPC", string(""));
-        if (bytes(rpc).length == 0) vm.skip(true, "DCAP_FORK_RPC required");
-        return;
+        if (bytes(rpc).length == 0) {
+            vm.skip(true, "DCAP_FORK_RPC required");
+            return;
+        }
         vm.createSelectFork(rpc, vm.envUint("DCAP_FORK_BLOCK"));
         assertEq(block.chainid, vm.envUint("DCAP_FORK_CHAIN"), "wrong chain");
         string memory executionVersion = vm.envOr("DCAP_FORK_EVM", string(""));
@@ -137,11 +139,12 @@ contract DcapV2ForkTest is Test {
     function _copyDefaults(uint8 kind) internal {
         ZkCoProcessorType backend = ZkCoProcessorType(kind);
         address universal = legacy.zkVerifier(backend);
-        if (universal.code.length == 0) return;
         // New compact programs must be supplied explicitly; historical inline-body
         // IDs are never silently registered as compact strict programs.
         universal = vm.envOr(kind == 1 ? "DCAP_RISC0_V2_VERIFIER" : "DCAP_SP1_V2_VERIFIER", universal);
+        if (universal.code.length == 0) return;
         fee.setZkVerifierV2(backend, universal);
+        if (kind == 1) fee.addVerifyRoute(backend, 0xe71e6620, universal);
         bytes32 id = vm.envOr(kind == 1 ? "DCAP_RISC0_STRICT_ID" : "DCAP_SP1_STRICT_ID", bytes32(0));
         if (id != bytes32(0)) {
             fee.addProgramIdentifierV2(backend, id, false);
@@ -195,7 +198,8 @@ contract DcapV2ForkTest is Test {
             assertEq(staged.programIdentifiersV2(backend).length, 0);
             bytes32 strictId = fee.programIdentifierV2(backend);
             if (strictId != bytes32(0)) {
-                script.configureV2Backend(owner, staged, backend, strictId, fee.zkVerifierV2(backend));
+                bytes4 selector = backend == ZkCoProcessorType.RiscZero ? bytes4(0xe71e6620) : bytes4(0x4388a21c);
+                script.configureV2Backend(owner, staged, backend, strictId, fee.zkVerifierV2(backend), selector);
                 assertEq(staged.programIdentifierV2(backend), strictId);
             }
         }
@@ -220,17 +224,21 @@ contract DcapV2ForkTest is Test {
         staged.setZkV2Paused(false);
         address risc0Universal = legacy.zkVerifier(ZkCoProcessorType.RiscZero);
         vm.expectRevert("Configure V2 while paused");
-        script.configureV2Backend(owner, staged, ZkCoProcessorType.RiscZero, bytes32(uint256(1)), risc0Universal);
+        script.configureV2Backend(
+            owner, staged, ZkCoProcessorType.RiscZero, bytes32(uint256(1)), risc0Universal, 0xe71e6620
+        );
     }
 
     /// Validate observed historical guards before any proof decoding. These are
     /// rejection tests, not claims to possess valid old-format proofs.
     function testForkRiscZeroHistoricalRouteGuards() public {
-        if (block.chainid != 11155111) vm.skip(true, "historical route catalog is Sepolia-specific");
-        return;
+        if (block.chainid != 11155111) {
+            vm.skip(true, "historical route catalog is Sepolia-specific");
+            return;
+        }
         IForkRiscZeroRouter universal = IForkRiscZeroRouter(legacy.zkVerifier(ZkCoProcessorType.RiscZero));
         assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero), address(universal));
-        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, 0x73c457ba), address(universal));
+        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, 0x73c457ba), address(0));
         bytes4[2] memory removed = [bytes4(0x50bd1769), bytes4(0xc101b42b)];
         for (uint256 i; i < removed.length; ++i) {
             assertEq(universal.verifiers(removed[i]), address(1));

@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createRpcRequest, validatePlan, pendingSp1Verifier, readBuildArtifact} from './publish-v2.mjs';
+import {createRpcRequest, validatePlan, pendingSp1Verifier, readBuildArtifact, requireNewPublication} from './publish-v2.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const evm = path.join(root, 'evm');
@@ -121,6 +121,7 @@ async function main() {
       save(planFile, plan);
     }
     validatePlan(plan, {allowPendingVerifier: true});
+    requireNewPublication(plan.chainId, path.join(out, 'readback.json'));
     const publisher = path.join(root, 'scripts/deploy-dcap-v2/publish-v2.mjs');
     if (!fs.existsSync(beforeFile)) run(process.execPath, [publisher, 'snapshot', planFile, beforeFile]);
     const before = read(beforeFile);
@@ -183,13 +184,14 @@ async function main() {
       [plan.chainId, r.owner, plan.legacyRouter, c.PCCSRouterV2, r.dao]);
     for (const p of [...plan.programs].sort((a, b) => Number(a.minCheck) - Number(b.minCheck))) {
       await stage(`backend-${p.backend}-${p.minCheck ? 'minimal' : 'strict'}`, plan.owner,
-        p.minCheck ? 'configureMinimalProgram(address,address,uint8,bytes32)' : 'configureV2Backend(address,address,uint8,bytes32,address)',
-        p.minCheck ? [plan.owner, attestation, p.backend, p.id] : [plan.owner, attestation, p.backend, p.id, p.verifier]);
+        p.minCheck ? 'configureMinimalProgram(address,address,uint8,bytes32)' : 'configureV2Backend(address,address,uint8,bytes32,address,bytes4)',
+        p.minCheck ? [plan.owner, attestation, p.backend, p.id] : [plan.owner, attestation, p.backend, p.id, p.verifier, p.proofSelector]);
     }
     if (plan.programs.length) await stage('enable-zk', plan.owner,
-      'enableIsolatedZk(uint256,address,address,address,address,uint8[])',
+      'enableIsolatedZk(uint256,address,address,address,address,uint8[],bytes4[])',
       [plan.chainId, plan.owner, plan.legacyFee, plan.legacyRouter, attestation,
-        JSON.stringify([...new Set(plan.programs.map(p => p.backend))])]);
+        JSON.stringify(plan.programs.filter(p => !p.minCheck).map(p => p.backend)),
+        JSON.stringify(plan.programs.filter(p => !p.minCheck).map(p => p.proofSelector))]);
     plan.transactions = state.transactions; save(planFile, plan);
     const finalized = await rpc('eth_getBlockByNumber', ['finalized', false]);
     for (const hash of state.transactions) {

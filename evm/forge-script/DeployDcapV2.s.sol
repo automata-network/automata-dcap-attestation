@@ -146,11 +146,13 @@ contract DeployDcapV2 is Script {
         AutomataDcapAttestationFee legacyFee,
         PCCSRouter legacyRouter,
         AutomataDcapAttestationV2 attestation,
-        ZkCoProcessorType[] calldata backends
+        ZkCoProcessorType[] calldata backends,
+        bytes4[] calldata selectors
     ) external {
         require(block.chainid == expectedChainId, "Wrong chain");
         require(address(attestation) != address(legacyFee) && attestation.owner() == owner, "Invalid target");
         require(backends.length > 0, "Missing backend inventory");
+        require(selectors.length == backends.length, "Selector inventory mismatch");
         PCCSRouter router = PCCSRouter(address(V3QuoteVerifier(address(attestation.quoteVerifiers(3))).pccsRouter()));
         require(
             address(router) != address(legacyRouter) && router.owner() == owner
@@ -169,8 +171,7 @@ contract DeployDcapV2 is Script {
                 backend == ZkCoProcessorType.RiscZero || backend == ZkCoProcessorType.Succinct, "Unsupported backend"
             );
             require(attestation.programIdentifierV2(backend) != bytes32(0), "Missing V2 program");
-            require(legacyFee.zkVerifier(backend).code.length > 0, "No existing backend support");
-            require(attestation.zkVerifierV2(backend, bytes4(0)).code.length > 0, "Missing backend verifier");
+            require(attestation.zkVerifierV2(backend, selectors[i]).code.length > 0, "Missing backend verifier");
             (bool registered, bool minCheck) =
                 attestation.programModeV2(backend, attestation.programIdentifierV2(backend));
             require(registered && !minCheck, "Strict default required");
@@ -225,11 +226,14 @@ contract DeployDcapV2 is Script {
         AutomataDcapAttestationV2 attestation,
         ZkCoProcessorType backend,
         bytes32 id,
-        address universal
+        address universal,
+        bytes4 selector
     ) external {
         require(attestation.owner() == owner && attestation.zkV2Paused(), "Configure V2 while paused");
+        require(backend == ZkCoProcessorType.RiscZero || backend == ZkCoProcessorType.Succinct, "Unsupported backend");
         vm.startBroadcast(owner);
         attestation.setZkVerifierV2(backend, universal);
+        attestation.addVerifyRoute(backend, selector, universal);
         (bool registered, bool minCheck) = attestation.programModeV2(backend, id);
         require(!minCheck, "Strict default required");
         if (!registered) attestation.addProgramIdentifierV2(backend, id, false);

@@ -21,7 +21,7 @@ contract MinCheckV2Test is AttestationFeeV2Test {
         universal.expectProof(MINIMAL_ID, output);
         for (uint8 i = 1; i <= 3; ++i) {
             ZkCoProcessorType backend = ZkCoProcessorType(i);
-            bytes memory proof = i == 3 ? new bytes(260) : new bytes(4);
+            bytes memory proof = i == 3 ? new bytes(260) : bytes(hex"e71e6620");
             vm.expectRevert(bytes("bad proof"));
             fee.verifyAndAttestWithZKProofV2(output, backend, proof);
             (bool accepted,) = fee.verifyAndAttestWithZKProofV2(output, backend, proof, MINIMAL_ID, 17, false);
@@ -65,25 +65,25 @@ contract MinCheckV2Test is AttestationFeeV2Test {
             bytes memory bad = bytes.concat(output);
             bad[9] = bytes1(status);
             universal.expectProof(MINIMAL_ID, bad);
-            (bool accepted,) = fee.verifyAndAttestWithZKProofV2(bad, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
+            (bool accepted,) = fee.verifyAndAttestWithZKProofV2(bad, ZkCoProcessorType.RiscZero, hex"e71e6620", MINIMAL_ID, 17, true);
             assertFalse(accepted);
         }
         universal.expectProof(MINIMAL_ID, output);
-        (bool success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), LEGACY_ID, 17, true);
+        (bool success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620", LEGACY_ID, 17, true);
         assertFalse(success);
         bytes memory changed = bytes.concat(output);
         changed[25] ^= 0x01;
         vm.expectRevert(bytes("bad proof"));
-        fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
+        fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, hex"e71e6620", MINIMAL_ID, 17, true);
         changed = bytes.concat(output);
         changed[65] ^= 0x01;
         universal.expectProof(MINIMAL_ID, changed);
-        (success,) = fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
+        (success,) = fee.verifyAndAttestWithZKProofV2(changed, ZkCoProcessorType.RiscZero, hex"e71e6620", MINIMAL_ID, 17, true);
         assertFalse(success);
         vm.expectRevert();
-        fee.verifyAndAttestWithZKProofV2(bytes.concat(output, hex"00"), ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
+        fee.verifyAndAttestWithZKProofV2(bytes.concat(output, hex"00"), ZkCoProcessorType.RiscZero, hex"e71e6620", MINIMAL_ID, 17, true);
         fee.setZkV2Paused(true);
-        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, new bytes(4), MINIMAL_ID, 17, true);
+        (success,) = fee.verifyAndAttestWithZKProofV2(output, ZkCoProcessorType.RiscZero, hex"e71e6620", MINIMAL_ID, 17, true);
         assertFalse(success);
     }
 }

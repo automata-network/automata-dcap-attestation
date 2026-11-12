@@ -15,11 +15,10 @@ test -s "$dcap_witness/SHA256SUMS"
 (cd "$dcap_witness" && shasum -a 256 -c SHA256SUMS)
 mkdir -p "$2"
 dcap_result=$(cd "$2" && pwd -P)
-dcap_image=${DCAP_R0_GROTH16_IMAGE:-risczero/risc0-groth16-prover:v2025-04-03.1}
-case "$dcap_image" in
-  risczero/risc0-groth16-prover:v2025-04-03.1|risczero/risc0-groth16-prover@sha256:*) ;;
-  *) echo 'Use the pinned SDK image, not a different circuit/setup' >&2; exit 2 ;;
-esac
+dcap_image=risczero/risc0-groth16-prover@sha256:49093ed164b82aca9305dd80e4a6eb996bd443201ac7bd50b52909b2761ef583
+if [[ -n "${DCAP_R0_GROTH16_IMAGE:-}" && "$DCAP_R0_GROTH16_IMAGE" != "$dcap_image" ]]; then
+  echo 'Only the reviewed 3.1 / v2026-10-20.1 setup is supported' >&2; exit 2
+fi
 docker pull --platform linux/amd64 "$dcap_image" 2>&1 | tee "$dcap_result/pull.log"
 dcap_digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$dcap_image")
 case "$dcap_digest" in

@@ -373,6 +373,12 @@ tests. The fork harness must not invent an additional journal maximum-age rule.
 
 ## Resume real proofs, serially
 
+RISC Zero was upgraded to 3.1.0 for GHSA-g6qg-9j8p-7j87. All September
+RISC Zero receipts/checkpoints and setup digests below are historical only,
+not current acceptance evidence. Do not resume them with the repaired SDK.
+Use the [3.1 upgrade/Mac procedure](../../docs/dcap-v2-risc0-3.1-upgrade.md)
+to rebuild both modes and generate fresh proofs with selector `0xe71e6620`.
+
 Use the paired official Docker program artifacts, not unrelated host builds.
 Both examples verify the original proof and complete journal before resuming.
 The filenames below are operator-supplied paths to those existing artifacts.

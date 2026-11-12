@@ -40,8 +40,8 @@ fn main() -> Result<()> {
             .output()?;
         ensure!(
             version.status.success()
-                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.0.3",
-            "requires r0vm 3.0.3"
+                && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.1.0",
+            "requires r0vm 3.1.0"
         );
         let env = ExecutorEnv::builder()
             .write_slice(&input)

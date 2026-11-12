@@ -21,6 +21,13 @@ const contractKeys = ['AutomataDcapAttestationV2', 'PCCSRouterV2', 'PCKHelperV2'
 export const pendingSp1Verifier = 'DEPLOY_SP1_GROTH16_V6_1';
 const sp1VerifierHash = '0x4388a21c687fdd5f218d7e3d13190cac4c5355818d3605fd5fb811df468ee696';
 
+export function requireNewPublication(chainId, reportFile) {
+  const destination = path.join(root, 'rust-crates/libraries/network-registry/deployment/v2.0', String(chainId));
+  ensure(!fs.existsSync(destination) && !fs.existsSync(reportFile),
+    'Output already exists; review/archive the previous test deployment before pinning source and broadcasting');
+  return destination;
+}
+
 export function readBuildArtifact(name, execute = execFileSync) {
   const cwd = path.join(root, 'evm');
   const {out} = JSON.parse(execute('forge', ['config', '--json'], {cwd, encoding: 'utf8'}));
@@ -44,7 +51,7 @@ export function createRpcRequest(url, fetchImpl = fetch) {
   };
   let id = 0;
   return async (method, params = [], context = '') => {
-    ensure(['eth_chainId', 'eth_getBlockByNumber', 'eth_getCode', 'eth_call', 'eth_getStorageAt', 'eth_getTransactionReceipt'].includes(method), 'Read-only RPC required');
+    ensure(['eth_chainId', 'eth_getBlockByNumber', 'eth_getCode', 'eth_call', 'eth_getStorageAt', 'eth_getTransactionReceipt', 'eth_getLogs'].includes(method), 'Read-only RPC required');
     const target = method === 'eth_call'
       ? ` to=${params[0]?.to} selector=${params[0]?.data?.slice(0, 10)} block=${params[1]}`
       : '';
@@ -81,6 +88,10 @@ export function validatePlan(p, {allowPendingVerifier = false} = {}) {
     ensure([1, 2].includes(program.backend) && !seen.has(key), 'Unsupported/duplicate backend mode');
     seen.add(key);
     if (program.backend === 2) ensure(program.buildSdkVersion === '6.8.0', 'Compact SP1 requires audited SDK 6.8.0 build provenance');
+    if (program.backend === 1) {
+      ensure(program.buildSdkVersion === '3.1.0', 'RISC Zero requires repaired SDK 3.1.0 build provenance');
+      ensure(same(program.proofSelector, '0xe71e6620'), 'RISC Zero requires the repaired 3.1 Groth16 selector');
+    }
     ensure(/^0x[0-9a-f]{64}$/i.test(program.id) && !same(program.id, zeroId), 'Invalid native ID');
     ensure(/^0x[0-9a-f]{8}$/i.test(program.proofSelector), 'Invalid proof selector');
     if (program.verifier === pendingSp1Verifier) {
@@ -97,6 +108,7 @@ export function validatePlan(p, {allowPendingVerifier = false} = {}) {
   for (const program of p.programs) {
     const strict = p.programs.find(item => item.backend === program.backend && !item.minCheck);
     ensure(strict && same(strict.verifier, program.verifier), 'Each backend requires a strict default and consistent verifier');
+    ensure(same(strict.proofSelector, program.proofSelector), 'Each backend requires a consistent proof selector');
     ensure(!program.minCheck || !same(strict.id, program.id), 'Strict/minimal IDs must differ');
   }
   if (p.deploySp1Groth16V6) ensure(p.programs.some(p => p.backend === 2), 'SP1 deployment requires SP1 programs');
@@ -167,7 +179,7 @@ export async function readLegacy(p, rpc) {
       ids: await call(p.legacyFee, 'programIdentifiers(uint8)', 'bytes32[]', backend)};
   }
   for (const program of p.programs) {
-    ensure(backends[program.backend].code !== '0x', 'Backend expansion is not allowed');
+    // The explicitly reviewed V2 inventory is independent of disabled/absent legacy backends.
     if (program.verifier !== pendingSp1Verifier) ensure(await code(program.verifier) !== '0x', 'Selected backend verifier has no code');
     // SP1 v6 may require a different reviewed verifier from the legacy v5 route.
     ensure(!backends[program.backend].ids.some(id => same(id, program.id)), 'Legacy ID cannot be registered as compact V2');
@@ -256,7 +268,8 @@ export async function verifyNew(p, legacy, documents, rpc) {
         const [registered, minCheck] = await call(attestation, 'programModeV2(uint8,bytes32)', 'bool,bool', backend, entry.id);
         ensure(registered && minCheck === entry.minCheck, 'V2 program mode mismatch');
         for (const selector of ['0x00000000', entry.proofSelector]) {
-          ensure(same(await call(attestation, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), entry.verifier), 'V2 proof route mismatch');
+          const expected = backend === 1 && selector === '0x00000000' ? zero : entry.verifier;
+          ensure(same(await call(attestation, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), expected), 'V2 proof route mismatch');
         }
       }
     }
@@ -333,9 +346,7 @@ async function main() {
   const pccsPath = path.join(root, 'evm/lib/automata-on-chain-pccs/deployment', `${p.chainId}.json`);
   const originalPccs = fs.readFileSync(pccsPath, 'utf8');
   const pccsUpdate = updatePccsDeployment(JSON.parse(originalPccs), p.contracts.PCKHelperV2);
-  const destination = path.join(registry, 'v2.0', String(p.chainId));
-  // Iterations must explicitly archive/review the previous registry before replacement.
-  ensure(!fs.existsSync(destination) && !fs.existsSync(reportFile), 'Output already exists; archive previous test deployment first');
+  const destination = requireNewPublication(p.chainId, reportFile);
   ensure((await request('eth_getBlockByNumber', [block.number, false]))?.hash === block.hash, 'Readback block changed');
   const report = {status: 'TEST_DEPLOYMENT_READBACK_PASS_NOT_PROOF_OR_RELEASE_ACCEPTANCE',
     plan: p, block, transactions: receipts, legacySnapshotSha256: sha(fs.readFileSync(snapshotFile)), ...verified,

@@ -13,7 +13,13 @@ shared Storage changes are additive reader
 grants only. No shared helper switch, collateral writes, legacy ID migration or
 `current` promotion occurs.
 
-1. Commit the reviewed implementation. Copy `coordinator.example.json` to an
+1. If `deployment/v2.0/CHAIN` already exists, review/archive that historical test
+   record in version control first. Commit it with the reviewed implementation
+   **before** pinning the guest build commit; the coordinator now rejects this
+   collision before any broadcast. Do not archive/recommit halfway through a
+   checkpointed deployment. No on-chain address or old default is changed by
+   preserving a historical registry record.
+   Copy `coordinator.example.json` to an
    operator-owned run directory and fill `owner`, `accounts` (address → Foundry
    keystore name), and any reviewed program records. No private keys in JSON.
 2. Set `DCAP_RPC_URL` and `ETHERSCAN_API_KEY` in your shell. Keep the endpoint and
@@ -52,11 +58,17 @@ the same Foundry settings when resuming a deployment.
 Program entries follow `publish-v2.mjs`: `backend` (1 RISC Zero, 2 SP1),
 `minCheck`, native `id`, `verifier`, `proofSelector`, `buildSourceCommit`,
 `artifactSha256`, `evidenceSha256`. Each enabled backend needs exactly one strict
-default; SP1 also requires `buildSdkVersion: "6.8.0"` in its reviewed provenance.
+default; SP1 requires `buildSdkVersion: "6.8.0"`, and RISC Zero requires
+`buildSdkVersion: "3.1.0"` with `proofSelector: "0xe71e6620"` in its reviewed provenance.
 Each backend may register one distinct minimal ID in addition to the strict
 default. Both must use the reviewed
-verifier; that verifier must support the new circuit/proof selector (in particular,
+verifier and proof selector; that verifier must support the new circuit/proof selector (in particular,
 do not assume a v5-only SP1 verifier accepts v6). Pico is rejected for live rollout.
+The Foundry configuration/enable stages take selectors from this plan rather than
+embedding a circuit selector. Legacy backend enablement is not a prerequisite:
+disabled Sepolia RISC Zero stays disabled, and Hoodi can explicitly enable its
+first V2 RISC Zero route. Legacy configuration is still snapshotted and compared
+before publication. Never re-enable a vulnerable legacy backend to pass deployment.
 
 For the optional seventh contract, set `deploySp1Groth16V6: true`, omit `verifier`
 on both SP1 program entries, and use `proofSelector: "0x4388a21c"`. The coordinator

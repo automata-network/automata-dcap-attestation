@@ -24,7 +24,7 @@ case "$mock_tool" in
       --version) echo "cargo ${RUSTUP_TOOLCHAIN:-1.88.0} (MOCK HARNESS TEST)" ;;
       metadata) echo '{}' ;;
       risczero)
-        if test "$2" = --version; then echo 'cargo-risczero 3.0.3'; else
+        if test "$2" = --version; then echo 'cargo-risczero 3.1.0'; else
           mock_program "$(pwd -P)" "$CARGO_TARGET_DIR/riscv32im-risc0-zkvm-elf/docker/guest.bin"
           cp "$CARGO_TARGET_DIR/riscv32im-risc0-zkvm-elf/docker/guest.bin" "$CARGO_TARGET_DIR/riscv32im-risc0-zkvm-elf/docker/guest-minimal.bin"
         fi ;;
@@ -49,7 +49,7 @@ case "$mock_tool" in
     esac ;;
   rustc) echo 'rustc 1.88.0-dev (MOCK HARNESS TEST)' ;;
   r0vm)
-    if test "$1" = --version; then echo 'risc0-r0vm 3.0.3'; else echo "$mock_id"; fi ;;
+    if test "$1" = --version; then echo 'risc0-r0vm 3.1.0'; else echo "$mock_id"; fi ;;
   rzup) echo 'MOCK HARNESS TEST toolchain 1.88' ;;
   docker)
     case "$1" in
