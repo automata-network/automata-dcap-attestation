@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv, VERSION};
+use risc0_zkvm::{compute_image_id, default_executor, ExecutorEnv, ProverOpts, VERSION};
 
 use super::{
     config::{ProvingStrategy, Risc0Config},
@@ -15,6 +15,7 @@ use crate::{
 pub struct Risc0Prover {
     /// The ELF binary for the guest program
     elf: std::borrow::Cow<'static, [u8]>,
+    v2: bool,
 }
 
 impl Risc0Prover {
@@ -26,6 +27,7 @@ impl Risc0Prover {
         compute_image_id(&elf).context("invalid V2 RISC Zero program")?;
         Ok(Self {
             elf: std::borrow::Cow::Owned(elf),
+            v2: true,
         })
     }
 }
@@ -44,6 +46,37 @@ mod tests {
             assert!(Risc0Prover::from_v2_elf(bytes.to_vec()).is_err());
         }
     }
+
+    #[tokio::test]
+    async fn v2_proving_rejects_dev_modes_before_execution() {
+        if std::env::var_os("DCAP_DEV_MODE_TEST_CHILD").is_some() {
+            let prover = Risc0Prover {
+                elf: std::borrow::Cow::Borrowed(b"invalid"),
+                v2: true,
+            };
+            let error = prover
+                .prove(&Risc0Config::default(), b"")
+                .await
+                .unwrap_err();
+            assert!(error.to_string().contains("requires a real proof"));
+            return;
+        }
+        // Isolate environment changes from the other concurrently running Rust tests.
+        for variable in ["DEV_MODE", "RISC0_DEV_MODE"] {
+            assert!(std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "risc0::prover::tests::v2_proving_rejects_dev_modes_before_execution"
+                ])
+                .env_remove("DEV_MODE")
+                .env_remove("RISC0_DEV_MODE")
+                .env(variable, "1")
+                .env("DCAP_DEV_MODE_TEST_CHILD", "1")
+                .status()
+                .unwrap()
+                .success());
+        }
+    }
 }
 
 #[async_trait]
@@ -57,10 +90,18 @@ impl ZkVmProver for Risc0Prover {
         let elf = get_elf(version, ZkVm::Risc0)?;
         Ok(Self {
             elf: std::borrow::Cow::Borrowed(elf),
+            v2: false,
         })
     }
 
     async fn prove(&self, config: &Self::Config, input_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+        if self.v2 {
+            config.validate_v2()?;
+            anyhow::ensure!(
+                std::env::var_os("DEV_MODE").is_none() && !ProverOpts::default().dev_mode(),
+                "V2 proving requires a real proof; use the execute example for execution-only checks"
+            );
+        }
         // Log image ID and version info
         let image_id = compute_image_id(self.elf.as_ref())?;
         log::info!("Image ID: {}", image_id.to_string());
@@ -78,7 +119,7 @@ impl ZkVmProver for Risc0Prover {
         let journal = session_info.journal.bytes.to_vec();
 
         // Check if DEV_MODE is set - if so, skip proving
-        if std::env::var("DEV_MODE").is_ok() {
+        if !self.v2 && std::env::var("DEV_MODE").is_ok() {
             log::info!("DEV_MODE detected - skipping proof generation");
             return Ok((journal, vec![]));
         }
@@ -101,6 +142,10 @@ impl ZkVmProver for Risc0Prover {
             }
         };
 
+        if self.v2 {
+            super::verify_v2_seal(&seal, image_id, &journal)
+                .context("V2 proof does not authenticate the requested image and journal")?;
+        }
         Ok((journal, seal))
     }
 

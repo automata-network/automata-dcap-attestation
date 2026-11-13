@@ -3,9 +3,62 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact} from './publish-v2.mjs';
+import {validatePlan, validateBuildSources, validateDeploymentSource, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact, requireNewPublication, requirePublication} from './publish-v2.mjs';
+import {registryHashes} from './replacement.mjs';
 
 const evm = fileURLToPath(new URL('../../evm/', import.meta.url));
+test('tooling-only recovery preserves the deployment pin and records the current coordinator commit', () => {
+  const pinned='a'.repeat(40), current='b'.repeat(40), commands=[];
+  const execute=(bin,args)=>{
+    assert.equal(bin,'git'); commands.push(args);
+    if(args[0]==='rev-parse') return current+'\n';
+    if(args[0]==='diff') return 'scripts/deploy-dcap-v2/deploy.mjs\0scripts/deploy-dcap-v2/publish-v2.mjs\0';
+    return '';
+  };
+  assert.equal(validateDeploymentSource(pinned,execute),current);
+  assert.deepEqual(commands[1],['merge-base','--is-ancestor',pinned,current]);
+  assert.deepEqual(commands[2],['diff','--name-only','--no-renames','-z',pinned,current,'--']);
+  assert.equal(validateDeploymentSource(pinned,()=>pinned),pinned);
+  assert.throws(()=>validateDeploymentSource('invalid',execute),/Pin deployment/);
+});
+test('recovery refuses changed contracts, build inputs, registry, or unrelated history', () => {
+  const pinned='a'.repeat(40), current='b'.repeat(40);
+  for(const file of ['evm/forge-script/DeployDcapV2.s.sol','evm/contracts/AutomataDcapAttestationV2.sol',
+    'evm/foundry.toml','evm/lib/risc0-ethereum','rust-crates/Cargo.lock',
+    'rust-crates/libraries/network-registry/deployment/v2.0/560048/dcap.json']) {
+    assert.throws(()=>validateDeploymentSource(pinned,(bin,args)=>args[0]==='rev-parse'?current:args[0]==='diff'?file+'\0':''),/do not rewrite checkpoints/);
+  }
+  assert.throws(()=>validateDeploymentSource(pinned,(bin,args)=>{
+    if(args[0]==='merge-base') throw Error('unrelated'); return current;
+  }),/not an ancestor/);
+});
+test('build provenance survives tooling-only commits but changed Rust/proving inputs fail closed',()=>{
+  const p={sourceCommit:'b'.repeat(40),programs:[{buildSourceCommit:'a'.repeat(40)},{buildSourceCommit:'a'.repeat(40)}]};
+  const commands=[];validateBuildSources(p,(bin,args)=>{commands.push(args);return '';});
+  assert.equal(commands.length,2);assert.deepEqual(commands[0],['merge-base','--is-ancestor','a'.repeat(40),'b'.repeat(40)]);
+  assert.ok(commands[1].includes('rust-crates')&&commands[1].includes('scripts/fork-dcap-v2'));
+  assert.ok(commands[1].includes(':(exclude)rust-crates/libraries/network-registry/deployment'));
+  for(const failure of ['merge-base','diff']) assert.throws(()=>validateBuildSources(p,(bin,args)=>{if(args[0]===failure) throw Error('changed');}),/never relabel/);
+});
+test('replacement publication pins source files and refuses prior archive/report collisions',t=>{
+  const exists=t.mock.method(fs,'existsSync',()=>false);
+  const contents=t.mock.method(fs,'readFileSync',()=> '{}');
+  const p={mode:'replace-entrypoint',chainId:560048,legacyFee:'0x'+'1'.repeat(40),sourceRegistryHashes:registryHashes('/fixture')};
+  const dest=requirePublication(p,'/operator/report.json');assert.ok(dest.endsWith('/v2.0/560048'));
+  contents.mock.mockImplementation(()=> '{"changed":true}');assert.throws(()=>requirePublication(p,'/operator/report.json'),/registry changed/);
+  contents.mock.mockImplementation(()=> '{}');
+  exists.mock.mockImplementation(file=>file.includes('/history/'));assert.throws(()=>requirePublication(p,'/operator/report.json'),/archived/);
+  exists.mock.mockImplementation(file=>file==='/operator/report.json');assert.throws(()=>requirePublication(p,'/operator/report.json'),/already exists/);
+});
+test('publication collisions are rejected before coordinator deployment as well as at publication', t => {
+  const exists = t.mock.method(fs, 'existsSync', () => false);
+  const destination = requireNewPublication(560048, '/operator/readback.json');
+  assert.ok(destination.endsWith('/deployment/v2.0/560048'));
+  for (const file of [destination, '/operator/readback.json']) {
+    exists.mock.mockImplementation(candidate => candidate === file);
+    assert.throws(() => requireNewPublication(560048, '/operator/readback.json'), /before pinning source and broadcasting/);
+  }
+});
 for (const [profile, out] of [['default', 'out'], ['fork_osaka', 'out_fork_osaka'],
   ['absolute output override', path.resolve(evm, 'custom artifacts')]]) {
   test(`source verification and readback use only the active artifact directory: ${profile}`, t => {
@@ -118,6 +171,33 @@ test('raw-only readback requires paused ZK and all reader authorizations', async
   assert.equal(Object.keys(result.runtimeSha256).length, 6);
   await assert.rejects(verifyNew(p, legacy, makeDocuments(p, dcap, pccs), {...rpc, authorized: async () => false}), /authorization/);
 });
+
+test('RISC Zero plans require repaired SDK and selector for both program modes', () => {
+  const {p} = fixture();
+  p.programs = [false, true].map((minCheck, i) => ({backend: 1, buildSdkVersion: '3.1.0',
+    minCheck, id: id(90 + i), proofSelector: '0xe71e6620', verifier: a(99),
+    buildSourceCommit: p.sourceCommit, evidenceSha256: 'a'.repeat(64), artifactSha256: 'b'.repeat(64)}));
+  validatePlan(p);
+  for (const mode of [0, 1]) {
+    const stale = structuredClone(p);
+    stale.programs[mode].buildSdkVersion = '3.0.3';
+    assert.throws(() => validatePlan(stale), /repaired SDK/);
+    for (const selector of ['0x73c457ba', '0xbb001d44', '0x242f9d5b', '0x8b38038c']) {
+      const stale = structuredClone(p);
+      stale.programs[mode].proofSelector = selector;
+      assert.throws(() => validatePlan(stale), /repaired 3.1 Groth16 selector/);
+    }
+  }
+});
+test('strict and minimal programs must use the same reviewed circuit route', () => {
+  const {p} = fixture();
+  p.programs = [false, true].map((minCheck, i) => ({backend: 2, buildSdkVersion: '6.8.0',
+    minCheck, id: id(90 + i), proofSelector: '0x4388a21c', verifier: a(99),
+    buildSourceCommit: p.sourceCommit, evidenceSha256: 'a'.repeat(64), artifactSha256: 'b'.repeat(64)}));
+  validatePlan(p);
+  p.programs[1].proofSelector = '0x12345678';
+  assert.throws(() => validatePlan(p), /consistent proof selector/);
+});
 test('readback fails on wrong Router, missing Storage permission, stale DAO or unexpected Pico', async () => {
   for (const mutation of [
     f => f.set(a(13), 'pccsRouter()', a(3)),
@@ -129,6 +209,26 @@ test('readback fails on wrong Router, missing Storage permission, stale DAO or u
     const f = fixture(); mutation(f);
     await assert.rejects(verifyNew(f.p, f.legacy, makeDocuments(f.p, f.dcap, f.pccs), f.rpc));
   }
+});
+test('RISC Zero readback requires explicit repaired route and no default fallback', async () => {
+  const f = fixture();
+  f.p.programs = [false, true].map((minCheck, i) => ({backend: 1, buildSdkVersion: '3.1.0',
+    minCheck, id: id(90 + i), proofSelector: '0xe71e6620', verifier: a(99),
+    buildSourceCommit: f.p.sourceCommit, evidenceSha256: 'a'.repeat(64), artifactSha256: 'b'.repeat(64)}));
+  validatePlan(f.p);
+  f.set(a(10), 'zkV2Paused()', false);
+  f.set(a(10), 'programIdentifiersV2(uint8)', [id(90), id(91)], 1);
+  f.set(a(10), 'programIdentifierV2(uint8)', id(90), 1);
+  for (const entry of f.p.programs) f.set(a(10), 'programModeV2(uint8,bytes32)', [true, entry.minCheck], 1, entry.id);
+  f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(0), 1, '0x00000000');
+  f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 1, '0xe71e6620');
+  const docs = makeDocuments(f.p, f.dcap, f.pccs);
+  await verifyNew(f.p, f.legacy, docs, f.rpc);
+  f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(99), 1, '0x00000000');
+  await assert.rejects(verifyNew(f.p, f.legacy, docs, f.rpc), /route mismatch/);
+  f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(0), 1, '0x00000000');
+  f.set(a(10), 'zkVerifierV2(uint8,bytes4)', a(0), 1, '0xe71e6620');
+  await assert.rejects(verifyNew(f.p, f.legacy, docs, f.rpc), /route mismatch/);
 });
 test('configured ZK requires enabled state, exact program ID and matching proof route', async () => {
   const f = fixture();
@@ -146,7 +246,7 @@ test('configured ZK requires enabled state, exact program ID and matching proof 
   f.set(a(10), 'programIdentifierV2(uint8)', id(100), 2);
   await assert.rejects(verifyNew(f.p, f.legacy, docs, f.rpc), /ID mismatch/);
 });
-test('legacy snapshot reads only; a missing legacy backend fails scope check', async () => {
+test('explicit V2 inventory works with disabled legacy backends without reviving them', async () => {
   const f = fixture();
   const reads = [];
   const fake = {code: async () => '0x6000', call: async (to, sig, ret, ...args) => {
@@ -171,8 +271,12 @@ test('legacy snapshot reads only; a missing legacy backend fails scope check', a
     if (args[1] === 'zkVerifier(uint8)' && args[3] === 1) throw new Error('RISC Zero RPC failure');
     return fake.call(...args);
   }}), /RISC Zero RPC failure/);
-  f.p.programs = [{backend: 2, verifier: a(99)}];
-  await assert.rejects(readLegacy(f.p, fake), /expansion/);
+  f.p.programs = [{backend: 1, verifier: a(99), id: id(99)}];
+  const enabled = await readLegacy(f.p, fake);
+  assert.deepEqual(enabled, snapshot);
+  await assert.rejects(readLegacy(f.p, {...fake, code: async to => to === a(99) ? '0x' : '0x6000'}), /has no code/);
+  await assert.rejects(readLegacy(f.p, {...fake, call: async (...args) =>
+    args[1] === 'programIdentifiers(uint8)' ? [id(99)] : fake.call(...args)}), /Legacy ID/);
 });
 
 test('strict and minimal IDs have exact modes and only strict can be the default', async () => {

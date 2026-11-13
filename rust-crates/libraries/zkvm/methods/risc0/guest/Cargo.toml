@@ -17,7 +17,7 @@ name = "guest"
 path = "src/main.rs"
 
 [dependencies]
-risc0-zkvm = { version = "=3.0.3", default-features = false, features = ["std", "unstable"] }
+risc0-zkvm = { version = "=3.1.0", default-features = false, features = ["std", "unstable"] }
 dcap-rs = { path = "../../../../dcap-rs" }
 
 # RISC0-specific crypto patches

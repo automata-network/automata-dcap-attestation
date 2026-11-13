@@ -1,23 +1,25 @@
 # RISC Zero V2 guest build and local execution
 
-Keep `risc0-build`, guest/host `risc0-zkvm`, `cargo-risczero` and `r0vm` at
-3.0.3. The driver and guest lockfiles also freeze their transitive dependencies;
-do not upgrade SDKs or change the universal-verifier family to fix a local build.
+Use guest/host `risc0-zkvm`, `cargo-risczero` and `r0vm` **3.1.0**, with
+`risc0-build` **3.0.7**. All three lockfiles must resolve the repaired 4.1.0
+circuits and 3.0.6 proof primitives. Earlier receipts and cached aggregation
+roots are unsafe (GHSA-g6qg-9j8p-7j87); regenerate proofs, not just their selectors.
+See [upgrade and Mac proving procedure](../../../../../docs/dcap-v2-risc0-3.1-upgrade.md).
 
 ## Toolchain
 
-The tested Linux ARM64 installation is:
+Required versions (the Rust guest compiler is unchanged):
 
 ```text
 rzup rust: 1.88.0+de85b1d3d7f
 rustc: 1.88.0-dev (de85b1d3d 2025-06-26), LLVM 20.1.5
-cargo-risczero: 3.0.3
-r0vm: 3.0.3
+cargo-risczero: 3.1.0
+r0vm: 3.1.0
 ```
 
 Check it with `rzup show`, `rustc +risc0 --version`,
 `cargo risczero --version` and `r0vm --version`.
-The build driver also needs the separate Cargo 1.88.0 used by SP1:
+The build driver also needs a separate Cargo 1.88.0 for the RISC Zero guest:
 
 ```sh
 rustup toolchain install 1.88.0 --profile minimal --no-self-update
@@ -53,7 +55,8 @@ CARGO_BUILD_JOBS=2 cargo build --release --locked \
 r0vm --elf rust-crates/libraries/zkvm/artifacts/v2.0/risc0-strict.elf --id
 ```
 
-The outputs are `zkvm/artifacts/v2.0/risc0-strict.elf` and `risc0.image-id`. Despite its
+The outputs are `zkvm/artifacts/v2.0/risc0-{strict,minimal}.elf` and matching
+`risc0-{strict,minimal}.image-id` files. Despite its
 historical `.elf` suffix, the former is the RISC Zero 3.x **combined user/kernel
 program binary** produced by `embed_methods`, not a raw ELF. `file` reporting
 `data` is expected. Compute its native ID using `r0vm --id` or
@@ -80,7 +83,7 @@ CARGO_BUILD_JOBS=2 cargo run --locked \
   rust-crates/libraries/zkvm/artifacts/v2.0/risc0-strict.elf /path/to/v2-input.bin --negative
 ```
 
-The example requires local `r0vm` 3.0.3, rejects enabled `RISC0_DEV_MODE`, and
+The example requires local `r0vm` 3.1.0, rejects enabled `RISC0_DEV_MODE`, and
 explicitly executes in a local subprocess. It never selects Bonsai or submits
 a proving request. The subprocess needs local IPC/loopback access.
 
@@ -113,7 +116,7 @@ the [progress evidence](../../../../../docs/dcap-v2-progress.md).
 ## Local real-proof diagnostic
 
 The separate `risc0_v2_prove_local` example explicitly selects local `r0vm`
-3.0.3 and a **composite** receipt, never Bonsai, DEV_MODE or a fake receipt.
+3.1.0 and a **composite** receipt, never Bonsai, DEV_MODE or a fake receipt.
 Use the canonical Docker program, not an unrelated locally rebuilt artifact:
 
 ```sh

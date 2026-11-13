@@ -5,6 +5,12 @@ set -euo pipefail
 : "${REPRO_DOCKER_BIN:?Set the absolute path of the real docker executable}"
 if test "${1:-}" = build; then
   shift
+  # Duplicate SDK platform flags make BuildKit nest exports under linux_amd64/.
+  for arg in "$@"; do
+    case "$arg" in
+      --platform|--platform=*) exec "$REPRO_DOCKER_BIN" build --no-cache "$@" ;;
+    esac
+  done
   exec "$REPRO_DOCKER_BIN" build --no-cache --platform linux/amd64 "$@"
 elif test "${1:-}" = run; then
   shift

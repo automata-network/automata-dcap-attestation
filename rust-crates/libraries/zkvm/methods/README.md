@@ -46,7 +46,7 @@ without replacing the global v5 toolchain. The v6 Docker recipe is digest-pinned
 fresh paired builds are pending. Do not use the historical v5 Docker recipe.
 
 RISC Zero uses the installed rzup Rust 1.88 compiler, separate Cargo 1.88 and
-SDK/runtime 3.0.3. The driver also locks the inner guest build. Its `.elf` artifact
+SDK/runtime 3.1.0. The driver also locks the inner guest build. Its `.elf` artifact
 is a combined user/kernel program binary; see [RISC Zero instructions](risc0/README.md).
 
 Build/execution status for this compact revision is in

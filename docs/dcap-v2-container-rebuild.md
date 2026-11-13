@@ -65,11 +65,11 @@ to have the same image digest. Do not use `latest`.
 ### Official RISC Zero and SP1 paired builds
 
 Use an AMD64 Docker worker or a working AMD64 emulation environment, with the pinned host orchestration CLI installed:
-`cargo-risczero` / `r0vm` 3.0.3 or SP1 CLI v5.2.2 (`bb91c6f`). The CLI only
+`cargo-risczero` / `r0vm` 3.1.0 or SP1 CLI v6.8.0 (`58c4aea`). The CLI only
 orchestrates guest Docker compilation and computes the native ID. RISC Zero
 also performs its standard 3.x user/kernel packaging; preserve the resulting
 `guest.bin`, not the raw user ELF. CLI binary hashes are recorded in the results.
-SDK 3.0.3 queries the local rzup Rust version while choosing the atomic-lowering
+SDK 3.1.0 queries the local rzup Rust version while choosing the atomic-lowering
 flag, so select the matching RISC Zero Rust 1.88 component on that worker too;
 it is not used to compile the guest outside Docker.
 Host Cargo metadata is pinned to 1.88.0; this does not change the compiler or

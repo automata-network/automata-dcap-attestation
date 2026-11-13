@@ -22,6 +22,8 @@ import {FmspcTcbDaoV2} from "@automata-network/on-chain-pccs/bases/FmspcTcbDaoV2
 import {EnclaveIdentityDao} from "@automata-network/on-chain-pccs/bases/EnclaveIdentityDao.sol";
 import {TcbInfoJsonObj} from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {EnclaveIdentityJsonObj} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
+import {RiscZeroGroth16Verifier} from "risc0/groth16/RiscZeroGroth16Verifier.sol";
+import {ControlID} from "risc0/groth16/ControlID.sol";
 
 interface IForkRoles {
     function owner() external view returns (address);
@@ -63,8 +65,10 @@ contract DcapV2ForkTest is Test {
 
     function setUp() public {
         string memory rpc = vm.envOr("DCAP_FORK_RPC", string(""));
-        if (bytes(rpc).length == 0) vm.skip(true, "DCAP_FORK_RPC required");
-        return;
+        if (bytes(rpc).length == 0) {
+            vm.skip(true, "DCAP_FORK_RPC required");
+            return;
+        }
         vm.createSelectFork(rpc, vm.envUint("DCAP_FORK_BLOCK"));
         assertEq(block.chainid, vm.envUint("DCAP_FORK_CHAIN"), "wrong chain");
         string memory executionVersion = vm.envOr("DCAP_FORK_EVM", string(""));
@@ -137,15 +141,26 @@ contract DcapV2ForkTest is Test {
     function _copyDefaults(uint8 kind) internal {
         ZkCoProcessorType backend = ZkCoProcessorType(kind);
         address universal = legacy.zkVerifier(backend);
-        if (universal.code.length == 0) return;
         // New compact programs must be supplied explicitly; historical inline-body
         // IDs are never silently registered as compact strict programs.
         universal = vm.envOr(kind == 1 ? "DCAP_RISC0_V2_VERIFIER" : "DCAP_SP1_V2_VERIFIER", universal);
+        // Historical collateral forks predate this circuit's deployment. Deploy
+        // its real verifier locally; never etch it into a historical address.
+        if (kind == 1 && vm.envOr("DCAP_FORK_DEPLOY_RISC0_V31", false)) {
+            universal = address(new RiscZeroGroth16Verifier(ControlID.CONTROL_ROOT, ControlID.BN254_CONTROL_ID));
+        }
+        if (universal.code.length == 0) return;
         fee.setZkVerifierV2(backend, universal);
+        if (kind == 1) fee.addVerifyRoute(backend, 0xe71e6620, universal);
         bytes32 id = vm.envOr(kind == 1 ? "DCAP_RISC0_STRICT_ID" : "DCAP_SP1_STRICT_ID", bytes32(0));
         if (id != bytes32(0)) {
             fee.addProgramIdentifierV2(backend, id, false);
             fee.setDefaultProgramIdentifierV2(backend, id);
+        }
+        bytes32 minimalId = vm.envOr(kind == 1 ? "DCAP_RISC0_MINIMAL_ID" : "DCAP_SP1_MINIMAL_ID", bytes32(0));
+        if (minimalId != bytes32(0)) {
+            fee.addProgramIdentifierV2(backend, minimalId, true);
+            assertEq(fee.programIdentifierV2(backend), id, "minimal registration changed default");
         }
     }
 
@@ -195,7 +210,8 @@ contract DcapV2ForkTest is Test {
             assertEq(staged.programIdentifiersV2(backend).length, 0);
             bytes32 strictId = fee.programIdentifierV2(backend);
             if (strictId != bytes32(0)) {
-                script.configureV2Backend(owner, staged, backend, strictId, fee.zkVerifierV2(backend));
+                bytes4 selector = backend == ZkCoProcessorType.RiscZero ? bytes4(0xe71e6620) : bytes4(0x4388a21c);
+                script.configureV2Backend(owner, staged, backend, strictId, fee.zkVerifierV2(backend), selector);
                 assertEq(staged.programIdentifierV2(backend), strictId);
             }
         }
@@ -220,17 +236,21 @@ contract DcapV2ForkTest is Test {
         staged.setZkV2Paused(false);
         address risc0Universal = legacy.zkVerifier(ZkCoProcessorType.RiscZero);
         vm.expectRevert("Configure V2 while paused");
-        script.configureV2Backend(owner, staged, ZkCoProcessorType.RiscZero, bytes32(uint256(1)), risc0Universal);
+        script.configureV2Backend(
+            owner, staged, ZkCoProcessorType.RiscZero, bytes32(uint256(1)), risc0Universal, 0xe71e6620
+        );
     }
 
     /// Validate observed historical guards before any proof decoding. These are
     /// rejection tests, not claims to possess valid old-format proofs.
     function testForkRiscZeroHistoricalRouteGuards() public {
-        if (block.chainid != 11155111) vm.skip(true, "historical route catalog is Sepolia-specific");
-        return;
+        if (block.chainid != 11155111) {
+            vm.skip(true, "historical route catalog is Sepolia-specific");
+            return;
+        }
         IForkRiscZeroRouter universal = IForkRiscZeroRouter(legacy.zkVerifier(ZkCoProcessorType.RiscZero));
         assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero), address(universal));
-        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, 0x73c457ba), address(universal));
+        assertEq(fee.zkVerifierV2(ZkCoProcessorType.RiscZero, 0x73c457ba), address(0));
         bytes4[2] memory removed = [bytes4(0x50bd1769), bytes4(0xc101b42b)];
         for (uint256 i; i < removed.length; ++i) {
             assertEq(universal.verifiers(removed[i]), address(1));
@@ -474,6 +494,7 @@ contract DcapV2ForkTest is Test {
             assertFalse(success, "historical migration-service input accepted");
             assertEq(reason, bytes("TCBR"), "unexpected pre-policy failure");
             console2.log("historical Alibaba fork rejection", string(reason));
+            _rejectRaw(quote, 20);
         } else {
             assertEq(
                 returned,
@@ -481,8 +502,14 @@ contract DcapV2ForkTest is Test {
                 "unexpected policy revert"
             );
             console2.log("authentic Alibaba migration-service policy rejection confirmed");
+            // Minimal intentionally skips workload policy, not authentication.
+            (bool success, bytes memory output, bytes memory body) =
+                fee.verifyAndAttestOnChainV2{value: 1 ether}(quote, 20, true);
+            assertTrue(success, "minimal rejected authenticated migration-service quote");
+            OutputV2 memory decoded = this.decode(output);
+            assertEq(decoded.fullQuoteHash, keccak256(quote));
+            assertEq(decoded.quoteBodyHash, keccak256(body));
         }
-        _rejectRaw(quote, 20);
     }
 
     function testForkFeePaymentRefundAndWithdrawal() public {
@@ -564,22 +591,29 @@ contract DcapV2ForkTest is Test {
     }
 
     function _assertSuccessEvent(Vm.Log[] memory logs, ZkCoProcessorType backend, bytes memory journal) internal view {
+        _assertSuccessEvent(
+            logs,
+            backend,
+            journal,
+            backend == ZkCoProcessorType.None ? bytes32(0) : fee.programIdentifierV2(backend),
+            false
+        );
+    }
+
+    function _assertSuccessEvent(
+        Vm.Log[] memory logs,
+        ZkCoProcessorType backend,
+        bytes memory journal,
+        bytes32 id,
+        bool minCheck
+    ) internal view {
         uint256 found;
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter != address(fee) || logs[i].topics[0] != V2_EVENT) continue;
             assertEq(logs[i].topics.length, 3);
             assertEq(uint256(logs[i].topics[1]), 2);
             assertEq(uint256(logs[i].topics[2]), 1);
-            assertEq(
-                logs[i].data,
-                abi.encode(
-                    true,
-                    backend,
-                    backend == ZkCoProcessorType.None ? bytes32(0) : fee.programIdentifierV2(backend),
-                    false,
-                    journal
-                )
-            );
+            assertEq(logs[i].data, abi.encode(true, backend, id, minCheck, journal));
             ++found;
         }
         assertEq(found, 1, "expected exactly one identity-bearing event");
@@ -640,7 +674,18 @@ contract DcapV2ForkTest is Test {
         ZkCoProcessorType kind = ZkCoProcessorType(vm.parseJsonUint(payload, ".backend"));
         require(kind == ZkCoProcessorType.RiscZero || kind == ZkCoProcessorType.Succinct, "production backend only");
         bytes32 id = vm.parseJsonBytes32(payload, ".programId");
-        assertEq(id, fee.programIdentifierV2(kind), "unexpected program ID");
+        bool minCheck = vm.keyExistsJson(payload, ".minCheck") && vm.parseJsonBool(payload, ".minCheck");
+        (bool registered, bool registeredMode) = fee.programModeV2(kind, id);
+        assertTrue(registered, "unexpected program ID");
+        assertEq(registeredMode, minCheck, "unexpected program mode");
+        if (minCheck) {
+            assertNotEq(id, fee.programIdentifierV2(kind), "minimal program became default");
+            vm.prank(owner);
+            vm.expectRevert("Default program must be strict");
+            fee.setDefaultProgramIdentifierV2(kind, id);
+        } else {
+            assertEq(id, fee.programIdentifierV2(kind), "unexpected strict default");
+        }
         bytes memory journal = vm.parseJsonBytes(payload, ".journal");
         bytes memory proof = vm.parseJsonBytes(payload, ".proof");
         assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
@@ -649,15 +694,20 @@ contract DcapV2ForkTest is Test {
         vm.recordLogs();
         uint256 beforeGas = gasleft();
         (bool success, bytes memory output) =
-            fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
+            fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, minCheck);
         console2.log("ZK verification internal-call gas", beforeGas - gasleft());
         assertTrue(success, string(output));
         assertEq(output, journal);
-        _assertSuccessEvent(vm.getRecordedLogs(), kind, journal);
+        _assertSuccessEvent(vm.getRecordedLogs(), kind, journal, id, minCheck);
         beforeGas = gasleft();
-        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, true);
-        console2.log("minimal ZK verification internal-call gas", beforeGas - gasleft());
-        assertFalse(success, "strict ID accepted as minimal");
+        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, !minCheck);
+        console2.log("mode mismatch rejection internal-call gas", beforeGas - gasleft());
+        assertFalse(success, "ID accepted in opposite mode");
+        assertEq(string(output), "V2 program mode mismatch");
+        bytes32 otherId = minCheck
+            ? fee.programIdentifierV2(kind)
+            : vm.envOr(kind == ZkCoProcessorType.RiscZero ? "DCAP_RISC0_MINIMAL_ID" : "DCAP_SP1_MINIMAL_ID", bytes32(0));
+        if (otherId != bytes32(0)) _rejectProof(journal, kind, proof, otherId, eval);
         uint256 validState = vm.snapshotState();
         OutputV2 memory decoded = this.decode(journal);
         FmspcTcbDao tcb = FmspcTcbDao(router.fmspcTcbDaoVersionedAddr(eval));
@@ -671,7 +721,7 @@ contract DcapV2ForkTest is Test {
         // submission time. Merely advancing the current block must NOT impose
         // an unagreed maximum-age/challenge policy on a historical proof.
         vm.warp(expiry + 1);
-        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, false);
+        (success, output) = fee.verifyAndAttestWithZKProofV2{value: 1 ether}(journal, kind, proof, id, eval, minCheck);
         assertTrue(success, "unexpected journal maximum-age policy");
         assertEq(output, journal, "historical journal changed");
         assertTrue(vm.revertToState(validState));

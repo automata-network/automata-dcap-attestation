@@ -142,6 +142,12 @@ try {
       legacyProgramIds:oldIds,legacyDefaultProgramId:oldDefault,universalReusedUnchanged:configured?same(universal,configured.verifier):same(universal,await call(legacy,'zkVerifier(uint8)','address',kind))};
     if(configured) {
       if(!same(universal,configured.verifier))throw new Error('V2 verifier mismatch');
+      if(kind===1) {
+        const approved=await call(v2,'zkVerifierV2(uint8,bytes4)','address',kind,'0xe71e6620');
+        const unknown=await call(v2,'zkVerifierV2(uint8,bytes4)','address',kind,'0x00000000');
+        if(!same(approved,configured.verifier)||BigInt(unknown)!==0n)throw new Error('RISC Zero allowlist mismatch');
+        manifest.backends[name].proofSelector='0xe71e6620';
+      }
       if(configured.strictId) {
         if(!same(strictId,configured.strictId))throw new Error('Strict default mismatch');
         const [registered,minCheck]=await callRaw(v2,'programModeV2(uint8,bytes32)','bool,bool',kind,configured.strictId);

@@ -4,11 +4,11 @@
   "V3QuoteVerifier": "0x8f0Cb0E0ee1d7D65E7330870631A5DE140E7c844",
   "V4QuoteVerifier": "0x0da990aA59b2Df2DA308b8034D59F5DeDe89aeDa",
   "V5QuoteVerifier": "0xE03BF6560A88c631649d6906c077c7021927656e",
-  "PCKHelperV2": "0x49ff089cf2f7007de085f208acd4d1edbbad06ca",
+  "PCKHelperV2": "0x7923E1819fd9EEdE9e677532Ee26487c88863318",
   "PCCSRouterV2": "0xfd55392f16f212c01039dab8dc0625baecd443d8",
-  "AutomataDcapAttestationV2": "0xc36ad0ebcedb5e9cd04db3909ec8b3cacb2f74f1",
-  "V3QuoteVerifierV2": "0xd458714604ec31333bb055e6f9ed2060cbd0cf7e",
-  "V4QuoteVerifierV2": "0x51213e3c04cb6aec60f49d7749b391fb2bea604b",
-  "V5QuoteVerifierV2": "0x484f4da8b9fa75d61ea83cecf495b3fb1d42034e",
+  "AutomataDcapAttestationV2": "0x873aedb487bf32353d4b2a198fe77bd0b31aa9f2",
+  "V3QuoteVerifierV2": "0xd458714604eC31333bb055E6f9Ed2060CBd0cF7E",
+  "V4QuoteVerifierV2": "0x51213e3c04cB6aec60F49D7749B391fB2BeA604B",
+  "V5QuoteVerifierV2": "0x484F4DA8B9fA75D61Ea83CEcF495B3fB1d42034E",
   "SP1Groth16VerifierV6": "0x2546664e37345ea71c579961ec2ce56d0d967f50"
 }

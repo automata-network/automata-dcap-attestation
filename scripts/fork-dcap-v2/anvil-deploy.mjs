@@ -199,6 +199,10 @@ try {
     if(BigInt(universal)===0n) throw new Error('Missing V2 ZK verifier');
     await send(`attestation.setZkVerifierV2.${name}`,attestation,'setZkVerifierV2(uint8,address)',kind,universal);
     const row={verifier:universal};
+    if(kind===1) {
+      await send('attestation.allowRiscZero31',attestation,'addVerifyRoute(uint8,bytes4,address)',kind,'0xe71e6620',universal);
+      row.proofSelector='0xe71e6620';
+    }
     if(strictId) {
       await send(`attestation.addStrict.${name}`,attestation,'addProgramIdentifierV2(uint8,bytes32,bool)',kind,strictId,false);
       await send(`attestation.defaultStrict.${name}`,attestation,'setDefaultProgramIdentifierV2(uint8,bytes32)',kind,strictId);

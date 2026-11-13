@@ -5,6 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {replacement, registryHashes, registryFiles, validateReplacement, readReplacementState, verifyReplacement, frozenRoute} from './replacement.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const zero = '0x' + '0'.repeat(40);
@@ -21,11 +22,69 @@ const contractKeys = ['AutomataDcapAttestationV2', 'PCCSRouterV2', 'PCKHelperV2'
 export const pendingSp1Verifier = 'DEPLOY_SP1_GROTH16_V6_1';
 const sp1VerifierHash = '0x4388a21c687fdd5f218d7e3d13190cac4c5355818d3605fd5fb811df468ee696';
 
+export function requireNewPublication(chainId, reportFile) {
+  const destination = path.join(root, 'rust-crates/libraries/network-registry/deployment/v2.0', String(chainId));
+  ensure(!fs.existsSync(destination) && !fs.existsSync(reportFile),
+    'Output already exists; review/archive the previous test deployment before pinning source and broadcasting');
+  return destination;
+}
+
+export function requirePublication(p, reportFile) {
+  if (!replacement(p)) return requireNewPublication(p.chainId, reportFile);
+  const destination = path.join(root, 'rust-crates/libraries/network-registry/deployment/v2.0', String(p.chainId));
+  ensure(!fs.existsSync(reportFile), 'Readback report already exists; inspect completed/partial publication');
+  ensure(JSON.stringify(registryHashes(destination)) === JSON.stringify(p.sourceRegistryHashes),
+    'Source V2 registry changed; inspect checkpoint before continuing');
+  ensure(!fs.existsSync(path.join(root, 'rust-crates/libraries/network-registry/deployment/history', String(p.chainId), p.legacyFee.toLowerCase())),
+    'Source deployment already archived; inspect completed/partial publication');
+  return destination;
+}
+
 export function readBuildArtifact(name, execute = execFileSync) {
   const cwd = path.join(root, 'evm');
   const {out} = JSON.parse(execute('forge', ['config', '--json'], {cwd, encoding: 'utf8'}));
   ensure(typeof out === 'string' && out.length > 0, 'Missing Foundry artifact directory');
   return json(path.resolve(cwd, out, `${name}.sol`, `${name}.json`));
+}
+
+// Reused Routers can have different source-metadata hashes after dependency-only commits.
+// Never relax executable-bytecode comparison, or the strict comparison for NEW deployments.
+export function executableRuntime(hex) {
+  const bytes = Buffer.from(hex.replace(/^0x/, ''), 'hex');
+  ensure(bytes.length > 2, 'Invalid runtime');
+  const length = bytes.readUInt16BE(bytes.length - 2);
+  const start = bytes.length - length - 2;
+  ensure(length > 0 && start > 0 && (bytes[start] & 0xe0) === 0xa0, 'Invalid Solidity metadata footer');
+  return bytes.subarray(0, start);
+}
+
+export function validateBuildSources(p, execute = execFileSync) {
+  for (const commit of new Set(p.programs.map(program => program.buildSourceCommit))) {
+    try {
+      execute('git', ['merge-base', '--is-ancestor', commit, p.sourceCommit], {cwd: root, stdio: 'pipe'});
+      execute('git', ['diff', '--exit-code', commit, p.sourceCommit, '--', 'rust-crates',
+        ':(exclude)rust-crates/libraries/network-registry/deployment', 'scripts/fork-dcap-v2'], {cwd: root, stdio: 'pipe'});
+    } catch {
+      throw new Error(`Build ${commit} is not an ancestor with unchanged Rust/proving inputs; use reviewed new artifacts, never relabel provenance`);
+    }
+  }
+}
+
+export function validateDeploymentSource(sourceCommit, execute = execFileSync) {
+  ensure(/^[0-9a-f]{40}$/.test(sourceCommit), 'Pin deployment source commit');
+  const git = args => execute('git', args, {cwd: root, encoding: 'utf8', stdio: 'pipe'});
+  const current = git(['rev-parse', 'HEAD']).trim();
+  if (current !== sourceCommit) {
+    try {
+      git(['merge-base', '--is-ancestor', sourceCommit, current]);
+      const changed = git(['diff', '--name-only', '--no-renames', '-z', sourceCommit, current, '--']).split('\0').filter(Boolean);
+      // Keep the original contract/build/registry pin; only coordinator repairs may resume it.
+      ensure(changed.every(file => file.startsWith('scripts/deploy-dcap-v2/')), 'Changed deployment inputs');
+    } catch {
+      throw new Error('Pinned deployment source differs outside scripts/deploy-dcap-v2 or is not an ancestor; do not rewrite checkpoints');
+    }
+  }
+  return current;
 }
 
 // Keep provider diagnostics without logging the endpoint or its credentials.
@@ -44,7 +103,7 @@ export function createRpcRequest(url, fetchImpl = fetch) {
   };
   let id = 0;
   return async (method, params = [], context = '') => {
-    ensure(['eth_chainId', 'eth_getBlockByNumber', 'eth_getCode', 'eth_call', 'eth_getStorageAt', 'eth_getTransactionReceipt'].includes(method), 'Read-only RPC required');
+    ensure(['eth_chainId', 'eth_getBlockByNumber', 'eth_getCode', 'eth_call', 'eth_getStorageAt', 'eth_getTransactionReceipt', 'eth_getLogs'].includes(method), 'Read-only RPC required');
     const target = method === 'eth_call'
       ? ` to=${params[0]?.to} selector=${params[0]?.data?.slice(0, 10)} block=${params[1]}`
       : '';
@@ -54,17 +113,25 @@ export function createRpcRequest(url, fetchImpl = fetch) {
         body: JSON.stringify({jsonrpc: '2.0', id: ++id, method, params}), signal: AbortSignal.timeout(30000)});
       let body;
       try { body = await response.json(); } catch { throw new Error(`HTTP ${response.status}: invalid JSON response`); }
-      if (body?.error) throw new Error(`HTTP ${response.status}: ${JSON.stringify(body.error)}`);
+      if (body?.error) {
+        const error = new Error(`HTTP ${response.status}: ${JSON.stringify(body.error)}`);
+        const data = body.error.data;
+        error.revertData = typeof data === 'string' ? data : data?.data;
+        throw error;
+      }
       ensure(response.ok, `HTTP ${response.status}`);
       ensure(body && body.result !== undefined, 'Missing JSON-RPC result');
       return body.result;
     } catch (error) {
-      throw new Error(redact(`${label}: ${error.message}${error.cause?.code ? ` (${error.cause.code})` : ''}`));
+      const safe = new Error(redact(`${label}: ${error.message}${error.cause?.code ? ` (${error.cause.code})` : ''}`));
+      if (/^0x[0-9a-f]*$/i.test(error.revertData ?? '')) safe.revertData = error.revertData;
+      throw safe;
     }
   };
 }
 
 export function validatePlan(p, {allowPendingVerifier = false} = {}) {
+  ensure(p.mode === undefined || ['full', 'replace-entrypoint'].includes(p.mode), 'Unknown deployment mode');
   ensure(p.deploySp1Groth16V6 === undefined || typeof p.deploySp1Groth16V6 === 'boolean', 'SP1 deployment flag must be boolean');
   ensure(Number.isSafeInteger(p.chainId) && p.chainId > 0, 'Invalid chain ID');
   ensure(p.status === 'TEST_ONLY', 'This publisher is for isolated test deployments, not release promotion');
@@ -81,6 +148,10 @@ export function validatePlan(p, {allowPendingVerifier = false} = {}) {
     ensure([1, 2].includes(program.backend) && !seen.has(key), 'Unsupported/duplicate backend mode');
     seen.add(key);
     if (program.backend === 2) ensure(program.buildSdkVersion === '6.8.0', 'Compact SP1 requires audited SDK 6.8.0 build provenance');
+    if (program.backend === 1) {
+      ensure(program.buildSdkVersion === '3.1.0', 'RISC Zero requires repaired SDK 3.1.0 build provenance');
+      ensure(same(program.proofSelector, '0xe71e6620'), 'RISC Zero requires the repaired 3.1 Groth16 selector');
+    }
     ensure(/^0x[0-9a-f]{64}$/i.test(program.id) && !same(program.id, zeroId), 'Invalid native ID');
     ensure(/^0x[0-9a-f]{8}$/i.test(program.proofSelector), 'Invalid proof selector');
     if (program.verifier === pendingSp1Verifier) {
@@ -91,15 +162,27 @@ export function validatePlan(p, {allowPendingVerifier = false} = {}) {
       ensure(program.proofSelector === sp1VerifierHash.slice(0, 10), 'Independent SP1 v6 deployment supports v6.1.0 Groth16 only');
     }
     // Provenance references are operator-supplied, not a claim of proof acceptance.
-    ensure(program.buildSourceCommit === p.sourceCommit && /^[0-9a-f]{64}$/.test(program.evidenceSha256)
+    ensure(/^[0-9a-f]{40}$/.test(program.buildSourceCommit) && /^[0-9a-f]{64}$/.test(program.evidenceSha256)
       && /^[0-9a-f]{64}$/.test(program.artifactSha256), 'Missing matching build provenance');
   }
   for (const program of p.programs) {
     const strict = p.programs.find(item => item.backend === program.backend && !item.minCheck);
     ensure(strict && same(strict.verifier, program.verifier), 'Each backend requires a strict default and consistent verifier');
+    ensure(same(strict.proofSelector, program.proofSelector), 'Each backend requires a consistent proof selector');
     ensure(!program.minCheck || !same(strict.id, program.id), 'Strict/minimal IDs must differ');
   }
   if (p.deploySp1Groth16V6) ensure(p.programs.some(p => p.backend === 2), 'SP1 deployment requires SP1 programs');
+  if (replacement(p)) {
+    ensure(p.sourceRegistryHashes && registryFiles.every(k => /^[0-9a-f]{64}$/.test(p.sourceRegistryHashes[k])), 'Pin source V2 registry');
+    ensure(/^0x[0-9a-f]{64}$/i.test(p.sourceDeploymentTx), 'Pin source deployment transaction');
+    ensure(p.reusedContracts && Object.keys(p.reusedContracts).sort().join() === contractKeys.filter(k => k !== 'AutomataDcapAttestationV2').sort().join(),
+      'Exactly five reused contracts required');
+    Object.values(p.reusedContracts).forEach(addr);
+    ensure(same(p.reusedContracts.PCCSRouterV2, p.legacyRouter), 'Replacement Router mismatch');
+    const directory = path.join(root, 'rust-crates/libraries/network-registry/deployment/v2.0', String(p.chainId));
+    ensure(JSON.stringify(registryHashes(directory)) === JSON.stringify(p.sourceRegistryHashes), 'Source registry changed');
+    validateReplacement(p, json(path.join(directory, 'manifest.json')));
+  }
 }
 
 export function makeDocuments(p, legacyDcap, legacyPccs) {
@@ -107,6 +190,12 @@ export function makeDocuments(p, legacyDcap, legacyPccs) {
   ensure(contracts && JSON.stringify(Object.keys(contracts).sort()) === JSON.stringify([...contractKeys].sort()), 'Exactly six V2 contract keys required');
   contractKeys.forEach(k => addr(contracts[k]));
   ensure(new Set(contractKeys.map(k => contracts[k].toLowerCase())).size === 6, 'Six distinct contracts required');
+  if (replacement(p)) {
+    ensure(same(legacyDcap.AutomataDcapAttestationV2, p.legacyFee), 'Source V2 entrypoint registry mismatch');
+    for (const [key, address] of Object.entries(p.reusedContracts)) ensure(same(contracts[key], address), 'Reused component changed');
+    ensure(!Object.values(legacyDcap).some(a => same(a, contracts.AutomataDcapAttestationV2)), 'Replacement aliases existing deployment');
+    return {dcap: {...legacyDcap, ...contracts}, pccs: {...legacyPccs, PCKHelperV2: contracts.PCKHelperV2}};
+  }
   ensure(same(legacyDcap.AutomataDcapAttestationFee, p.legacyFee)
     && same(legacyDcap.PCCSRouter, p.legacyRouter), 'Legacy registry does not match plan');
   const oldAddresses = new Set([...Object.values(legacyDcap), ...Object.values(legacyPccs)]
@@ -161,25 +250,29 @@ export async function readLegacy(p, rpc) {
   // Older deployed Fees reject enum value 3 (Pico), even for view getters.
   // Snapshot only the rollout backends. Do not relax verifyNew's Pico checks.
   for (const backend of [1, 2]) {
-    const verifier = await call(p.legacyFee, 'zkVerifier(uint8)', 'address', backend);
+    const suffix = replacement(p) ? 'V2' : '';
+    const verifier = await call(p.legacyFee, `zkVerifier${suffix}(uint8)`, 'address', backend);
     backends[backend] = {verifier, code: same(verifier, zero) ? '0x' : await code(verifier),
-      defaultId: await call(p.legacyFee, 'programIdentifier(uint8)', 'bytes32', backend),
-      ids: await call(p.legacyFee, 'programIdentifiers(uint8)', 'bytes32[]', backend)};
+      defaultId: await call(p.legacyFee, `programIdentifier${suffix}(uint8)`, 'bytes32', backend),
+      ids: await call(p.legacyFee, `programIdentifiers${suffix}(uint8)`, 'bytes32[]', backend)};
   }
   for (const program of p.programs) {
-    ensure(backends[program.backend].code !== '0x', 'Backend expansion is not allowed');
+    // The explicitly reviewed V2 inventory is independent of disabled/absent legacy backends.
     if (program.verifier !== pendingSp1Verifier) ensure(await code(program.verifier) !== '0x', 'Selected backend verifier has no code');
     // SP1 v6 may require a different reviewed verifier from the legacy v5 route.
-    ensure(!backends[program.backend].ids.some(id => same(id, program.id)), 'Legacy ID cannot be registered as compact V2');
+    if (!replacement(p) || program.backend !== 2) ensure(!backends[program.backend].ids.some(id => same(id, program.id)), 'Legacy ID cannot be registered as compact V2');
   }
-  return {router, evaluations, backends, verifiers,
+  const result = {router, evaluations, backends, verifiers,
     feeOwner: await call(p.legacyFee, 'owner()', 'address'),
     routerOwner: await call(p.legacyRouter, 'owner()', 'address'),
     feeBp: String(await call(p.legacyFee, 'getBp()', 'uint16')),
     feeCode: await code(p.legacyFee), routerCode: await code(p.legacyRouter)};
+  if (replacement(p)) result.migration = await readReplacementState(p, result, rpc);
+  return result;
 }
 
 export async function verifyNew(p, legacy, documents, rpc) {
+  if (replacement(p)) return verifyReplacement(p, legacy, rpc);
   const {call, code, storage} = rpc;
   const c = p.contracts, router = c.PCCSRouterV2, attestation = c.AutomataDcapAttestationV2;
   const codeHashes = {}, resolvers = new Set();
@@ -256,7 +349,8 @@ export async function verifyNew(p, legacy, documents, rpc) {
         const [registered, minCheck] = await call(attestation, 'programModeV2(uint8,bytes32)', 'bool,bool', backend, entry.id);
         ensure(registered && minCheck === entry.minCheck, 'V2 program mode mismatch');
         for (const selector of ['0x00000000', entry.proofSelector]) {
-          ensure(same(await call(attestation, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), entry.verifier), 'V2 proof route mismatch');
+          const expected = backend === 1 && selector === '0x00000000' ? zero : entry.verifier;
+          ensure(same(await call(attestation, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector), expected), 'V2 proof route mismatch');
         }
       }
     }
@@ -264,18 +358,8 @@ export async function verifyNew(p, legacy, documents, rpc) {
   return {runtimeSha256: codeHashes, readerStorages: [...resolvers]};
 }
 
-async function main() {
-  const [mode, planFile, snapshotFile, reportFile] = process.argv.slice(2);
-  ensure(['snapshot', 'publish'].includes(mode) && planFile && snapshotFile
-    && (mode === 'snapshot' || reportFile), 'Usage: publish-v2.mjs snapshot PLAN SNAPSHOT | publish PLAN SNAPSHOT NEW_REPORT');
-  const p = json(planFile); validatePlan(p, {allowPendingVerifier: mode === 'snapshot'});
-  const url = process.env.DCAP_RPC_URL; ensure(url, 'DCAP_RPC_URL required');
-  const request = createRpcRequest(url);
-  ensure(Number(BigInt(await request('eth_chainId'))) === p.chainId, 'Wrong RPC chain');
-  // Require confirmed state; never publish simulation or pending addresses.
-  const block = await request('eth_getBlockByNumber', ['finalized', false]);
-  ensure(block?.hash && block?.number, 'RPC must provide finalized block');
-  const cast = (...args) => execFileSync('cast', args, {encoding: 'utf8', maxBuffer: 8 * 1024 * 1024}).trim();
+export function createReadbackRpc(request, block, execute = execFileSync) {
+  const cast = (...args) => execute('cast', args, {encoding: 'utf8', maxBuffer: 8 * 1024 * 1024}).trim();
   const rpc = {
     call: async (to, sig, returns, ...args) => { const decoded = JSON.parse(cast('abi-decode', '--json', `f()(${returns})`,
       await request('eth_call', [{to, data: cast('calldata', sig, ...args.map(String))}, block.number],
@@ -294,17 +378,79 @@ async function main() {
       }
       ensure(actual.equals(expected), `${key} runtime differs from local artifact`);
     },
-    verifyRouterLayout: async to => {
+    verifyRouterLayout: async (to, allowMetadataDifference = false) => {
       const artifact = readBuildArtifact('PCCSRouter');
       const expected = artifact.deployedBytecode.object;
-      ensure(same(await rpc.code(to), expected.startsWith('0x') ? expected : '0x' + expected), 'Router runtime differs from local reviewed artifact');
+      const actual = await rpc.code(to);
+      ensure(allowMetadataDifference ? executableRuntime(actual).equals(executableRuntime(expected))
+        : same(actual, expected.startsWith('0x') ? expected : '0x' + expected), 'Router runtime differs from local reviewed artifact');
     },
     authorized: async (router, reader) => BigInt(await rpc.storage(router,
       cast('keccak', cast('abi-encode', 'f(address,uint256)', reader, '0')))) === 1n,
+    receipt: async hash => {
+      const receipt = await request('eth_getTransactionReceipt', [hash]);
+      ensure(receipt && BigInt(receipt.blockNumber) <= BigInt(block.number), 'Source receipt is not finalized');
+      ensure((await request('eth_getBlockByNumber', [receipt.blockNumber, false]))?.hash === receipt.blockHash,
+        'Source deployment block changed');
+      return receipt;
+    },
+    route: async (to, backend, selector) => {
+      try { return await rpc.call(to, 'zkVerifierV2(uint8,bytes4)', 'address', backend, selector); }
+      catch (error) {
+        const expected = cast('calldata', 'ZK_Route_Frozen(uint8,bytes4)', String(backend), selector);
+        if (same(error.revertData, expected)) return frozenRoute;
+        throw error; // Never interpret a provider outage or unrelated revert as a frozen route.
+      }
+    },
+    routeEvents: async (to, fromBlock) => {
+      const added = cast('keccak', 'ZkRouteAdded(uint8,bytes4,address)');
+      const frozen = cast('keccak', 'ZkRouteFrozen(uint8,bytes4)');
+      const events = [];
+      let width = 10000n;
+      for (let start = BigInt(fromBlock); start <= BigInt(block.number);) {
+        const end = start + width - 1n < BigInt(block.number) ? start + width - 1n : BigInt(block.number);
+        let logs;
+        try {
+          logs = await request('eth_getLogs', [{address: to, fromBlock: '0x' + start.toString(16),
+            toBlock: '0x' + end.toString(16), topics: [[added, frozen]]}]);
+        } catch (error) {
+          if (width > 1n && /range|too many results|response size/i.test(error.message)) { width /= 2n; continue; }
+          throw error;
+        }
+        logs.sort((a, b) => Number(BigInt(a.blockNumber) - BigInt(b.blockNumber)) || Number(BigInt(a.logIndex) - BigInt(b.logIndex)));
+        for (const log of logs) {
+          ensure(same(log.address, to) && log.topics.length === 2 && [added, frozen].some(t => same(t, log.topics[0]))
+            && /^0x[0-9a-f]+$/i.test(log.data) && log.data.length === (same(log.topics[0], frozen) ? 66 : 130), 'Invalid route event');
+          // Only backend is indexed; bytes4 selector is the first ABI word in event data.
+          events.push({backend: Number(BigInt(log.topics[1])), selector: log.data.slice(0, 10),
+            frozen: same(log.topics[0], frozen), verifier: same(log.topics[0], frozen) ? frozenRoute : '0x' + log.data.slice(-40),
+            removed: log.removed});
+        }
+        start = end + 1n;
+      }
+      return events;
+    },
   };
+  return rpc;
+}
+
+async function main() {
+  const [mode, planFile, snapshotFile, reportFile] = process.argv.slice(2);
+  ensure(['snapshot', 'check', 'publish'].includes(mode) && planFile && snapshotFile
+    && (mode !== 'publish' || reportFile), 'Usage: publish-v2.mjs snapshot|check PLAN SNAPSHOT | publish PLAN SNAPSHOT NEW_REPORT');
+  const p = json(planFile); validatePlan(p, {allowPendingVerifier: mode !== 'publish'});
+  const coordinatorCommit = validateDeploymentSource(p.sourceCommit);
+  validateBuildSources(p);
+  const url = process.env.DCAP_RPC_URL; ensure(url, 'DCAP_RPC_URL required');
+  const request = createRpcRequest(url);
+  ensure(Number(BigInt(await request('eth_chainId'))) === p.chainId, 'Wrong RPC chain');
+  const block = await request('eth_getBlockByNumber', ['finalized', false]);
+  ensure(block?.hash && block?.number, 'RPC must provide finalized block');
+  const rpc = createReadbackRpc(request, block);
   const legacy = await readLegacy(p, rpc);
   const identity = {chainId: p.chainId, legacyFee: p.legacyFee, legacyRouter: p.legacyRouter,
-    evaluations: p.evaluations, sourceCommit: p.sourceCommit};
+    evaluations: p.evaluations, sourceCommit: p.sourceCommit, mode: p.mode,
+    sourceRegistryHashes: p.sourceRegistryHashes};
   if (mode === 'snapshot') {
     fs.writeFileSync(snapshotFile, encoded({identity, block, legacy}), {flag: 'wx'});
     console.log('Read-only legacy snapshot saved. No deployment or registry writes.'); return;
@@ -314,7 +460,8 @@ async function main() {
   ensure(BigInt(before.block.number) <= BigInt(block.number), 'Snapshot is newer than finalized readback');
   ensure((await request('eth_getBlockByNumber', [before.block.number, false]))?.hash === before.block.hash, 'Snapshot block changed');
   ensure(JSON.stringify(legacy) === JSON.stringify(before.legacy), 'Legacy configuration changed since snapshot');
-  ensure(Array.isArray(p.transactions) && p.transactions.length >= (p.deploySp1Groth16V6 ? 7 : 6), 'Deployment transaction inventory required');
+  if (mode === 'check') { console.log('Source configuration unchanged.'); return; }
+  ensure(Array.isArray(p.transactions) && p.transactions.length >= (replacement(p) ? 1 : p.deploySp1Groth16V6 ? 7 : 6), 'Deployment transaction inventory required');
   const receipts = [];
   for (const hash of p.transactions) {
     ensure(/^0x[0-9a-f]{64}$/i.test(hash), 'Invalid transaction hash');
@@ -325,20 +472,20 @@ async function main() {
     receipts.push(receipt);
   }
   const registry = path.join(root, 'rust-crates/libraries/network-registry/deployment');
-  const source = path.join(registry, 'current', String(p.chainId));
+  const source = path.join(registry, replacement(p) ? 'v2.0' : 'current', String(p.chainId));
   const documents = makeDocuments(p, json(path.join(source, 'dcap.json')), json(path.join(source, 'onchain_pccs.json')));
-  for (const key of contractKeys) ensure(receipts.some(r => same(r.contractAddress, p.contracts[key])), 'Missing direct deployment receipt for ' + key);
+  for (const key of replacement(p) ? ['AutomataDcapAttestationV2'] : contractKeys) ensure(receipts.some(r => same(r.contractAddress, p.contracts[key])), 'Missing direct deployment receipt for ' + key);
+  if (replacement(p)) ensure(receipts.filter(r => r.contractAddress).length === 1, 'Replacement must deploy exactly one contract');
   if (p.deploySp1Groth16V6) ensure(receipts.some(r => same(r.contractAddress, p.sp1Groth16Verifier)), 'Missing SP1 v6 deployment receipt');
   const verified = await verifyNew(p, legacy, documents, rpc);
   const pccsPath = path.join(root, 'evm/lib/automata-on-chain-pccs/deployment', `${p.chainId}.json`);
   const originalPccs = fs.readFileSync(pccsPath, 'utf8');
-  const pccsUpdate = updatePccsDeployment(JSON.parse(originalPccs), p.contracts.PCKHelperV2);
-  const destination = path.join(registry, 'v2.0', String(p.chainId));
-  // Iterations must explicitly archive/review the previous registry before replacement.
-  ensure(!fs.existsSync(destination) && !fs.existsSync(reportFile), 'Output already exists; archive previous test deployment first');
+  const pccsUpdate = replacement(p) ? JSON.parse(originalPccs) : updatePccsDeployment(JSON.parse(originalPccs), p.contracts.PCKHelperV2);
+  const destination = requirePublication(p, reportFile);
   ensure((await request('eth_getBlockByNumber', [block.number, false]))?.hash === block.hash, 'Readback block changed');
-  const report = {status: 'TEST_DEPLOYMENT_READBACK_PASS_NOT_PROOF_OR_RELEASE_ACCEPTANCE',
+  const report = {status: 'TEST_DEPLOYMENT_READBACK_PASS_NOT_PROOF_OR_RELEASE_ACCEPTANCE', coordinatorCommit,
     plan: p, block, transactions: receipts, legacySnapshotSha256: sha(fs.readFileSync(snapshotFile)), ...verified,
+    ...(replacement(p) ? {migratedSp1: legacy.migration.sp1} : {}),
     pccsDeploymentBefore: JSON.parse(originalPccs), currentPromoted: false};
   // Stage complete files before publishing the new directory; current/v1.1 are never written.
   const parent = path.dirname(destination);
@@ -348,11 +495,18 @@ async function main() {
   fs.writeFileSync(path.join(stage, 'onchain_pccs.json'), encoded(documents.pccs));
   fs.writeFileSync(path.join(stage, 'manifest.json'), encoded(report));
   ensure(fs.readFileSync(pccsPath, 'utf8') === originalPccs, 'PCCS registry changed concurrently');
+  // A readback file plus an incomplete move is intentionally not treated as success on resume.
   fs.writeFileSync(reportFile, encoded(report), {flag: 'wx'});
+  if (replacement(p)) {
+    const archive = path.join(registry, 'history', String(p.chainId), p.legacyFee.toLowerCase());
+    fs.mkdirSync(path.dirname(archive), {recursive: true});
+    ensure(!fs.existsSync(archive), 'Historical deployment already archived; inspect publication state');
+    fs.renameSync(destination, archive);
+  }
   fs.renameSync(stage, destination);
   // Additive key only. Existing PCKHelper and every other PCCS key are preserved.
-  fs.writeFileSync(pccsPath, encoded(pccsUpdate));
-  console.log(`Published TEST_ONLY ${destination}; added PCKHelperV2 to ${pccsPath}. current and ZK submodules unchanged.`);
+  if (!replacement(p)) fs.writeFileSync(pccsPath, encoded(pccsUpdate));
+  console.log(`Published TEST_ONLY ${destination}; ${replacement(p) ? 'previous V2 archived; PCCS deployment unchanged' : 'PCKHelperV2 recorded'}. current and ZK submodules unchanged.`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

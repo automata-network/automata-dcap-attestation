@@ -1,8 +1,11 @@
 # Compact V2 deployment
 
 Use the current one-command [coordinator](COORDINATOR.md). It supports the
-renamed entrypoint, mode-specific program registry and an optional independent
-SP1 v6 Groth16 verifier. Fresh Docker/proof acceptance is still pending.
+two deployment modes: `full` for first V2 deployment, and `replace-entrypoint`
+for existing V2 networks such as Hoodi. The latter deploys only the entrypoint,
+preserves all live SP1 configuration, and reuses the existing V2 Router/helpers/verifiers.
+See `coordinator.example.json` and `replace-entrypoint.example.json` respectively.
+Deployment/readback does not replace guest/proof acceptance.
 
 The manual inline-body FeeV2 runbook below is retained as historical context.
 Do not execute its old selectors or register its old IDs for compact V2.
@@ -25,8 +28,9 @@ deployment has been performed by adding these scripts.
 - `sourceCommit` pins the **guest build source**. Preserve Foundry broadcast files
   and the deployment-script revision separately. The publisher checks deployed
   runtime against the locally compiled `evm/out` artifacts.
-- `programs: []` is raw-only, with V2 ZK paused. To test ZK, add only backends
-  already supported by the target's legacy Fee. Pico is not deployable here.
+- `programs: []` is raw-only, with V2 ZK paused. To test ZK, explicitly configure
+  reviewed RISC Zero/SP1 programs and verifiers, independently of whether the
+  legacy Fee has that backend enabled. Pico is not deployable here.
   Each entry has this shape (use real values, no placeholders):
 
 ```json
@@ -55,8 +59,8 @@ node scripts/deploy-dcap-v2/publish-v2.mjs snapshot /absolute/hoodi-plan.json /a
 
 Requires `DCAP_RPC_URL`, `cast`, Node with fetch, and RPC support for `finalized`
 blocks. Reads the legacy owner, fees, verifier wiring, six Router dependencies,
-selected versioned DAOs, backend IDs and universal runtimes. Refuses backend
-expansion. No transactions or registry writes. The before snapshot must predate
+selected versioned DAOs, backend IDs and universal runtimes. Checks the explicitly
+selected V2 verifiers without re-enabling legacy backends. No transactions or registry writes. The before snapshot must predate
 deployment. It is not a complete non-enumerable proof-route inventory.
 
 Legacy backend reads cover RISC Zero (1) and SP1 (2) only: the existing Hoodi Fee
@@ -112,25 +116,27 @@ open, so a later restoration of restrictions cannot silently break V2.
 
 ## 4. Configure ZK, then enable the isolated test instance
 
-The existing `migrateLegacyBackend` stage can copy old IDs/defaults and an
-explicit complete proof-selector inventory to the NEW Fee. Use it if legacy ZK
-selectors on the new Fee are in scope; it never changes the old Fee. Inventory
-freezes/overrides from events/config and preserve security freezes before enabling
-V2, since routes are shared between selectors **within the new Fee instance**.
-No complete route inventory is auto-discovered by the publisher.
+Register only reviewed compact V2 program IDs; do not migrate historical IDs or
+proof routes. `configureV2Backend` sets the strict default and explicitly registers
+the supplied reviewed proof selector (this release uses `0xe71e6620` for RISC Zero): setting the default verifier
+alone is insufficient, because RISC Zero has no selector fallback. The enable
+stage and publisher check this route. SP1 retains its existing fallback behavior.
+Use `configureMinimalProgram` for a separately reviewed minimal ID, without
+changing the strict default. See the [RISC Zero upgrade runbook](../../docs/dcap-v2-risc0-3.1-upgrade.md)
+for release pins, owner route management and the Sepolia V1.1 disable script.
 
 For each supported backend, while paused:
 
 ```sh
 forge script forge-script/DeployDcapV2.s.sol:DeployDcapV2 \
   --rpc-url "$DCAP_RPC_URL" \
-  --sig 'configureV2Backend(address,address,uint8,bytes32,address)' \
-  "$DCAP_TEST_OWNER" "$DCAP_NEW_FEE" 2 "$DCAP_NEW_SP1_ID" "$DCAP_SP1_VERIFIER"
+  --sig 'configureV2Backend(address,address,uint8,bytes32,address,bytes4)' \
+  "$DCAP_TEST_OWNER" "$DCAP_NEW_FEE" 2 "$DCAP_NEW_SP1_ID" "$DCAP_SP1_VERIFIER" '0x4388a21c'
 
 forge script forge-script/DeployDcapV2.s.sol:DeployDcapV2 \
   --rpc-url "$DCAP_RPC_URL" \
-  --sig 'enableIsolatedZk(uint256,address,address,address,address,uint8[])' \
-  560048 "$DCAP_TEST_OWNER" "$DCAP_OLD_FEE" "$DCAP_OLD_ROUTER" "$DCAP_NEW_FEE" '[2]'
+  --sig 'enableIsolatedZk(uint256,address,address,address,address,uint8[],bytes4[])' \
+  560048 "$DCAP_TEST_OWNER" "$DCAP_OLD_FEE" "$DCAP_OLD_ROUTER" "$DCAP_NEW_FEE" '[2]' '[0x4388a21c]'
 ```
 
 Again, these are simulations unless you explicitly append broadcast/signer flags.
@@ -174,7 +180,10 @@ require PCCSRouterV2 and never fall back to PCCSRouter. Rebuild the SDK to refre
 its compile-time embedded registry. Do not publish the test instance as a default.
 
 The publisher refuses an existing chain output directory/report. For a deliberate
-replacement, archive the previous V2 chain directory/report before retrying;
+replacement, review/archive the previous V2 chain directory and commit that
+registry change **before** pinning/building the next release source. The
+coordinator rejects a destination collision before broadcasting. Use a new run
+directory/report; do not change the source commit of an in-progress deployment;
 never erase its history or repoint old users. File writes across the parent and
 submodule are not a single transaction; retain the readback report if disk/permission
 failure interrupts publication and review the partial diff before retrying.

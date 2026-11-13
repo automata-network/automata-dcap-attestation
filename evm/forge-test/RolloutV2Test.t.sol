@@ -40,7 +40,7 @@ contract RolloutV2Test is AutomataDcapOnChainAttestationTest {
         attestationV2.setZkV2Paused(true);
         DeployDcapV2 script = new DeployDcapV2();
         script.configureV2Backend(
-            admin, attestationV2, ZkCoProcessorType.RiscZero, bytes32(uint256(3)), address(universal)
+            admin, attestationV2, ZkCoProcessorType.RiscZero, bytes32(uint256(3)), address(universal), 0xe71e6620
         );
         script.configureMinimalProgram(admin, attestationV2, ZkCoProcessorType.RiscZero, bytes32(uint256(4)));
         assertEq(attestationV2.programIdentifiersV2(ZkCoProcessorType.RiscZero).length, 2);

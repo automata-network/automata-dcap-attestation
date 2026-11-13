@@ -36,11 +36,11 @@ fn main() -> Result<()> {
     let version = std::process::Command::new("r0vm")
         .arg("--version")
         .output()
-        .context("r0vm 3.0.3 must be installed")?;
+        .context("r0vm 3.1.0 must be installed")?;
     ensure!(
         version.status.success()
-            && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.0.3",
-        "local validation requires r0vm 3.0.3"
+            && String::from_utf8_lossy(&version.stdout).trim() == "risc0-r0vm 3.1.0",
+        "local validation requires r0vm 3.1.0"
     );
     let elf = std::fs::read(&args[0]).context("read V2 program binary")?;
     let input = std::fs::read(&args[1]).context("read V2 ABI input")?;
@@ -62,7 +62,7 @@ fn main() -> Result<()> {
         println!("mode={}", if minimal { "minimal" } else { "strict" });
         println!("native_rejection={rejection}");
         let executor = ExternalProver::new("local-execution", "r0vm");
-        println!("r0vm_version=3.0.3");
+        println!("r0vm_version=3.1.0");
         println!("native_program_id=0x{}", compute_image_id(&elf)?);
         let error = executor
             .execute(execution_env(&input)?, &elf)
@@ -82,7 +82,7 @@ fn main() -> Result<()> {
     // Explicit local subprocess: never select Bonsai or a prover from environment.
     // Only Executor::execute is called, not Prover::prove or a DEV_MODE receipt.
     let executor = ExternalProver::new("local-execution", "r0vm");
-    println!("r0vm_version=3.0.3");
+    println!("r0vm_version=3.1.0");
     println!("native_program_id=0x{}", compute_image_id(&elf)?);
     let session = executor
         .execute(execution_env(&input)?, &elf)

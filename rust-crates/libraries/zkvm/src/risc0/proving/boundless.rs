@@ -70,7 +70,10 @@ pub async fn prove_with_boundless(
         .await?;
 
     // Build the proof request
-    let mut request_builder = client.new_request().with_stdin(input_bytes);
+    let mut request_builder = client
+        .new_request()
+        .with_stdin(input_bytes)
+        .with_image_id(risc0_zkvm::compute_image_id(elf)?);
 
     if let Some(program_url) = &config.program_url {
         request_builder = request_builder.with_program_url(program_url.as_str())?;
