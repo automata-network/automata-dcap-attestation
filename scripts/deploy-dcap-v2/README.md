@@ -1,8 +1,11 @@
 # Compact V2 deployment
 
 Use the current one-command [coordinator](COORDINATOR.md). It supports the
-renamed entrypoint, mode-specific program registry and an optional independent
-SP1 v6 Groth16 verifier. Fresh Docker/proof acceptance is still pending.
+two deployment modes: `full` for first V2 deployment, and `replace-entrypoint`
+for existing V2 networks such as Hoodi. The latter deploys only the entrypoint,
+preserves all live SP1 configuration, and reuses the existing V2 Router/helpers/verifiers.
+See `coordinator.example.json` and `replace-entrypoint.example.json` respectively.
+Deployment/readback does not replace guest/proof acceptance.
 
 The manual inline-body FeeV2 runbook below is retained as historical context.
 Do not execute its old selectors or register its old IDs for compact V2.

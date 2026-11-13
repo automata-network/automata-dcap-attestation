@@ -51,6 +51,128 @@ contract DeployDcapV2 is Script {
         address v5;
     }
 
+    /// @notice Replace only an existing V2 entrypoint. Shared dependencies are never deployed or switched.
+    function deployEntrypoint(uint256 expectedChainId, address owner, AutomataDcapAttestationV2 previous)
+        external
+        returns (AutomataDcapAttestationV2 attestation)
+    {
+        require(block.chainid == expectedChainId, "Wrong chain");
+        require(owner != address(0) && address(previous).code.length > 0, "Invalid owner/source");
+        address router = address(V3QuoteVerifier(address(previous.quoteVerifiers(3))).pccsRouter());
+        require(router.code.length > 0, "Missing Router");
+        vm.startBroadcast(owner);
+        attestation = new AutomataDcapAttestationV2(owner);
+        attestation.setZkV2Paused(true);
+        attestation.setBp(previous.getBp());
+        for (uint16 version = 3; version <= 5; ++version) {
+            address verifier = address(previous.quoteVerifiers(version));
+            require(V3QuoteVerifier(verifier).quoteVersion() == version, "Quote version mismatch");
+            require(address(V3QuoteVerifier(verifier).pccsRouter()) == router, "Router mismatch");
+            attestation.setQuoteVerifier(verifier);
+        }
+        vm.stopBroadcast();
+        console.log("AutomataDcapAttestationV2", address(attestation));
+    }
+
+    function _replacementRouter(AutomataDcapAttestationV2 previous, AutomataDcapAttestationV2 attestation)
+        internal
+        view
+        returns (PCCSRouter router)
+    {
+        require(address(previous) != address(attestation), "New entrypoint required");
+        for (uint16 version = 3; version <= 5; ++version) {
+            require(
+                address(previous.quoteVerifiers(version)) == address(attestation.quoteVerifiers(version)),
+                "Replacement verifier mismatch"
+            );
+        }
+        router = PCCSRouter(address(V3QuoteVerifier(address(attestation.quoteVerifiers(3))).pccsRouter()));
+    }
+
+    /// @notice The only shared write for replacement: authorize the new entrypoint on the existing Router.
+    function authorizeReplacementEntrypoint(
+        uint256 expectedChainId,
+        address routerOwner,
+        AutomataDcapAttestationV2 previous,
+        AutomataDcapAttestationV2 attestation
+    ) external {
+        require(block.chainid == expectedChainId, "Wrong chain");
+        PCCSRouter router = _replacementRouter(previous, attestation);
+        require(router.owner() == routerOwner && attestation.zkV2Paused(), "Router owner/state mismatch");
+        vm.startBroadcast(routerOwner);
+        router.setAuthorized(address(attestation), true);
+        vm.stopBroadcast();
+    }
+
+    /// @dev Selectors are inventoried from all source route events by the coordinator, including freezes.
+    function migrateSp1Configuration(
+        address owner,
+        AutomataDcapAttestationV2 previous,
+        AutomataDcapAttestationV2 attestation,
+        bytes4[] calldata selectors,
+        address[] calldata routes
+    ) external {
+        _replacementRouter(previous, attestation);
+        require(attestation.owner() == owner && attestation.zkV2Paused(), "Configure V2 while paused");
+        require(selectors.length == routes.length, "Route inventory mismatch");
+        ZkCoProcessorType backend = ZkCoProcessorType.Succinct;
+        bytes32[] memory ids = previous.programIdentifiersV2(backend);
+        address verifier = previous.zkVerifierV2(backend);
+        require(ids.length > 0 && verifier.code.length > 0, "Missing source SP1 configuration");
+        require(attestation.programIdentifiersV2(backend).length == 0, "SP1 already configured");
+        // Validate every source route before the first transaction in this stage.
+        for (uint256 i; i < selectors.length; ++i) {
+            (bool ok, bytes memory result) = address(previous)
+                .staticcall(abi.encodeWithSignature("zkVerifierV2(uint8,bytes4)", uint8(backend), selectors[i]));
+            if (routes[i] == address(0xdead)) {
+                require(
+                    !ok
+                        && keccak256(result)
+                            == keccak256(
+                                abi.encodeWithSignature("ZK_Route_Frozen(uint8,bytes4)", uint8(backend), selectors[i])
+                            ),
+                    "Source freeze mismatch"
+                );
+            } else {
+                require(
+                    ok && abi.decode(result, (address)) == routes[i] && routes[i].code.length > 0,
+                    "Source route mismatch"
+                );
+            }
+        }
+        vm.startBroadcast(owner);
+        attestation.setZkVerifierV2(backend, verifier);
+        for (uint256 i; i < ids.length; ++i) {
+            (bool registered, bool minCheck) = previous.programModeV2(backend, ids[i]);
+            require(registered, "Source program missing");
+            attestation.addProgramIdentifierV2(backend, ids[i], minCheck);
+        }
+        attestation.setDefaultProgramIdentifierV2(backend, previous.programIdentifierV2(backend));
+        for (uint256 i; i < selectors.length; ++i) {
+            if (routes[i] == address(0xdead)) attestation.freezeVerifyRoute(backend, selectors[i]);
+            else attestation.addVerifyRoute(backend, selectors[i], routes[i]);
+        }
+        vm.stopBroadcast();
+    }
+
+    function enableReplacementZk(
+        uint256 expectedChainId,
+        address owner,
+        AutomataDcapAttestationV2 previous,
+        AutomataDcapAttestationV2 attestation,
+        ZkCoProcessorType[] calldata backends,
+        bytes4[] calldata selectors
+    ) external {
+        require(block.chainid == expectedChainId, "Wrong chain");
+        _replacementRouter(previous, attestation);
+        require(attestation.owner() == owner && attestation.zkV2Paused(), "Invalid target/state");
+        require(!previous.zkV2Paused(), "Source ZK is paused; review before enabling replacement");
+        _checkBackends(attestation, backends, selectors);
+        vm.startBroadcast(owner);
+        attestation.setZkV2Paused(false);
+        vm.stopBroadcast();
+    }
+
     /// @notice Isolated test deployment: no setter is called on the legacy Fee/Router/DAOs.
     /// @dev The explicit evaluation inventory must be reviewed before broadcast. No registry is
     /// written by simulation: publish-v2.mjs reads the confirmed live deployment separately.
@@ -165,6 +287,18 @@ contract DeployDcapV2 is Script {
                 "Inconsistent Router"
             );
         }
+        _checkBackends(attestation, backends, selectors);
+        vm.startBroadcast(owner);
+        attestation.setZkV2Paused(false);
+        vm.stopBroadcast();
+    }
+
+    function _checkBackends(
+        AutomataDcapAttestationV2 attestation,
+        ZkCoProcessorType[] calldata backends,
+        bytes4[] calldata selectors
+    ) internal view {
+        require(backends.length > 0 && selectors.length == backends.length, "Selector inventory mismatch");
         for (uint256 i; i < backends.length; ++i) {
             ZkCoProcessorType backend = backends[i];
             require(
@@ -176,9 +310,6 @@ contract DeployDcapV2 is Script {
                 attestation.programModeV2(backend, attestation.programIdentifierV2(backend));
             require(registered && !minCheck, "Strict default required");
         }
-        vm.startBroadcast(owner);
-        attestation.setZkV2Paused(false);
-        vm.stopBroadcast();
     }
 
     function deploy(address owner, address router, address p256) external returns (Deployment memory d) {

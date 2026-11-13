@@ -3,9 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validatePlan, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact, requireNewPublication} from './publish-v2.mjs';
+import {validatePlan, validateBuildSources, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact, requireNewPublication, requirePublication} from './publish-v2.mjs';
+import {registryHashes} from './replacement.mjs';
 
 const evm = fileURLToPath(new URL('../../evm/', import.meta.url));
+test('build provenance survives tooling-only commits but changed Rust/proving inputs fail closed',()=>{
+  const p={sourceCommit:'b'.repeat(40),programs:[{buildSourceCommit:'a'.repeat(40)},{buildSourceCommit:'a'.repeat(40)}]};
+  const commands=[];validateBuildSources(p,(bin,args)=>{commands.push(args);return '';});
+  assert.equal(commands.length,2);assert.deepEqual(commands[0],['merge-base','--is-ancestor','a'.repeat(40),'b'.repeat(40)]);
+  assert.ok(commands[1].includes('rust-crates')&&commands[1].includes('scripts/fork-dcap-v2'));
+  assert.ok(commands[1].includes(':(exclude)rust-crates/libraries/network-registry/deployment'));
+  for(const failure of ['merge-base','diff']) assert.throws(()=>validateBuildSources(p,(bin,args)=>{if(args[0]===failure) throw Error('changed');}),/never relabel/);
+});
+test('replacement publication pins source files and refuses prior archive/report collisions',t=>{
+  const exists=t.mock.method(fs,'existsSync',()=>false);
+  const contents=t.mock.method(fs,'readFileSync',()=> '{}');
+  const p={mode:'replace-entrypoint',chainId:560048,legacyFee:'0x'+'1'.repeat(40),sourceRegistryHashes:registryHashes('/fixture')};
+  const dest=requirePublication(p,'/operator/report.json');assert.ok(dest.endsWith('/v2.0/560048'));
+  contents.mock.mockImplementation(()=> '{"changed":true}');assert.throws(()=>requirePublication(p,'/operator/report.json'),/registry changed/);
+  contents.mock.mockImplementation(()=> '{}');
+  exists.mock.mockImplementation(file=>file.includes('/history/'));assert.throws(()=>requirePublication(p,'/operator/report.json'),/archived/);
+  exists.mock.mockImplementation(file=>file==='/operator/report.json');assert.throws(()=>requirePublication(p,'/operator/report.json'),/already exists/);
+});
 test('publication collisions are rejected before coordinator deployment as well as at publication', t => {
   const exists = t.mock.method(fs, 'existsSync', () => false);
   const destination = requireNewPublication(560048, '/operator/readback.json');

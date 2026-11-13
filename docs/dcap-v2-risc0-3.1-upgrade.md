@@ -144,10 +144,107 @@ cargo test --manifest-path rust-crates/Cargo.toml --locked \
 Use an archive-capable RPC for this pinned block. The default `paris` test EVM
 cannot execute the deployed router's modern opcodes. A skip, an RPC storage
 error or an upstream receipt alone must not be counted as DCAP fork acceptance.
-Fresh DCAP strict/minimal proofs and their V2 fork acceptance remain a release
-gate until the Mac results are returned and tested.
+Fresh DCAP strict/minimal proofs and their V2 fork acceptance are recorded below;
+they do not imply acceptance against today's live collateral or a deployed V2 upgrade.
+
+### Returned DCAP proof acceptance (2026-11-13)
+
+The Mac bundle was built from source commit
+`fd344224990fcf782a8b82fca32852f943fc543c`. Both paired-build archives passed
+the source/lockfile/image checks and byte/native-ID equality checks. The exact
+returned programs match both build copies. The VM independently recomputed
+their image IDs, verified all six Groth16 receipts with SDK 3.1.0, recomputed
+native DCAP journals, and exported byte-identical EVM payloads. Changed seal,
+journal and image-ID controls failed as expected.
+
+| Mode | Native image ID |
+| --- | --- |
+| strict (default) | `0xdf994d4e88a411337d58526940d49c7d2a9764110f70e0152459c16a6ae867e2` |
+| minimal (explicit only) | `0xb96a17bca8511a7fadbf899d3d3d73069a73663b4b1538a4e049945ad37d183f` |
+
+Two complementary Hoodi pins were used, without mocked calls, changed signatures,
+replaced DAO code, or clock rewinds:
+
+- **3611159**, hash
+  `0x40ea09199c6054a7730965d58bf00cad741509c6b0725aa7cf1e26b5b3ac3448`:
+  historical collateral was still valid at the real block timestamp
+  `1789242228`. A real 3.1 Groth16 verifier was deployed locally in the fork
+  (it did not exist on Hoodi then). All six strict/minimal × SGX V3 / TDX V4 /
+  Google V5 proofs passed through newly deployed V2 contracts and real PCCS DAOs.
+  Checks include output/event parity, immutable program modes, strict-only default,
+  cross-program substitution, proof/journal/format tampering, invalid evaluation,
+  pause and permanent freeze. Advancing past collateral expiry still accepts
+  the authenticated historical journal, as required by the timestamp policy.
+- **3998115**, hash
+  `0x866ca273ec07d9f845c8d81fe8f5e67fdd9510ce83995b58946e17cdb8c130ed`:
+  all six proofs and 18 cryptographic negative cases were tested against the
+  **actually deployed** fixed universal verifier. The eight-test RISC Zero suite,
+  including upstream controls and old-selector rejection, passed with no skips.
+
+Positive V2 internal-call gas (not transaction gas, not the complete negative-test
+gas total): SGX V3 **390584**, TDX V4 **381476**, Google V5 **381451**, identical
+between strict/minimal. Do not use these as current-network transaction estimates.
+
+The complete historical Hoodi suite passed **15 tests**, with only the
+Sepolia-specific route-catalog test skipped. It includes signed upserts, raw
+V3/V4/V5, deployment/configuration/rollback, authorization, fee/refund/withdrawal,
+and legacy coexistence. The authenticated Alibaba policy control now asserts
+strict rejection and minimal acceptance with matching quote/body hashes; its
+old expectation that both modes reject was inconsistent with `minCheck`.
+RISC Zero SDK regression passed **10 tests**; deployment/publication/Mac-runner
+regression passed **37**, with one optional live Sepolia check skipped.
+The full offline Solidity regression passed **137**, with four RPC-dependent
+setup skips; the explicit Hoodi runs above are separate from those skips.
+
+The November fork correctly rejects re-upserting the expired September PCK CRL.
+That is not a proof failure. This acceptance does **not** claim that the frozen
+fixtures can be submitted successfully to today's live V2/PCCS configuration.
+Use current matching collateral and re-prove for a live transaction if necessary.
+No public-chain transactions or registry updates were performed.
+
+To repeat, place only the six returned `evm-proof.json` files under the ignored
+`evm/forge-test/assets/v2/local-fork/risc0-v31/{strict,minimal}/{ata-sgx-v3,ata-tdx-v4,v5}/verified/`
+directories. Preserve the full result bundle separately. From the repository root:
+
+```bash
+export FOUNDRY_PROFILE=fork_osaka
+export DCAP_FORK_RPC=https://rpc.hoodi.ethpandaops.io
+export DCAP_FORK_CHAIN=560048 DCAP_FORK_EVM=osaka
+export DCAP_RISC0_STRICT_ID=0xdf994d4e88a411337d58526940d49c7d2a9764110f70e0152459c16a6ae867e2
+export DCAP_RISC0_MINIMAL_ID=0xb96a17bca8511a7fadbf899d3d3d73069a73663b4b1538a4e049945ad37d183f
+export DCAP_RISC0_PROOF_DIR=forge-test/assets/v2/local-fork/risc0-v31
+
+# Historical collateral + locally deployed real 3.1 verifier, not a live deployment.
+for mode in strict minimal; do
+  for fixture in ata-sgx-v3 ata-tdx-v4 v5; do
+    DCAP_FORK_BLOCK=3611159 DCAP_FORK_DEPLOY_RISC0_V31=true \
+    DCAP_FORK_FIXTURE="$fixture" \
+    DCAP_FORK_PROOF_FILE="$DCAP_RISC0_PROOF_DIR/$mode/$fixture/verified/evm-proof.json" \
+      forge test --root evm --match-contract DcapV2ForkTest \
+        --match-test testForkRealProof -vv || exit 1
+  done
+done
+
+# Full historical deployment/raw/rollback regression using a real SGX proof.
+DCAP_FORK_BLOCK=3611159 DCAP_FORK_DEPLOY_RISC0_V31=true \
+DCAP_FORK_FIXTURE=ata-sgx-v3 \
+DCAP_FORK_PROOF_FILE="$DCAP_RISC0_PROOF_DIR/strict/ata-sgx-v3/verified/evm-proof.json" \
+  forge test --root evm --match-contract DcapV2ForkTest -vv
+
+# Deployed fixed verifier, including all six returned proofs and negatives.
+DCAP_FORK_BLOCK=3998115 \
+  forge test --root evm --match-contract 'RiscZeroV31.*Test' -vv
+```
+
+Archive access is required. A missing-input skip or RPC failure is never success.
+`DCAP_FORK_DEPLOY_RISC0_V31` only affects the fork test harness, not deployment
+scripts or production configuration. The test-only changes do not change the
+guest artifacts or require another Mac proof run.
 
 ### Review/regression checkpoint (2026-11-12, working tree)
+
+This is the pre-return checkpoint; the November 13 acceptance above supersedes
+its pending Mac/proof status, not its recorded test results.
 
 - Full offline Solidity suite: 137 passed; four RPC-dependent setup skips.
 - Explicit fork run: six Hoodi checks passed (upstream real receipt, tampering,
@@ -180,13 +277,15 @@ pending on the Mac. Bonsai/Boundless service availability was not exercised.
    explicitly support these circuits. Do not fall back to an older service.
 2. Deploy a new `AutomataDcapAttestationV2`: the already deployed non-proxy
    entrypoint cannot acquire the no-fallback rule by changing configuration.
-   Prefer the [isolated coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md): it
-   creates six independent contracts (entrypoint, Router, PCK helper, V3/V4/V5),
-   copies approved legacy fees/DAO dependencies, and adds only Storage reader
-   permissions. No existing entrypoint/Router/helper is changed. This does not
-   require new DAOs/storage or collateral writes. SP1/raw users can remain on
-   their old V2 instance until the new instance passes acceptance. Do not copy
-   old RISC Zero IDs/routes or cached roots.
+   The [coordinator](../scripts/deploy-dcap-v2/COORDINATOR.md) has two modes:
+   `replace-entrypoint` on Hoodi creates only the entrypoint, reuses its existing
+   V2 Router/helper/V3/V4/V5, and adds the entrypoint's Router authorization.
+   It preserves all live SP1 IDs/modes/default/routes/freezes, retaining original
+   provenance where available and explicitly recording missing build provenance.
+   `full` on networks without V2 creates six independent contracts and adds Storage
+   reader permissions for the new Router. Neither mode requires new DAOs/storage
+   or collateral writes. SP1/raw users can remain on the old address until acceptance.
+   Do not copy old RISC Zero IDs/routes or cached roots.
 3. Use the trusted fixed universal verifier. At Hoodi block 3998115 the official
    router is `0x32Db7dc407AC886807277636a1633A1381748DD8`; its repaired selector
    resolves through the emergency-stop wrapper to
@@ -200,8 +299,9 @@ pending on the Mac. Bonsai/Boundless service availability was not exercised.
    mismatch/tampering/old-proof rejection, pause and freezes, then enable V2 ZK.
 5. Publish only verified V2 addresses/IDs/build provenance into the V2 deployment
    registry and application/SDK configuration. The universal verifier submodule
-   points at the reviewed 3.1 tag. The isolated coordinator writes `PCKHelperV2`
-   to the PCCS deployment file, without replacing `PCKHelper` or DAO addresses.
+   points at the reviewed 3.1 tag. Full deployment writes `PCKHelperV2` to the PCCS
+   deployment file; entrypoint replacement leaves that submodule file unchanged.
+   Replacement archives the previous V2 registry before publishing the new entrypoint.
    Leave `current`/V1.1 defaults unchanged until the
    separately approved all-network V2 rollout and consumer migration.
 
@@ -212,10 +312,12 @@ publication. RISC Zero remains explicit-route-only; unregistered selectors do no
 fall back to its default verifier. Program IDs and proof selectors come from the
 reviewed plan, and strict/minimal entries must share the same verifier/selector.
 
-Before freezing source/builds, review/archive the previous Hoodi `v2.0/560048`
-registry record in version control. The publisher does not overwrite it, and the
-coordinator checks this before sending any transaction. Use a new external run
-directory and start from `scripts/deploy-dcap-v2/coordinator.example.json`.
+For Hoodi, retain `v2.0/560048` as the migration source; do not manually archive it.
+Use a new external run directory and start from
+`scripts/deploy-dcap-v2/replace-entrypoint.example.json`. Source registry hashes and
+live configuration are checked before broadcasting and at publication; the previous
+record is then retained under `deployment/history/560048/OLD_ENTRYPOINT/`.
+For first deployment on other networks use `coordinator.example.json` with `mode: full`.
 For RISC Zero-only acceptance, populate `programs` with these two records, replacing
 all placeholders from the fresh Mac output (never invent image IDs):
 
