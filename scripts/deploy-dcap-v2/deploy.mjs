@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createRpcRequest, validatePlan, validateBuildSources, pendingSp1Verifier, readBuildArtifact, requirePublication} from './publish-v2.mjs';
+import {createRpcRequest, validatePlan, validateBuildSources, validateDeploymentSource, pendingSp1Verifier, readBuildArtifact, requirePublication} from './publish-v2.mjs';
 import {replacement, registryHashes, sp1Provenance} from './replacement.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -17,6 +17,8 @@ const save = (file, value) => {
   fs.renameSync(file + '.pending', file);
 };
 const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// Foundry expects Solidity array literals, not JSON-quoted hex strings.
+export const forgeArgument = value => Array.isArray(value) ? `[${value.join(',')}]` : String(value);
 export function redactError(message, url) {
   let text = String(message);
   if (url) {
@@ -79,8 +81,8 @@ export async function readerInventory(legacy, call) {
   return [...readers.values()];
 }
 
-async function main() {
-  const [configFile, runDirectory, ...flags] = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)) {
+  const [configFile, runDirectory, ...flags] = args;
   ensure(configFile && runDirectory && flags.every(x => ['--broadcast', '--resume'].includes(x)),
     'Usage: node deploy.mjs CONFIG RUN_DIRECTORY [--broadcast] [--resume]');
   const live = flags.includes('--broadcast');
@@ -108,7 +110,8 @@ async function main() {
     ensure(!capture('git', ['ls-files', '--others', '--exclude-standard']),
       'Untracked files are not part of the pinned source; commit implementation files and keep operator run files outside the repository');
     const state = fs.existsSync(stateFile) ? read(stateFile) : {commit, configDigest, stages: {}, transactions: []};
-    ensure(state.commit === commit && state.configDigest === configDigest, 'Checkpoint source/config changed');
+    ensure(state.configDigest === configDigest, 'Checkpoint configuration changed');
+    state.coordinatorCommit = validateDeploymentSource(state.commit);
     const checkpoint = () => save(stateFile, state);
     const planFile = path.join(out, 'plan.json');
     const beforeFile = path.join(out, 'before.json');
@@ -124,7 +127,7 @@ async function main() {
       const legacyRouter = replace ? dcap.PCCSRouterV2 : dcap.PCCSRouter;
       const legacyFee = replace ? dcap.AutomataDcapAttestationV2 : dcap.AutomataDcapAttestationFee;
       const pcs = call(legacyRouter, 'pcsDaoAddr()(address)');
-      plan = {mode: config.mode ?? 'full', status: 'TEST_ONLY', chainId: config.chainId, sourceCommit: commit, owner: config.owner,
+      plan = {mode: config.mode ?? 'full', status: 'TEST_ONLY', chainId: config.chainId, sourceCommit: state.commit, owner: config.owner,
         legacyRouter, legacyFee, p256: call(pcs, 'P256_VERIFIER()(address)'),
         evaluations: config.evaluations ?? evaluationInventory(pccs), programs: config.programs ?? [], transactions: [],
         deploySp1Groth16V6: config.deploySp1Groth16V6 === true};
@@ -147,7 +150,7 @@ async function main() {
       save(planFile, plan);
     }
     validatePlan(plan, {allowPendingVerifier: true});
-    ensure(plan.sourceCommit === commit && plan.chainId === config.chainId && same(plan.owner, config.owner)
+    ensure(plan.sourceCommit === state.commit && plan.chainId === config.chainId && same(plan.owner, config.owner)
       && (plan.mode ?? 'full') === (config.mode ?? 'full'), 'Checkpoint plan differs from source/config');
     validateBuildSources(plan);
     requirePublication(plan, path.join(out, 'readback.json'));
@@ -183,7 +186,7 @@ async function main() {
     const script = 'forge-script/DeployDcapV2.s.sol:DeployDcapV2';
     const stage = async (name, owner, sig, args) => {
       if (state.stages[name]) return read(path.join(out, `${name}.broadcast.json`));
-      const base = ['script', script, '--rpc-url', url, '--sender', owner, '--sig', sig, ...args.map(String)];
+      const base = ['script', script, '--rpc-url', url, '--sender', owner, '--sig', sig, ...args.map(forgeArgument)];
       if (!live) { run('forge', base, evm); return null; }
       if (state.running) ensure(state.running === name && flags.includes('--resume'),
         `Interrupted stage ${state.running}; inspect broadcast and rerun with --resume, never redeploy blindly`);
@@ -209,7 +212,7 @@ async function main() {
     const deployed = replacement(plan)
       ? await stage('deploy', plan.owner, 'deployEntrypoint(uint256,address,address)', [plan.chainId, plan.owner, plan.legacyFee])
       : await stage('deploy', plan.owner, 'deployIsolated(uint256,address,address,address,address,uint32[])',
-        [plan.chainId, plan.owner, plan.legacyRouter, plan.legacyFee, plan.p256, JSON.stringify(plan.evaluations)]);
+        [plan.chainId, plan.owner, plan.legacyRouter, plan.legacyFee, plan.p256, plan.evaluations]);
     let sp1Deployment;
     if (plan.deploySp1Groth16V6) {
       sp1Deployment = await stage('deploy-sp1-v6', plan.owner,
@@ -230,7 +233,7 @@ async function main() {
         [plan.chainId, before.legacy.routerOwner, plan.legacyFee, attestation]);
       const routes = before.legacy.migration.sp1.routes;
       await stage('migrate-sp1', plan.owner, 'migrateSp1Configuration(address,address,address,bytes4[],address[])',
-        [plan.owner, plan.legacyFee, attestation, JSON.stringify(routes.map(r => r.selector)), JSON.stringify(routes.map(r => r.verifier))]);
+        [plan.owner, plan.legacyFee, attestation, routes.map(r => r.selector), routes.map(r => r.verifier)]);
     } else for (const r of readers) await stage(`reader-${r.resolver.toLowerCase()}`, r.owner,
         'authorizeIsolatedReader(uint256,address,address,address,address)',
         [plan.chainId, r.owner, plan.legacyRouter, c.PCCSRouterV2, r.dao]);
@@ -246,7 +249,7 @@ async function main() {
       replacement(plan) ? 'enableReplacementZk(uint256,address,address,address,uint8[],bytes4[])'
         : 'enableIsolatedZk(uint256,address,address,address,address,uint8[],bytes4[])',
       [plan.chainId, plan.owner, plan.legacyFee, ...(replacement(plan) ? [] : [plan.legacyRouter]), attestation,
-        JSON.stringify(enablePrograms.map(p => p.backend)), JSON.stringify(enablePrograms.map(p => p.proofSelector))]);
+        enablePrograms.map(p => p.backend), enablePrograms.map(p => p.proofSelector)]);
     plan.transactions = state.transactions; save(planFile, plan);
     const finalized = await rpc('eth_getBlockByNumber', ['finalized', false]);
     for (const hash of state.transactions) {

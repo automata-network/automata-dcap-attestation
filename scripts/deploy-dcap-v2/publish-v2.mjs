@@ -70,6 +70,23 @@ export function validateBuildSources(p, execute = execFileSync) {
   }
 }
 
+export function validateDeploymentSource(sourceCommit, execute = execFileSync) {
+  ensure(/^[0-9a-f]{40}$/.test(sourceCommit), 'Pin deployment source commit');
+  const git = args => execute('git', args, {cwd: root, encoding: 'utf8', stdio: 'pipe'});
+  const current = git(['rev-parse', 'HEAD']).trim();
+  if (current !== sourceCommit) {
+    try {
+      git(['merge-base', '--is-ancestor', sourceCommit, current]);
+      const changed = git(['diff', '--name-only', '--no-renames', '-z', sourceCommit, current, '--']).split('\0').filter(Boolean);
+      // Keep the original contract/build/registry pin; only coordinator repairs may resume it.
+      ensure(changed.every(file => file.startsWith('scripts/deploy-dcap-v2/')), 'Changed deployment inputs');
+    } catch {
+      throw new Error('Pinned deployment source differs outside scripts/deploy-dcap-v2 or is not an ancestor; do not rewrite checkpoints');
+    }
+  }
+  return current;
+}
+
 // Keep provider diagnostics without logging the endpoint or its credentials.
 export function createRpcRequest(url, fetchImpl = fetch) {
   let endpoint;
@@ -422,8 +439,7 @@ async function main() {
   ensure(['snapshot', 'check', 'publish'].includes(mode) && planFile && snapshotFile
     && (mode !== 'publish' || reportFile), 'Usage: publish-v2.mjs snapshot|check PLAN SNAPSHOT | publish PLAN SNAPSHOT NEW_REPORT');
   const p = json(planFile); validatePlan(p, {allowPendingVerifier: mode !== 'publish'});
-  ensure(execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim() === p.sourceCommit,
-    'Check out the pinned deployment source commit');
+  const coordinatorCommit = validateDeploymentSource(p.sourceCommit);
   validateBuildSources(p);
   const url = process.env.DCAP_RPC_URL; ensure(url, 'DCAP_RPC_URL required');
   const request = createRpcRequest(url);
@@ -467,7 +483,7 @@ async function main() {
   const pccsUpdate = replacement(p) ? JSON.parse(originalPccs) : updatePccsDeployment(JSON.parse(originalPccs), p.contracts.PCKHelperV2);
   const destination = requirePublication(p, reportFile);
   ensure((await request('eth_getBlockByNumber', [block.number, false]))?.hash === block.hash, 'Readback block changed');
-  const report = {status: 'TEST_DEPLOYMENT_READBACK_PASS_NOT_PROOF_OR_RELEASE_ACCEPTANCE',
+  const report = {status: 'TEST_DEPLOYMENT_READBACK_PASS_NOT_PROOF_OR_RELEASE_ACCEPTANCE', coordinatorCommit,
     plan: p, block, transactions: receipts, legacySnapshotSha256: sha(fs.readFileSync(snapshotFile)), ...verified,
     ...(replacement(p) ? {migratedSp1: legacy.migration.sp1} : {}),
     pccsDeploymentBefore: JSON.parse(originalPccs), currentPromoted: false};

@@ -123,6 +123,27 @@ Source verification and runtime readback use the active `forge config --json`
 artifact directory, including `FOUNDRY_PROFILE` / `FOUNDRY_OUT` overrides. Keep
 the same Foundry settings when resuming a deployment.
 
+### Resume after a Foundry array parser failure
+
+Foundry expects `[0xe71e6620,0x4388a21c]`, not JSON-quoted hex elements.
+The coordinator formats all script array arguments consistently, including nonempty
+SP1 routes, backend selectors and evaluation numbers.
+
+If `configureMinimalProgram` succeeded but the following `enable-zk` simulation
+failed to parse its array, preserve the same config and run directory. Inspect
+`state.json`: the completed backend stages should be present, `enable-zk` absent,
+and `running` unset. Commit/sync this tooling repair, then rerun the original
+`--broadcast` command without `--resume`; only the remaining stages execute.
+If `running` is set, inspect the original broadcast receipts before using `--resume`.
+
+A checkpoint may continue on a descendant commit only when every committed change
+since its source pin is inside `scripts/deploy-dcap-v2/`. Contract sources, Foundry
+settings, submodules, Rust/build inputs and registry files must remain unchanged.
+The original `state.commit`, plan/snapshot `sourceCommit` and guest provenance remain
+intact; `state.coordinatorCommit` and the final manifest record the repaired tooling
+commit separately. A clean checkout is still required. Never edit checkpoint hashes,
+delete a completed stage, or create a fresh run to bypass an interrupted deployment.
+
 Program entries follow `publish-v2.mjs`: `backend` (1 RISC Zero, 2 SP1),
 `minCheck`, native `id`, `verifier`, `proofSelector`, `buildSourceCommit`,
 `artifactSha256`, `evidenceSha256`. New builds require the pinned deployment commit or

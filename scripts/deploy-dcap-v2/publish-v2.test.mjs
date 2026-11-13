@@ -3,10 +3,35 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validatePlan, validateBuildSources, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact, requireNewPublication, requirePublication} from './publish-v2.mjs';
+import {validatePlan, validateBuildSources, validateDeploymentSource, makeDocuments, updatePccsDeployment, readLegacy, verifyNew, createRpcRequest, pendingSp1Verifier, readBuildArtifact, requireNewPublication, requirePublication} from './publish-v2.mjs';
 import {registryHashes} from './replacement.mjs';
 
 const evm = fileURLToPath(new URL('../../evm/', import.meta.url));
+test('tooling-only recovery preserves the deployment pin and records the current coordinator commit', () => {
+  const pinned='a'.repeat(40), current='b'.repeat(40), commands=[];
+  const execute=(bin,args)=>{
+    assert.equal(bin,'git'); commands.push(args);
+    if(args[0]==='rev-parse') return current+'\n';
+    if(args[0]==='diff') return 'scripts/deploy-dcap-v2/deploy.mjs\0scripts/deploy-dcap-v2/publish-v2.mjs\0';
+    return '';
+  };
+  assert.equal(validateDeploymentSource(pinned,execute),current);
+  assert.deepEqual(commands[1],['merge-base','--is-ancestor',pinned,current]);
+  assert.deepEqual(commands[2],['diff','--name-only','--no-renames','-z',pinned,current,'--']);
+  assert.equal(validateDeploymentSource(pinned,()=>pinned),pinned);
+  assert.throws(()=>validateDeploymentSource('invalid',execute),/Pin deployment/);
+});
+test('recovery refuses changed contracts, build inputs, registry, or unrelated history', () => {
+  const pinned='a'.repeat(40), current='b'.repeat(40);
+  for(const file of ['evm/forge-script/DeployDcapV2.s.sol','evm/contracts/AutomataDcapAttestationV2.sol',
+    'evm/foundry.toml','evm/lib/risc0-ethereum','rust-crates/Cargo.lock',
+    'rust-crates/libraries/network-registry/deployment/v2.0/560048/dcap.json']) {
+    assert.throws(()=>validateDeploymentSource(pinned,(bin,args)=>args[0]==='rev-parse'?current:args[0]==='diff'?file+'\0':''),/do not rewrite checkpoints/);
+  }
+  assert.throws(()=>validateDeploymentSource(pinned,(bin,args)=>{
+    if(args[0]==='merge-base') throw Error('unrelated'); return current;
+  }),/not an ancestor/);
+});
 test('build provenance survives tooling-only commits but changed Rust/proving inputs fail closed',()=>{
   const p={sourceCommit:'b'.repeat(40),programs:[{buildSourceCommit:'a'.repeat(40)},{buildSourceCommit:'a'.repeat(40)}]};
   const commands=[];validateBuildSources(p,(bin,args)=>{commands.push(args);return '';});
