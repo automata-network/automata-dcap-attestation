@@ -28,7 +28,9 @@ contract RiscZeroV31Test is Test {
         _reject(OldReceipt.SEAL, OldReceipt.IMAGE_ID, sha256(OldReceipt.JOURNAL));
         bytes memory changed = OldReceipt.SEAL;
         bytes4 selector = 0xe71e6620;
-        for (uint256 i; i < 4; ++i) changed[i] = selector[i];
+        for (uint256 i; i < 4; ++i) {
+            changed[i] = selector[i];
+        }
         _reject(changed, OldReceipt.IMAGE_ID, sha256(OldReceipt.JOURNAL));
     }
 
@@ -41,7 +43,10 @@ contract RiscZeroV31Test is Test {
     }
 
     function _reject(bytes memory seal, bytes32 id, bytes32 journalDigest) internal view {
-        (bool ok,) = address(verifier).staticcall(abi.encodeCall(IRiscZeroVerifier.verify, (seal, id, journalDigest)));
+        // Invalid curve points can consume all forwarded precompile gas.
+        (bool ok,) = address(verifier).staticcall{gas: 5_000_000}(
+            abi.encodeCall(IRiscZeroVerifier.verify, (seal, id, journalDigest))
+        );
         assertFalse(ok, "invalid receipt accepted");
     }
 }
@@ -63,12 +68,53 @@ contract RiscZeroV31HoodiForkTest is RiscZeroV31Test {
         assertEq(direct.VERSION(), "3.1.0");
     }
 
+    /// Cryptographic verification against the deployed route, separate from
+    /// historical collateral acceptance in DcapV2ForkTest.
+    function testReturnedDcapProofsAndNegatives() public {
+        string memory directory = vm.envOr("DCAP_RISC0_PROOF_DIR", string(""));
+        if (bytes(directory).length == 0) {
+            vm.skip(true, "returned DCAP proofs required");
+            return;
+        }
+        bytes32 strictId = vm.envBytes32("DCAP_RISC0_STRICT_ID");
+        bytes32 minimalId = vm.envBytes32("DCAP_RISC0_MINIMAL_ID");
+        assertTrue(strictId != bytes32(0) && minimalId != bytes32(0) && strictId != minimalId);
+        string[3] memory fixtures = [string("ata-sgx-v3"), string("ata-tdx-v4"), string("v5")];
+        for (uint256 mode; mode < 2; ++mode) {
+            for (uint256 i; i < fixtures.length; ++i) {
+                string memory payload = vm.readFile(
+                    string.concat(
+                        directory, mode == 0 ? "/strict/" : "/minimal/", fixtures[i], "/verified/evm-proof.json"
+                    )
+                );
+                bytes32 id = vm.parseJsonBytes32(payload, ".programId");
+                assertEq(id, mode == 0 ? strictId : minimalId);
+                assertEq(vm.parseJsonBool(payload, ".minCheck"), mode == 1);
+                assertEq(vm.parseJsonUint(payload, ".backend"), 1);
+                bytes memory seal = vm.parseJsonBytes(payload, ".proof");
+                bytes memory journal = vm.parseJsonBytes(payload, ".journal");
+                string memory fixture =
+                    vm.readFile(string.concat("forge-test/assets/v2/fixtures/", fixtures[i], ".json"));
+                assertEq(journal, vm.parseJsonBytes(fixture, ".expectedJournal"));
+                assertEq(seal.length, 260);
+                assertEq(bytes4(seal), bytes4(0xe71e6620));
+                verifier.verify{gas: 5_000_000}(seal, id, sha256(journal));
+                _reject(seal, mode == 0 ? minimalId : strictId, sha256(journal));
+                _reject(seal, id, sha256(bytes.concat(journal, hex"01")));
+                seal[seal.length - 1] ^= 0x01;
+                _reject(seal, id, sha256(journal));
+            }
+        }
+    }
+
     // Old routes may still be live upstream during the grace period. The V2
     // entrypoint rejects them independently; this test targets the repaired route.
     function testOldReceiptRejectedEvenIfSelectorIsRelabeled() public view override {
         bytes memory changed = OldReceipt.SEAL;
         bytes4 selector = 0xe71e6620;
-        for (uint256 i; i < 4; ++i) changed[i] = selector[i];
+        for (uint256 i; i < 4; ++i) {
+            changed[i] = selector[i];
+        }
         _reject(changed, OldReceipt.IMAGE_ID, sha256(OldReceipt.JOURNAL));
     }
 
